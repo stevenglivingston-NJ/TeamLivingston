@@ -35,6 +35,9 @@ This environment manages operations for two business groups:
 | shipstation | stdio (Python) | Orders, shipments, rates, products, stores, carriers, fulfillments | V2 API key (Bearer) |
 | amazon-sp | stdio (Python) | Orders, inventory, catalog, listings, reports, finances, FBA inbound | LWA OAuth2 (SP-API) |
 | Shopify | connector | Products, orders, collections, inventory, customers, analytics | OAuth |
+| amazon-ads | *(planned)* | Sponsored Products/Brands/Display campaigns, keywords, reports | LWA OAuth2 (Ads API) |
+| walmart-marketplace | *(planned)* | Orders, items, inventory, prices, reports | Walmart API |
+| walmart-ads | *(planned)* | Sponsored Products campaigns, keywords, reports | Walmart Connect API |
 
 ### Shared / Cross-Group
 
