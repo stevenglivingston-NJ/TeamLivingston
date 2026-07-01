@@ -21,21 +21,25 @@ This environment manages operations for two business groups:
 | clarity-btu | connector (npm) | Dashboard analytics, session recordings | Microsoft Clarity |
 | ktu-highlevel | connector (HTTP) | HighLevel CRM for KTU | JWT Bearer token |
 | btu-highlevel | connector (HTTP) | HighLevel CRM for BTU | JWT Bearer token |
-| jobtread | connector (HTTP) | Project management | Bearer token |
+| jobtread | connector | Project management, estimates, invoices | Bearer token |
+| Facebook Ads | connector | Campaigns, ad sets, ads, catalogs, IG boosting, experiments | OAuth |
+| Google Calendar | connector | Events, calendars, scheduling | OAuth |
+| Google Drive | connector | Files, permissions, search, content | OAuth |
+| Gmail | connector | Email threads, drafts, labels, search | OAuth |
+| Slack | connector | Channels, messages, users, search | OAuth |
 
 ### Jatalia Servers
 
 | Server | Type | Tools | Auth |
 |--------|------|-------|------|
 | shipstation | stdio (Python) | Orders, shipments, rates, products, stores, carriers, fulfillments | V2 API key (Bearer) |
+| Shopify | connector | Products, orders, collections, inventory, customers, analytics | OAuth |
 
-### Other Connectors
+### Shared / Cross-Group
 
-| Server | Type | Status |
-|--------|------|--------|
-| Gmail | connector | Requires OAuth authorization |
-| Meta Pipeboard | connector | Facebook/Meta Ads - requires OAuth |
-| Truthifi | connector | Financial analytics - requires OAuth |
+| Server | Type | Tools |
+|--------|------|-------|
+| Truthifi | connector | Financial analytics (requires OAuth authorization) |
 | GoDaddy | connector | Domain management |
 | Semrush | connector | SEO analytics |
 | Ahrefs | connector | SEO analytics |
