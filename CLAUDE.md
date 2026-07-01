@@ -33,6 +33,7 @@ This environment manages operations for two business groups:
 | Server | Type | Tools | Auth |
 |--------|------|-------|------|
 | shipstation | stdio (Python) | Orders, shipments, rates, products, stores, carriers, fulfillments | V2 API key (Bearer) |
+| amazon-sp | stdio (Python) | Orders, inventory, catalog, listings, reports, finances, FBA inbound | LWA OAuth2 (SP-API) |
 | Shopify | connector | Products, orders, collections, inventory, customers, analytics | OAuth |
 
 ### Shared / Cross-Group
@@ -70,8 +71,11 @@ All Python stdio servers live under `/root/code/`:
 ├── serviceminder-mcp/
 │   ├── server.py        # 28 tools (multi-location: KTU + BTU)
 │   └── requirements.txt
-└── shipstation-mcp/
-    ├── server.py        # 17 tools (V2 API, Bearer auth)
+├── shipstation-mcp/
+│   ├── server.py        # 17 tools (V2 API, Bearer auth)
+│   └── requirements.txt
+└── amazon-sp-mcp/
+    ├── server.py        # 15 tools (SP-API, LWA OAuth2)
     └── requirements.txt
 ```
 
