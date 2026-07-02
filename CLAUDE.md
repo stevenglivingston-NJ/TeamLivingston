@@ -43,6 +43,8 @@ This environment manages operations for two business groups:
 
 | Server | Type | Tools |
 |--------|------|-------|
+| cloudflare | stdio (Python) | Zones, DNS records, Pages projects/deployments, Workers, R2, KV, analytics |
+| Cloudflare Developer Platform | connector | D1 databases, Workers, KV namespaces, R2 buckets, Hyperdrive |
 | Truthifi | connector | Financial analytics (requires OAuth authorization) |
 | GoDaddy | connector | Domain management |
 | Semrush | connector | SEO analytics |
@@ -77,8 +79,11 @@ All Python stdio servers live under `/root/code/`:
 ├── shipstation-mcp/
 │   ├── server.py        # 17 tools (V2 API, Bearer auth)
 │   └── requirements.txt
-└── amazon-sp-mcp/
-    ├── server.py        # 15 tools (SP-API, LWA OAuth2)
+├── amazon-sp-mcp/
+│   ├── server.py        # 15 tools (SP-API, LWA OAuth2)
+│   └── requirements.txt
+└── cloudflare-mcp/
+    ├── server.py        # 14 tools (Zones, DNS, Pages, Workers, R2, KV)
     └── requirements.txt
 ```
 
