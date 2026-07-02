@@ -100,3 +100,18 @@ pip install mcp[cli] httpx google-ads google-auth
 |------|----------|---------|
 | KTU | Kitchen Tune-Up | 1285 Broad St, Suite 2, Bloomfield NJ 07003 |
 | BTU | Bath Tune-Up | 1285 Broad Street, Unit 2, Bloomfield NJ 07003 |
+
+## Dashboards
+
+| Group | Purpose | URL |
+|-------|---------|-----|
+| Jatalia | Ops dashboard | https://jataliamarketplace.com |
+
+## Cloudflare Workers
+
+| Name | Purpose |
+|------|---------|
+| ktubtuintranet | KTU/BTU internal intranet |
+| ktu-cmo-dashboard-auth | KTU CMO dashboard auth layer |
+| ktu-dashboard-auth | KTU dashboard auth layer |
+| city-replacement | City replacement service |
