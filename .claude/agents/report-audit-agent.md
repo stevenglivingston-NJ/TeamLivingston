@@ -82,10 +82,19 @@ Run **every** report through these seven dimensions. Score each 🟢/🟡/🔴 a
 - **SEO** → Ahrefs + Semrush (claude.ai connectors).
 - **Session behavior** → Microsoft Clarity (KTU project 2708513173760009,
   BTU 2789761772911940).
-- **Cross-platform attribution rollup** → Windsor.ai; server-side conversions →
-  AnyTrack.
-- **Financials** → QuickBooks (P&L, balance sheet, AR/AP aging), Ramp (card spend),
-  Truthifi/Bank_Connection (cash/portfolio), Bluevine/Chase feeds (12-wk forecast).
+- **Cross-platform channels (GA4 / GMB / Bing / Facebook Lead Ads)** → Zapier MCP
+  (**Windsor.ai is RETIRED** — treat any report row still citing Windsor as a
+  lineage defect); server-side conversions → AnyTrack.
+- **Financials** → QuickBooks: Intuit connector (FGUSA books, live) + QBO via the
+  Zapier connections (main Zapier = KTU account, BTU Zapier connection, Jatalia
+  Zapier) for the other entities; Ramp (card spend), Truthifi/Bank_Connection
+  (cash/portfolio), Bluevine/Chase feeds (12-wk forecast).
+- **Fallback policy** → whenever a direct MCP is absent or failing, check the
+  Zapier route (`list_enabled_zapier_actions` / `discover_zapier_actions`) before
+  recording a breakage: Google Ads, GA4, GMB, Bing, Facebook Lead Ads, QuickBooks,
+  CompanyCam, JobTread, and HighLevel (LeadConnector) all have Zapier paths. A
+  source is only "broken" if the direct MCP AND the Zapier route both fail. (No
+  Zapier app for ServiceMinder or Clarity.)
 - **Project photos / job progress** → CompanyCam (KTU). **Project management /
   estimates** → JobTread (org 22PB4XPxGZHK).
 - **Jatalia eCommerce** → Shopify (Earthwise Seed, Shopify Plus), ShipStation,
@@ -104,8 +113,14 @@ call (e.g. HighLevel `locations_get-location`, Shopify `get-shop-info`, JobTread
   unsourceable from this environment. Fix: allow `serviceminder.io` in the network
   policy, or host the ServiceMinder MCP remotely (repo `ktubtu-mcp-deploy`) on an
   allowed host, keying it with `SM_KEY_KTU` / `SM_KEY_BTU`.
-- 🔴 **QuickBooks token expired** — `Intuit_QuickBooks` needs re-authorization; all
-  P&L / AR / cash-flow tabs are dark until re-auth in connector settings.
+- 🟢 **QuickBooks live again** (re-authed 2026-07-03) — Intuit connector answers
+  for FIRST GENERATION USA LLC; other entities' books via the Zapier QBO
+  connections. Intuit refresh tokens die after ~100 idle days — if it breaks
+  again, that's the first suspect.
+- 🔴 **Windsor.ai RETIRED** (2026-07-03) — any dashboard row, metric note, or
+  integration-registry entry still citing Windsor is stale; the channels moved to
+  Zapier. Amazon Ads lost its data path in the retirement — flag it wherever it
+  appears until re-sourced.
 - 🔴 **HighLevel connectors are label-swapped** — the `Highlevel_KTU` connector
   returns the **Bath Tune-Up** sub-account and `High_Level_BTU` returns the
   **Kitchen Tune-Up** sub-account. Any report that trusts the connector name for
@@ -114,7 +129,9 @@ call (e.g. HighLevel `locations_get-location`, Shopify `get-shop-info`, JobTread
 - 🟡 **Missing custom MCP servers in cloud** — ServiceMinder, Google Ads, GMB,
   CompanyCam, Closebot, ShipStation, Amazon SP-API, and Clarity (the `/root/code`
   Python stdio servers) are not loaded in cloud sessions. Their metrics can only be
-  audited from Steven's Mac or once the servers are hosted remotely.
+  audited from Steven's Mac or once the servers are hosted remotely — **except**
+  where Zapier covers the gap today: Google Ads, GMB, CompanyCam, ShipStation,
+  and Amazon Seller Central actions exist in the main Zapier connection.
 - 🟡 **GA4 shared measurement ID** — KTU and BTU share one GA4 property; per-brand
   web analytics cannot be split until this is fixed. Flag any per-brand GA4 metric.
 - 🟡 **Ramp requires per-call approval** in this session; Meta Pipeboard is

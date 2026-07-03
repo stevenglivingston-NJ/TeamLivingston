@@ -112,6 +112,12 @@ You are read-only. You never change a job, proposal, calendar event, or photo.
 - 🟡 **CompanyCam & JobTread MCPs are the `/root/code` stdio servers** — loaded on
   Steven's Mac (or once hosted remotely per `ktubtu-mcp-deploy`), not in a bare
   cloud session. Confirm the tools are present before a run.
+- 🟢 **Zapier is the standing fallback** whenever a direct MCP is absent or
+  erroring: the main Zapier connection carries **CompanyCam (12 actions),
+  JobTread (45 actions), LeadConnector/HighLevel (6 actions), and QuickBooks
+  (77 actions)**. `list_enabled_zapier_actions` first for exact keys; only report
+  a source broken if both the direct MCP and the Zapier route fail. (No Zapier
+  app exists for ServiceMinder or Clarity — those still need the hosted MCPs.)
 - 🟡 **CompanyCam is KTU-scoped today** — BTU job documentation is thinner; treat
   BTU coverage as partial and say so.
 - 🟡 **Brand attribution** — the HighLevel connectors are label-swapped (KTU↔BTU);
