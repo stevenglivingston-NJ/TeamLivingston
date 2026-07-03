@@ -62,6 +62,13 @@ Work brand-by-brand (KTU, BTU), then roll up. Compare **yesterday** and
   paying for every one of those broken sessions.
 - Tie Clarity findings to the specific campaigns/ad groups sending traffic to that
   page, and quantify the wasted spend ("$X/day lands on a page with Y% quick-backs").
+- **Tracking-integrity check (every run — ported from CMO; its #1 finding was a
+  39% JS-error session rate silently corrupting conversion data).** Before trusting
+  any conversion number, verify the instrumentation itself: Clarity JS-error rate on
+  paid landing pages (a spike = conversion events likely lost), GA4 event flow vs
+  platform-claimed conversions (a widening gap = pixel/GTM breakage), and AnyTrack
+  receiving. **Broken tracking is a 🚨 MUST ACTION above all spend verdicts** — every
+  other number in the brief is suspect until it's fixed, and say so plainly.
 
 ### 3. Tie spend to real customers (the ROI backbone)
 Attribution chain, in order of truth:
@@ -138,6 +145,26 @@ Each recommendation: the evidence, a starter budget, and the measurement plan be
 a dollar moves. (Ecommerce channel scouting — Amazon Ads, Walmart Connect, Google
 Shopping — is Harvest's job, not yours.)
 
+### 7b. Combo optimizer — channel × town × service (monthly; ported from CMO Pipeline hub)
+Once a month (first run of the month), join spend to **outcomes**, not leads: pull
+ServiceMinder proposals/invoices by source, zip, and service line and compute close
+rate and revenue per **channel × town × service** combination (minimum 3 proposals
+per cell — say when n is too thin). Deliver two ranked lists with dollar evidence:
+- **Over-invest**: the top combos closing well below target CAC — these get the next
+  budget increment before any new channel does.
+- **Kill/starve**: the lowest-converting towns and combos that are a drag on spend —
+  quantify the revenue-per-dollar gap vs the median. Feed these directly into §8's
+  reallocation verdicts and geo-exclusion recommendations.
+Include a close-rate-by-town view so a town that gets clicks but never signs is
+visible (demographics alone — the Territories view — can't show this).
+
+### 7c. Market landscape (quarterly; ported from CMO Intelligence)
+Once a quarter: zip-level demand pockets (Semrush/Ahrefs keyword volume + observed
+proposal density → opportunity gaps where demand exists but we don't), seasonality
+curve vs our spend pacing, and the keyword landscape tables (volume/difficulty/CPC)
+for both brands. Three verdicts max — where to expand, where we're over-indexed,
+what the next quarter's pacing should anticipate.
+
 ### 8. Budget allocation verdicts
 Every daily brief ends with explicit calls, each with the dollar impact and the
 evidence:
@@ -164,11 +191,34 @@ Yesterday: $X spend | Y leads (forms + CALLS + QR) | $Z CPL (Δ vs 7d avg) — p
 🗺️ ORGANIC & COMPETITORS       — GMB rank moves; meeting/beating/losing vs key rivals
 🔑 KEYWORD STRATEGY            — on point or not; top changes if not
 📡 NEW CHANNELS (weekly)       — expansion calls with evidence + starter budget
+🎯 COMBO VERDICTS (monthly)    — channel×town×service over-invest / kill lists
+🧭 MARKET LANDSCAPE (quarterly)— demand pockets, seasonality pacing, keyword gaps
+📅 CAMPAIGN CALENDAR           — next-14-day starts + print-ad deadlines at risk
 📈 ROI SCOREBOARD              — CAC / ROAS / payback by channel, trailing 30d
    + attribution reconciliation: platform-claimed vs HighLevel true-source deltas
 ```
 
+Tracking-integrity failures lead the 🚨 MUST ACTION section whenever present.
+For 📅: check Gmail/monday for scheduled campaign starts and print deadlines
+(City Lifestyle, Worrall, Montclair Girl, Best Version Media) in the next 14 days;
+flag any with no creative submitted.
+
 If nothing is broken, say so in one line — do not manufacture urgency.
+
+### 10. Seed the intranet reporting (crash-safe write)
+
+The brief also lands in `intranet_records` so it appears in the owner's reporting
+and so **Moola can pressure-test your reallocations** (Moola reads section
+`paid_brief` by design). Write via the Supabase MCP (`mcp__Supabase__execute_sql`,
+service role — anon REST will 401), project `tguwpswcneywvscxzyef`:
+1. Build rows in memory first — max 10: yesterday's headline numbers row, each
+   🚨 must-action, each 💰 reallocation verdict, tracking-integrity status, and
+   (when produced) the monthly 🎯 combo verdicts. Fields shape:
+   `{"severity":"urgent|warn|info","kind":"headline|must-action|reallocation|tracking|combo","title":"...","detail":"finding → evidence → exact tweak → $ impact","source":"Google Ads · KTU","scan_date":"YYYY-MM-DD"}`,
+   brand-tagged KTU/BTU/Both.
+2. INSERT today's rows, and only after success prune older `scan_date` rows from
+   section `paid_brief`. Never delete first; if the insert fails, yesterday's rows
+   stay (stale beats blank). Always ≥1 row.
 
 ## Operating rules
 
