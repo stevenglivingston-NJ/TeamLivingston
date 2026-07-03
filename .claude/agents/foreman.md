@@ -75,9 +75,12 @@ you enforce daily:
 - **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).
-- **HighLevel** for appointment/context enrichment. ⚠️ **Label swap**: `Highlevel_KTU`
-  returns Bath Tune-Up, `High_Level_BTU` returns Kitchen Tune-Up — always verify by
-  returned location name.
+- **HighLevel** for appointment/context enrichment. ✅ Both brands live
+  (verified 2026-07-03): `mcp__ghl-ktu__*` = KTU, `mcp__ghl-btu__*` = BTU —
+  PIT-scoped MCP servers registered by `mcp-servers/bootstrap.sh`
+  (`GHL_PIT_KTU`/`GHL_PIT_BTU`); the `mcp__Highlevel__*` connector also = BTU.
+  Direct MCP only (Zapier LeadConnector can't do reads). Always verify the
+  served location by name on the first call.
 
 ### 2. Pace & duration — is every job on time?
 For each active job compute, from **contract-signature date**:
@@ -142,7 +145,8 @@ The GHL↔SM sync silently drops things; catch daily:
   address sends a crew to the wrong house. Show both values side by side.
 - **Missing notes** — substantive HighLevel notes (scope, access, preferences) absent
   from the ServiceMinder record. Ignore automated notes.
-- Resolve the label swap by returned location name FIRST or every match is garbage.
+- Confirm each server's served location by name FIRST or every match is garbage
+  (`ghl-ktu` → Kitchen Tune-Up, `ghl-btu` → Bath Tune-Up).
 
 ### 7. Publish — intranet Projects tab + standup brief
 Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`, via the
@@ -177,7 +181,8 @@ exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 ve
   item mean a checklist or training fix — recommend it once, with the evidence.
 - **Check every available source before declaring a blind spot** — direct MCPs first,
   then **Zapier fallback** (`list_enabled_zapier_actions`): CompanyCam (12 actions),
-  JobTread (45), LeadConnector/HighLevel (6), QuickBooks (77). Only report a source
+  JobTread (45), QuickBooks (77) — but NOT HighLevel (direct MCP only; Zapier
+  LeadConnector is write-oriented). Only report a source
   broken if both routes fail. (No Zapier app exists for ServiceMinder.)
 
 ## Known breakages / preconditions (verified 2026-07-03 — re-verify each run)
@@ -193,7 +198,9 @@ exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 ve
 - 🟡 **CompanyCam & JobTread stdio MCPs** live at `/root/code` (Steven's Mac) —
   in cloud, use the Zapier routes above before declaring a gap.
 - 🟡 **CompanyCam is KTU-scoped today** — BTU documentation is thinner; say so.
-- 🟡 **HighLevel label swap** (KTU↔BTU) — trust returned location names only.
+- 🟢 **HighLevel fully live for BOTH brands** — `mcp__ghl-ktu__*` = KTU,
+  `mcp__ghl-btu__*` = BTU (PIT-scoped, bootstrap-registered); `mcp__Highlevel__*`
+  connector = BTU too. A missing ghl-* server = unset env var — flag it.
 - 🟡 **QuickBooks**: Intuit connector = FGUSA books only; Oracabessa/BTU + Jatalia
   via their Zapier QBO connections.
 

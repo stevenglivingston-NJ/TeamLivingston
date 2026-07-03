@@ -77,6 +77,20 @@ if require AMAZON_SP_CLIENT_ID AMAZON_SP_CLIENT_SECRET AMAZON_SP_REFRESH_TOKEN; 
   reg amazon-sp "{\"command\":\"python3\",\"args\":[\"$DIR/amazon-sp/server.py\"],\"env\":{\"AMAZON_SP_CLIENT_ID\":\"$AMAZON_SP_CLIENT_ID\",\"AMAZON_SP_CLIENT_SECRET\":\"$AMAZON_SP_CLIENT_SECRET\",\"AMAZON_SP_REFRESH_TOKEN\":\"$AMAZON_SP_REFRESH_TOKEN\"}}"
 else skipped+=("amazon-sp (AMAZON_SP_* x3)"); fi
 
+# ---- 3b. HighLevel direct MCP (HTTP transport, PIT auth) -------------------
+# LeadConnector's hosted MCP endpoint, scoped per sub-account by locationId
+# header. Location IDs are public identifiers; the PITs are SECRETS (env vars,
+# full value including the "pit-" prefix). Verified 2026-07-03: KTU PIT returns
+# Kitchen Tune-Up, BTU PIT returns Bath Tune-Up.
+
+if require GHL_PIT_KTU; then
+  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"$GHL_PIT_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
+else skipped+=("ghl-ktu (GHL_PIT_KTU)"); fi
+
+if require GHL_PIT_BTU; then
+  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"$GHL_PIT_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
+else skipped+=("ghl-btu (GHL_PIT_BTU)"); fi
+
 # ---- 4. Shared ------------------------------------------------------------
 
 if require CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; then
