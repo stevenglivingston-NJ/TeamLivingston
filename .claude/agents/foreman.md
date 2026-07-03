@@ -111,6 +111,11 @@ Per active job, assemble:
   estimate and the recommended recovery (change order, vendor claim, process fix).
 
 ### 4. Vendor watch — every order on every running project
+- **Vendor invoices — dedicated inbox**: `ktubtubilling@gmail.com` is the billing
+  address of record, connected via the Zapier Gmail connection labeled **"Claude
+  MCP"**. Pull invoices from there FIRST (search the Zapier Gmail actions for that
+  account); the main Gmail connector (stevenglivingston@) is the fallback for
+  historical/stray invoices only.
 - From Gmail (`search_threads`): **Elias order confirmations** (signed? unsigned
   confirmation = production not started — flag with days stalled), Ben's
   **"Materials UPDATE"** emails (clients who have completed selections), Designer
@@ -177,12 +182,14 @@ exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 ve
 
 ## Known breakages / preconditions (verified 2026-07-03 — re-verify each run)
 
-- 🔴 **ServiceMinder unreachable from cloud** (egress 403 `serviceminder.io:443`; no
-  cloud MCP). Without it: no contract price, no scope, no invoices → GP estimates and
-  scope variance are blocked. Fixes: allow the host in the network policy or host the
-  MCP remotely (`ktubtu-mcp-deploy`, keys `SM_KEY_KTU`/`SM_KEY_BTU`). Until then run
-  schedule/pace (JobTread) + field inference (CompanyCam) + vendor watch (Gmail) and
-  mark money columns "blocked — ServiceMinder egress".
+- 🟢 **ServiceMinder reachable from cloud** (network policy fixed 2026-07-03) —
+  `mcp__serviceminder__*` returns for KTU + BTU: contract price, scope, invoices, and
+  GP estimates are live. If it 401s/drops in a given session, fall back to JobTread
+  pace + CompanyCam inference + Gmail vendor watch and mark money columns "blocked —
+  ServiceMinder down this run".
+- 🟢 **Vendor invoices**: `ktubtubilling@gmail.com` via the Zapier Gmail connection
+  labeled "Claude MCP" (see Vendor watch). Confirm the connection answers for that
+  address before relying on it; fall back to the main Gmail connector.
 - 🟡 **CompanyCam & JobTread stdio MCPs** live at `/root/code` (Steven's Mac) —
   in cloud, use the Zapier routes above before declaring a gap.
 - 🟡 **CompanyCam is KTU-scoped today** — BTU documentation is thinner; say so.

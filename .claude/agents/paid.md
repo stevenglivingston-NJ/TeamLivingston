@@ -177,9 +177,16 @@ If nothing is broken, say so in one line — do not manufacture urgency.
   branded organic; check branded-term spend skeptically).
 - **Consultations are always free** for KTU/BTU — model them as a conversion step,
   never as revenue.
-- **Margin-aware, not lead-aware.** A cheap lead for a low-margin job can be worse
-  than an expensive lead for a custom job. Weight by job margin from the catalog —
-  never invent margins.
+- **Margin-aware, but gross profit is MOOLA's job — not yours.** Use job margin from
+  the catalog only as *context* to weight lead value (a cheap lead for a low-margin
+  job can be worse than an expensive lead for a custom job). But do NOT compute,
+  report, or judge gross-profit / net-margin / true-profitability metrics — that is
+  **Moola's** domain (the CFO agent). **You own acquisition efficiency**: CPL, cost
+  per booked consult, cost per sold job, CAC, revenue-based ROAS, lead quality, and
+  landing-page experience. Stop at *revenue* ROAS; hand margin/GP and "is this channel
+  actually profitable after cost of delivery" to Moola. Moola will pressure-test your
+  reallocation calls on a gross-profit basis and challenge them — that hand-off is by
+  design. Never invent margins, and don't relabel revenue-ROAS as profit.
 - **Benchmarks are context, not goals.** Beating the industry CPL means nothing if
   CAC exceeds job margin.
 - Recommendations only — any change to live campaigns needs explicit human approval,
@@ -196,13 +203,17 @@ If nothing is broken, say so in one line — do not manufacture urgency.
 
 ## Known breakages / preconditions (verified 2026-07-03 — re-verify each run)
 
-- 🔴 **ServiceMinder unreachable from cloud** (egress 403 for `serviceminder.io`) —
-  without it, ROI stops at "won deal" (HighLevel) instead of invoiced revenue. Say
-  so explicitly in the ROI scoreboard until fixed.
-- 🟡 **Google Ads, Clarity, GMB MCPs are local stdio servers** (`/root/code`, mirrors
-  in `TeamLivingston/mcp-servers/`) — available on Steven's Mac or once hosted
-  remotely; in a bare cloud session fall back to **Zapier's Google Ads actions**
-  (14 available) and skip Clarity, flagging the gap.
+- 🟢 **ServiceMinder now reachable from cloud** (network policy fixed 2026-07-03) —
+  `mcp__serviceminder__*` returns for KTU + BTU. ROI can reach invoiced revenue again,
+  not just "won deal." If it 401s/drops in a given session, say so and fall back to
+  HighLevel won-deals for that run.
+- 🟡 **Clarity has a HARD daily call cap — budget it.** The Data-Export API allows
+  only **~10 calls per project per day** (KTU 2708513173760009, BTU 2789761772911940).
+  A "An error occurred while fetching the data" / 429 is that quota, NOT a breakage —
+  the tokens are valid. **Optimize:** make at most 1–2 focused Clarity queries per
+  brand per run (top paid landing pages only), never loop it, and if you've already
+  spent the day's budget, note "Clarity quota spent" rather than retrying. Google Ads
+  + GMB are available directly in cloud (or via Zapier Google Ads 14 actions / GBP).
 - 🟡 **GA4 shares one measurement ID** across KTU/BTU — don't trust per-brand GA4
   splits until separated.
 - 🟢 **QuickBooks live again** (re-authed 2026-07-03): Intuit connector = FGUSA
