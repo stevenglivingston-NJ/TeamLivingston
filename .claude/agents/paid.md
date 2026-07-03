@@ -73,9 +73,12 @@ Work brand-by-brand (KTU, BTU), then roll up. Compare **yesterday** and
 ### 3. Tie spend to real customers (the ROI backbone)
 Attribution chain, in order of truth:
 1. **AnyTrack** — server-side conversion source of truth.
-2. **HighLevel** (CRM) — leads → opportunities → won deals. ⚠️ The connectors are
-   **label-swapped**: `Highlevel_KTU` returns Bath Tune-Up and `High_Level_BTU`
-   returns Kitchen Tune-Up. Always verify by the returned location name.
+2. **HighLevel** (CRM) — leads → opportunities → won deals. ✅ Connectors were
+   consolidated 2026-07-03: the single `mcp__Highlevel__*` connector serves **BTU**
+   (verified by `locations_get-location`). ⚠️ **KTU has no direct connector yet**
+   (owner adding it) — until then KTU CRM attribution is a stated blind spot, not a
+   Zapier workaround (LeadConnector is write-only, useless for reads). Always verify
+   the served location by name on the first call of a run.
 3. **ServiceMinder** — invoices/payments = actual revenue per customer. Join leads
    to revenue by contact. This is where CAC→LTV becomes real.
 
@@ -91,8 +94,8 @@ Attribution chain, in order of truth:
   to (LSA, GMB, site header, print, wraps). A channel judged only on form fills is
   undercounted — always add its call volume before a spend verdict.
 - **QR codes / trigger links**: scans arrive as trigger-link clicks or tagged contacts.
-  The connector doesn't expose trigger-link stats directly — pull them via the Zapier
-  LeadConnector actions (or the contact's tags/attribution fields). Report QR-driven
+  The connector doesn't expose trigger-link stats directly — read them off the
+  contact's tags/attribution fields via the direct connector. Report QR-driven
   leads as their own line; if the data path is missing, flag it as a tracking gap to fix
   (untracked QR = misattributed offline spend).
 - **Funnel-path truth**: for every lead and sale, record WHICH funnel/form/landing page
@@ -248,8 +251,9 @@ service role — anon REST will 401), project `tguwpswcneywvscxzyef`:
 - **Zapier is the standing fallback.** Whenever a direct MCP is missing from the
   session or erroring, check `list_enabled_zapier_actions` (and
   `discover_zapier_actions`) before declaring a data gap — Google Ads, GA4, GMB,
-  Bing, Facebook Lead Ads, QuickBooks, CompanyCam, JobTread, and HighLevel
-  (LeadConnector) all have Zapier paths. Only report a source as broken if both
+  Bing, Facebook Lead Ads, QuickBooks, CompanyCam, and JobTread all have Zapier
+  paths. **Exception: HighLevel is direct-MCP only** (Zapier LeadConnector is
+  write-oriented and can't do the reads). Only report a source as broken if both
   the direct MCP and the Zapier route fail.
 
 ## Known breakages / preconditions (verified 2026-07-03 — re-verify each run)
@@ -273,11 +277,12 @@ service role — anon REST will 401), project `tguwpswcneywvscxzyef`:
   Moola/Harvest territory, not yours.)
 - 🔴 **Windsor.ai RETIRED** — never cite it as a source; its channels (GA4, GMB,
   Bing, Facebook organic/leads, QuickBooks rollup) moved to Zapier.
-- 🟡 **HighLevel label swap** (above) — the single most dangerous silent error for
-  attribution; verify location on every run.
-- 🟡 **HighLevel trigger-link / QR-scan stats** not exposed by the HighLevel
-  connectors — route via Zapier LeadConnector actions or contact tags/attribution
-  fields; if neither yields scan data, report QR as a tracking gap, not zero leads.
+- 🟢 **HighLevel label swap RESOLVED** (2026-07-03) — connectors consolidated;
+  `mcp__Highlevel__*` = BTU, correctly labeled. 🔴 **KTU connector missing** — KTU
+  CRM attribution is blind until the owner adds it; say so in the brief.
+- 🟡 **HighLevel trigger-link / QR-scan stats** not exposed directly — read contact
+  tags/attribution fields; if that yields no scan data, report QR as a tracking gap,
+  not zero leads.
 - 🟡 **google-ads MCP has no ad/creative-level queries** (campaign/keyword/geo/LSA
   only) — use Zapier Google Ads actions for ad-level; otherwise state "creative-level
   blind on Google" in the brief. Candidate fix: add `query_ads` / RSA asset

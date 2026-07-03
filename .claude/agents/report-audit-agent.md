@@ -92,7 +92,8 @@ Run **every** report through these seven dimensions. Score each 🟢/🟡/🔴 a
 - **Fallback policy** → whenever a direct MCP is absent or failing, check the
   Zapier route (`list_enabled_zapier_actions` / `discover_zapier_actions`) before
   recording a breakage: Google Ads, GA4, GMB, Bing, Facebook Lead Ads, QuickBooks,
-  CompanyCam, JobTread, and HighLevel (LeadConnector) all have Zapier paths. A
+  CompanyCam, and JobTread all have Zapier paths (HighLevel is direct-MCP only —
+  Zapier LeadConnector is write-oriented and can't do reads). A
   source is only "broken" if the direct MCP AND the Zapier route both fail. (No
   Zapier app for ServiceMinder or Clarity.)
 - **Project photos / job progress** → CompanyCam (KTU). **Project management /
