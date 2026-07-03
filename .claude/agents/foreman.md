@@ -164,6 +164,21 @@ section — stale beats blank):
   last_update, flag, scan_date}`.
 - `foreman_gates` — one row per job with gate exposure: `{project, gate_status,
   missing, owner, age, scan_date}`.
+- `client_status` — the intranet Clients board; one row per active/recent client
+  (KTU + BTU, YTD): `{client, brand, stage, contract_total, paid, outstanding,
+  last_payment, service, jobtread_number, jobtread_job_id, sm_contact_id, flags,
+  scan_date}`, sorted by outstanding desc. Join ServiceMinder invoices/payments
+  (money truth) to JobTread jobs; flag sold clients with no JT job, overdue 40%/10%
+  tranches, and SM↔JT total mismatches.
+- `btu_ordering` — the assistant PM's ordering board; refresh whenever a BTU
+  JobTread job is sold (closedOn set): match it to the accepted ServiceMinder
+  proposal (compare totals → `invoice_match`), extract ORDERABLE MATERIAL lines only
+  (exclude labor/install/demo/permits/dumpster/shipping/fees/markup/internal), one
+  row per item: `{job, jobtread_number, sm_proposal_id, sold_total, invoice_match,
+  item, tier, qty, unit, unit_cost, extended_cost, customer_price, budget_note,
+  category, status, scan_date}`. PRESERVE the `status` field of existing rows when
+  refreshing (the PM marks items ordered from the intranet) — merge by job+item,
+  never blindly overwrite.
 Then a one-screen standup brief in chat: 🚨 must-action (max 3, each with evidence →
 exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 vendor risks ·
 ✅ gates passed/returned · going-dark list. If nothing is broken, say so in one line.
