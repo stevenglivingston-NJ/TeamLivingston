@@ -51,27 +51,25 @@ don't." Owner rulings (7/03):
 | Query Center, Portals directory | Intranet Systems/Integrations tabs | Skip (covered; see handoff #4) |
 | GHL BTU pipeline "won revenue" | — | Skip (known-unreliable, 903 $0-opps bug) |
 
-## HANDOFF — remaining items (not done anywhere yet)
+## Formerly-handoff items — ALL INCORPORATED 2026-07-03 (owner directive)
 
-1. **Expired-proposal + cancellation recovery** — CMO tracked 47 expired proposals
-   worth **$1.27M** with call sheets, plus a 35.1% appointment-cancellation rate
-   (benchmark 10–15%) with reason tracking. Goldeneye watches stale deals (>7d)
-   but not dormant-pipeline reactivation. → Add a weekly reactivation queue to
-   Goldeneye (or Foreman).
-2. **Tracking-integrity check** — CMO's #1 flagged priority was a **39.13%
-   JS-error session rate** killing conversion tracking. Paid reads Clarity daily
-   but should explicitly verify instrumentation (pixel/GTM firing, AnyTrack
-   receiving) and treat a broken tracking layer as a must-action, since every
-   spend verdict depends on it.
-3. **Channel×Zip×Service combo optimizer + close-rate-by-zip** — top-10
-   over-invest / bottom-10 kill combos from ServiceMinder outcomes joined to
-   spend. Paid does geo spend; Territories tab does demographics; neither joins
-   them to close rates. → Paid monthly section and/or Territories tab overlay.
-4. **Demand pockets / search landscape / seasonality** — zip-level opportunity
-   scoring and keyword volume/difficulty tables. → Paid quarterly market review
-   via Semrush/Ahrefs MCPs; Territories tab enrichment.
-5. **Upcoming-campaigns calendar** — print-ad deadlines (Lifestyle, Worrall,
-   Montclair Girl, Best Version Media) + scheduled social. → Marketing Plan tab.
+All remaining gaps were folded into the agents that feed the existing intranet
+reporting (no intranet code changes):
+
+1. **Expired-proposal + cancellation recovery** ($1.27M/47 proposals; 35.1%
+   cancellation rate vs 10–15% band) → **Goldeneye §5b**, Monday weekly queue,
+   surfaces as `goldeneye_callouts` rows on the intranet home page.
+2. **Tracking-integrity check** (39% JS-error rate finding) → **Paid §2**, every
+   run; broken instrumentation leads 🚨 MUST ACTION.
+3. **Channel×Town×Service combo optimizer + close-rate-by-town** → **Paid §7b**,
+   monthly, feeds §8 reallocation verdicts.
+4. **Demand pockets / search landscape / seasonality** → **Paid §7c**, quarterly
+   via Semrush/Ahrefs.
+5. **Upcoming-campaigns calendar** (print deadlines + starts, next 14 days) →
+   **Paid brief 📅 section**, daily.
+6. **Paid now writes `paid_brief` rows** to `intranet_records` (crash-safe
+   write-then-prune) so its verdicts are in the reporting layer and Moola can
+   pressure-test them, as Moola's spec already expects.
 
 ## Account IDs salvaged from the CMO Portals tab (ported to intranet Tech Stack)
 
