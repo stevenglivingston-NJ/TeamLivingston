@@ -89,9 +89,23 @@ All Python stdio servers live under `/root/code/`:
 
 ## Setup Script (runs on new session)
 
+Point the Cloud environment's **Setup script** at the MCP bootstrap so every
+fresh session (including the scheduled agent runs — Goldeneye, Moola, Paid)
+re-registers the custom stdio MCP servers, not just this repo's clone:
+
 ```bash
-pip install mcp[cli] httpx google-ads google-auth
+bash "$(git -C /home/user/TeamLivingston rev-parse --show-toplevel)/mcp-servers/bootstrap.sh"
 ```
+
+`bootstrap.sh` installs Python deps and registers every custom stdio server
+(closebot, companycam, serviceminder, google-ads, gmb, shipstation, amazon-sp,
+cloudflare, clarity-*) reading API keys from **environment variables** — see
+`mcp-servers/.env.example` for the full list. Set those vars in the Cloud
+environment's env-var config (they are secrets; never commit real values). A
+server whose keys are missing is skipped, never registered blank. The claude.ai
+connectors (Gmail, HighLevel, QuickBooks, Truthifi/Bank Connection, Shopify,
+monday, Slack, Zapier, Facebook) load from the account automatically and need
+no bootstrap.
 
 ## Environment Requirements
 
