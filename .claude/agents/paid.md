@@ -73,9 +73,7 @@ Work brand-by-brand (KTU, BTU), then roll up. Compare **yesterday** and
 ### 3. Tie spend to real customers (the ROI backbone)
 Attribution chain, in order of truth:
 1. **AnyTrack** — server-side conversion source of truth.
-2. **HighLevel** (CRM) — leads → opportunities → won deals. ⚠️ The connectors are
-   **label-swapped**: `Highlevel_KTU` returns Bath Tune-Up and `High_Level_BTU`
-   returns Kitchen Tune-Up. Always verify by the returned location name.
+2. **HighLevel** (CRM) — unified MCP connection for both KTU and BTU; leads → opportunities → won deals. Always tag findings by location context.
 3. **ServiceMinder** — invoices/payments = actual revenue per customer. Join leads
    to revenue by contact. This is where CAC→LTV becomes real.
 

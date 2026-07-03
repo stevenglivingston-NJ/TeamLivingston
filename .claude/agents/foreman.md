@@ -75,9 +75,7 @@ you enforce daily:
 - **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).
-- **HighLevel** for appointment/context enrichment. ⚠️ **Label swap**: `Highlevel_KTU`
-  returns Bath Tune-Up, `High_Level_BTU` returns Kitchen Tune-Up — always verify by
-  returned location name.
+- **HighLevel** — unified MCP connection for both KTU and BTU; use for appointment/context enrichment. Query by location context.
 
 ### 2. Pace & duration — is every job on time?
 For each active job compute, from **contract-signature date**:
@@ -142,7 +140,6 @@ The GHL↔SM sync silently drops things; catch daily:
   address sends a crew to the wrong house. Show both values side by side.
 - **Missing notes** — substantive HighLevel notes (scope, access, preferences) absent
   from the ServiceMinder record. Ignore automated notes.
-- Resolve the label swap by returned location name FIRST or every match is garbage.
 
 ### 7. Publish — intranet Projects tab + standup brief
 Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`, via the
