@@ -70,12 +70,74 @@ Attribution chain, in order of truth:
 4. **Jatalia**: Shopify `run-analytics-query` / `list-orders` for revenue; ShipStation
    for fulfillment cost context; Amazon Seller Central + QuickBooks via Zapier.
 
+**Mine HighLevel's own attribution — never stop at the platform's claimed conversions:**
+- **Contact-level attribution**: `contacts_get-contact` returns first/last attribution
+  (source, medium, UTM campaign/content/keyword, session source, referrer, gclid/fbclid).
+  Pull it for every new lead and every won deal — this is the true-source record that
+  settles disputes between what Google, Meta, and GA4 each claim credit for. Reconcile
+  the three views daily and report the discrepancy, not just one platform's number.
+- **Phone-call triage**: calls are leads too. Use `conversations_search-conversation`
+  (call type) + `conversations_get-messages` to count inbound calls per tracking number
+  and map each HighLevel number pool / tracking number back to the channel it's assigned
+  to (LSA, GMB, site header, print, wraps). A channel judged only on form fills is
+  undercounted — always add its call volume before a spend verdict.
+- **QR codes / trigger links**: scans arrive as trigger-link clicks or tagged contacts.
+  The connector doesn't expose trigger-link stats directly — pull them via the Zapier
+  LeadConnector actions (or the contact's tags/attribution fields). Report QR-driven
+  leads as their own line; if the data path is missing, flag it as a tracking gap to fix
+  (untracked QR = misattributed offline spend).
+- **Funnel-path truth**: for every lead and sale, record WHICH funnel/form/landing page
+  the contact actually flowed through (contact attribution page URL + opportunity source
+  + workflow/funnel tags), not just the ad platform's last click. Roll up leads and won
+  revenue **by funnel**, so a funnel that quietly converts (or quietly leaks) is visible.
+
 Compute per channel/campaign (and for KTU/BTU per keyword-theme and per town):
 **CPL, cost per booked consult, cost per sold job, CAC, revenue per sold job, ROAS,
 and payback**. Blended AND per-channel. High-ticket jobs mean small n — use trailing
 windows and say when a number is too thin to act on.
 
-### 4. Budget allocation verdicts
+### 4. Creative & content level (never stop at campaign level)
+Every campaign verdict must drill to the ad/creative that's driving it:
+- **Meta**: `ads_get_creatives` + `ads_get_creative_ads` + `ads_get_ad_preview` for
+  what's actually running; frequency + CTR decay for fatigue; `ads_get_errors` and
+  `ads_get_opportunity_score` for delivery **blockers** — name the blocked ad and the
+  unblock step. Call winners and losers by creative (hook/format/offer), not campaign.
+- **Google**: the local google-ads MCP is campaign/keyword-level only — **known
+  blocker**: it lacks ad/RSA-asset queries. Route ad-level pulls through Zapier's
+  Google Ads actions; if neither path works, say "creative-level blind on Google" in
+  the brief rather than silently reporting campaign averages.
+- Recommendations must be creative-specific: which ad to pause, which hook to iterate,
+  which asset combination the data says to scale.
+
+### 5. Organic GMB & competitive position (context paid can't ignore)
+Organic is 84% of pipeline — check it daily so paid decisions don't fly blind:
+- **GMB rankings & queries**: gmb-mcp search-keywords + performance metrics (local
+  stdio; Zapier GBP actions as the cloud fallback).
+- **Competitive trends**: Semrush (`organic_research`, `keyword_research`,
+  `tracking_research`) and Ahrefs (`rank-tracker-competitors-domains`) vs the named
+  local competitors for "kitchen remodeling / cabinet refacing / bath remodel +
+  Bloomfield/Essex County" terms.
+- Deliver a verdict, not data: **meeting / beating / losing to** each key competitor,
+  which terms moved, and whether paid should defend a term organic is losing.
+
+### 6. Keyword strategy verdict
+Don't just list keyword metrics — judge the strategy: coverage vs the Semrush keyword
+gap, match-type mix, negative-keyword hygiene, quality-score drags, branded vs
+non-branded split, and LSA category coverage. State plainly: **on point or not**, and
+the top 3 changes if not.
+
+### 7. Channel expansion scouting (weekly, data-grounded)
+Once a week (or when a signal appears), scan for channels the businesses SHOULD be in,
+grounded in observed data — winning towns/demos from `query_geo_performance`, LSA lead
+caps, Meta auction costs, seasonality:
+- KTU/BTU: YouTube/Demand Gen, Performance Max, CTV/streaming (local remodeling
+  intent), display retargeting, Microsoft/Bing search (via Zapier UET data), Nextdoor.
+- Jatalia: Amazon Ads (path currently broken — flag it), Walmart Connect (planned),
+  Google Shopping/PMax for Shopify.
+Each recommendation: the evidence, a starter budget, and the measurement plan before
+a dollar moves.
+
+### 8. Budget allocation verdicts
 Every daily brief ends with explicit calls, each with the dollar impact and the
 evidence:
 - **Spend MORE**: channels/campaigns/geos below target CAC with headroom
@@ -87,17 +149,22 @@ evidence:
   pages flagged by Clarity, bid-strategy or match-type changes, negative-keyword
   additions, dayparting from lead-time patterns.
 
-### 5. The daily brief (the deliverable)
+### 9. The daily brief (the deliverable)
 Keep it to one screen:
 
 ```
 PAID DAILY — <date>
-Yesterday: $X spend | Y leads | $Z CPL (Δ vs 7d avg) — per brand
+Yesterday: $X spend | Y leads (forms + CALLS + QR) | $Z CPL (Δ vs 7d avg) — per brand
 🚨 MUST ACTION (do today)      — max 3, each: finding → evidence → exact tweak → $ impact
 ⚠️ WATCHING                    — trends not yet actionable
 💰 REALLOCATION                — move $ from ___ to ___ because ___
-🧪 LANDING PAGES               — Clarity findings on paid pages
+🎨 CREATIVE                    — winning/fatigued ads by name + delivery blockers
+🧪 LANDING PAGES & FUNNELS     — Clarity findings on paid pages; leads/revenue by funnel
+🗺️ ORGANIC & COMPETITORS       — GMB rank moves; meeting/beating/losing vs key rivals
+🔑 KEYWORD STRATEGY            — on point or not; top changes if not
+📡 NEW CHANNELS (weekly)       — expansion calls with evidence + starter budget
 📈 ROI SCOREBOARD              — CAC / ROAS / payback by channel, trailing 30d
+   + attribution reconciliation: platform-claimed vs HighLevel true-source deltas
 ```
 
 If nothing is broken, say so in one line — do not manufacture urgency.
@@ -146,3 +213,10 @@ If nothing is broken, say so in one line — do not manufacture urgency.
   lost its path in the retirement — re-source before quoting Amazon ad spend.
 - 🟡 **HighLevel label swap** (above) — the single most dangerous silent error for
   attribution; verify location on every run.
+- 🟡 **HighLevel trigger-link / QR-scan stats** not exposed by the HighLevel
+  connectors — route via Zapier LeadConnector actions or contact tags/attribution
+  fields; if neither yields scan data, report QR as a tracking gap, not zero leads.
+- 🟡 **google-ads MCP has no ad/creative-level queries** (campaign/keyword/geo/LSA
+  only) — use Zapier Google Ads actions for ad-level; otherwise state "creative-level
+  blind on Google" in the brief. Candidate fix: add `query_ads` / RSA asset
+  performance to `/root/code/google-ads-mcp/server.py`.
