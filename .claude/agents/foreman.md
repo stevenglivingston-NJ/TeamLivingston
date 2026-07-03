@@ -75,11 +75,12 @@ you enforce daily:
 - **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).
-- **HighLevel** for appointment/context enrichment. ✅ Connectors consolidated
-  2026-07-03: `mcp__Highlevel__*` = **BTU** (verified). ⚠️ **KTU has no direct
-  connector yet** (owner adding it) — KTU HighLevel enrichment is a stated blind
-  spot until then. Direct MCP only (Zapier LeadConnector can't do reads). Always
-  verify the served location by name on the first call.
+- **HighLevel** for appointment/context enrichment. ✅ Both brands live
+  (verified 2026-07-03): `mcp__ghl-ktu__*` = KTU, `mcp__ghl-btu__*` = BTU —
+  PIT-scoped MCP servers registered by `mcp-servers/bootstrap.sh`
+  (`GHL_PIT_KTU`/`GHL_PIT_BTU`); the `mcp__Highlevel__*` connector also = BTU.
+  Direct MCP only (Zapier LeadConnector can't do reads). Always verify the
+  served location by name on the first call.
 
 ### 2. Pace & duration — is every job on time?
 For each active job compute, from **contract-signature date**:
@@ -144,8 +145,8 @@ The GHL↔SM sync silently drops things; catch daily:
   address sends a crew to the wrong house. Show both values side by side.
 - **Missing notes** — substantive HighLevel notes (scope, access, preferences) absent
   from the ServiceMinder record. Ignore automated notes.
-- Confirm the connector's served location by name FIRST or every match is garbage;
-  with only the BTU connector live, the KTU side of this audit is blocked — say so.
+- Confirm each server's served location by name FIRST or every match is garbage
+  (`ghl-ktu` → Kitchen Tune-Up, `ghl-btu` → Bath Tune-Up).
 
 ### 7. Publish — intranet Projects tab + standup brief
 Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`, via the
@@ -197,9 +198,9 @@ exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 ve
 - 🟡 **CompanyCam & JobTread stdio MCPs** live at `/root/code` (Steven's Mac) —
   in cloud, use the Zapier routes above before declaring a gap.
 - 🟡 **CompanyCam is KTU-scoped today** — BTU documentation is thinner; say so.
-- 🟢 **HighLevel label swap RESOLVED** — consolidated connector `mcp__Highlevel__*`
-  = BTU, correctly labeled. 🔴 **KTU connector missing** — KTU-side sync audit and
-  enrichment blocked until the owner adds it.
+- 🟢 **HighLevel fully live for BOTH brands** — `mcp__ghl-ktu__*` = KTU,
+  `mcp__ghl-btu__*` = BTU (PIT-scoped, bootstrap-registered); `mcp__Highlevel__*`
+  connector = BTU too. A missing ghl-* server = unset env var — flag it.
 - 🟡 **QuickBooks**: Intuit connector = FGUSA books only; Oracabessa/BTU + Jatalia
   via their Zapier QBO connections.
 

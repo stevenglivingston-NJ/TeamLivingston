@@ -19,8 +19,8 @@ This environment manages operations for two business groups:
 | serviceminder | stdio (Python) | Contacts, appointments, invoices, payments, proposals, downloads | Per-location API keys (KTU + BTU) |
 | clarity-ktu | connector (npm) | Dashboard analytics, session recordings | Microsoft Clarity |
 | clarity-btu | connector (npm) | Dashboard analytics, session recordings | Microsoft Clarity |
-| ktu-highlevel | connector (HTTP) | HighLevel CRM for KTU | JWT Bearer token |
-| btu-highlevel | connector (HTTP) | HighLevel CRM for BTU | JWT Bearer token |
+| ghl-ktu | HTTP MCP (bootstrap) | HighLevel CRM for KTU (location nHLCxHPidnhV1NFzRtZZ) | PIT (`GHL_PIT_KTU` env var) |
+| ghl-btu | HTTP MCP (bootstrap) | HighLevel CRM for BTU (location 0uWA8M5BzHrrcJftuaDe) | PIT (`GHL_PIT_BTU` env var) |
 | jobtread | connector | Project management, estimates, invoices | Bearer token |
 | Facebook Ads | connector | Campaigns, ad sets, ads, catalogs, IG boosting, experiments | OAuth |
 | Google Calendar | connector | Events, calendars, scheduling | OAuth |

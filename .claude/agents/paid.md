@@ -73,12 +73,13 @@ Work brand-by-brand (KTU, BTU), then roll up. Compare **yesterday** and
 ### 3. Tie spend to real customers (the ROI backbone)
 Attribution chain, in order of truth:
 1. **AnyTrack** — server-side conversion source of truth.
-2. **HighLevel** (CRM) — leads → opportunities → won deals. ✅ Connectors were
-   consolidated 2026-07-03: the single `mcp__Highlevel__*` connector serves **BTU**
-   (verified by `locations_get-location`). ⚠️ **KTU has no direct connector yet**
-   (owner adding it) — until then KTU CRM attribution is a stated blind spot, not a
-   Zapier workaround (LeadConnector is write-only, useless for reads). Always verify
-   the served location by name on the first call of a run.
+2. **HighLevel** (CRM) — leads → opportunities → won deals. ✅ **Both brands live**
+   (verified 2026-07-03): `mcp__ghl-ktu__*` = Kitchen Tune-Up, `mcp__ghl-btu__*` =
+   Bath Tune-Up — PIT-scoped MCP servers registered by `mcp-servers/bootstrap.sh`
+   (`GHL_PIT_KTU`/`GHL_PIT_BTU`); the `mcp__Highlevel__*` connector also serves BTU.
+   Direct MCP only (Zapier LeadConnector is write-oriented, useless for reads).
+   Always verify the served location by name on the first call of a run; a missing
+   ghl-* server means the env var is unset — say so, don't silently skip the brand.
 3. **ServiceMinder** — invoices/payments = actual revenue per customer. Join leads
    to revenue by contact. This is where CAC→LTV becomes real.
 
@@ -277,9 +278,9 @@ service role — anon REST will 401), project `tguwpswcneywvscxzyef`:
   Moola/Harvest territory, not yours.)
 - 🔴 **Windsor.ai RETIRED** — never cite it as a source; its channels (GA4, GMB,
   Bing, Facebook organic/leads, QuickBooks rollup) moved to Zapier.
-- 🟢 **HighLevel label swap RESOLVED** (2026-07-03) — connectors consolidated;
-  `mcp__Highlevel__*` = BTU, correctly labeled. 🔴 **KTU connector missing** — KTU
-  CRM attribution is blind until the owner adds it; say so in the brief.
+- 🟢 **HighLevel fully live for BOTH brands** (2026-07-03) — `mcp__ghl-ktu__*` =
+  KTU, `mcp__ghl-btu__*` = BTU (PIT-scoped, bootstrap-registered); `mcp__Highlevel__*`
+  connector = BTU too. If a ghl-* server is absent, the env var is unset — flag it.
 - 🟡 **HighLevel trigger-link / QR-scan stats** not exposed directly — read contact
   tags/attribution fields; if that yields no scan data, report QR as a tracking gap,
   not zero leads.
