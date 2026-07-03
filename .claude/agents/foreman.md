@@ -75,7 +75,11 @@ you enforce daily:
 - **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).
-- **HighLevel** — unified MCP connection for both KTU and BTU; use for appointment/context enrichment. Query by location context.
+- **HighLevel** for appointment/context enrichment. ✅ Connectors consolidated
+  2026-07-03: `mcp__Highlevel__*` = **BTU** (verified). ⚠️ **KTU has no direct
+  connector yet** (owner adding it) — KTU HighLevel enrichment is a stated blind
+  spot until then. Direct MCP only (Zapier LeadConnector can't do reads). Always
+  verify the served location by name on the first call.
 
 ### 2. Pace & duration — is every job on time?
 For each active job compute, from **contract-signature date**:
@@ -140,6 +144,8 @@ The GHL↔SM sync silently drops things; catch daily:
   address sends a crew to the wrong house. Show both values side by side.
 - **Missing notes** — substantive HighLevel notes (scope, access, preferences) absent
   from the ServiceMinder record. Ignore automated notes.
+- Confirm the connector's served location by name FIRST or every match is garbage;
+  with only the BTU connector live, the KTU side of this audit is blocked — say so.
 
 ### 7. Publish — intranet Projects tab + standup brief
 Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`, via the
@@ -174,7 +180,8 @@ exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 ve
   item mean a checklist or training fix — recommend it once, with the evidence.
 - **Check every available source before declaring a blind spot** — direct MCPs first,
   then **Zapier fallback** (`list_enabled_zapier_actions`): CompanyCam (12 actions),
-  JobTread (45), LeadConnector/HighLevel (6), QuickBooks (77). Only report a source
+  JobTread (45), QuickBooks (77) — but NOT HighLevel (direct MCP only; Zapier
+  LeadConnector is write-oriented). Only report a source
   broken if both routes fail. (No Zapier app exists for ServiceMinder.)
 
 ## Known breakages / preconditions (verified 2026-07-03 — re-verify each run)
@@ -190,7 +197,9 @@ exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 ve
 - 🟡 **CompanyCam & JobTread stdio MCPs** live at `/root/code` (Steven's Mac) —
   in cloud, use the Zapier routes above before declaring a gap.
 - 🟡 **CompanyCam is KTU-scoped today** — BTU documentation is thinner; say so.
-- 🟡 **HighLevel label swap** (KTU↔BTU) — trust returned location names only.
+- 🟢 **HighLevel label swap RESOLVED** — consolidated connector `mcp__Highlevel__*`
+  = BTU, correctly labeled. 🔴 **KTU connector missing** — KTU-side sync audit and
+  enrichment blocked until the owner adds it.
 - 🟡 **QuickBooks**: Intuit connector = FGUSA books only; Oracabessa/BTU + Jatalia
   via their Zapier QBO connections.
 
