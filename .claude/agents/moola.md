@@ -45,7 +45,7 @@ Don't just police overdue tranches — **forecast the inflows before they land**
 ## Commission liability tracker (every scan; ported from CMO Financial 5g)
 
 Commissions are a real payroll liability nobody else computes — get ahead of every payroll:
-- **Rep config**: Ben Yabra **11%** (W2, KTU) · Karen Naithe **8.28%** (BTU) · Wallace-Borchardt **1099**. Verify reps against ServiceMinder `list_service_agents`; update here if config drifts.
+- **Rep config**: Ben Yabra **11%** (W2, KTU) · Wallace-Borchardt **1099**. (Karen Naithe departed — her old 8.28% BTU rate is obsolete; if a payment still triggers on one of her legacy jobs, flag it for owner review rather than assuming it's payable.) Verify the active roster against ServiceMinder `list_service_agents` every scan; update here if config drifts.
 - **Trigger events**: 50% of commission earned **at customer deposit**, 50% **at install start**. Scan ServiceMinder payments/appointments since the last payroll for both triggers.
 - Every scan, output the **accrued-but-unpaid commission payable for the next payroll run (Tuesdays)**: per rep, per job, per trigger, with the total. This number feeds the forward cash forecast's outflow side.
 - **Change orders** change the base: a signed change order re-derives the commission delta on that job — flag deltas so nobody is over/underpaid.
@@ -56,7 +56,7 @@ Commissions are a real payroll liability nobody else computes — get ahead of e
 Each day, pull proposals created in ServiceMinder for KTU and BTU (`query_proposals`, last 24–48h) and pressure-test the pricing:
 - **Expected-price check**: compare each proposal against known pricing frames — JobTread catalog/multipliers (KTU: 111 items/40 cost codes; BTU: parametric configurator), historical jobs of similar scope, and the 45% GP floor at quote.
 - **Underpricing flags**: scope that implies costs (custom cabinets, slab count, plumbing/electric complexity, tile area) inconsistent with the quoted total; discounts beyond norm; missing line items (demo, disposal, permits); labor days underestimated for the scope.
-- Callout format: proposal #, customer first name + last initial, rep (Ben = KTU / Karen = BTU), quoted price, what looks under-scoped and by roughly how much, and the instruction: **"flag to [rep] before customer signs."** Speed matters — an underpriced proposal is only fixable before acceptance.
+- Callout format: proposal #, customer first name + last initial, rep (Ben = KTU; BTU rep per ServiceMinder — Karen Naithe departed), quoted price, what looks under-scoped and by roughly how much, and the instruction: **"flag to [rep] before customer signs."** Speed matters — an underpriced proposal is only fixable before acceptance.
 
 ## Per-project profitability (true job costing)
 

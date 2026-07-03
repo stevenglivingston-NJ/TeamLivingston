@@ -13,15 +13,19 @@ don't duplicate. Items marked **PORTED HERE** landed in this branch; items marke
 
 ## Verdict
 
-Safe to decommission — with two caveats:
-1. **Data freshness**: only the ServiceMinder revenue/AR path still refreshes
-   (7/02). QuickBooks P&L frozen at April (Windsor feed disconnected); most
-   marketing intel is 6–12 weeks stale; the 7:04 AM refresh task
-   (`ktu-btu-daily-dashboard-refresh`) stopped fully populating mid-June. We port
-   **mechanisms, not numbers**.
-2. **John's workflow**: content.ktubloomfield.com is the only surface serving the
-   Content Creation briefs (captions/hashtags/edit treatments/CompanyCam readiness
-   per project). Killing CMO kills that view unless replaced — see handoff #5.
+Safe to decommission. CMO was the laptop-dependent predecessor of the cloud
+intranet + agent suite; the audit's only question was "does it have anything we
+don't." Owner rulings (7/03):
+- **John's Content Creation view is NOT needed** — decommission without replacing
+  it. Content-readiness signals (CompanyCam coverage) live with Foreman.
+- **Port nothing obsolete.** Karen Naithe has departed — her BTU commission
+  config is legacy only. Munib Apr-2026 action plans, Windsor-fed panels, and
+  point-in-time recommendations are dead weight, not ports.
+- **Data freshness**: only the ServiceMinder revenue/AR path still refreshed
+  (7/02). QuickBooks P&L frozen at April (Windsor feed disconnected); most
+  marketing intel was 6–12 weeks stale; the 7:04 AM refresh task
+  (`ktu-btu-daily-dashboard-refresh`) stopped fully populating mid-June. We
+  ported **mechanisms, not numbers**.
 
 ## Coverage map — CMO capability → new owner
 
@@ -63,32 +67,39 @@ Safe to decommission — with two caveats:
    over-invest / bottom-10 kill combos from ServiceMinder outcomes joined to
    spend. Paid does geo spend; Territories tab does demographics; neither joins
    them to close rates. → Paid monthly section and/or Territories tab overlay.
-4. **Portals account IDs** — port the account/property/location IDs (Google Ads
-   accts, GA4 property, GMB locations, Meta act_ IDs, Clarity project IDs, HL
-   location IDs, QBO entities) into the intranet Systems tab. **Do NOT port the
-   login-hint lines** from the CMO Portals tab (credential hints — policy: never
-   surface credentials on the intranet).
-5. **John's Content Creation view** — replace before decommission: either a
-   role-gated intranet section fed by a content-readiness scan (CompanyCam photo
-   counts + drafted captions/hashtags per project) or a standalone generated
-   page. Until this exists, keep content.ktubloomfield.com alive.
-6. **Demand pockets / search landscape / seasonality** — zip-level opportunity
+4. **Demand pockets / search landscape / seasonality** — zip-level opportunity
    scoring and keyword volume/difficulty tables. → Paid quarterly market review
    via Semrush/Ahrefs MCPs; Territories tab enrichment.
-7. **Upcoming-campaigns calendar** — print-ad deadlines (Lifestyle, Worrall,
+5. **Upcoming-campaigns calendar** — print-ad deadlines (Lifestyle, Worrall,
    Montclair Girl, Best Version Media) + scheduled social. → Marketing Plan tab.
 
-## Decommission checklist (execute only after handoffs #4 and #5)
+## Account IDs salvaged from the CMO Portals tab (ported to intranet Tech Stack)
 
-1. Archive the two HTML builds (already captured during audit) into the repo or
-   Drive for reference.
+The only durable data in the Portals tab. Login-hint lines were NOT ported
+(policy: never surface credentials on the intranet).
+
+| System | Brand | ID |
+|---|---|---|
+| Google Ads | KTU | 2579406186 |
+| Google Ads | BTU | 4477036900 |
+| Meta Ads | KTU | act_512807913902919 |
+| Meta Ads | BTU | act_1226816105474707 |
+| GA4 property | shared (KTU site) | 453600017 |
+| Clarity project | KTU | 2708513173760009 |
+| Clarity project | BTU | 2789761772911940 |
+| HighLevel location | KTU | nHLCxHPidnhV1NFzRtZZ |
+| HighLevel location | BTU | 0uWA8M5BzHrrcJftuaDe |
+
+## Decommission execution (2026-07-03)
+
+1. ✅ Archive the two HTML builds → `docs/archive/` (gzipped) in this repo.
 2. Delete/disable the daily refresh task `ktu-btu-daily-dashboard-refresh`
    (already half-dead since mid-June).
 3. Delete Cloudflare Pages projects `ktu-cmo-dashboard`, `ktu-team-dashboard`
    and the content.* deployment; remove DNS records for ops/team/content
    .ktubloomfield.com.
 4. Delete workers `ktu-cmo-dashboard-auth` and `ktu-dashboard-auth` (their only
-   job was gating these dashboards) and rotate/retire the basic-auth credentials
-   embedded in them.
+   job was gating these dashboards); their embedded basic-auth credentials die
+   with them.
 5. Update the intranet Tech Stack / Systems tabs: mark CMO dashboard retired,
    pointing at the intranet + agent briefs as the replacement.
