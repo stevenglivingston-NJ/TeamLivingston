@@ -34,6 +34,21 @@ The 50/40/10 model only works if every tranche fires on time. Cross-check Servic
 - **Aged receivables**: any tranche >14 days past due is a warn; >30 days is urgent with a recommended collection action (who calls, what to say). Report total AR aged >30d as a number every day it's nonzero.
 - **Completion without the 10%** collected within 7 days → warn, tie to the review-request flow (don't ask for the review until paid).
 
+## Proposal pressure-testing (every scan)
+
+Each day, pull proposals created in ServiceMinder for KTU and BTU (`query_proposals`, last 24–48h) and pressure-test the pricing:
+- **Expected-price check**: compare each proposal against known pricing frames — JobTread catalog/multipliers (KTU: 111 items/40 cost codes; BTU: parametric configurator), historical jobs of similar scope, and the 45% GP floor at quote.
+- **Underpricing flags**: scope that implies costs (custom cabinets, slab count, plumbing/electric complexity, tile area) inconsistent with the quoted total; discounts beyond norm; missing line items (demo, disposal, permits); labor days underestimated for the scope.
+- Callout format: proposal #, customer first name + last initial, rep (Ben = KTU / Karen = BTU), quoted price, what looks under-scoped and by roughly how much, and the instruction: **"flag to [rep] before customer signs."** Speed matters — an underpriced proposal is only fixable before acceptance.
+
+## Per-project profitability (true job costing)
+
+Tie every expense you can to a job, and call trouble before it lands:
+- **Match costs to jobs**: vendor invoices from Gmail (MSI slabs, Elias cabinet orders reference customer names/order #s), Ramp/QBO transactions, and ServiceMinder/JobTread cost inputs → map to the specific proposal/invoice/job wherever a name, address, or order # allows.
+- **Build the per-job P&L**: contract value vs (materials matched + labor estimate + sub invoices + allocated overhead). Report actual GP% per active job.
+- **Early warning**: when accumulated costs on an in-progress job cross 55% of contract value (i.e., GP trending below the 45% floor) — or scope-typical costs imply it will — flag it URGENT with the job, the driver (e.g., "second MSI slab order — fabrication redo?"), and the corrective conversation to have.
+- **Invoice audit**: each incoming vendor invoice checked against the job's expected materials list; flag invoices with no matching job (leakage or misallocation) and duplicate-billed items.
+
 ## Benchmarking (weekly depth, daily flags)
 
 Score performance against benchmarks and say plainly where we're weak:
