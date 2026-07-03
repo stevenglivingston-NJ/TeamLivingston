@@ -13,14 +13,29 @@ description: >-
 # Google Drive Clean-Up
 
 A repeatable flow for turning a cluttered Drive into a "best-in-class" one.
-Proven on the KTU Bloomfield shared drive.
+Proven on the KTU Bloomfield shared drive AND a personal My Drive.
+
+## Step 0 — Identify the drive & account (do this FIRST)
+Multiple Google connections may be attached (e.g. one Zapier connection per
+account). Before enumerating or moving anything, confirm which account you're
+pointed at so you don't reorganize the wrong drive:
+`execute_zapier_read_action` → `_zap_raw_request`, GET
+`https://www.googleapis.com/drive/v3/about?fields=user,storageQuota`.
+Match the returned `displayName`/email to the drive the user asked for. Note the
+type: a **Shared Drive** (root id like `0A...`) vs a **personal My Drive**
+(root alias `'root'`) — they behave differently for moves (see below).
 
 ## Guardrails (read first)
 - **Never touch** folders the user names as off-limits (e.g. `.Project Management`,
   `.Archive`). Confirm the exclusion list before moving anything.
-- **This is a business Drive** — nothing personal belongs in it. Flag any
-  personal / owner career files and ask whether to relocate them to a personal
-  Drive vs. delete; do not silently keep them.
+- **Business drive:** nothing personal belongs in it — flag personal/owner files
+  and ask whether to relocate vs delete. **Personal drive:** the opposite — it
+  holds tax returns, credit reports, IDs, wills, PFS, bank statements. Handle as
+  sensitive: never share/expose, and gather these under one Finance & Legal
+  category rather than scattering them.
+- **Scale check.** Personal roots can be huge (this one: 460 root items / ~400
+  loose files). Confirm the taxonomy with the user before firing hundreds of
+  moves, and warn that a big drive is many operations.
 - **Live-sync folders are fragile.** CompanyCam / backup tools sync to a folder;
   reparenting keeps the same folder ID so ID-based syncs survive, but if the
   integration recreates a folder *by name at root* it can split. When unsure,
@@ -38,9 +53,21 @@ Proven on the KTU Bloomfield shared drive.
   (`mimeType:"application/vnd.google-apps.folder"`, `parentId:<root or dest>`).
   This one CAN target the shared-drive root ID.
 - **Shared-drive root is NOT a valid move destination** — `move_file` to the
-  drive-root ID fails with `File not found: ___sharedWithMe___`. To send a
-  folder back to root, do it in the Drive UI or via a raw API PATCH; the
-  Zapier move action can only target normal folders.
+  drive-root ID fails with `File not found: ___sharedWithMe___`. On a **personal
+  My Drive**, the alias `'root'` IS a valid destination, so moving items back to
+  root works there.
+- **Enumerate via the raw API when the direct MCP is on a different account.**
+  `_zap_raw_request` GET `.../drive/v3/files?q='<PARENT_ID>' in parents and
+  trashed=false&fields=files(id,name,mimeType,size,modifiedTime),nextPageToken&pageSize=1000`.
+  Big listings overflow context — save to a file and parse with python. (Note:
+  Google-native Docs/Sheets return `size:null`; fetch size separately only if you
+  must distinguish blank ones.)
+- **Cheapest move = raw PATCH.** For high-volume reorgs use
+  `google_drive_make_api_mutating_request`, method PATCH, url
+  `.../drive/v3/files/<ID>`, querystring
+  `{addParents:<DEST>, removeParents:<OLD_PARENT_or_'root'>, fields:"id"}` — the
+  `fields:"id"` keeps the response tiny (the `move_file` wrapper returns full
+  metadata and burns tokens fast at scale). Still throttle to ~4 concurrent.
 - **Throttle to ~4 moves per message.** 10+ parallel → "User rate limit
   exceeded"; retry those IDs next batch.
 - **Do the moves in the MAIN thread.** The permission classifier blocks
