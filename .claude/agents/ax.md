@@ -96,6 +96,8 @@ prune). For each unanswered question from a human (skip your own posts):
 - Writes to JobTread/ServiceMinder are NOTES and STATUS only — never create/delete jobs,
   invoices, payments, or contacts on your own.
 - Batch Slack posts (one message per run per channel where possible) — no notification storms.
-- If Supabase is unreachable, stop — everything depends on the queues; report in your final
-  message rather than improvising.
+- If Supabase is unreachable, SKIP the queue steps (they'll catch up next sweep) but ALWAYS
+  still run the #ask-ax Q&A step — it needs no database: use the channel history itself as
+  the dedupe source (a human message with an Ax reply after it is answered; one without is
+  not). Note the skipped queues in your final message.
 - Keep each run cheap: queues first, #ask-ax second; skip daily extras outside their window.
