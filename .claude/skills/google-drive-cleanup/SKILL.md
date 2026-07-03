@@ -68,6 +68,21 @@ type: a **Shared Drive** (root id like `0A...`) vs a **personal My Drive**
   `{addParents:<DEST>, removeParents:<OLD_PARENT_or_'root'>, fields:"id"}` — the
   `fields:"id"` keeps the response tiny (the `move_file` wrapper returns full
   metadata and burns tokens fast at scale). Still throttle to ~4 concurrent.
+- **Bulk moves at scale = the Drive batch endpoint.** POST
+  `https://www.googleapis.com/batch/drive/v3` via `_zap_raw_request` with a
+  `multipart/mixed` body of up to ~100 PATCH sub-requests (65 is a safe chunk
+  under Zapier's 60s timeout). CRITICAL: pass the header as a **plain string**
+  `"Content-Type: multipart/mixed; boundary=BXX"` — a JSON-encoded headers
+  string gets silently dropped by Zapier and Google rejects the whole batch
+  with 400 "Failed to get multipart boundary" (all 0 moves applied while the
+  action still reports `status:"SUCCESS"`).
+- **Never trust reported success — verify against the drive.** After each
+  bulk operation, re-list the root (`fields=files(id)`, count only) and diff
+  against the move plan. Zapier's summarizer can report a batch as fine when
+  the underlying HTTP call failed; the root count is ground truth.
+- **Re-enumerate at the end.** The initial listing can miss items
+  (pagination tails, files added mid-run). A final root listing catches
+  stragglers to classify and move in one last small batch.
 - **Throttle to ~4 moves per message.** 10+ parallel → "User rate limit
   exceeded"; retry those IDs next batch.
 - **Do the moves in the MAIN thread.** The permission classifier blocks
