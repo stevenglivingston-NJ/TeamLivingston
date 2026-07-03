@@ -88,8 +88,8 @@ Run **every** report through these seven dimensions. Score each 🟢/🟡/🔴 a
   lineage defect); server-side conversions → AnyTrack.
 - **Financials** → QuickBooks: Intuit connector (FGUSA books, live) + QBO via the
   Zapier connections (main Zapier = KTU account, BTU Zapier connection, Jatalia
-  Zapier) for the other entities; Ramp (card spend), Truthifi/Bank_Connection
-  (cash/portfolio), Bluevine/Chase feeds (12-wk forecast).
+  Zapier) for the other entities; Ramp (card spend), Bank Connection
+  (`mcp__Bank_Connection__*` — cash/portfolio), Bluevine/Chase feeds (12-wk forecast).
 - **Fallback policy** → whenever a direct MCP is absent or failing, check the
   Zapier route (`list_enabled_zapier_actions` / `discover_zapier_actions`) before
   recording a breakage: Google Ads, GA4, GMB, Bing, Facebook Lead Ads, QuickBooks,

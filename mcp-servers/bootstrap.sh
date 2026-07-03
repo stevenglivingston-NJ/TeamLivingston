@@ -111,6 +111,6 @@ echo ""
 echo "▸ Registered (${#ok[@]}): ${ok[*]:-none}"
 [ ${#skipped[@]} -gt 0 ] && echo "▸ Skipped  (${#skipped[@]}): ${skipped[*]}"
 echo "▸ MCP bootstrap complete. claude.ai connectors (Gmail, HighLevel, QuickBooks,"
-echo "  Truthifi/Bank Connection, Shopify, monday, Slack, Zapier, Facebook) load"
+echo "  Bank Connection, Shopify, monday, Slack, Zapier, Facebook) load"
 echo "  automatically from the account and are unaffected by this script."
 exit 0

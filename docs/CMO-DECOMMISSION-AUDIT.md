@@ -46,7 +46,7 @@ don't." Owner rulings (7/03):
 | Closebot bot-health audit | Goldeneye | Covered (other branch) |
 | Conversations triage / unread queue | Goldeneye | Covered (existing) |
 | Daily spend/CPL/channel tables, ROAS/CAC | Paid | Covered (existing) |
-| Cash position, AR/AP aging, anomalies, recurring outflows | Moola + Truthifi | Covered (existing) |
+| Cash position, AR/AP aging, anomalies, recurring outflows | Moola + Bank Connection | Covered (existing) |
 | Exec Recommendations / Munib Apr-2026 action plans | — | Skip (stale, point-in-time) |
 | Query Center, Portals directory | Intranet Systems/Integrations tabs | Skip (covered; see handoff #4) |
 | GHL BTU pipeline "won revenue" | — | Skip (known-unreliable, 903 $0-opps bug) |

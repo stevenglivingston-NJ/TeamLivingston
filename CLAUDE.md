@@ -45,7 +45,7 @@ This environment manages operations for two business groups:
 |--------|------|-------|
 | cloudflare | stdio (Python) | Zones, DNS records, Pages projects/deployments, Workers, R2, KV, analytics |
 | Cloudflare Developer Platform | connector | D1 databases, Workers, KV namespaces, R2 buckets, Hyperdrive |
-| Truthifi | connector | Financial analytics (requires OAuth authorization) |
+| Bank Connection | connector | Financial analytics — cash, transactions, balances, findings (`mcp__Bank_Connection__*`) |
 | GoDaddy | connector | Domain management |
 | Semrush | connector | SEO analytics |
 | Ahrefs | connector | SEO analytics |
@@ -103,7 +103,7 @@ cloudflare, clarity-*) reading API keys from **environment variables** — see
 `mcp-servers/.env.example` for the full list. Set those vars in the Cloud
 environment's env-var config (they are secrets; never commit real values). A
 server whose keys are missing is skipped, never registered blank. The claude.ai
-connectors (Gmail, HighLevel, QuickBooks, Truthifi/Bank Connection, Shopify,
+connectors (Gmail, HighLevel, QuickBooks, Bank Connection, Shopify,
 monday, Slack, Zapier, Facebook) load from the account automatically and need
 no bootstrap.
 
