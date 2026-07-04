@@ -752,14 +752,33 @@
   @media(max-width:800px){.flow-arrow{transform:rotate(90deg);width:100%;justify-content:center;padding:2px 0}}
 
   /* ---------- Mobile ---------- */
+  /* Base rule must come BEFORE the media query: equal specificity means the
+     later rule wins, and .mobile-menu{display:none} after the media block was
+     hiding the hamburger at every width. */
+  .mobile-menu{display:none}
+  html,body{max-width:100%;overflow-x:hidden}
+  .sidebar-scrim{
+    display:none;position:fixed;inset:0;background:rgba(8,10,16,.55);z-index:15;
+    opacity:0;pointer-events:none;transition:opacity var(--dur) var(--ease);
+  }
   @media(max-width:900px){
+    .sidebar-scrim{display:block}
+    .sidebar.open + .sidebar-scrim{opacity:1;pointer-events:auto}
     .app-shell{grid-template-columns:1fr}
     .sidebar{position:fixed;left:-100%;top:0;bottom:0;width:280px;z-index:20;transition:left var(--dur) var(--ease)}
     .sidebar.open{left:0;box-shadow:var(--shadow-lg)}
     .mobile-menu{display:inline-flex}
     .content{padding:22px 18px 80px}
+    /* Comfortable tap targets (>=44px) */
+    .nav-item{min-height:44px;padding:11px 10px}
+    .top-btn{min-height:44px;padding:10px 14px}
+    .brand-switch button{min-height:40px}
+    /* Keep long unbreakable tokens and tables from forcing horizontal scroll */
+    .rec-item .rec-title{overflow-wrap:anywhere;word-break:break-word}
+    .btable{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .btable td,.btable th{overflow-wrap:anywhere}
+    input.f,select.f,textarea.f{min-width:min(140px,100%)}
   }
-  .mobile-menu{display:none}
 </style>
 <style>
 /* Axyom action layer */
@@ -951,6 +970,8 @@
       </div>
     </div>
   </aside>
+  <!-- Tap-to-close backdrop for the mobile sidebar drawer (shown via .sidebar.open + .sidebar-scrim) -->
+  <div class="sidebar-scrim" onclick="closeSidebar()" aria-hidden="true"></div>
 
   <!-- ==================== MAIN ==================== -->
   <div class="app-main">
@@ -1048,7 +1069,7 @@
       </div>
       <div class="card">
         <div class="row" style="margin-bottom:16px;align-items:center">
-          <input class="f" id="dirSearch" placeholder="Search by name, role, company, service…" oninput="renderDirectory()" style="flex:1;min-width:280px" />
+          <input class="f" id="dirSearch" placeholder="Search by name, role, company, service…" oninput="renderDirectory()" style="flex:1;min-width:min(280px,100%)" />
         </div>
         <div class="intg-controls" id="dirFilters"></div>
         <div id="dirCounts" class="build" style="margin-bottom:14px"></div>
@@ -2098,6 +2119,7 @@ setTimeout(()=>{
 },0);
 
 function toggleSidebar(){ document.querySelector('.sidebar').classList.toggle('open'); }
+function closeSidebar(){ document.querySelector('.sidebar').classList.remove('open'); }
 
 /* ================================================================
    Workspaces + roles — company-first navigation with brand theming.
@@ -2363,7 +2385,7 @@ function renderHealth(){
   const box=document.getElementById('healthBox'); if(!box) return;
   const c={ok:0,auth:0,degraded:0,dep:0}; INTEGRATIONS.forEach(x=>c[x.status]++);
   const attention=c.auth+c.degraded+c.dep;
-  box.innerHTML=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+  box.innerHTML=`<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
     <div class="kpi" style="padding:12px 14px"><div class="label">Connected</div><div class="value" style="font-size:22px;color:#4ade80">${c.ok}</div></div>
     <div class="kpi" style="padding:12px 14px"><div class="label">Needs attention</div><div class="value" style="font-size:22px;color:#fb923c">${attention}</div></div>
   </div>`;
