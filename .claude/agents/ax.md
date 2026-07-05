@@ -89,6 +89,14 @@ prune). For each unanswered question from a human (skip your own posts):
   reminder in #intranet-alerts (assignee, task, days overdue). No DM nagging.
 - **Queue health**: if notify_queue or action_queue has rows stuck 'pending' > 24h or any
   'error', summarize them in #intranet-alerts so a human can intervene.
+- **Briefing freshness watchdog**: the daily agents can fail silently (fire, write nothing —
+  it happened to Moola on 2026-07-04). Check the latest `fields->>'scan_date'` per section in
+  `intranet_records` for `moola_briefing`, `goldeneye_callouts`, `foreman_briefing`, and
+  `paid_brief`. Any section whose latest scan_date is older than yesterday → one line in
+  #intranet-alerts naming the agent, its last scan date, and the scheduled run to check
+  (e.g., "Moola's briefing is 2 days stale — check the 'Moola — daily CFO briefing' trigger").
+  Dedupe via `ax_state` (`stale_alerted: {section: scan_date}`) — alert once per section per
+  stale date, not every sweep. A section with zero rows ever (agent not yet live) → skip.
 
 ## Guardrails
 - Idempotency first: always filter on status='pending' and mark rows before/after work —

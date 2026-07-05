@@ -128,7 +128,7 @@ Emit these as `moola_briefing` rows with `kind:"paid-challenge"`.
 
 Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`, section `moola_briefing` (owner-only Finance tab). **RLS is enforced — you MUST write via the Supabase MCP (`mcp__Supabase__execute_sql`, service role), NOT the anon REST endpoint (it will 401).**
 
-**Never leave the card empty. Write-then-prune, in this order:**
+**Never leave the card empty. Write-then-prune, in this order** (if your run's trigger prompt summarizes this differently — e.g., "delete old rows, then insert" — THIS spec wins; never delete before a successful insert):
 1. Build your rows in memory first. If your analysis genuinely produced zero findings, still emit ONE `status` row ("All clear — nothing needs your money today") plus one `info` row per blind data source. You always insert ≥1 row.
 2. `INSERT` all of today's rows (tagged `scan_date` = today).
 3. ONLY AFTER the insert succeeds: `DELETE FROM intranet_records WHERE section='moola_briefing' AND fields->>'scan_date' <> '<today>';` — prune older scans. If the insert failed, do NOT delete — yesterday's briefing stays up (stale beats blank). The UI shows only the latest scan_date, so extra old rows are harmless if a prune is skipped.
@@ -139,8 +139,11 @@ INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES
 ('moola_briefing','Both',1,'{"severity":"urgent|warn|info","kind":"pay|save|risk|question|status|paid-challenge|liability","title":"Pay MSI $4,210 by Fri — 2% early-pay discount available","detail":"Invoice #X due 7/8. Trend $3.8k/mo; incl. Rossi slab order. Action: pay via epay@msisurfaces.com; ask Beatriz about volume rebate at $1.6M lifetime.","source":"Gmail · MSI statement","scan_date":"YYYY-MM-DD"}'::jsonb);
 ```
 - Lead order: (1) cash position / trouble ahead, (2) bills to pay this week with amounts + vendor priority order, (3) **liability snapshot** (one `kind:"liability"` row: total owed by segment, WoW Δ, and this week's single paydown instruction), (4) **Paid-challenge verdicts**, (5) Ledge P&L pressure-test, (6) savings/negotiation.
-- `brand`: 'Both' unless entity-specific (KTU/BTU/Earthwise).
+- `brand`: 'Both' unless entity-specific — use exactly 'KTU', 'BTU', or 'Earthwise' (the intranet's workspace switcher filters on these values; a typo makes the row invisible in that workspace).
+- **One `scan_date` for the entire scan** — the UI shows only the single latest scan_date across all rows, so mixed dates within one run make the older rows vanish.
+- `sort_order` must follow severity: all urgent rows first, then warn, then info.
 - Numbers over adjectives. "Payroll up $6.2k (18%) vs 3-mo avg" not "payroll seems high."
+- **Earthwise mirror**: the Jatalia ops dashboard reads section `earth_moola` (brand 'earth'). After writing `moola_briefing`, mirror the Earthwise-specific rows into `earth_moola` with the same write-then-prune discipline so that surface never goes stale.
 
 ## Rules
 - Never write credentials or full account numbers (last-4 only).
