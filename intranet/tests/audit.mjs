@@ -229,8 +229,89 @@ const run = async () => {
     applyRole('admin'); await new Promise(r => setTimeout(r, 150)); out.admin = read();
     return out;
   });
+  // ---- Ask Ax chat (mobile): open, streamed reply against a mocked SSE
+  //      response, tool chip, persistence, close ----
+  await page.evaluate(() => go('home'));
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    window.fetch = async (url, opts) => {
+      if (!String(url).includes('/api/chat')) throw new Error('unexpected fetch: ' + url);
+      window.__CHAT_REQ__ = JSON.parse(opts.body);
+      const enc = new TextEncoder();
+      const frames = [
+        'event: tool\ndata: {"name":"get_system_status","status":"start"}\n\n',
+        'event: tool\ndata: {"name":"get_system_status","status":"done"}\n\n',
+        'event: text\ndata: {"text":"All systems are "}\n\n',
+        'event: text\ndata: {"text":"**healthy** right now."}\n\n',
+        'event: done\ndata: {"stop_reason":"end_turn"}\n\n',
+      ];
+      const stream = new ReadableStream({
+        async start(c) {
+          for (const f of frames) { c.enqueue(enc.encode(f)); await new Promise(r => setTimeout(r, 25)); }
+          c.close();
+        },
+      });
+      return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    };
+  });
+  await page.evaluate(() => document.getElementById('axFab').click());
+  await page.waitForTimeout(400);
+  const chatState = await page.evaluate(() => ({
+    open: document.getElementById('axChat').classList.contains('open'),
+    chips: document.querySelectorAll('#axChatLog .ax-chip').length,
+  }));
+  if (!chatState.open) results.errors.push('chat: panel did not open on mobile');
+  if (chatState.chips < 3) results.errors.push('chat: starter chips missing on empty state');
+  await page.evaluate(() => { document.getElementById('axChatText').value = 'How are things?'; chatSend(); });
+  await page.waitForTimeout(1200);
+  results.chat = await page.evaluate(() => ({
+    user: document.querySelector('#axChatLog .ax-msg.user')?.textContent || null,
+    tool: document.querySelector('#axChatLog .ax-tool')?.textContent || null,
+    toolDone: document.querySelector('#axChatLog .ax-tool.done') != null,
+    reply: document.querySelector('#axChatLog .ax-msg.ax')?.innerHTML || '',
+    persisted: (JSON.parse(sessionStorage.getItem('axyom_chat_v1') || '{}').msgs || []).length,
+    reqToken: window.__CHAT_REQ__?.token,
+    reqLastRole: window.__CHAT_REQ__?.messages?.at(-1)?.role,
+  }));
+  if (results.chat.user !== 'How are things?') results.errors.push('chat: user bubble missing');
+  if (!/system status/i.test(results.chat.tool || '') || !results.chat.toolDone) results.errors.push('chat: tool chip missing or never resolved');
+  if (!results.chat.reply.includes('<b>healthy</b>')) results.errors.push('chat: streamed reply not rendered (got: ' + results.chat.reply + ')');
+  if (results.chat.persisted !== 2) results.errors.push('chat: sessionStorage should hold 2 messages, got ' + results.chat.persisted);
+  if (results.chat.reqToken !== 'fake-token') results.errors.push('chat: request did not carry the Supabase access token');
+  if (results.chat.reqLastRole !== 'user') results.errors.push('chat: last message in payload must be user');
+  await page.screenshot({ path: `${SHOTS}/chat-mobile.png` });
+  await page.evaluate(() => closeChat());
+  await page.waitForTimeout(300);
+  const chatClosed = await page.evaluate(() =>
+    !document.getElementById('axChat').classList.contains('open') &&
+    !document.getElementById('axFab').classList.contains('hide'));
+  if (!chatClosed) results.errors.push('chat: panel did not close / FAB did not return');
   results.errors.push(...errors);
   await ctx.close();
+
+  // ---- Ask Ax degraded state: /api/chat 404s (route not deployed) ----
+  const g = await newPage(browser, { width: 390, height: 844, mobile: true });
+  await g.page.goto('file://' + INDEX);
+  await g.page.waitForSelector('#app', { state: 'visible', timeout: 10000 });
+  await g.page.waitForTimeout(700);
+  await g.page.evaluate(() => {
+    window.fetch = async () => new Response('<html><body>intranet</body></html>', {
+      status: 404, headers: { 'Content-Type': 'text/html' },
+    });
+  });
+  await g.page.evaluate(() => { document.getElementById('axFab').click(); });
+  await g.page.waitForTimeout(300);
+  await g.page.evaluate(() => chatSend('hello?'));
+  await g.page.waitForTimeout(600);
+  const degraded = await g.page.evaluate(() => ({
+    sys: document.querySelector('#axChatLog .ax-msg.sys')?.textContent || null,
+    fabVisible: getComputedStyle(document.getElementById('axFab')).display !== 'none',
+    orphanBubbles: document.querySelectorAll('#axChatLog .ax-msg.ax').length,
+  }));
+  if (!/being connected/i.test(degraded.sys || '')) results.errors.push('chat degraded: friendly offline message missing (got: ' + degraded.sys + ')');
+  if (degraded.orphanBubbles !== 0) results.errors.push('chat degraded: empty assistant bubble left behind');
+  results.errors.push(...g.errors);
+  await g.ctx.close();
 
   // ---- Desktop 1280x800 ----
   const d = await newPage(browser, { width: 1280, height: 800, mobile: false });
@@ -242,6 +323,22 @@ const run = async () => {
   await d.page.waitForTimeout(500);
   const dm = await d.page.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
   if (dm.sw > dm.iw + 1) results.overflow.push(`desktop integrations: ${dm.sw}>${dm.iw}`);
+  // Chat opens/closes as a side panel on desktop
+  await d.page.evaluate(() => document.getElementById('axFab').click());
+  await d.page.waitForTimeout(350);
+  const dChat = await d.page.evaluate(() => {
+    const r = document.getElementById('axChat').getBoundingClientRect();
+    return {
+      open: document.getElementById('axChat').classList.contains('open'),
+      inViewport: r.right <= window.innerWidth + 1 && r.bottom <= window.innerHeight + 1 && r.width > 300,
+    };
+  });
+  if (!dChat.open || !dChat.inViewport) results.errors.push('chat: desktop panel missing/misplaced ' + JSON.stringify(dChat));
+  await d.page.screenshot({ path: `${SHOTS}/${PREFIX}-desktop-chat.png` });
+  await d.page.evaluate(() => closeChat());
+  await d.page.waitForTimeout(300);
+  const dClosed = await d.page.evaluate(() => !document.getElementById('axChat').classList.contains('open'));
+  if (!dClosed) results.errors.push('chat: desktop panel did not close');
   results.errors.push(...d.errors);
   await d.ctx.close();
 

@@ -978,6 +978,152 @@
 .bjob-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .upcoming{box-shadow:inset 3px 0 0 var(--warn)}
 </style>
+<style>
+/* ================================================================
+   Ask Ax — chat layer (floating button + panel).
+   z-order: FAB (16) above the tab bar (14) but under the drawer scrim (19);
+   panel (30) above the drawer (21) but under ⌘K (50) and modals (9000).
+   ================================================================ */
+.ax-fab{
+  position:fixed;right:24px;bottom:24px;z-index:16;
+  display:inline-flex;align-items:center;gap:8px;
+  min-height:48px;padding:12px 18px;border:0;border-radius:999px;cursor:pointer;
+  background:radial-gradient(120% 130% at 28% 18%,#cf7a40,#14110d);
+  color:#f3ebdb;font-family:inherit;font-size:13.5px;font-weight:700;letter-spacing:.2px;
+  box-shadow:0 6px 20px rgba(20,17,13,.32);
+  transition:transform var(--dur-fast) var(--ease),box-shadow var(--dur) var(--ease),opacity var(--dur) var(--ease);
+}
+.ax-fab:hover{transform:translateY(-1px);box-shadow:0 10px 26px rgba(20,17,13,.38)}
+.ax-fab:active{transform:translateY(0) scale(.97)}
+.ax-fab .sv{width:17px;height:17px;stroke:#f3ebdb}
+.ax-fab.hide{opacity:0;pointer-events:none;transform:scale(.92)}
+.ax-chat-scrim{
+  display:none;position:fixed;inset:0;background:rgba(8,10,16,.45);z-index:29;
+  opacity:0;pointer-events:none;transition:opacity var(--dur) var(--ease);
+}
+.ax-chat{
+  position:fixed;right:24px;bottom:24px;z-index:30;
+  width:min(420px,calc(100vw - 48px));height:min(640px,calc(100dvh - 96px));
+  display:flex;flex-direction:column;overflow:hidden;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);
+  opacity:0;pointer-events:none;transform:translateY(12px) scale(.98);
+  transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease);
+}
+.ax-chat.open{opacity:1;pointer-events:auto;transform:none}
+.ax-chat-head{
+  display:flex;align-items:center;gap:10px;padding:12px 14px;
+  border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0;
+}
+.ax-chat-head .mark{
+  width:30px;height:30px;border-radius:9px;overflow:hidden;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 3px 10px rgba(20,17,13,.25);
+}
+.ax-chat-head .who{flex:1;min-width:0}
+.ax-chat-head .who .t{font-weight:700;font-size:14px;letter-spacing:-.1px;line-height:1.2}
+.ax-chat-head .who .s{font-size:11px;color:var(--text-mute)}
+.ax-chat-head .hbtn{
+  background:transparent;border:1px solid var(--border);color:var(--text-mute);
+  font-size:11.5px;font-weight:600;padding:6px 10px;border-radius:8px;cursor:pointer;font-family:inherit;
+  min-height:32px;
+  transition:color var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease);
+}
+.ax-chat-head .hbtn:hover{color:var(--text);border-color:var(--border-strong)}
+.ax-chat-log{
+  flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  padding:16px 14px;display:flex;flex-direction:column;gap:10px;
+  background:var(--surface-inset);
+}
+.ax-msg{
+  max-width:86%;padding:9px 13px;border-radius:14px;font-size:13.5px;line-height:1.55;
+  white-space:pre-wrap;overflow-wrap:anywhere;
+}
+.ax-msg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
+.ax-msg.ax{align-self:flex-start;background:var(--surface);border:1px solid var(--border);color:var(--text);border-bottom-left-radius:5px}
+.ax-msg.sys{
+  align-self:center;max-width:94%;text-align:center;border-radius:10px;
+  background:var(--warn-soft);border:1px solid #f0ddb8;color:#8a5a06;font-size:12.5px;
+}
+.ax-msg code{font-family:var(--mono);font-size:.92em;background:var(--surface-3);padding:1px 5px;border-radius:5px}
+.ax-msg.user code{background:rgba(255,255,255,.22);color:#fff}
+.ax-retry{
+  display:inline-block;margin-left:6px;background:transparent;border:1px solid #e2c890;color:#8a5a06;
+  font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:7px;cursor:pointer;font-family:inherit;
+}
+.ax-retry:hover{background:#fbecd2}
+.ax-tool{
+  align-self:flex-start;display:inline-flex;align-items:center;gap:7px;
+  font-size:11.5px;color:var(--text-mute);background:var(--surface-2);
+  border:1px solid var(--border);border-radius:999px;padding:4px 11px;
+}
+.ax-tool .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0;animation:axPulse 1s ease-in-out infinite}
+.ax-tool.done .dot{background:var(--success);animation:none}
+.ax-tool.error .dot{background:var(--danger);animation:none}
+@keyframes axPulse{50%{opacity:.3}}
+.ax-cursor{
+  display:inline-block;width:7px;height:13px;margin-left:2px;vertical-align:-2px;
+  background:var(--accent);border-radius:2px;animation:axBlink 1s steps(2) infinite;
+}
+@keyframes axBlink{50%{opacity:0}}
+.ax-chat-inputbar{
+  display:flex;gap:8px;align-items:flex-end;flex-shrink:0;
+  padding:10px 12px;border-top:1px solid var(--border);background:var(--surface);
+}
+.ax-chat-inputbar textarea{
+  flex:1;resize:none;min-height:44px;max-height:120px;
+  border:1px solid var(--border);background:var(--surface-inset);color:var(--text);
+  border-radius:12px;padding:11px 13px;font-family:inherit;font-size:13.5px;line-height:1.45;
+  transition:border-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease);
+}
+.ax-chat-inputbar textarea:focus{outline:none;border-color:var(--accent);box-shadow:var(--ring)}
+.ax-chat-send{
+  width:44px;height:44px;flex-shrink:0;border:0;border-radius:12px;cursor:pointer;
+  background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;
+  transition:background var(--dur) var(--ease),transform var(--dur-fast) var(--ease),opacity var(--dur) var(--ease);
+}
+.ax-chat-send:hover{background:var(--accent-2)}
+.ax-chat-send:active{transform:scale(.94)}
+.ax-chat-send:disabled{opacity:.45;cursor:default}
+.ax-starter{
+  margin:auto 0;padding:20px 10px;display:flex;flex-direction:column;gap:12px;
+  align-items:center;justify-content:center;text-align:center;color:var(--text-mute);
+}
+.ax-starter .mark{width:44px;height:44px;border-radius:13px;overflow:hidden;box-shadow:0 4px 14px rgba(20,17,13,.28)}
+.ax-starter .big{font-size:15px;font-weight:600;color:var(--text)}
+.ax-starter .small{font-size:12.5px;max-width:280px;line-height:1.55}
+.ax-starter-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:2px}
+.ax-chip{
+  background:var(--surface);border:1px solid var(--border);border-radius:999px;
+  padding:8px 14px;font-size:12.5px;color:var(--text-2);cursor:pointer;font-weight:500;font-family:inherit;
+  transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease);
+}
+.ax-chip:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+@media(max-width:900px){
+  .ax-fab{
+    right:14px;bottom:calc(var(--tabbar-h) + 14px + env(safe-area-inset-bottom));
+    min-height:50px;padding:13px 18px;font-size:14px;
+  }
+  .ax-chat-scrim{display:block}
+  .ax-chat-scrim.open{opacity:1;pointer-events:auto}
+  .ax-chat{
+    left:0;right:0;bottom:0;width:auto;height:auto;
+    top:max(12px,env(safe-area-inset-top));
+    border-radius:18px 18px 0 0;border-bottom:0;
+    opacity:1;transform:translateY(103%);
+    transition:transform var(--dur) var(--ease);
+  }
+  .ax-chat.open{transform:translateY(0)}
+  .ax-chat-head{padding:14px 14px 12px}
+  .ax-msg{font-size:15px;padding:10px 14px}
+  .ax-msg.sys{font-size:13px}
+  .ax-tool{font-size:12.5px;min-height:32px}
+  .ax-chip{min-height:42px;font-size:13.5px}
+  /* 16px font kills the iOS focus zoom */
+  .ax-chat-inputbar{padding:10px 12px calc(10px + env(safe-area-inset-bottom))}
+  .ax-chat-inputbar textarea{font-size:16px}
+}
+</style>
 </head>
 <body>
 
@@ -2091,6 +2237,31 @@
 
 <!-- Mobile bottom tab bar — populated by renderTabbar() per role/workspace -->
 <nav class="tabbar" id="tabbar" aria-label="Primary"></nav>
+
+<!-- ============ ASK AX — chat ============ -->
+<button class="ax-fab" id="axFab" onclick="toggleChat()" aria-label="Ask Ax">
+  <svg class="sv" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-8.5 8.3 9 9 0 01-3.6-.7L3 20.5l1.5-4.2a8 8 0 01-1-4.8A8.4 8.4 0 0112.5 3.2 8.4 8.4 0 0121 11.5z"/><path d="M8.5 11.5h.01M12.5 11.5h.01M16.5 11.5h.01"/></svg>
+  <span>Ask Ax</span>
+</button>
+<div class="ax-chat-scrim" id="axChatScrim" onclick="closeChat()" aria-hidden="true"></div>
+<section class="ax-chat" id="axChat" role="dialog" aria-label="Ask Ax chat">
+  <header class="ax-chat-head">
+    <div class="mark"><svg viewBox="0 0 32 32" width="100%" height="100%" style="display:block"><defs><radialGradient id="axgc" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#cf7a40"/><stop offset="100%" stop-color="#14110d"/></radialGradient></defs><circle cx="16" cy="16" r="15" fill="url(#axgc)"/><g stroke="#f3ebdb" stroke-width="1" fill="none" opacity=".9"><line x1="16" y1="4" x2="16" y2="28"/><line x1="4" y1="16" x2="28" y2="16"/><line x1="7.5" y1="7.5" x2="24.5" y2="24.5"/><line x1="24.5" y1="7.5" x2="7.5" y2="24.5"/></g><circle cx="16" cy="16" r="3.6" fill="#f3ebdb"/></svg></div>
+    <div class="who">
+      <div class="t">Ask Ax</div>
+      <div class="s">Live answers from your business systems</div>
+    </div>
+    <button class="hbtn" onclick="clearChat()" aria-label="Start a new conversation">New</button>
+    <button class="hbtn" onclick="closeChat()" aria-label="Close chat">✕</button>
+  </header>
+  <div class="ax-chat-log" id="axChatLog" aria-live="polite"></div>
+  <footer class="ax-chat-inputbar">
+    <textarea id="axChatText" rows="1" placeholder="Ask about clients, cash, system status…" enterkeyhint="send"></textarea>
+    <button class="ax-chat-send" id="axChatSend" onclick="chatSend()" aria-label="Send">
+      <svg class="sv" viewBox="0 0 24 24" style="width:19px;height:19px"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+    </button>
+  </footer>
+</section>
 </div>
 
 <!-- ============ COMMAND PALETTE ============ -->
@@ -2156,12 +2327,13 @@ async function enterApp(){
   const name=CURRENT_PROFILE.display_name||user.email;
   const avatar=String(name).trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase()||'AX';
   showApp({role:CURRENT_PROFILE.role, name, avatar, email:user.email});
+  loadChat(user.id); renderChatLog();
 }
 function getSession(){
   return CURRENT_PROFILE ? {role:CURRENT_PROFILE.role,
     name:CURRENT_PROFILE.display_name||CURRENT_PROFILE.email} : null;
 }
-async function logout(){ try{await sb.auth.signOut()}catch(_){ } location.reload(); }
+async function logout(){ try{sessionStorage.removeItem('axyom_chat_v1')}catch(_){ } try{await sb.auth.signOut()}catch(_){ } location.reload(); }
 function showApp(s){
   if(!s) return;
   document.getElementById('login').style.display='none';
@@ -3723,6 +3895,259 @@ async function mkpEdit(id){const r=await mkpGet(id);if(!r)return;const f=r.field
   const status=prompt('Status (idea|planning|committed|live|done|cancelled):',f.status||'planning');if(status===null)return;
   await mkpSave(id,{...f,title,owner:owner||null,end:end||null,budget:Number(budget)||0,notes:notes||null,status:MKP_STATUS_FLOW.concat('cancelled').includes(status)?status:f.status},'Saved.');}
 
+
+/* ================================================================
+   Ask Ax — chat client. Streams SSE from the axyom-chat Worker at
+   /api/chat (same origin: dash.goaxyom.com routes /api/chat* there).
+   Stateless backend — the full visible history is resent each turn
+   (≤40 msgs, ≤8K chars each, ≤60K total). Degrades to a friendly
+   "being connected" note if the route isn't deployed yet (404, HTML
+   response, or network error) — the button never breaks.
+   ================================================================ */
+const CHAT_ENDPOINT='/api/chat';
+const CHAT_STORE='axyom_chat_v1';
+const CHAT_OFFLINE_MSG='Ask Ax is being connected — check back soon.';
+const CHAT_TOOL_LABELS={
+  get_briefings:'Checking the intranet briefings…',
+  search_contacts:'Searching contacts…',
+  get_contact_details:'Pulling contact details…',
+  serviceminder_lookup:'Checking ServiceMinder…',
+  dispatch_task:'Queuing a task for the agent fleet…',
+  get_system_status:'Checking system status…'
+};
+const CHAT={messages:[],streaming:false,open:false,stick:true,uid:null};
+let CHAT_CHIPS={};
+
+function loadChat(uid){
+  CHAT.uid=uid;
+  try{
+    const d=JSON.parse(sessionStorage.getItem(CHAT_STORE)||'null');
+    CHAT.messages=(d&&d.uid===uid&&Array.isArray(d.msgs))
+      ? d.msgs.filter(m=>m&&(m.role==='user'||m.role==='assistant')&&typeof m.content==='string')
+      : [];
+  }catch(_){ CHAT.messages=[]; }
+}
+function saveChat(){
+  try{sessionStorage.setItem(CHAT_STORE,JSON.stringify({uid:CHAT.uid,msgs:CHAT.messages.slice(-60)}))}catch(_){ }
+}
+function clearChat(){ CHAT.messages=[]; saveChat(); renderChatLog(); }
+
+function toggleChat(){ CHAT.open?closeChat():openChat(); }
+function openChat(){
+  CHAT.open=true;
+  document.getElementById('axChat').classList.add('open');
+  document.getElementById('axChatScrim').classList.add('open');
+  document.getElementById('axFab').classList.add('hide');
+  closeSidebar();
+  renderChatLog();
+  if(!matchMedia('(max-width:900px)').matches)
+    setTimeout(()=>{const t=document.getElementById('axChatText'); t&&t.focus();},180);
+}
+function closeChat(){
+  CHAT.open=false;
+  document.getElementById('axChat').classList.remove('open');
+  document.getElementById('axChatScrim').classList.remove('open');
+  document.getElementById('axFab').classList.remove('hide');
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&CHAT.open&&!document.getElementById('cmdkBack').classList.contains('on')) closeChat();
+});
+
+/* Minimal formatting: escape everything, then **bold** and `code`.
+   Bubbles are white-space:pre-wrap so newlines render as-is. */
+function chatFmt(s){
+  return esc(s)
+    .replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>')
+    .replace(/`([^`\n]+)`/g,'<code>$1</code>');
+}
+function chatScrollBottom(force){
+  const log=document.getElementById('axChatLog'); if(!log) return;
+  if(force) CHAT.stick=true;
+  if(CHAT.stick) log.scrollTop=log.scrollHeight;
+}
+function renderChatLog(){
+  const log=document.getElementById('axChatLog'); if(!log) return;
+  if(!CHAT.messages.length&&!CHAT.streaming){
+    log.innerHTML=`<div class="ax-starter">
+      <div class="mark"><svg viewBox="0 0 32 32" width="100%" height="100%" style="display:block"><circle cx="16" cy="16" r="15" fill="url(#axgc)"/><g stroke="#f3ebdb" stroke-width="1" fill="none" opacity=".9"><line x1="16" y1="4" x2="16" y2="28"/><line x1="4" y1="16" x2="28" y2="16"/><line x1="7.5" y1="7.5" x2="24.5" y2="24.5"/><line x1="24.5" y1="7.5" x2="7.5" y2="24.5"/></g><circle cx="16" cy="16" r="3.6" fill="#f3ebdb"/></svg></div>
+      <div class="big">Ask Ax anything about the business.</div>
+      <div class="small">Live answers from the intranet briefings, HighLevel, and system diagnostics — Ax can also queue work for the agent fleet.</div>
+      <div class="ax-starter-chips">
+        <button class="ax-chip" onclick="chatSend('What needs my attention today?')">What needs my attention today?</button>
+        <button class="ax-chip" onclick="chatSend('What is the current system status?')">System status</button>
+        <button class="ax-chip" onclick="chatPrefill('Find a client: ')">Find a client…</button>
+      </div>
+    </div>`;
+    return;
+  }
+  log.innerHTML=CHAT.messages.map(m=>
+    `<div class="ax-msg ${m.role==='user'?'user':'ax'}">${chatFmt(m.content)}</div>`).join('');
+  chatScrollBottom(true);
+}
+function chatPrefill(t){
+  const ta=document.getElementById('axChatText');
+  ta.value=t; ta.focus(); chatGrow(ta);
+}
+function chatGrow(ta){ ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; }
+function chatAppendHtml(html){
+  const log=document.getElementById('axChatLog');
+  log.insertAdjacentHTML('beforeend',html);
+  chatScrollBottom(false);
+  return log.lastElementChild;
+}
+
+/* History payload: user/assistant only, first+last must be user,
+   per-message and total char limits enforced client-side too. */
+function chatHistoryPayload(){
+  let msgs=CHAT.messages
+    .filter(m=>(m.role==='user'||m.role==='assistant')&&m.content&&m.content.trim())
+    .map(m=>({role:m.role,content:String(m.content).slice(0,8000)}))
+    .slice(-40);
+  while(msgs.length&&msgs[0].role!=='user') msgs.shift();
+  while(msgs.length&&msgs[msgs.length-1].role!=='user') msgs.pop();
+  let total=msgs.reduce((a,m)=>a+m.content.length,0);
+  while(total>60000&&msgs.length>1){
+    total-=msgs.shift().content.length;
+    while(msgs.length>1&&msgs[0].role!=='user') total-=msgs.shift().content.length;
+  }
+  return msgs;
+}
+
+function chatSend(preset){
+  if(CHAT.streaming) return;
+  const ta=document.getElementById('axChatText');
+  const text=(typeof preset==='string'?preset:ta.value).trim();
+  if(!text) return;
+  if(typeof preset!=='string'){ ta.value=''; chatGrow(ta); }
+  CHAT.messages.push({role:'user',content:text.slice(0,8000)});
+  saveChat();
+  renderChatLog();
+  chatStream();
+}
+function chatRetry(btn){
+  if(CHAT.streaming) return;
+  if(!CHAT.messages.length||CHAT.messages[CHAT.messages.length-1].role!=='user') return;
+  if(btn&&btn.closest) { const m=btn.closest('.ax-msg'); m&&m.remove(); }
+  chatStream();
+}
+
+/* Tool activity chips — one per `start`, resolved by `done`/`error`. */
+function chatToolChip(bubble,d){
+  const log=bubble.parentElement; if(!log) return;
+  const label=CHAT_TOOL_LABELS[d.name]||('Working: '+String(d.name).replace(/_/g,' ')+'…');
+  if(d.status==='start'){
+    const el=document.createElement('div');
+    el.className='ax-tool';
+    el.innerHTML='<span class="dot"></span><span></span>';
+    el.lastElementChild.textContent=label;
+    log.insertBefore(el,bubble);
+    (CHAT_CHIPS[d.name]=CHAT_CHIPS[d.name]||[]).push(el);
+    chatScrollBottom(false);
+  }else{
+    const el=(CHAT_CHIPS[d.name]||[]).shift();
+    if(el){
+      el.classList.add(d.status==='error'?'error':'done');
+      el.lastElementChild.textContent=label.replace(/…$/,'')+(d.status==='error'?' — failed':'');
+    }
+  }
+}
+
+/* Parse one SSE frame ("event: x\ndata: {...}") into {event, data}. */
+function chatParseSse(frame){
+  let event='message', data='';
+  for(const line of frame.split('\n')){
+    if(line.startsWith('event:')) event=line.slice(6).trim();
+    else if(line.startsWith('data:')) data+=line.slice(5).trim();
+  }
+  if(!data) return {event,data:null};
+  try{ return {event,data:JSON.parse(data)}; }catch(_){ return {event,data:null}; }
+}
+
+async function chatStream(){
+  const log=document.getElementById('axChatLog');
+  const send=document.getElementById('axChatSend');
+  CHAT.streaming=true; send.disabled=true; CHAT_CHIPS={};
+  const bubble=chatAppendHtml('<div class="ax-msg ax"><span class="ax-cursor"></span></div>');
+  let buffer='';
+  const paint=()=>{ bubble.innerHTML=chatFmt(buffer)+'<span class="ax-cursor"></span>'; chatScrollBottom(false); };
+  const dropCursor=()=>{ const c=bubble.querySelector&&bubble.querySelector('.ax-cursor'); c&&c.remove(); };
+  const note=(msg,retry)=>{
+    dropCursor();
+    if(!buffer) bubble.remove();
+    chatAppendHtml(`<div class="ax-msg sys">${esc(msg)}${retry?' <button class="ax-retry" onclick="chatRetry(this)">Retry</button>':''}</div>`);
+  };
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session){ note('Your session has expired — sign in again to use Ask Ax.'); return; }
+    let res;
+    try{
+      res=await fetch(CHAT_ENDPOINT,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({token:session.access_token,messages:chatHistoryPayload()})
+      });
+    }catch(_){ note(CHAT_OFFLINE_MSG); return; }
+    const ctype=(res.headers.get('content-type')||'').toLowerCase();
+    // Route not deployed yet: the intranet Worker answers with its own HTML
+    // (or a 404). Never render that as a chat reply.
+    if(res.status===404||ctype.includes('text/html')){ note(CHAT_OFFLINE_MSG); return; }
+    if(!res.ok){
+      let msg='Ask Ax hit a snag (HTTP '+res.status+').';
+      try{ const j=await res.json(); if(j&&j.error) msg='Ask Ax: '+j.error; }catch(_){ }
+      if(res.status===401) msg='Your session has expired — refresh the page and sign in again.';
+      note(msg,res.status!==401);
+      return;
+    }
+    if(!res.body||!ctype.includes('text/event-stream')){ note(CHAT_OFFLINE_MSG); return; }
+    const reader=res.body.getReader();
+    const dec=new TextDecoder();
+    let raw='', ended=null; // 'done' | {error:message}
+    while(!ended){
+      const {done,value}=await reader.read();
+      if(done) break;
+      raw+=dec.decode(value,{stream:true});
+      let idx;
+      while((idx=raw.indexOf('\n\n'))>=0){
+        const ev=chatParseSse(raw.slice(0,idx)); raw=raw.slice(idx+2);
+        if(ev.event==='text'&&ev.data&&typeof ev.data.text==='string'){ buffer+=ev.data.text; paint(); }
+        else if(ev.event==='tool'&&ev.data&&ev.data.name){ chatToolChip(bubble,ev.data); }
+        else if(ev.event==='done'){ ended='done'; break; }
+        else if(ev.event==='error'){ ended={error:(ev.data&&ev.data.message)||'Something went wrong.'}; break; }
+      }
+    }
+    dropCursor();
+    if(ended==='done'){
+      if(buffer){ CHAT.messages.push({role:'assistant',content:buffer}); saveChat(); }
+      else{ bubble.remove(); note('Ax came back empty — try rephrasing.',true); }
+    }else if(ended&&ended.error){
+      // Partial text stays visible but is NOT committed to history, so a
+      // retry regenerates from the last user message.
+      note('Ax hit a problem: '+ended.error,true);
+    }else{
+      note('The connection dropped mid-answer.',true);
+    }
+  }catch(_){
+    note(CHAT_OFFLINE_MSG);
+  }finally{
+    CHAT.streaming=false; send.disabled=false;
+    const c=log.querySelector('.ax-cursor'); c&&c.remove();
+  }
+}
+
+/* Input wiring: Enter sends (Shift+Enter = newline), auto-grow, stick-to-
+   bottom tracking (auto-scroll pauses when the user scrolls up). */
+(function(){
+  const ta=document.getElementById('axChatText');
+  const log=document.getElementById('axChatLog');
+  if(!ta||!log) return;
+  ta.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); if(!CHAT.streaming) chatSend(); }
+  });
+  ta.addEventListener('input',()=>chatGrow(ta));
+  log.addEventListener('scroll',()=>{
+    CHAT.stick=log.scrollTop+log.clientHeight>=log.scrollHeight-48;
+  });
+})();
 
 /* ================================================================
    Live refresh — Supabase Realtime + focus revalidation
