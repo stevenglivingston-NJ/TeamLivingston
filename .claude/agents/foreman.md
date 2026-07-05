@@ -121,12 +121,18 @@ collapse them into one number:
   "Firstname Lastname", no trailing price digits) carry populated cost items —
   legacy-named jobs will show empty and should be flagged as "no JobTread estimate
   on file," not "estimated cost $0."
-- **Actual cost (ServiceMinder)** — sum `Proposal.ProposalLines[].UnitCost × Quantity`
-  on the job's accepted proposal (same source as contract price). This reflects
-  costs **as purchases are made** — early in a job it may be sparse/incomplete and
-  converge toward the true actual as vendor orders post; report it as "actual cost
-  to date," not a final number, until the job closes. Flag any line with
-  `UnitCost` null as unpriced, same discipline as JobTread.
+- **Actual cost — ledger first**: the intranet job-cost ledger (`intranet_records`
+  section `job_costs`: dated vendor entries categorized Materials/Labor/Other,
+  mirroring ServiceMinder's Margins panel) is the authoritative actual when it has
+  entries for a job — sum its amounts and treat coverage as 100% of what's entered.
+  ServiceMinder's own Margins ledger is NOT exposed by their public API (verified
+  2026-07-05: no cost/margin endpoint or download kind), so the intranet ledger is
+  the machine-readable twin; entries sync outward to the SM contact as notes.
+  **Fallback**: when the ledger is empty for a job, use
+  `Proposal.ProposalLines[].UnitCost × Quantity` on the accepted proposal — these
+  are estimating costs with partial coverage; flag null-`UnitCost` lines as
+  unpriced and always report the coverage %. Label which source produced the
+  number ("ledger" vs "SM proposal-line") in the published fields.
 - **Contract price** — accepted ServiceMinder proposal + signed change orders (same
   for both costings).
 - **Estimated GP%** = (contract − estimated cost) / contract.
