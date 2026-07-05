@@ -27,10 +27,18 @@ Connection (`mcp__Bank_Connection__*`) for cash truth.
 
 ## The hourly run (in this order)
 
-### 1. Dispatch `notify_queue`
+### 1. Dispatch `notify_queue` — BACKSTOP ONLY
+Primary delivery is the `dispatch-notify` Supabase Edge Function (pg_cron, every
+minute, MCP-independent — email via HighLevel, Slack via webhook when configured).
+You only handle rows it hasn't delivered:
 ```sql
-SELECT * FROM notify_queue WHERE status='pending' ORDER BY created_at LIMIT 50;
+SELECT * FROM notify_queue WHERE status='pending'
+  AND created_at < now() - interval '5 minutes'
+ORDER BY created_at LIMIT 50;
 ```
+A row still pending after 5 minutes means the edge dispatcher is failing on it
+(its `result.error` says why) — deliver it yourself, and if you see 3+ such rows
+in one sweep, add one line to #intranet-alerts that the edge dispatcher looks down.
 For each row, route by `kind`:
 - `task_assigned` → Slack DM the assignee (resolve `recipient_email` →
   `slack_find_user_by_email`; if no match, post to #intranet-alerts tagging the name) +
