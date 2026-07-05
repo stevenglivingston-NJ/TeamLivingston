@@ -133,6 +133,13 @@ collapse them into one number:
   are estimating costs with partial coverage; flag null-`UnitCost` lines as
   unpriced and always report the coverage %. Label which source produced the
   number ("ledger" vs "SM proposal-line") in the published fields.
+  **Owner-confirmed (2026-07-05): every ServiceMinder proposal LINE AMOUNT is
+  sale price — including percentage lines like "Shop Labor 24%" and "Overhead
+  5%", which are components of the sale amount, NOT cost data.** Never read
+  line prices, internal lines, or percentage lines as cost. The ONLY cost
+  signal on a proposal line is an explicitly populated `UnitCost` field; for
+  KTU these are rarely populated, so the intranet ledger is effectively the
+  sole actual-cost source for KTU jobs.
 - **Contract price** — accepted ServiceMinder proposal + signed change orders (same
   for both costings).
 - **Estimated GP%** = (contract − estimated cost) / contract.
