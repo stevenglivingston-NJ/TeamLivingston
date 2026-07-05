@@ -93,6 +93,52 @@ const STUB = `
     rec('pipeline_sources', { source: 'Organic / GMB', leads: '52', appts: '34', sales: '11', close_rate: '32%', note: 'Protect at all costs' }),
     rec('pipeline_sources', { source: 'Google Ads', leads: '21', appts: '11', sales: '3', close_rate: '27%', note: '' }),
     rec('mkt_plan_items', { title: 'July4 town banner — Bloomfield', channel: 'Print', owner: 'Sonya', brand: 'KTU', start: '2026-07-01', end: '2026-07-31', month: '2026-07', budget: 1200, actual: 950, status: 'live', notes: 'Broad St banner + Patch feature' }, 'KTU'),
+    // ---- Tekky (Tech Stack · Live tab) — shapes copied from the live rows ----
+    rec('tekky_stack', { scan_date: today, generated_at: new Date(NOW).toISOString(), run: 'initial inventory (Tekky first run)', domains: {
+      mcp_stdio: [
+        { name: 'ghl-ktu', kind: 'http-mcp', status: 'UP', reason: 'PIT set; tools live this session', auth: { env_vars: [{ name: 'GHL_PIT_KTU', state: 'SET' }] }, notes: 'LeadConnector hosted MCP, Kitchen Tune-Up' },
+        { name: 'closebot', kind: 'stdio', status: 'DOWN', reason: 'env keys missing; not registered this environment', auth: { env_vars: [{ name: 'CLOSEBOT_API_KEY', state: 'MISSING' }] }, notes: '15 tools; KTU/BTU booking bots' },
+        { name: 'serviceminder', kind: 'stdio', status: 'DOWN', reason: 'env keys missing; connector covers reads', auth: { env_vars: [{ name: 'SM_KEY_KTU', state: 'MISSING' }, { name: 'SM_KEY_BTU', state: 'MISSING' }] }, notes: '28 tools; multi-location KTU+BTU' },
+      ],
+      connectors: [
+        { name: 'Gmail', kind: 'connector', status: 'UP', reason: 'tools present in session', notes: '' },
+        { name: 'Slack', kind: 'connector', status: 'UP', reason: 'tools present in session', notes: '' },
+        { name: 'Shopify', kind: 'connector', status: 'DEGRADED', reason: 'documented in CLAUDE.md but not attached to this session — Jatalia DTC lens blind', notes: 'reattach in claude.ai connectors' },
+      ],
+      cloudflare: { probe: 'workers_list via Cloudflare Developer Platform connector', zones: ['goaxyom.com', 'jataliamarketplace.com'], account: { id: '2cdff9b17750f72247f2704875696ed5', name: 'Firstgenerationusallc' }, workers: [
+        { name: 'ktubtuintranet', status: 'UP', reason: 'deployed; serves dash.goaxyom.com (HTTP 200)', notes: 'assets-only; custom domain dash.goaxyom.com' },
+        { name: 'axyom-chat', status: 'DEGRADED', reason: 'in development, NOT deployed — /api/chat returns 404', notes: 'route dash.goaxyom.com/api/chat*' },
+        { name: 'ktu-cmo-dashboard-auth', status: 'REMOVED', reason: 'absent from live workers_list; decommissioned', notes: 'still listed in CLAUDE.md — drift' },
+      ] },
+      supabase: { project: 'tguwpswcneywvscxzyef', status: 'UP', reason: 'MCP queries OK; REST 401 = auth enforced as designed', notes: 'profiles: 4 intranet users; RLS enabled on all public tables', intranet_records_sections: 61, tables: [
+        { name: 'contacts', rows: 56, rls: true }, { name: 'intranet_records', rows: 435, rls: true }, { name: 'profiles', rows: 4, rls: true },
+      ] },
+      intranet: [
+        { name: 'Axyom intranet (dash.goaxyom.com)', status: 'UP', reason: 'HTTP 200', notes: 'SPA at intranet/index.html served by ktubtuintranet worker' },
+        { name: 'Jatalia ops dashboard (jataliamarketplace.com)', status: 'UP', reason: 'HTTP 200', notes: '' },
+      ],
+      agents: [
+        { name: 'tekky', status: 'UP', reason: 'first run today', purpose: 'IT dept: stack inventory, change log, health monitor', outputs: ['tekky_stack', 'tekky_changes', 'tekky_status', 'tekky_briefing'] },
+        { name: 'moola', status: 'DEGRADED', reason: 'moola_briefing stale >48h for a daily agent', purpose: 'daily CFO briefing', outputs: ['moola_briefing', 'earth_moola'] },
+        { name: 'harvest', status: 'UNKNOWN', reason: 'specced but never published', purpose: 'Earthwise demand & growth', outputs: ['harvest_briefing', 'harvest_ads'] },
+      ],
+      saas: [
+        { name: 'HighLevel CRM', status: 'UP', access: 'ghl-ktu/ghl-btu MCP + Highlevel connector' },
+        { name: 'CloseBot', status: 'UNKNOWN', access: 'stdio only (CLOSEBOT_API_KEY)', reason: 'no access path this session' },
+      ],
+      repo: { path: '/home/user/TeamLivingston', dirs: { 'intranet/': 'index.html SPA + tests/audit.mjs', 'mcp-servers/': '8 stdio servers + bootstrap.sh + .env.example' } },
+    } }, 'Both'),
+    rec('tekky_status', { component: 'stdio MCP: closebot/serviceminder', domain: 'mcp_stdio', status: 'DOWN', reason: 'required env keys MISSING in this environment', checked_at: iso(5), scan_date: today }, 'Both'),
+    rec('tekky_status', { component: 'Moola daily briefing', domain: 'agents', status: 'DEGRADED', reason: 'moola_briefing stale >48h for a daily agent', checked_at: iso(5), scan_date: today }, 'Both'),
+    rec('tekky_status', { component: 'axyom-chat worker', domain: 'cloudflare', status: 'DEGRADED', reason: 'built but not deployed; /api/chat returns 404', checked_at: iso(5), scan_date: today }, 'Both'),
+    rec('tekky_status', { component: 'ghl-ktu / ghl-btu MCP', domain: 'mcp_stdio', status: 'UP', reason: 'PITs SET; both HighLevel servers live', checked_at: iso(5), scan_date: today }, 'Both'),
+    rec('tekky_status', { component: 'Supabase tguwpswcneywvscxzyef', domain: 'supabase', status: 'UP', reason: '7 tables, RLS on', checked_at: iso(5), scan_date: today }, 'Both'),
+    rec('tekky_status', { component: 'Harvest / Cellar agents', domain: 'agents', status: 'UNKNOWN', reason: 'specced but never published', checked_at: iso(5), scan_date: today }, 'Both'),
+    rec('tekky_briefing', { severity: 'urgent', title: 'Moola + Goldeneye briefings stale >48h', detail: 'Both daily agents last published 2 days ago — check the scheduled sessions ran and their Supabase writes succeeded.', source: 'Supabase intranet_records max(created_at)', scan_date: today }, 'Both'),
+    rec('tekky_briefing', { severity: 'warn', title: '10 of 12 stdio MCP servers unregistered — env keys MISSING', detail: 'Only GHL_PIT_KTU/GHL_PIT_BTU are SET. Set the missing keys in the Cloud env-var config so bootstrap.sh registers the servers.', source: 'printenv names vs mcp-servers/.env.example', scan_date: today }, 'Both'),
+    rec('tekky_briefing', { severity: 'info', title: 'Stack baseline recorded: 83 components tracked', detail: 'Full map in tekky_stack; all future runs diff against this baseline.', source: 'Tekky initial inventory', scan_date: today }, 'Both'),
+    rec('tekky_changes', { ts: iso(10), kind: 'added', component: 'entire stack', domain: 'all', detail: 'Initial inventory — baseline recorded. 83 components across all domains.', evidence: 'Tekky first run', scan_date: today }, 'Both'),
+    rec('tekky_changes', { ts: iso(3), kind: 'modified', component: 'axyom-chat worker', domain: 'cloudflare', detail: 'Route added: dash.goaxyom.com/api/chat*', evidence: 'wrangler.toml', scan_date: today }, 'Both'),
   );
 
   const clone = (x) => JSON.parse(JSON.stringify(x));
@@ -229,6 +275,59 @@ const run = async () => {
     applyRole('admin'); await new Promise(r => setTimeout(r, 150)); out.admin = read();
     return out;
   });
+
+  // ---- Tech Stack · Live (Tekky) tab: header tally, callouts, stack map,
+  //      Earthwise grouping for Shopify, env-key chips, changelog ----
+  await page.evaluate(() => go('tech'));
+  await page.waitForTimeout(700);
+  results.tech = await page.evaluate(() => {
+    const txt = el => (el ? el.textContent.trim() : null);
+    const shopify = [...document.querySelectorAll('#tech .tek-comp-name')].find(n => /shopify/i.test(n.textContent));
+    return {
+      active: document.querySelector('.panel.active')?.id,
+      tally: txt(document.querySelector('#tek_head .tek-tally')),
+      pills: document.querySelectorAll('#tek_head .tek-pill').length,
+      scanline: txt(document.querySelector('#tek_head .tek-scanline')),
+      callouts: document.querySelectorAll('#tek_briefing .ge-row').length,
+      urgent: document.querySelectorAll('#tek_briefing .ge-row.urgent').length,
+      groups: document.querySelectorAll('#tek_stack .tek-group').length,
+      badges: document.querySelectorAll('#tek_stack .tek-badge').length,
+      chipsSet: document.querySelectorAll('#tek_stack .tek-chip.set').length,
+      chipsMissing: document.querySelectorAll('#tek_stack .tek-chip.missing').length,
+      chipValueLeak: [...document.querySelectorAll('#tek_stack .tek-chip')].some(c => /=|secret|token[^s]/i.test(c.textContent)),
+      shopifyGroup: shopify ? txt(shopify.closest('.tek-group')?.querySelector('summary')) : null,
+      changelog: document.querySelectorAll('#tek_changes .tek-tl-item').length,
+      skeletons: document.querySelectorAll('#tech .loading').length,
+    };
+  });
+  const T = results.tech;
+  if (T.active !== 'tech') results.errors.push('tech: panel not activated');
+  if (T.pills !== 4 || !/2 up/.test(T.tally || '') || !/1 down/.test(T.tally || '')) results.errors.push('tech: health tally wrong (' + T.tally + ')');
+  if (!/Tekky scanned/.test(T.scanline || '')) results.errors.push('tech: scan line missing');
+  if (T.callouts !== 3 || T.urgent !== 1) results.errors.push(`tech: briefing callouts wrong (${T.callouts}/${T.urgent} urgent)`);
+  if (T.groups < 8) results.errors.push('tech: expected >=8 stack-map groups, got ' + T.groups);
+  if (T.badges < 12) results.errors.push('tech: too few health badges (' + T.badges + ')');
+  if (!T.chipsSet || !T.chipsMissing) results.errors.push(`tech: env-key chips missing (set=${T.chipsSet} missing=${T.chipsMissing})`);
+  if (T.chipValueLeak) results.errors.push('tech: env chip appears to render a value');
+  if (!/Earthwise \/ Jatalia/.test(T.shopifyGroup || '')) results.errors.push('tech: Shopify not grouped under Earthwise / Jatalia (in: ' + T.shopifyGroup + ')');
+  if (T.changelog !== 2) results.errors.push('tech: changelog should show 2 entries, got ' + T.changelog);
+  if (T.skeletons) results.errors.push('tech: loading skeletons left behind');
+  // Capture-only tweaks: hide the (closed) fixed-position chat panel, and lift
+  // the mobile overflow-x trap that makes <body> its own scroll container —
+  // fullPage stitching scrolls the window, so the body-scroller would paint
+  // everything below the first viewport blank.
+  await page.evaluate(() => {
+    document.getElementById('axChat').style.visibility = 'hidden';
+    document.documentElement.style.overflow = 'visible';
+    document.body.style.overflow = 'visible';
+  });
+  await page.screenshot({ path: `${SHOTS}/tech-tab-mobile.png`, fullPage: true });
+  await page.evaluate(() => {
+    document.getElementById('axChat').style.visibility = '';
+    document.documentElement.style.overflow = '';
+    document.body.style.overflow = '';
+  });
+
   // ---- Ask Ax chat (mobile): open, streamed reply against a mocked SSE
   //      response, tool chip, persistence, close ----
   await page.evaluate(() => go('home'));
@@ -323,6 +422,15 @@ const run = async () => {
   await d.page.waitForTimeout(500);
   const dm = await d.page.evaluate(() => ({ sw: document.documentElement.scrollWidth, iw: window.innerWidth }));
   if (dm.sw > dm.iw + 1) results.overflow.push(`desktop integrations: ${dm.sw}>${dm.iw}`);
+  await d.page.evaluate(() => go('tech'));
+  await d.page.waitForTimeout(600);
+  const dt = await d.page.evaluate(() => ({
+    sw: document.documentElement.scrollWidth, iw: window.innerWidth,
+    badges: document.querySelectorAll('#tek_stack .tek-badge').length,
+    changelog: document.querySelectorAll('#tek_changes .tek-tl-item').length,
+  }));
+  if (dt.sw > dt.iw + 1) results.overflow.push(`desktop tech: ${dt.sw}>${dt.iw}`);
+  if (dt.badges < 12 || dt.changelog !== 2) results.errors.push('tech desktop: render incomplete ' + JSON.stringify(dt));
   // Chat opens/closes as a side panel on desktop
   await d.page.evaluate(() => document.getElementById('axFab').click());
   await d.page.waitForTimeout(350);

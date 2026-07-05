@@ -760,6 +760,87 @@
     color:var(--text-mute);font-size:13px;background:var(--surface-inset);
   }
 
+  /* ---------- Tech Stack · Live (Tekky) ---------- */
+  .tek-headrow{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+  .tek-scanline{font-size:13px;color:var(--text-2)}
+  .tek-scanline b{color:var(--text)}
+  .tek-tally{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+  .tek-pill{
+    display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;
+    padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-2);
+  }
+  .tek-pill .tek-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0}
+  .tek-dot.up{background:#16a34a}
+  .tek-dot.deg{background:#d97706}
+  .tek-dot.down{background:#dc2626}
+  .tek-dot.unk{background:#8b8578}
+  .tek-dot.rem{background:#8b8578}
+  .tek-stale{
+    display:flex;gap:9px;align-items:flex-start;margin-top:10px;padding:10px 12px;border-radius:10px;
+    border:1px solid #efd9ad;background:var(--warn-soft);color:#8a5a06;font-size:12.5px;line-height:1.5;
+  }
+  .tek-badge{
+    display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.6px;padding:2.5px 7px;
+    border-radius:6px;flex-shrink:0;line-height:1.4;
+  }
+  .tek-badge.up{background:var(--success-soft);color:#0e7a38;border:1px solid #bfe6cd}
+  .tek-badge.deg{background:var(--warn-soft);color:#a36005;border:1px solid #efd9ad}
+  .tek-badge.down{background:var(--danger-soft);color:#b91c1c;border:1px solid #f3c6c6}
+  .tek-badge.unk{background:var(--surface-2);color:var(--text-mute);border:1px solid var(--border)}
+  .tek-badge.rem{background:var(--surface-2);color:var(--text-mute);border:1px solid var(--border);text-decoration:line-through}
+  .tek-group{border:1px solid var(--border);border-radius:12px;margin-bottom:9px;background:var(--surface);overflow:hidden}
+  .tek-group summary{
+    display:flex;align-items:center;gap:9px;padding:11px 14px;cursor:pointer;list-style:none;
+    font-weight:600;font-size:13px;color:var(--text);user-select:none;flex-wrap:wrap;
+  }
+  .tek-group summary::-webkit-details-marker{display:none}
+  .tek-group summary::before{content:'▸';color:var(--text-dim);font-size:11px;transition:transform var(--dur-fast) var(--ease)}
+  .tek-group[open] summary::before{transform:rotate(90deg)}
+  .tek-group summary .cnt{font-size:11px;font-weight:500;color:var(--text-mute)}
+  .tek-group summary .sub-id{font-size:10.5px;font-weight:400;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+  .tek-group-body{padding:2px 14px 12px;border-top:1px solid var(--border)}
+  .tek-comp{display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border)}
+  .tek-comp:last-child{border-bottom:0}
+  .tek-comp .tek-badge{margin-top:1px}
+  .tek-comp-body{flex:1;min-width:0}
+  .tek-comp-name{font-weight:600;font-size:12.5px;color:var(--text);overflow-wrap:anywhere}
+  .tek-comp-name a{color:var(--accent);text-decoration:none}
+  .tek-comp-name a:hover{text-decoration:underline}
+  .tek-comp-reason{font-size:11.5px;color:var(--text-mute);margin-top:1px;line-height:1.5;overflow-wrap:anywhere}
+  .tek-comp-note{font-size:10.5px;color:var(--text-dim);margin-top:2px;line-height:1.5;overflow-wrap:anywhere}
+  .tek-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+  .tek-chip{
+    display:inline-flex;align-items:center;gap:5px;font-size:10px;padding:2px 7px;border-radius:6px;
+    font-family:'JetBrains Mono',monospace;border:1px solid var(--border);background:var(--surface-2);color:var(--text-2);
+    overflow-wrap:anywhere;
+  }
+  .tek-chip.set{border-color:#bfe6cd;background:var(--success-soft);color:#0e7a38}
+  .tek-chip.missing{border-color:#f3c6c6;background:var(--danger-soft);color:#b91c1c}
+  .tek-chip.plain{font-weight:500}
+  .tek-kv{width:100%;font-size:12px;border-collapse:collapse}
+  .tek-kv td{padding:6px 10px 6px 0;border-bottom:1px solid var(--border);vertical-align:top;overflow-wrap:anywhere}
+  .tek-kv td:first-child{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-2);white-space:nowrap}
+  .tek-kv tr:last-child td{border-bottom:0}
+  .tek-tl{position:relative;padding-left:26px}
+  .tek-tl::before{content:'';position:absolute;left:9px;top:6px;bottom:6px;width:2px;background:var(--border)}
+  .tek-tl-item{position:relative;padding:7px 0}
+  .tek-tl-ico{
+    position:absolute;left:-26px;top:8px;width:20px;height:20px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;
+    background:var(--surface-2);border:1px solid var(--border);color:var(--text-2);
+  }
+  .tek-tl-ico.added{background:var(--success-soft);color:#0e7a38;border-color:#bfe6cd}
+  .tek-tl-ico.removed{background:var(--danger-soft);color:#b91c1c;border-color:#f3c6c6}
+  .tek-tl-ico.modified{background:var(--warn-soft);color:#a36005;border-color:#efd9ad}
+  .tek-tl-head{font-size:12.5px;color:var(--text);overflow-wrap:anywhere}
+  .tek-tl-detail{font-size:12px;color:var(--text-2);margin-top:2px;line-height:1.5;overflow-wrap:anywhere}
+  .tek-tl-meta{font-size:10.5px;color:var(--text-dim);margin-top:3px;overflow-wrap:anywhere}
+  .tek-fold{border:0;background:none;margin-top:4px}
+  .tek-fold>summary{
+    list-style:none;cursor:pointer;font-size:11.5px;color:var(--text-mute);padding:6px 0;user-select:none;font-weight:600;
+  }
+  .tek-fold>summary::-webkit-details-marker{display:none}
+
   /* ---------- Tech stack flow map ---------- */
   .flow-lane{margin-bottom:22px}
   .flow-lane-label{
@@ -1276,6 +1357,11 @@
         <div class="nav-item" data-tab="syshealth">
           <span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 12h4l2 5 3-10 2 5h5"/></svg></span>
           <span class="lbl">System Health</span>
+          <span class="nav-badge">Private</span>
+        </div>
+        <div class="nav-item" data-tab="tech">
+          <span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="8" rx="2"/><rect x="3" y="13" width="18" height="8" rx="2"/><circle cx="7.5" cy="7" r="1"/><circle cx="7.5" cy="17" r="1"/><path d="M12 7h5M12 17h5"/></svg></span>
+          <span class="lbl">Tech Stack · Live</span>
           <span class="nav-badge">Private</span>
         </div>
       </div>
@@ -1986,6 +2072,39 @@
       </div>
     </section>
 
+    <!-- ============ TECH STACK · LIVE (Tekky) — owner only ============ -->
+    <section class="panel" id="tech">
+      <div class="page-head">
+        <h1 class="page-title">Tech Stack <span class="tag" style="background:#fdf3e3;color:#8a5a06;vertical-align:middle;margin-left:8px">Owner only</span></h1>
+        <p class="page-sub">Tekky's live inventory of everything the businesses run on — health, env-key gates, and every change since the baseline. Refreshed on each Tekky run.</p>
+      </div>
+
+      <div class="card">
+        <div class="tek-headrow">
+          <div id="tek_head" class="loading" style="flex:1;min-width:0">Loading…</div>
+          <button class="btn ghost sm" onclick="techDiagnose()">Diagnose in chat →</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>🛠 Must-action — Tekky's briefing</h2>
+        <div class="sub">What needs a human. Urgent items always show; warnings and notes fold away below.</div>
+        <div id="tek_briefing" class="loading">Loading…</div>
+      </div>
+
+      <div class="card">
+        <h2>Stack map</h2>
+        <div class="sub">Every component Tekky tracks, grouped by domain. Env keys show <b>names + SET/MISSING only</b> — values never leave the environment.</div>
+        <div id="tek_stack" class="loading">Loading…</div>
+      </div>
+
+      <div class="card">
+        <h2>Changelog</h2>
+        <div class="sub">Append-only — nothing enters or leaves the stack without a line here.</div>
+        <div id="tek_changes" class="loading">Loading…</div>
+      </div>
+    </section>
+
     <!-- ============ REPORTS ============ -->
     <section class="panel" id="reports">
       <div class="page-head">
@@ -2429,6 +2548,7 @@ const TAB_TITLES = {
   clients:'Clients', tasks:'Tasks & Follow-ups',
   roles:'Roles', dailyops:'Daily Ops', playbook:'Playbook', jobflow:'Job Flow',
   territories:'Territories', showroom:'Showroom', reports:'Reports', adminconsole:'Admin Console', axyomfin:'Axyom Financials',
+  tech:'Tech Stack · Live',
   'earth-overview':'Earthwise · Overview','earth-products':'Earthwise · Products',
   'earth-orders':'Earthwise · Orders','earth-inventory':'Earthwise · Inventory',
   'earth-marketplaces':'Earthwise · Marketplace Ops','earth-vendors':'Earthwise · Vendors',
@@ -2445,6 +2565,9 @@ function go(tab){
   document.querySelector('.sidebar').classList.remove('open');
   syncTabbar();
   window.scrollTo({top:0,behavior:'instant'});
+  // On mobile, body{overflow-x:hidden} makes <body> its own scroll container —
+  // window.scrollTo can't reach it, so reset it (and <html>) directly.
+  document.body.scrollTop=0; document.documentElement.scrollTop=0;
   // Live-refresh Home cards when navigating back to home
   if(tab==='home'){ renderRecent(); renderHealth(); renderFavPanel(); renderDash(); }
   if(tab==='directory'){ renderDirectory(); }
@@ -2456,6 +2579,7 @@ function go(tab){
   if(tab==='tasks'){ renderTasks(); }
   if(tab==='ordering'){ renderBtuOrdering(); }
   if(tab==='mktplan'){ renderMktPlan(); }
+  if(tab==='tech'){ renderTech(); }
 }
 document.addEventListener('DOMContentLoaded',()=>{
   document.querySelectorAll('.nav-item[data-tab]').forEach(el=>{
@@ -3590,6 +3714,178 @@ async function renderMoola(){
         <div class="ge-meta">${esc(f.source||'')}${f.scan_date?' · '+esc(f.scan_date):''}</div>
       </div>
     </div>`}).join('');
+}
+
+/* ================================================================
+   Tech Stack · Live — Tekky's stack map, health board, and changelog.
+   Owner-only. Reads tekky_stack / tekky_status / tekky_briefing /
+   tekky_changes from intranet_records; renders names + SET/MISSING for
+   env keys — values never exist in the data by design.
+   ================================================================ */
+const TEK_RANK={DOWN:0,DEGRADED:1,UNKNOWN:2,REMOVED:3,UP:4};
+const TEK_CLS={UP:'up',DEGRADED:'deg',DOWN:'down',UNKNOWN:'unk',REMOVED:'rem'};
+function tekStatus(s){ const k=String(s||'').toUpperCase(); return TEK_CLS[k]?k:'UNKNOWN'; }
+function tekBadge(s){ const k=tekStatus(s); return `<span class="tek-badge ${TEK_CLS[k]}">${k}</span>`; }
+function tekDot(s){ return `<span class="tek-dot ${TEK_CLS[tekStatus(s)]}"></span>`; }
+function tekWorst(list){ let w='UP'; (list||[]).forEach(s=>{ const k=tekStatus(s); if(TEK_RANK[k]<TEK_RANK[w]) w=k; }); return w; }
+function tekLatest(rows){
+  const dates=[...new Set(rows.map(r=>r.fields.scan_date).filter(Boolean))].sort().reverse();
+  return dates[0] ? rows.filter(r=>r.fields.scan_date===dates[0]) : rows;
+}
+function tekWhen(iso){
+  if(!iso) return '—';
+  const d=new Date(iso); if(isNaN(d)) return esc(iso);
+  const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  let h=d.getUTCHours(); const ap=h>=12?'PM':'AM'; h=h%12||12;
+  return `${M[d.getUTCMonth()]} ${d.getUTCDate()}, ${h}:${String(d.getUTCMinutes()).padStart(2,'0')} ${ap} UTC`;
+}
+function tekEnvChips(auth){
+  const vars=auth&&Array.isArray(auth.env_vars)?auth.env_vars:[];
+  if(!vars.length) return '';
+  return `<div class="tek-chips">${vars.map(v=>{
+    const set=String(v.state||'').toUpperCase()==='SET';
+    return `<span class="tek-chip ${set?'set':'missing'}">${esc(v.name)} · ${set?'SET':'MISSING'}</span>`;
+  }).join('')}</div>`;
+}
+function tekLinkName(name){
+  const m=String(name||'').match(/([a-z0-9][a-z0-9.-]*\.[a-z]{2,}[^\s)]*)/i);
+  if(!m) return esc(name);
+  return esc(name).replace(esc(m[1]),`<a href="https://${esc(m[1])}" target="_blank" rel="noopener">${esc(m[1])}</a>`);
+}
+function tekComp(c,opts={}){
+  const name=opts.link?tekLinkName(c.name):esc(c.name||'—');
+  const secondary=opts.secondary?`<div class="tek-comp-reason">${esc(opts.secondary)}</div>`:'';
+  const reason=c.reason?`<div class="tek-comp-reason">${esc(c.reason)}</div>`:'';
+  const notes=c.notes?`<div class="tek-comp-note">${esc(c.notes)}</div>`:'';
+  const outputs=Array.isArray(c.outputs)&&c.outputs.length
+    ?`<div class="tek-chips">${c.outputs.map(o=>`<span class="tek-chip plain">${esc(o)}</span>`).join('')}</div>`:'';
+  return `<div class="tek-comp">${tekBadge(c.status)}<div class="tek-comp-body">
+    <div class="tek-comp-name">${name}${c.kind?` <span class="sub-id">${esc(c.kind)}</span>`:''}</div>
+    ${secondary}${reason}${notes}${tekEnvChips(c.auth)}${outputs}
+  </div></div>`;
+}
+function tekGroup(title,statuses,bodyHtml,extraHead){
+  if(!bodyHtml) return '';
+  const n=statuses.length;
+  return `<details class="tek-group" open><summary>${tekDot(tekWorst(statuses))}${esc(title)}
+    <span class="cnt">${n||''}</span>${extraHead||''}</summary>
+    <div class="tek-group-body">${bodyHtml}</div></details>`;
+}
+let TEK_SHOW_ALL=false;
+async function renderTech(){
+  const roots=['tek_head','tek_briefing','tek_stack','tek_changes']
+    .map(id=>document.getElementById(id)).filter(Boolean);
+  if(!roots.length) return;
+  const put=(id,html)=>{ const el=document.getElementById(id); if(el){ el.classList.remove('loading'); el.innerHTML=html; } };
+  if(CURRENT_ROLE!=='admin'){ roots.forEach(el=>{ el.classList.remove('loading'); el.innerHTML='<div class="ge-clear">Owner only.</div>'; }); return; }
+  const [stackRows,statusRows,briefRows,changeRows]=await Promise.all([
+    fetchRecords('tekky_stack'),fetchRecords('tekky_status'),
+    fetchRecords('tekky_briefing'),fetchRecords('tekky_changes')]);
+  const NOT_RUN='<div class="ge-clear">🔌 Tekky hasn\'t run yet — the stack map, health board, and changelog land with his first scan.</div>';
+
+  /* ---- 1 · Header strip: last scan + health tally + stale banner ---- */
+  const stack=tekLatest(stackRows)[0]||null;
+  const stat=tekLatest(statusRows).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  if(!stack&&!stat.length){ put('tek_head',NOT_RUN); }
+  else{
+    const gen=stack&&stack.fields.generated_at;
+    const tally={UP:0,DEGRADED:0,DOWN:0,UNKNOWN:0};
+    stat.forEach(r=>{ const k=tekStatus(r.fields.status); tally[k==='REMOVED'?'UNKNOWN':k]++; });
+    const ageMs=Date.now()-Date.parse(gen||((stack||stat[0]||{fields:{}}).fields.scan_date||''));
+    const stale=isFinite(ageMs)&&ageMs>48*3600*1000;
+    put('tek_head',`
+      <div class="tek-scanline">Tekky scanned <b>${tekWhen(gen||(stat[0]&&stat[0].fields.checked_at))}</b>${stack&&stack.fields.run?` · ${esc(stack.fields.run)}`:''}</div>
+      <div class="tek-tally">
+        <span class="tek-pill"><span class="tek-dot up"></span>${tally.UP} up</span>
+        <span class="tek-pill"><span class="tek-dot deg"></span>${tally.DEGRADED} degraded</span>
+        <span class="tek-pill"><span class="tek-dot down"></span>${tally.DOWN} down</span>
+        <span class="tek-pill"><span class="tek-dot unk"></span>${tally.UNKNOWN} unknown</span>
+      </div>
+      ${stale?`<div class="tek-stale">⏰ Tekky hasn't run since ${tekWhen(gen)} — this snapshot is more than 48 hours old. Check his scheduled session.</div>`:''}`);
+  }
+
+  /* ---- 2 · Must-action callouts (urgent always visible, warn/info fold) ---- */
+  const briefs=tekLatest(briefRows).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  if(!briefs.length){ put('tek_briefing',NOT_RUN); }
+  else{
+    const ICO={urgent:'🚨',warn:'⚠️',info:'💡'};
+    const row=r=>{const f=r.fields;return `
+      <div class="ge-row ${['urgent','warn'].includes(f.severity)?esc(f.severity):'info'}">
+        <div class="ge-ico">${ICO[f.severity]||'💡'}</div>
+        <div class="ge-body">
+          <div class="ge-title">${esc(f.title)}</div>
+          <div class="ge-detail">${esc(f.detail||'')}</div>
+          <div class="ge-meta">${esc(f.source||'')}${f.scan_date?' · '+esc(f.scan_date):''}</div>
+        </div>
+      </div>`;};
+    const urgent=briefs.filter(r=>r.fields.severity==='urgent');
+    const rest=briefs.filter(r=>r.fields.severity!=='urgent');
+    put('tek_briefing', urgent.map(row).join('')
+      +(rest.length?`<details class="tek-fold" open><summary>${rest.length} warning${rest.length===1?'':'s'} &amp; notes ▾</summary>${rest.map(row).join('')}</details>`:''));
+  }
+
+  /* ---- 3 · Stack map, grouped by domain ---- */
+  if(!stack){ put('tek_stack',NOT_RUN); }
+  else{
+    const D=stack.fields.domains||{};
+    // Presentation-only grouping: Shopify belongs to Earthwise/Jatalia,
+    // wherever Tekky's data files it. (Data in Supabase is untouched.)
+    const isEarth=c=>/shopify/i.test(c.name||'');
+    const earthItems=[];
+    const takeEarth=list=>(Array.isArray(list)?list:[]).filter(c=>{ if(isEarth(c)){ earthItems.push(c); return false; } return true; });
+    const mcp=takeEarth(D.mcp_stdio), conn=takeEarth(D.connectors), saas=takeEarth(D.saas);
+    const agents=Array.isArray(D.agents)?D.agents:[], intra=Array.isArray(D.intranet)?D.intranet:[];
+    const cf=D.cloudflare||{}, sup=D.supabase||{}, repo=D.repo||{};
+    const workers=Array.isArray(cf.workers)?cf.workers:[], zones=Array.isArray(cf.zones)?cf.zones:[];
+    const tables=Array.isArray(sup.tables)?sup.tables:[];
+    const listBody=(items,opts)=>items.map(c=>tekComp(c,typeof opts==='function'?opts(c):(opts||{}))).join('');
+    let html='';
+    html+=tekGroup('MCP servers (direct)',mcp.map(c=>c.status),listBody(mcp));
+    html+=tekGroup('Connectors (claude.ai)',conn.map(c=>c.status),listBody(conn));
+    if(earthItems.length)
+      html+=tekGroup('Earthwise / Jatalia',earthItems.map(c=>c.status),listBody(earthItems,c=>({secondary:c.access})));
+    html+=tekGroup('Cloudflare',workers.map(c=>c.status),
+      listBody(workers)
+      +(zones.length?`<div class="tek-chips" style="margin-top:9px">${zones.map(z=>`<span class="tek-chip plain">${esc(z)}</span>`).join('')}</div>`:''),
+      cf.account?`<span class="sub-id">${esc(cf.account.name||'')} · ${esc(cf.account.id||'')}</span>`:'');
+    html+=tekGroup('Supabase',[sup.status||'UNKNOWN'],
+      (sup.reason?`<div class="tek-comp-reason" style="padding:8px 0 2px">${esc(sup.reason)}</div>`:'')
+      +(tables.length?`<table class="tek-kv">${tables.map(t=>
+        `<tr><td>${esc(t.name)}</td><td>${Number(t.rows)||0} rows</td><td>${t.rls?'✓ RLS':'⚠ no RLS'}</td></tr>`).join('')}</table>`:'')
+      +(sup.intranet_records_sections?`<div class="tek-comp-note" style="margin-top:6px">${esc(sup.intranet_records_sections)} intranet_records sections</div>`:'')
+      +(sup.notes?`<div class="tek-comp-note">${esc(sup.notes)}</div>`:''),
+      sup.project?`<span class="sub-id">${esc(sup.project)}</span>`:'');
+    html+=tekGroup('Intranet & dashboards',intra.map(c=>c.status),listBody(intra,{link:true}));
+    html+=tekGroup('Agent roster',agents.map(c=>c.status),listBody(agents,c=>({secondary:c.purpose})));
+    html+=tekGroup('External SaaS',saas.map(c=>c.status),listBody(saas,c=>({secondary:c.access})));
+    if(repo.path||repo.dirs)
+      html+=tekGroup('Repository',[],
+        `<table class="tek-kv">${repo.path?`<tr><td>path</td><td colspan="2">${esc(repo.path)}</td></tr>`:''}${
+          Object.entries(repo.dirs||{}).map(([k,v])=>`<tr><td>${esc(k)}</td><td colspan="2">${esc(v)}</td></tr>`).join('')}</table>`);
+    put('tek_stack',html||NOT_RUN);
+  }
+
+  /* ---- 4 · Changelog timeline (append-only, newest first) ---- */
+  const changes=changeRows.slice().sort((a,b)=>String(b.fields.ts||'').localeCompare(String(a.fields.ts||'')));
+  if(!changes.length){ put('tek_changes',NOT_RUN); }
+  else{
+    const KICO={added:'＋',removed:'−',modified:'Δ'};
+    const shown=TEK_SHOW_ALL?changes:changes.slice(0,30);
+    put('tek_changes',`<div class="tek-tl">${shown.map(r=>{const f=r.fields;return `
+      <div class="tek-tl-item">
+        <div class="tek-tl-ico ${esc(f.kind||'modified')}">${KICO[f.kind]||'Δ'}</div>
+        <div class="tek-tl-head"><b>${esc(f.component||'—')}</b>${f.domain?` <span class="sub-id">${esc(f.domain)}</span>`:''}</div>
+        <div class="tek-tl-detail">${esc(f.detail||'')}</div>
+        <div class="tek-tl-meta">${esc(f.evidence||'')}${f.evidence?' · ':''}${tekWhen(f.ts)}</div>
+      </div>`;}).join('')}</div>`
+      +(changes.length>30&&!TEK_SHOW_ALL
+        ?`<button class="btn ghost sm" style="margin-top:10px" onclick="TEK_SHOW_ALL=true;renderTech()">Show all ${changes.length} changes</button>`:''));
+  }
+}
+function techDiagnose(){
+  openChat();
+  const t=document.getElementById('axChatText');
+  if(t&&!t.value) t.value="Tekky flagged issues on the Tech Stack tab — walk me through the current stack health and what to fix first.";
 }
 
 function renderAll(){
