@@ -104,9 +104,13 @@ retargeting. Each: the evidence, a starter budget, and the measurement plan.
 
 ### 6. Publish — intranet Earthwise tabs + brief
 Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`, via the
-Supabase MCP (`execute_sql`, service role — the anon REST endpoint 401s). All rows
-carry `scan_date` = today; **write-then-prune** (insert today's rows first, then
-delete rows in that section where `fields->>'scan_date' <> today` — stale beats blank):
+Supabase MCP (`execute_sql`, service role — the anon REST endpoint 401s). **The
+Supabase MCP write path may be ABSENT in a scheduled (non-interactive) session (it
+silently dropped around 2026-07-03 and froze these cards); the Resilient publish
+contract below is MANDATORY — never end a run without either a successful write or a
+fail-loud alert.** All rows carry `scan_date` = today; **write-then-prune** (insert
+today's rows first, then delete rows in that section where
+`fields->>'scan_date' <> today` — stale beats blank):
 - `harvest_briefing` — max ~8 rows `{severity: urgent|warn|info, title, detail
   (finding → evidence → exact move → $ impact), source, scan_date}`. Never empty; if
   all clear, one info row saying so plus one info row per blind source. → Earthwise
@@ -115,6 +119,29 @@ delete rows in that section where `fields->>'scan_date' <> today` — stale beat
   acos, tacos, roas, verdict, scan_date}`. → Marketplace Ops tab.
 - `harvest_listings` — one row per hero SKU with an issue: `{sku, asin, buybox_pct,
   issue, price_note, action, scan_date}`. → Products & Listings tab.
+#### Resilient publish (mandatory — three-tier, fail-loud)
+The Supabase MCP tool may be missing from a scheduled session. Never build the brief
+and then exit silently because the write failed — that froze these cards for 48h+ on
+2026-07-03. Resolve every publish through this ladder (apply per section):
+1. **PRIMARY** — publish via `mcp__Supabase__execute_sql` (service-role MCP) exactly
+   as above: `INSERT` today's rows, then prune older `scan_date` rows for that section.
+   **Never prune if the INSERT failed.**
+2. **FALLBACK (Supabase MCP tool NOT available this session)** — write via Supabase
+   REST using the service-role key in env var `SUPABASE_SERVICE_ROLE_KEY` (service-role
+   bypasses RLS, so it works headless).
+   `POST https://tguwpswcneywvscxzyef.supabase.co/rest/v1/intranet_records` with headers
+   `apikey: $SUPABASE_SERVICE_ROLE_KEY`, `Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY`,
+   `Content-Type: application/json`, `Prefer: return=representation`. Do the same
+   insert-then-prune (prune via `DELETE` filtered on the section + old `scan_date`);
+   **never prune unless the insert returned the inserted row.** If
+   `SUPABASE_SERVICE_ROLE_KEY` is unset, go to step 3.
+3. **FAIL-LOUD (neither write path works)** — do NOT exit silently. Post an alert to
+   Slack (`mcp__Slack__*`, channel `#intranet-alerts` or DM Steven) AND, if reachable,
+   send an email — e.g. "⚠️ Harvest could not publish its Earthwise cards for <date>:
+   no Supabase write path available in this scheduled session (MCP absent,
+   SUPABASE_SERVICE_ROLE_KEY unset). Cards are stale. Data gathered: <1-line summary>."
+   This turns a silent multi-day freeze into an immediate ping.
+
 Then a one-screen brief in chat:
 ```
 HARVEST DAILY — <date>

@@ -140,6 +140,12 @@ records what IS.
 
 ## Output — publish to the intranet (crash-safe write)
 
+> **Publish-path note:** the Supabase MCP write path may be ABSENT in a scheduled
+> (non-interactive) session (it silently dropped around 2026-07-03 and froze the
+> publishing agents' cards — the incident you exist to catch). The **Resilient
+> publish** contract below is MANDATORY — never end a run without either a successful
+> write, the documented file fallback, or a fail-loud alert.
+
 Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`
 (columns: `section` text, `brand` text, `sort_order` int, `fields` jsonb). **RLS is
 enforced — write via the Supabase MCP (`mcp__Supabase__execute_sql`, service role),
@@ -173,9 +179,35 @@ today's rows; (3) ONLY AFTER the insert succeeds, for `tekky_stack`,
 `tekky_status`, `tekky_briefing` only:
 `DELETE FROM intranet_records WHERE section='<s>' AND fields->>'scan_date' <> '<today>';`
 If the insert failed, do NOT delete — yesterday's map stays up (stale beats blank).
-If the Supabase write path fails entirely (RLS/permissions/outage), save the full
-payloads to `docs/tekky-initial-inventory.json` (or a dated
-`docs/tekky-inventory-YYYY-MM-DD.json`) so nothing is lost, and say so plainly.
+
+### Resilient publish (mandatory — three-tier, fail-loud)
+The Supabase MCP tool may be missing from a scheduled session — the exact failure that
+silently froze the publishing agents on 2026-07-03. Never assemble the full inventory
+and then exit silently because the write failed. Resolve every publish through this
+ladder (apply per section; `tekky_changes` stays append-only — never prune it in any
+tier):
+1. **PRIMARY** — publish via `mcp__Supabase__execute_sql` (service-role MCP) exactly
+   as above: `INSERT` today's rows, then prune older `scan_date` rows for
+   `tekky_stack` / `tekky_status` / `tekky_briefing` only. **Never prune if the INSERT
+   failed.**
+2. **FALLBACK (Supabase MCP tool NOT available this session)** — write via Supabase
+   REST using the service-role key in env var `SUPABASE_SERVICE_ROLE_KEY` (service-role
+   bypasses RLS, so it works headless).
+   `POST https://tguwpswcneywvscxzyef.supabase.co/rest/v1/intranet_records` with headers
+   `apikey: $SUPABASE_SERVICE_ROLE_KEY`, `Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY`,
+   `Content-Type: application/json`, `Prefer: return=representation`. Do the same
+   insert-then-prune (prune via `DELETE` filtered on the section + old `scan_date`, the
+   three replace-on-run sections only); **never prune unless the insert returned the
+   inserted row.** Follow the NAMES-never-values iron rule — never let the key value
+   land in any output. If `SUPABASE_SERVICE_ROLE_KEY` is unset, go to step 3.
+3. **FAIL-LOUD (neither write path works)** — do NOT exit silently. Save the full
+   payloads to `docs/tekky-initial-inventory.json` (or a dated
+   `docs/tekky-inventory-YYYY-MM-DD.json`) so nothing is lost, AND post an alert to
+   Slack (`mcp__Slack__*`, channel `#intranet-alerts` or DM Steven) plus, if reachable,
+   an email — e.g. "⚠️ Tekky could not publish its stack map for <date>: no Supabase
+   write path available in this scheduled session (MCP absent, SUPABASE_SERVICE_ROLE_KEY
+   unset). Cards are stale; payload saved to docs/. Data gathered: <1-line summary>."
+   This turns a silent multi-day freeze into an immediate ping.
 
 ## When to use / cadence
 Designed for a **daily scheduled run** — a scheduled session in claude.ai/code

@@ -158,3 +158,23 @@ Specs live in `.claude/agents/`. Daily agents publish to the intranet via Supaba
 | cellar | Earthwise supply & fulfillment — orders, FBA/inventory health, reorders, buyer SLAs |
 | tekky | IT department — stack inventory, change log, health board, briefing (Tech Stack tab) |
 | report-audit-agent | On-demand auditor of every report/dashboard — lineage, freshness, breakage list |
+
+## Operational Notes
+
+### Known incident (2026-07-03) — scheduled-agent silent freeze
+Around **2026-07-03** the scheduled-agent environment lost its account connectors
+and most secret env vars (only `GHL_PIT_KTU` / `GHL_PIT_BTU` survived). With the
+Supabase MCP connector gone, every daily publishing agent (moola, goldeneye, foreman,
+paid, harvest, cellar, tekky) gathered its data, reached the `intranet_records` write
+step, found `mcp__Supabase__execute_sql` unavailable, and — per each spec's
+"don't prune if the insert failed" rule — left the prior card frozen. No alert fired,
+so the intranet rotted silently for 48h+.
+- **Fix shipped in the specs:** each publishing agent now follows a mandatory
+  three-tier **Resilient publish** contract — PRIMARY (Supabase MCP) →
+  FALLBACK (Supabase REST with `SUPABASE_SERVICE_ROLE_KEY`, which bypasses RLS
+  headless) → FAIL-LOUD (Slack `#intranet-alerts`/DM + email instead of exiting
+  silently).
+- **Remediation Steven must do in the Cloud env config:** restore the account
+  connectors and the stripped secret env vars in the scheduled environment, and set
+  **`SUPABASE_SERVICE_ROLE_KEY`** (see `mcp-servers/.env.example`) so the REST
+  fallback works headless.
