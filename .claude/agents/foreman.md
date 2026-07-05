@@ -97,6 +97,19 @@ For each active job compute, from **contract-signature date**:
 - Flag: 🔴 behind track target or >5 biz days over a milestone · 🟡 trending late
   (milestone at 80% consumed, phase not advanced) · 🟢 on/ahead.
 
+**Lifecycle `stage` vocabulary** — use exactly these values (in this order) for the
+`stage` field on `client_status`/`foreman_board`, so the intranet can render a clean
+sale-to-final-payment progress indicator. Never invent a different label:
+`Sold` → `Design/Selections` → `Production Gate` → `Vendor Ordering` →
+`In Production` → `Punch/Substantial Completion` → `Final Payment Pending` →
+`Closed — Paid`. Derive it from the strongest available evidence: ServiceMinder
+invoice/payment status for the payment-side stages (`Final Payment Pending` =
+substantially complete per photos/notes but `outstanding > 0`; `Closed — Paid` =
+`outstanding == 0`), CompanyCam phase inference (above) for the production-side
+stages, and JobTread task/gate state for the earliest two. If evidence conflicts,
+pick the LATEST stage with clear support and flag the ambiguity rather than
+guessing.
+
 ### 3. Cost analysis — TWO costings, side by side (the money lens)
 Per active job, compute **two independent costings** and report both — never
 collapse them into one number:
@@ -121,6 +134,14 @@ collapse them into one number:
   Report both, plus the delta between them — a job where estimated GP% looked
   healthy but actual GP% is drifting down is the real margin-erosion signal, not
   either number alone.
+- **Cost-data coverage %** = (contract-dollar-value of lines with a real, non-zero
+  cost) / (total contract price), computed separately for the estimated and actual
+  costings. Report this ALONGSIDE every GP% — a high GP% backed by 30% coverage is
+  not a healthy margin, it's missing data, and must read differently in the standup
+  than a high GP% backed by 90%+ coverage. Validated finding (2026-07-05): real
+  ServiceMinder jobs regularly have half or more of their contract value sitting on
+  `UnitCost=0/null` lines despite a real sale price — this is common, not rare, so
+  never present actual_gp_pct without its coverage % next to it.
 - **Scope-of-work summary** — one plain-English line per job (2-3 line items max,
   e.g. "Full bath remodel: vanity, tile shower, toilet") built from the JobTread
   cost-item names or ServiceMinder proposal-line descriptions, whichever is richer.
@@ -179,26 +200,30 @@ Supabase MCP (`execute_sql`, service role — the anon REST endpoint 401s). Sect
 and only after success delete rows where `fields->>'scan_date' <> today` in that
 section — stale beats blank):
 - `foreman_briefing` — max ~8 rows: `{severity: urgent|warn|info, title, detail
-  (who/what/$ impact/what to do), source, scan_date}`. Never empty — if all clear,
-  one info row saying so, plus one info row per blind data source.
+  (who/what/$ impact/what to do), source, project (client/project name if this row
+  is about a specific job, else null — lets the intranet badge the matching
+  project row), scan_date}`. Never empty — if all clear, one info row saying so,
+  plus one info row per blind data source.
 - `foreman_board` — one row per active job: `{project, brand, phase, days_in_phase,
-  target, variance, scope_summary, contract_total, estimated_cost, actual_cost,
-  estimated_gp_pct, actual_gp_pct, price_grade (over_market|at_market|
-  under_market|no_catalog — BTU only, per §3), status (🟢/🟡/🔴), action,
-  scan_date}`, sorted most-behind first (sort_order). Leave `estimated_cost`/
-  `actual_cost` null (not 0) with a note in `action` when a job has no populated
-  cost items to pull from — see §3's unpriced-line discipline.
+  target, variance, stage (the §2 lifecycle vocabulary), scope_summary,
+  contract_total, estimated_cost, actual_cost, estimated_cost_coverage_pct,
+  actual_cost_coverage_pct, estimated_gp_pct, actual_gp_pct, price_grade
+  (over_market|at_market|under_market|no_catalog — BTU only, per §3), status
+  (🟢/🟡/🔴), action, scan_date}`, sorted most-behind first (sort_order). Leave
+  `estimated_cost`/`actual_cost` null (not 0) with a note in `action` when a job
+  has no populated cost items to pull from — see §3's unpriced-line discipline.
 - `foreman_vendor` — one row per open order: `{project, vendor, item, status, eta,
   last_update, flag, scan_date}`.
 - `foreman_gates` — one row per job with gate exposure: `{project, gate_status,
   missing, owner, age, scan_date}`.
 - `client_status` — the intranet Clients board; one row per active/recent client
-  (KTU + BTU, YTD): `{client, brand, stage, contract_total, paid, outstanding,
-  last_payment, service, scope_summary, estimated_cost, actual_cost,
-  estimated_gp_pct, actual_gp_pct, jobtread_number, jobtread_job_id, sm_contact_id,
-  flags, scan_date}`, sorted by outstanding desc. Join ServiceMinder invoices/payments
-  (money truth) to JobTread jobs; flag sold clients with no JT job, overdue 40%/10%
-  tranches, and SM↔JT total mismatches.
+  (KTU + BTU, YTD): `{client, brand, stage (the §2 lifecycle vocabulary),
+  contract_total, paid, outstanding, last_payment, service, scope_summary,
+  estimated_cost, actual_cost, estimated_cost_coverage_pct,
+  actual_cost_coverage_pct, estimated_gp_pct, actual_gp_pct, jobtread_number,
+  jobtread_job_id, sm_contact_id, flags, scan_date}`, sorted by outstanding desc.
+  Join ServiceMinder invoices/payments (money truth) to JobTread jobs; flag sold
+  clients with no JT job, overdue 40%/10% tranches, and SM↔JT total mismatches.
 - `btu_ordering` — the assistant PM's ordering board; refresh whenever a BTU
   JobTread job is sold (closedOn set): match it to the accepted ServiceMinder
   proposal (compare totals → `invoice_match`), extract ORDERABLE MATERIAL lines only
