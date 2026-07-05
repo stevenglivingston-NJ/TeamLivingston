@@ -124,6 +124,7 @@ no bootstrap.
 
 | Group | Purpose | URL |
 |-------|---------|-----|
+| Shared | Axyom Intranet — agent briefings; Finance tab = Moola (owner-only). Source of truth `intranet/ktubtuintranet.html`, deploy per `intranet/DEPLOY.md` | https://dash.goaxyom.com |
 | Jatalia | Ops dashboard | https://jataliamarketplace.com |
 
 ## Cloudflare Workers
