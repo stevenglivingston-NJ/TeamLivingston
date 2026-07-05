@@ -106,6 +106,18 @@ if require CLARITY_BTU_TOKEN; then
   reg clarity-btu-export "{\"command\":\"npx\",\"args\":[\"-y\",\"@microsoft/clarity-mcp-server\"],\"env\":{\"CLARITY_API_TOKEN\":\"$CLARITY_BTU_TOKEN\"}}"
 else skipped+=("clarity-btu-export (CLARITY_BTU_TOKEN)"); fi
 
+# ---- 6. Render-hosted Clarity Data-Export (HTTP transport, static bearer) --
+# The ktubtu-mcp-clarity Render service wraps Clarity's Data-Export API for BOTH
+# projects (KTU + BTU) with the landing-page-experience / traffic-by-channel
+# tools the paid agent uses. claude.ai connectors CANNOT register it (they force
+# an OAuth sign-in; the service uses a static bearer token), so Cloud sessions
+# reach it directly here — same static-header pattern as the ghl-* servers.
+# Token = the service's auto-generated MCP_AUTH_TOKEN (Render → ktubtu-mcp-clarity
+# → Environment). Free instance cold-starts ~50s after idle; agents budget calls.
+if require CLARITY_MCP_AUTH_TOKEN; then
+  reg clarity "{\"type\":\"http\",\"url\":\"https://ktubtu-mcp-clarity.onrender.com/mcp\",\"headers\":{\"Authorization\":\"Bearer $CLARITY_MCP_AUTH_TOKEN\"}}"
+else skipped+=("clarity (CLARITY_MCP_AUTH_TOKEN)"); fi
+
 # ---- summary --------------------------------------------------------------
 echo ""
 echo "▸ Registered (${#ok[@]}): ${ok[*]:-none}"
