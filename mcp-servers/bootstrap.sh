@@ -118,6 +118,19 @@ if require CLARITY_MCP_AUTH_TOKEN; then
   reg clarity "{\"type\":\"http\",\"url\":\"https://ktubtu-mcp-clarity.onrender.com/mcp\",\"headers\":{\"Authorization\":\"Bearer $CLARITY_MCP_AUTH_TOKEN\"}}"
 else skipped+=("clarity (CLARITY_MCP_AUTH_TOKEN)"); fi
 
+# ---- 6b. Render-hosted Google Ads + LSA (HTTP transport, static bearer) ----
+# The ktubtu-mcp-google-ads Render service wraps the Google Ads API — search
+# campaigns / keywords / geo AND Local Services Ads (LSA) — for KTU (2579406186)
+# and BTU (4477036900). The Google OAuth creds live in Render's env, so Cloud
+# sessions (the paid agent) reach it here with just the service's static bearer,
+# no Google creds in Cloud env. claude.ai connectors can't register it (OAuth-
+# only), same as clarity/ghl. Registers under the name `google-ads`; if the stdio
+# google-ads block above is ALSO configured (GOOGLE_ADS_* set) this HTTP one runs
+# later and wins. Token = the service's MCP_AUTH_TOKEN (Render → service → Env).
+if require GOOGLEADS_MCP_AUTH_TOKEN; then
+  reg google-ads "{\"type\":\"http\",\"url\":\"https://ktubtu-mcp-google-ads.onrender.com/mcp\",\"headers\":{\"Authorization\":\"Bearer $GOOGLEADS_MCP_AUTH_TOKEN\"}}"
+else skipped+=("google-ads HTTP (GOOGLEADS_MCP_AUTH_TOKEN)"); fi
+
 # ---- summary --------------------------------------------------------------
 echo ""
 echo "▸ Registered (${#ok[@]}): ${ok[*]:-none}"
