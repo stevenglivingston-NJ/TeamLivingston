@@ -1,0 +1,22 @@
+# Ask Axyom — chat backend Worker
+#
+# Secrets (set with `wrangler secret put <NAME>` — NEVER commit values):
+#   ANTHROPIC_API_KEY   — Claude API key (provided by Steven)
+#   GHL_PIT_KTU         — HighLevel Private Integration Token, KTU (location nHLCxHPidnhV1NFzRtZZ)
+#   GHL_PIT_BTU         — HighLevel Private Integration Token, BTU (location 0uWA8M5BzHrrcJftuaDe)
+#   SM_KEY_KTU          — ServiceMinder API key, KTU (FUTURE — tool degrades gracefully until set)
+#   SM_KEY_BTU          — ServiceMinder API key, BTU (FUTURE — tool degrades gracefully until set)
+#
+# For local dev, put dummy values in .dev.vars (gitignored).
+
+name = "axyom-chat"
+main = "worker.js"
+compatibility_date = "2026-07-04"
+account_id = "2cdff9b17750f72247f2704875696ed5"
+
+# Route only /api/chat* on the intranet host. The static intranet itself is
+# served by the assets-only `ktubtuintranet` Worker on its custom domain;
+# a route takes precedence over the custom domain for matching paths.
+routes = [
+  { pattern = "dash.goaxyom.com/api/chat*", zone_name = "goaxyom.com" }
+]
