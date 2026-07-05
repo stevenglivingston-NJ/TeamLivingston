@@ -35,6 +35,10 @@ For each row, route by `kind`:
 - `task_assigned` → Slack DM the assignee (resolve `recipient_email` →
   `slack_find_user_by_email`; if no match, post to #intranet-alerts tagging the name) +
   email the assignee (subject/body as-is). Include due date and who assigned it.
+- `task_reminder` → same delivery as `task_assigned` (Slack DM + email to the assignee,
+  #intranet-alerts fallback if no Slack match) — this is a manual re-ping a teammate sent
+  from the intranet Tasks tab on an already-open task, so always send it even if you sent
+  the original `task_assigned` ping recently; never suppress it as a duplicate.
 - `task_done` → post to #intranet-alerts.
 - `action_tagged` → covered by step 2's outbound sync — post the summary to
   #intranet-alerts (skip if step 2 already posted for the same source id).
