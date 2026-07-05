@@ -17,8 +17,8 @@ This environment manages operations for two business groups:
 | closebot | stdio (Python) | Bots, messages, actions, bookings, billing | API key (X-CB-KEY header) |
 | companycam | stdio (Python) | Projects, photos, documents, notes, labels, users | Bearer token |
 | serviceminder | stdio (Python) | Contacts, appointments, invoices, payments, proposals, downloads | Per-location API keys (KTU + BTU) |
-| clarity-ktu | connector (npm) | Dashboard analytics, session recordings | Microsoft Clarity |
-| clarity-btu | connector (npm) | Dashboard analytics, session recordings | Microsoft Clarity |
+| clarity | HTTP MCP (bootstrap) | Clarity Data-Export: landing-page experience, traffic-by-channel (KTU+BTU) | Static bearer (`CLARITY_MCP_AUTH_TOKEN`) — Render-hosted `ktubtu-mcp-clarity` |
+| clarity-ktu-export / clarity-btu-export | stdio (npm, optional) | Microsoft Clarity npm server — alternative to the Render `clarity` above | `CLARITY_KTU_TOKEN` / `CLARITY_BTU_TOKEN` |
 | ghl-ktu | HTTP MCP (bootstrap) | HighLevel CRM for KTU (location nHLCxHPidnhV1NFzRtZZ) | PIT (`GHL_PIT_KTU` env var) |
 | ghl-btu | HTTP MCP (bootstrap) | HighLevel CRM for BTU (location 0uWA8M5BzHrrcJftuaDe) | PIT (`GHL_PIT_BTU` env var) |
 | jobtread | connector | Project management, estimates, invoices | Bearer token |
@@ -57,35 +57,32 @@ This environment manages operations for two business groups:
 
 ## Custom MCP Server Locations
 
-All Python stdio servers live under `/root/code/`:
+All custom servers live in this repo under `mcp-servers/` and are registered on
+each fresh session by `mcp-servers/bootstrap.sh` (see below). The `ghl-*` and
+Render-hosted `clarity` servers are HTTP transports (no local `server.py`); the
+rest are Python stdio:
 
 ```
-/root/code/
-├── closebot-mcp/
-│   ├── server.py        # 15 tools
-│   └── requirements.txt
-├── companycam-mcp/
-│   ├── server.py        # 12 tools
-│   └── requirements.txt
-├── google-ads-mcp/
-│   ├── server.py        # 11 tools (KTU acct 2579406186, BTU acct 4477036900)
-│   └── requirements.txt
-├── gmb-mcp/
-│   ├── server.py        # 12 tools
-│   └── requirements.txt
-├── serviceminder-mcp/
-│   ├── server.py        # 28 tools (multi-location: KTU + BTU)
-│   └── requirements.txt
-├── shipstation-mcp/
-│   ├── server.py        # 17 tools (V2 API, Bearer auth)
-│   └── requirements.txt
-├── amazon-sp-mcp/
-│   ├── server.py        # 15 tools (SP-API, LWA OAuth2)
-│   └── requirements.txt
-└── cloudflare-mcp/
-    ├── server.py        # 14 tools (Zones, DNS, Pages, Workers, R2, KV)
-    └── requirements.txt
+mcp-servers/
+├── bootstrap.sh          # registers every server below from env-vars
+├── .env.example          # the full env-var list (names only, no secrets)
+├── serviceminder/        server.py  # 28 tools (multi-location: KTU + BTU)
+├── google-ads/           server.py  # 11 tools (KTU 2579406186, BTU 4477036900)
+├── gmb/                  server.py  # 12 tools
+├── closebot/             server.py  # 15 tools
+├── companycam/           server.py  # 12 tools
+├── shipstation/          server.py  # 17 tools (V2 API, Bearer auth)
+├── amazon-sp/            server.py  # 15 tools (SP-API, LWA OAuth2)
+└── cloudflare/           server.py  # 14 tools (Zones, DNS, Pages, Workers, R2, KV)
+
+HTTP-transport servers (registered by bootstrap.sh, no local code):
+  ghl-ktu / ghl-btu   → LeadConnector hosted MCP, PIT-scoped per location
+  clarity             → Render-hosted ktubtu-mcp-clarity (Data-Export, static bearer)
 ```
+
+> **Tekkie owns this.** The `tekkie` agent (`.claude/agents/tekkie.md`) re-audits
+> every connection daily, keeps these tables honest, and publishes a scored health
+> board. If this doc drifts from reality, that's a Tekkie finding.
 
 ## Setup Script (runs on new session)
 
@@ -106,6 +103,23 @@ server whose keys are missing is skipped, never registered blank. The claude.ai
 connectors (Gmail, HighLevel, QuickBooks, Truthifi/Bank Connection, Shopify,
 monday, Slack, Zapier, Facebook) load from the account automatically and need
 no bootstrap.
+
+## Connection ownership (pipe → consumer agent)
+
+Which agent depends on which pipe — so a broken connection maps straight to the
+brief it degrades. Tekkie audits all of these daily.
+
+| Pipe / source | Primary consumer agent(s) | What breaks if it's down |
+|---|---|---|
+| ServiceMinder (`SM_KEY_KTU/BTU`) | Moola, Foreman, Paid | Revenue/invoice/appointment truth; ROI tie-back |
+| HighLevel `ghl-ktu` / `ghl-btu` | Goldeneye, Paid, Foreman | Customer conversations, lead attribution, HL→SM sync audit |
+| Google Ads + LSA / Meta Ads | Paid | Spend sweep, CPL/CAC/ROAS |
+| Clarity (`clarity`, Render) | Paid | Landing-page-experience check |
+| QuickBooks / Ramp / Bank_Connection | Moola | P&L, AR/AP, cash flow, card spend |
+| CompanyCam / JobTread | Foreman | Field progress, estimates, PM status |
+| Shopify / ShipStation / Amazon SP | Cellar (fulfillment), Harvest (demand) | Orders, inventory, FBA, ad ROAS |
+| Supabase intranet (`tguwpswcneywvscxzyef`) | ALL agents (publish target) | No agent can post its brief to the intranet |
+| Cloudflare Workers/Pages | (infra) | Dashboard + intranet hosting |
 
 ## Environment Requirements
 
