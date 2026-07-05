@@ -1216,8 +1216,14 @@
       </div>
 
       <div class="card">
+        <h2>System registry</h2>
+        <div class="sub">Every tool we run — purpose, link, login, and its SOW. Edit anything inline; Tekki sweeps this table daily, keeps the diagram below in sync (and clickable), and drafts SOWs for any row missing one.</div>
+        <div id="techRegRoot" class="loading" style="margin-top:10px">Loading…</div>
+      </div>
+
+      <div class="card">
         <h2>How everything connects</h2>
-        <div class="sub">Three lanes: leads &amp; sales, production, and money &amp; reporting. Hover any node; details live in the Systems and Integrations tabs.</div>
+        <div class="sub">Three lanes: leads &amp; sales, production, and money &amp; reporting. Nodes with a registry URL are clickable ↗; details live in the Systems and Integrations tabs.</div>
 
         <div class="flow-lane">
           <div class="flow-lane-label" style="color:var(--brand-ktu)"><span class="dot" style="background:var(--brand-ktu)"></span>Leads &amp; Sales</div>
@@ -1646,7 +1652,7 @@
 
       <div class="card">
         <h2>Spend vs Budget — 2026</h2>
-        <div class="sub">Actuals aggregate marketing debits from the bank feed (Gen Exp &amp; Mktng). Planned = annual budget × the month's weighting from the Budget Allocation plan.</div>
+        <div class="sub">Actuals aggregate marketing spend across all bank accounts (Gen Exp &amp; Mktng, Payroll, Bluevine ACH) and Brex cards. Planned = annual budget × the month's weighting from the Budget Allocation plan.</div>
         <div class="grid" id="mksKpis" style="margin-top:10px"></div>
         <div id="mksMonthly" class="loading" style="margin-top:14px">Loading…</div>
         <div id="mksCaveat" class="hint" style="margin-top:10px"></div>
@@ -1966,7 +1972,7 @@
           <a class="doc-link" href="https://app.bill.com" target="_blank" rel="noopener"><div class="ico">🧾</div><div class="body"><div class="t">Bill.com</div><div class="d">AP + vendor invoice management</div></div></a>
           <a class="doc-link" href="https://runpayroll.adp.com" target="_blank" rel="noopener"><div class="ico">👥</div><div class="body"><div class="t">ADP Run</div><div class="d">Bi-weekly payroll · W-2 team</div></div></a>
         </div>
-        <div class="build"><b>Security note:</b> this tab is hidden for the team and Earthwise logins, and owner-only data is enforced at the database level (Supabase Auth + RLS) — front-end gating is a UX layer on top.</div>
+        <div class="build"><b>Security note:</b> this tab is hidden for the team and Earthwise logins. Front-end gating is UX only — database-level RLS lands with the Supabase Auth rollout (01_Login_and_RLS_Model.md) to make it enforceable.</div>
       </div>
     </section>
 
@@ -2174,6 +2180,7 @@ function go(tab,push=true){
   if(tab==='team'){ renderTeamDates(); }
   if(tab==='clients'){ renderClients(); }
   if(tab==='projects'){ renderProjects(); }
+  if(tab==='techstack'){ renderTechStack(); }
   if(tab==='tasks'){ renderTasks(); }
   if(tab==='ordering'){ renderBtuOrdering(); }
   if(tab==='mktplan'){ renderMktPlan(); }
@@ -3292,32 +3299,18 @@ async function renderMoola(){
   const rows=await fetchRecords('moola_briefing');
   const dates=[...new Set(rows.map(r=>r.fields.scan_date).filter(Boolean))].sort().reverse();
   const latest=dates[0];
-  const SEV={urgent:0,warn:1,info:2};
   const show=(latest?rows.filter(r=>r.fields.scan_date===latest):rows)
-    .sort((a,b)=>((SEV[a.fields.severity]??2)-(SEV[b.fields.severity]??2))||((a.sort_order||0)-(b.sort_order||0)));
+    .sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
   if(!show.length){
     el.innerHTML='<div class="ge-clear">💤 No briefing yet — Moola runs every morning at 6:30am ET. First report lands tomorrow.</div>';
     return;
   }
-  const ICO={urgent:'🚨',warn:'⚠️',info:'💡',pay:'💸',save:'💰',liability:'🏦',risk:'🎯',question:'❓',status:'📊','paid-challenge':'⚖️'};
-  const todayET=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
-  const hourET=+new Date().toLocaleString('en-US',{timeZone:'America/New_York',hour:'2-digit',hour12:false});
-  const yd=new Date(todayET+'T12:00:00Z'); yd.setUTCDate(yd.getUTCDate()-1);
-  const yesterdayET=yd.toISOString().slice(0,10);
-  const isStale=latest&&(latest<yesterdayET||(latest<todayET&&hourET>=8));
-  const staleBanner=isStale?`
-    <div class="ge-row warn">
-      <div class="ge-ico">⏰</div>
-      <div class="ge-body">
-        <div class="ge-title">Briefing is from ${esc(latest)} — today's scan hasn't landed</div>
-        <div class="ge-detail">Moola runs every morning at 6:30am ET. If this persists, check the "Moola — daily CFO briefing" scheduled run.</div>
-      </div>
-    </div>`:'';
-  el.innerHTML = staleBanner + show.map(r=>{const f=r.fields;return `
+  const ICO={urgent:'🚨',warn:'⚠️',info:'💡',pay:'💸',save:'💰'};
+  el.innerHTML = show.map(r=>{const f=r.fields;return `
     <div class="ge-row ${['urgent','warn'].includes(f.severity)?esc(f.severity):'info'}">
       <div class="ge-ico">${ICO[f.kind]||ICO[f.severity]||'💡'}</div>
       <div class="ge-body">
-        <div class="ge-title">${esc(f.title)} ${r.brand&&r.brand!=='Both'?brandTag(r.brand):''}</div>
+        <div class="ge-title">${esc(f.title)}</div>
         <div class="ge-detail">${esc(f.detail||'')}</div>
         <div class="ge-meta">${esc(f.source||'')}${f.scan_date?' · '+esc(f.scan_date):''}</div>
       </div>
@@ -3600,6 +3593,98 @@ async function printProjectDoc(project){
   </body></html>`);
   w.document.close();
   setTimeout(()=>w.print(),300);
+}
+
+/* ---------- Tech Stack registry (Tekki's table) ---------- */
+const TECH_COLS=[
+  {k:'name',label:'System',w:130},{k:'category',label:'Category',w:110},{k:'purpose',label:'Purpose',w:220},
+  {k:'url',label:'Link',w:70},{k:'username',label:'Username',w:150},{k:'password',label:'Password',w:110},
+  {k:'sow_url',label:'SOW',w:70},{k:'notes',label:'Notes',w:150}
+];
+let TECH_EDIT=null;
+function techSowCell(v,name){
+  if(!v) return `<small style="color:var(--text-mute)">— <span title="Tekki drafts SOWs for rows missing one">(pending)</span></small>`;
+  if(String(v).startsWith('sow:')) return `<a href="javascript:void(0)" onclick='openSowDoc(${JSON.stringify(String(v).slice(4))})'>SOW 📄</a>`;
+  return `<a href="${esc(v)}" target="_blank" rel="noopener">SOW ↗</a>`;
+}
+async function renderTechStack(){
+  const root=document.getElementById('techRegRoot'); if(!root) return;
+  const rows=await fetchRecords('tech_stack');
+  const cell=(r,c)=>{
+    const v=r.fields[c.k]||'';
+    if(TECH_EDIT===r.id) return `<td><input id="te_${r.id}_${c.k}" value="${esc(v)}" style="width:${c.w-14}px"></td>`;
+    if(c.k==='url') return `<td>${v?`<a href="${esc(v)}" target="_blank" rel="noopener">Open ↗</a>`:'—'}</td>`;
+    if(c.k==='sow_url') return `<td>${techSowCell(v,r.fields.name)}</td>`;
+    if(c.k==='password') return `<td>${v?`<span class="pwmask" data-pw="${esc(v)}" onclick="togglePw(this)" style="cursor:pointer" title="Click to reveal">••••••</span>`:'—'}</td>`;
+    if(c.k==='name') return `<td><b>${esc(v)}</b></td>`;
+    return `<td>${esc(v)||'—'}</td>`;
+  };
+  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr>${TECH_COLS.map(c=>`<th>${c.label}</th>`).join('')}<th></th></tr></thead><tbody>
+  ${rows.map(r=>`<tr>${TECH_COLS.map(c=>cell(r,c)).join('')}
+    <td style="white-space:nowrap">${TECH_EDIT===r.id
+      ?`<button class="btn sm" onclick="saveTechRow('${r.id}')">Save</button> <button class="btn sm ghost" onclick="TECH_EDIT=null;renderTechStack()">✕</button>`
+      :`<button class="btn sm ghost" onclick="TECH_EDIT='${r.id}';renderTechStack()">✎</button> <button class="btn sm ghost" onclick="delTechRow('${r.id}')">🗑</button>`}</td></tr>`).join('')}
+  <tr>${TECH_COLS.map(c=>`<td><input id="te_new_${c.k}" placeholder="${c.label}" style="width:${c.w-14}px"></td>`).join('')}
+    <td><button class="btn sm" onclick="addTechRow()">+ Add</button></td></tr>
+  </tbody></table></div>
+  <div class="sub" style="margin-top:6px">SOW column accepts a URL, or <code>sow:Title</code> to open a doc stored under Statements of Work. Passwords are visible to all intranet users — keep anything sensitive in a proper password manager and note it here instead.</div>`;
+  linkifyTechNodes(rows);
+}
+function togglePw(el){ el.textContent = el.textContent==='••••••' ? el.dataset.pw : '••••••'; }
+async function addTechRow(){
+  const fields={};TECH_COLS.forEach(c=>{fields[c.k]=val('te_new_'+c.k)||null;});
+  if(!fields.name){toast('Name the system first.',1);return;}
+  fields.source='intranet';
+  const {error}=await sb.from('intranet_records').insert({section:'tech_stack',brand:null,sort_order:await nextSortOrder('tech_stack'),fields});
+  if(error){toast(error.message,1);return;}
+  toast('Added.');renderTechStack();
+}
+async function saveTechRow(id){
+  const fields={};TECH_COLS.forEach(c=>{fields[c.k]=val('te_'+id+'_'+c.k)||null;});
+  const {data:cur}=await sb.from('intranet_records').select('fields').eq('id',id).single();
+  const merged=Object.assign({},cur?.fields||{},fields);
+  const {error}=await sb.from('intranet_records').update({fields:merged}).eq('id',id);
+  if(error){toast(error.message,1);return;}
+  TECH_EDIT=null;toast('Saved.');renderTechStack();
+}
+async function delTechRow(id){
+  if(!confirm('Remove this system from the registry?'))return;
+  const {error}=await sb.from('intranet_records').delete().eq('id',id);
+  if(error){toast(error.message,1);return;}
+  renderTechStack();
+}
+async function openSowDoc(title){
+  const rows=await fetchRecords('sow_authored');
+  const r=rows.find(x=>(x.fields.title||'').toLowerCase()===title.toLowerCase())||rows.find(x=>(x.fields.title||'').toLowerCase().includes(title.toLowerCase()));
+  const bg=document.createElement('div');bg.className='ax-modal-bg';bg.onclick=e=>{if(e.target===bg)bg.remove();};
+  bg.innerHTML=`<div class="ax-modal" style="max-width:680px"><h3>${esc(r?r.fields.title:title)}</h3>
+    <div class="sub" style="white-space:pre-wrap;max-height:60vh;overflow-y:auto">${r?esc(r.fields.body||''):'No SOW doc found under Statements of Work with this title yet — Tekki will draft it on his next sweep.'}</div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      ${r?`<button class="btn sm" onclick='(function(){const w=window.open("","_blank");w.document.write("<pre style=\\"font-family:sans-serif;white-space:pre-wrap;margin:32px\\">"+document.querySelector(".ax-modal .sub").innerHTML+"</pre>");w.document.close();w.print();})()'>🖨 Print</button>`:''}
+      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+    </div></div>`;
+  document.body.appendChild(bg);
+}
+function linkifyTechNodes(rows){
+  document.querySelectorAll('#techstack .flow-node').forEach(node=>{
+    const label=(node.querySelector('.fn')?.textContent||'').toLowerCase();
+    const match=rows.find(r=>{const n=(r.fields.name||'').toLowerCase();return n&&(label.includes(n)||n.includes(label.split('(')[0].trim()));});
+    if(!match) return;
+    node.style.cursor='pointer';
+    if(match.fields.url){
+      node.title='Open '+match.fields.name;
+      node.onclick=()=>window.open(match.fields.url,'_blank','noopener');
+      const fn=node.querySelector('.fn');
+      if(fn&&!fn.dataset.linked){fn.dataset.linked='1';fn.innerHTML+=' <small>↗</small>';}
+    }
+    if(match.fields.sow_url&&!node.querySelector('.sowchip')){
+      const chip=document.createElement('small');chip.className='sowchip';chip.style.cssText='display:block;margin-top:2px;color:var(--text-mute)';
+      chip.innerHTML=String(match.fields.sow_url).startsWith('sow:')
+        ?`<a href="javascript:void(0)">SOW 📄</a>`:`<a href="${esc(match.fields.sow_url)}" target="_blank" rel="noopener">SOW ↗</a>`;
+      chip.onclick=e=>{e.stopPropagation();if(String(match.fields.sow_url).startsWith('sow:'))openSowDoc(String(match.fields.sow_url).slice(4));};
+      node.appendChild(chip);
+    }
+  });
 }
 
 /* ---------- Tasks & follow-ups ---------- */
@@ -3907,17 +3992,21 @@ async function renderMktSpend(){
           <div style="position:absolute;left:0;top:0;bottom:0;width:${w}%;background:${overBand?'#f87171':(inBand?'#22c55e':'var(--accent,#3b82f6)')};border-radius:6px;opacity:.85"></div>
         </div></div>`;
     }).join('')+
-    `<div style="font-size:11px;color:var(--text-mute)">Bar = marketing spend as % of that month's collected revenue · green zone = the ${gLo}–${gHi}% goal band. Tracked spend currently excludes card-based (Brex/Divvy) social spend, so true % runs higher.</div>`;
+    `<div style="font-size:11px;color:var(--text-mute)">Bar = marketing spend as % of that month's collected revenue · green zone = the ${gLo}–${gHi}% goal band. Spend covers all bank accounts + Brex cards; Divvy card merchant detail and Ramp are not yet visible.</div>`;
   }
   // Funnel efficiency — YTD cost per lead / appointment / customer
   const fun=((funnelRows.find(r=>r.fields.kind==='totals')||{}).fields)||{};
   const fEl=document.getElementById('mksFunnel');
   if(fEl){
     const cost=(n)=>n?fmt$2(ytdA/n):'—';
+    const tile=(label,n,k,b,defLabel,fallback)=>kpi(label,cost(Number(n)),
+      n?`${Number(n).toLocaleString()} YTD (KTU ${k||'—'} · BTU ${b||'—'})${defLabel?' — '+esc(defLabel):''}`:fallback);
     fEl.innerHTML=
-      kpi('Cost per lead',cost(Number(fun.leads_ytd)),fun.leads_ytd?`${Number(fun.leads_ytd).toLocaleString()} leads YTD (KTU ${fun.leads_ktu||'—'} · BTU ${fun.leads_btu||'—'}) — HighLevel`:'lead count pending')+
-      kpi('Cost per appointment',cost(Number(fun.appointments_ytd)),fun.appointments_ytd?`${Number(fun.appointments_ytd).toLocaleString()} consultations YTD (KTU ${fun.appts_ktu||'—'} · BTU ${fun.appts_btu||'—'}) — ServiceMinder`:'appointment count pending')+
-      kpi('Cost per customer',cost(Number(fun.customers_ytd)),fun.customers_ytd?`${Number(fun.customers_ytd).toLocaleString()} paying customers YTD (KTU ${fun.customers_ktu||'—'} · BTU ${fun.customers_btu||'—'})`:'customer count pending');
+      tile('Cost per lead',fun.leads_ytd,fun.leads_ktu,fun.leads_btu,fun.leads_label||'HighLevel','lead count pending')+
+      tile('Cost per appointment',fun.appointments_ytd,fun.appts_ktu,fun.appts_btu,fun.appointments_label||'ServiceMinder','appointment count pending')+
+      tile('Cost per customer',fun.customers_ytd,fun.customers_ktu,fun.customers_btu,fun.customers_label||'','customer count pending');
+    const oldCav=document.getElementById('mksFunnelCaveat'); if(oldCav) oldCav.remove();
+    if(fun.caveats) fEl.insertAdjacentHTML('afterend',`<div class="hint" id="mksFunnelCaveat" style="margin:-6px 0 12px">${esc(fun.caveats)}</div>`);
   }
   // Channel mix — % of spend
   const chBy={}; spend.forEach(r=>{const c=r.fields.channel||'Other';chBy[c]=(chBy[c]||0)+(Number(r.fields.amount)||0);});
@@ -3985,6 +4074,7 @@ function rtRefreshActive(force){
   if(tab==='directory'&&window.renderDirectory) renderDirectory();
   if(tab==='clients'&&window.renderClients) renderClients();
   if(tab==='projects'&&window.renderProjects) renderProjects();
+  if(tab==='techstack'&&window.renderTechStack) renderTechStack();
   if(tab==='tasks'&&window.renderTasks) renderTasks();
   if(tab==='ordering'&&window.renderBtuOrdering){ renderBtuOrdering(); }
   if(tab==='mktplan'&&window.renderMktPlan) renderMktPlan();
