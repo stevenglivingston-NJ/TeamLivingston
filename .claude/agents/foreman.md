@@ -97,21 +97,79 @@ For each active job compute, from **contract-signature date**:
 - Flag: 🔴 behind track target or >5 biz days over a milestone · 🟡 trending late
   (milestone at 80% consumed, phase not advanced) · 🟢 on/ahead.
 
-### 3. Cost analysis & estimated gross profit (the money lens)
-Per active job, assemble:
-- **Contract price** — accepted ServiceMinder proposal + signed change orders.
-- **Committed costs** — JobTread estimates/job-costing lines; vendor POs and invoices
-  (Elias, countertop fabricator, tile, appliances) from Gmail + QuickBooks (Intuit
-  connector = FGUSA books; other entities via Zapier QBO); labor from the catalog's
-  labor lines / JobTread daily logs.
-- **Est. GP$ and GP%** = contract − committed-to-date (state what's still unknown),
-  compared to the **sold margin** from the catalog (refacing ~28.8% construction
-  tier; semi-custom/custom richer — never invent margins).
+**Lifecycle `stage` vocabulary** — use exactly these values (in this order) for the
+`stage` field on `client_status`/`foreman_board`, so the intranet can render a clean
+sale-to-final-payment progress indicator. Never invent a different label:
+`Sold` → `Design/Selections` → `Production Gate` → `Vendor Ordering` →
+`In Production` → `Punch/Substantial Completion` → `Final Payment Pending` →
+`Closed — Paid`. Derive it from the strongest available evidence: ServiceMinder
+invoice/payment status for the payment-side stages (`Final Payment Pending` =
+substantially complete per photos/notes but `outstanding > 0`; `Closed — Paid` =
+`outstanding == 0`), CompanyCam phase inference (above) for the production-side
+stages, and JobTread task/gate state for the earliest two. If evidence conflicts,
+pick the LATEST stage with clear support and flag the ambiguity rather than
+guessing.
+
+### 3. Cost analysis — TWO costings, side by side (the money lens)
+Per active job, compute **two independent costings** and report both — never
+collapse them into one number:
+
+- **Estimated cost (JobTread)** — sum `job.costItems.nodes[].cost` (fall back to
+  `unitCost × quantity` where `cost` is 0/blank). Treat a line as **unpriced** (not a
+  real zero) when both `cost` and `price` are 0/null — flag it as unmatched rather
+  than silently including it as $0. Note: only newer-style jobs (named
+  "Firstname Lastname", no trailing price digits) carry populated cost items —
+  legacy-named jobs will show empty and should be flagged as "no JobTread estimate
+  on file," not "estimated cost $0."
+- **Actual cost — ledger first**: the intranet job-cost ledger (`intranet_records`
+  section `job_costs`: dated vendor entries categorized Materials/Labor/Other,
+  mirroring ServiceMinder's Margins panel) is the authoritative actual when it has
+  entries for a job — sum its amounts and treat coverage as 100% of what's entered.
+  ServiceMinder's own Margins ledger is NOT exposed by their public API (verified
+  2026-07-05: no cost/margin endpoint or download kind), so the intranet ledger is
+  the machine-readable twin; entries sync outward to the SM contact as notes.
+  **Fallback**: when the ledger is empty for a job, use
+  `Proposal.ProposalLines[].UnitCost × Quantity` on the accepted proposal — these
+  are estimating costs with partial coverage; flag null-`UnitCost` lines as
+  unpriced and always report the coverage %. Label which source produced the
+  number ("ledger" vs "SM proposal-line") in the published fields.
+  **Owner-confirmed (2026-07-05): every ServiceMinder proposal LINE AMOUNT is
+  sale price — including percentage lines like "Shop Labor 24%" and "Overhead
+  5%", which are components of the sale amount, NOT cost data.** Never read
+  line prices, internal lines, or percentage lines as cost. The ONLY cost
+  signal on a proposal line is an explicitly populated `UnitCost` field; for
+  KTU these are rarely populated, so the intranet ledger is effectively the
+  sole actual-cost source for KTU jobs.
+- **Contract price** — accepted ServiceMinder proposal + signed change orders (same
+  for both costings).
+- **Estimated GP%** = (contract − estimated cost) / contract.
+  **Actual GP%** = (contract − actual cost to date) / contract.
+  Report both, plus the delta between them — a job where estimated GP% looked
+  healthy but actual GP% is drifting down is the real margin-erosion signal, not
+  either number alone.
+- **Cost-data coverage %** = (contract-dollar-value of lines with a real, non-zero
+  cost) / (total contract price), computed separately for the estimated and actual
+  costings. Report this ALONGSIDE every GP% — a high GP% backed by 30% coverage is
+  not a healthy margin, it's missing data, and must read differently in the standup
+  than a high GP% backed by 90%+ coverage. Validated finding (2026-07-05): real
+  ServiceMinder jobs regularly have half or more of their contract value sitting on
+  `UnitCost=0/null` lines despite a real sale price — this is common, not rare, so
+  never present actual_gp_pct without its coverage % next to it.
+- **Scope-of-work summary** — one plain-English line per job (2-3 line items max,
+  e.g. "Full bath remodel: vanity, tile shower, toilet") built from the JobTread
+  cost-item names or ServiceMinder proposal-line descriptions, whichever is richer.
 - Flag **margin erosion** with the cause: unbilled change order (photos show work
   outside the sold scope — the classic leak), rework from a Design Standards miss
   (extended-depth rollouts, LED surprises, flooring demo scope — the documented
   lessons), vendor re-orders, or scope creep. Every erosion flag carries a dollar
   estimate and the recommended recovery (change order, vendor claim, process fix).
+- **Pricing-catalog grade (BTU only, for now)** — `organization.costItems` (org
+  `22PB4XPxGZHK`) is a real, maintained Bath pricebook (`unitCost`/`unitPrice` per
+  catalog line). Match a BTU job's scope-of-work lines against it by name to sum an
+  **expected sales price**; grade the actual contract price against it
+  (over-market >+10%, at-market ±10%, under-market <-10%). **No equivalent Kitchen
+  catalog exists in JobTread** — do not attempt this grade for KTU jobs; note it as
+  "no Kitchen pricebook available" rather than guessing or reusing the Bath catalog.
 
 ### 4. Vendor watch — every order on every running project
 - **Vendor invoices — dedicated inbox**: `ktubtubilling@gmail.com` is the billing
@@ -155,15 +213,39 @@ Supabase MCP (`execute_sql`, service role — the anon REST endpoint 401s). Sect
 and only after success delete rows where `fields->>'scan_date' <> today` in that
 section — stale beats blank):
 - `foreman_briefing` — max ~8 rows: `{severity: urgent|warn|info, title, detail
-  (who/what/$ impact/what to do), source, scan_date}`. Never empty — if all clear,
-  one info row saying so, plus one info row per blind data source.
+  (who/what/$ impact/what to do), source, project (client/project name if this row
+  is about a specific job, else null — lets the intranet badge the matching
+  project row), scan_date}`. Never empty — if all clear, one info row saying so,
+  plus one info row per blind data source.
 - `foreman_board` — one row per active job: `{project, brand, phase, days_in_phase,
-  target, variance, gp_est, status (🟢/🟡/🔴), action, scan_date}`, sorted
-  most-behind first (sort_order).
+  target, variance, stage (the §2 lifecycle vocabulary), scope_summary,
+  contract_total, estimated_cost, actual_cost, estimated_cost_coverage_pct,
+  actual_cost_coverage_pct, estimated_gp_pct, actual_gp_pct, price_grade
+  (over_market|at_market|under_market|no_catalog — BTU only, per §3), status
+  (🟢/🟡/🔴), action, scan_date}`, sorted most-behind first (sort_order). Leave
+  `estimated_cost`/`actual_cost` null (not 0) with a note in `action` when a job
+  has no populated cost items to pull from — see §3's unpriced-line discipline.
 - `foreman_vendor` — one row per open order: `{project, vendor, item, status, eta,
   last_update, flag, scan_date}`.
 - `foreman_gates` — one row per job with gate exposure: `{project, gate_status,
   missing, owner, age, scan_date}`.
+- `client_status` — the intranet Clients board; one row per active/recent client
+  (KTU + BTU, YTD): `{client, brand, stage (the §2 lifecycle vocabulary),
+  contract_total, paid, outstanding, last_payment, service, scope_summary,
+  estimated_cost, actual_cost, estimated_cost_coverage_pct,
+  actual_cost_coverage_pct, estimated_gp_pct, actual_gp_pct, jobtread_number,
+  jobtread_job_id, sm_contact_id, flags, scan_date}`, sorted by outstanding desc.
+  Join ServiceMinder invoices/payments (money truth) to JobTread jobs; flag sold
+  clients with no JT job, overdue 40%/10% tranches, and SM↔JT total mismatches.
+- `btu_ordering` — the assistant PM's ordering board; refresh whenever a BTU
+  JobTread job is sold (closedOn set): match it to the accepted ServiceMinder
+  proposal (compare totals → `invoice_match`), extract ORDERABLE MATERIAL lines only
+  (exclude labor/install/demo/permits/dumpster/shipping/fees/markup/internal), one
+  row per item: `{job, jobtread_number, sm_proposal_id, sold_total, invoice_match,
+  item, tier, qty, unit, unit_cost, extended_cost, customer_price, budget_note,
+  category, status, scan_date}`. PRESERVE the `status` field of existing rows when
+  refreshing (the PM marks items ordered from the intranet) — merge by job+item,
+  never blindly overwrite.
 Then a one-screen standup brief in chat: 🚨 must-action (max 3, each with evidence →
 exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 vendor risks ·
 ✅ gates passed/returned · going-dark list. If nothing is broken, say so in one line.
