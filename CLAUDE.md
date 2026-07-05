@@ -34,7 +34,7 @@ This environment manages operations for two business groups:
 |--------|------|-------|------|
 | shipstation | stdio (Python) | Orders, shipments, rates, products, stores, carriers, fulfillments | V2 API key (Bearer) |
 | amazon-sp | stdio (Python) | Orders, inventory, catalog, listings, reports, finances, FBA inbound | LWA OAuth2 (SP-API) |
-| Shopify | connector | Products, orders, collections, inventory, customers, analytics | OAuth |
+| Shopify *(currently not connected in env)* | connector | Products, orders, collections, inventory, customers, analytics | OAuth |
 | amazon-ads | *(planned)* | Sponsored Products/Brands/Display campaigns, keywords, reports | LWA OAuth2 (Ads API) |
 | walmart-marketplace | *(planned)* | Orders, items, inventory, prices, reports | Walmart API |
 | walmart-ads | *(planned)* | Sponsored Products campaigns, keywords, reports | Walmart Connect API |
@@ -54,6 +54,13 @@ This environment manages operations for two business groups:
 | Clay | connector | Data enrichment |
 | Zapier | connector | App integrations |
 | Coupler.io | connector | Data pipelines |
+| QuickBooks (Intuit) | connector | Accounting — P&L, cash flow, AR/AP aging, invoices, payroll |
+| GitHub | connector | Repos, PRs, issues, actions |
+| monday.com | connector | Boards, items, docs, workflows |
+| Brex | connector | Expenses, cards, banking transactions |
+| Canva | connector | Design creation, brand templates, exports |
+| Descript | connector | Video/audio editing, transcripts |
+| Supabase | connector | Intranet backend — DB queries, migrations, edge functions, logs |
 
 ## Custom MCP Server Locations
 
@@ -125,12 +132,29 @@ no bootstrap.
 | Group | Purpose | URL |
 |-------|---------|-----|
 | Jatalia | Ops dashboard | https://jataliamarketplace.com |
+| Shared | Axyom intranet (all businesses) | https://dash.goaxyom.com |
 
 ## Cloudflare Workers
 
 | Name | Purpose |
 |------|---------|
-| ktubtuintranet | KTU/BTU internal intranet |
-| ktu-cmo-dashboard-auth | KTU CMO dashboard auth layer |
+| ktubtuintranet | Axyom intranet — serves dash.goaxyom.com |
 | ktu-dashboard-auth | KTU dashboard auth layer |
 | city-replacement | City replacement service |
+| axyom-chat | Ask Ax chat backend (route dash.goaxyom.com/api/chat*) |
+
+## Agent Roster
+
+Specs live in `.claude/agents/`. Daily agents publish to the intranet via Supabase `intranet_records`.
+
+| Agent | One-liner |
+|-------|-----------|
+| ax | Hourly dispatcher + Slack-facing assistant — notify/action queues, syncs notes to JobTread/ServiceMinder |
+| moola | Daily CFO briefing — cash, P&L, AR/AP, bills due (owner-only Finance tab) |
+| foreman | Daily PM board for KTU/BTU jobs — track targets, gross profit, vendor orders, handover gates |
+| goldeneye | Daily customer-engagement watchdog — flags conversations at risk of slipping (home-page callouts) |
+| paid | Daily KTU/BTU paid-media brief — Google Ads/LSA, Meta, Clarity, true ROI/CAC |
+| harvest | Earthwise demand & growth — marketplace ads, listings, SEO, ACOS/ROAS |
+| cellar | Earthwise supply & fulfillment — orders, FBA/inventory health, reorders, buyer SLAs |
+| tekky | IT department — stack inventory, change log, health board, briefing (Tech Stack tab) |
+| report-audit-agent | On-demand auditor of every report/dashboard — lineage, freshness, breakage list |
