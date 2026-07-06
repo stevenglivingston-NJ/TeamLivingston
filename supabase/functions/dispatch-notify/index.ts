@@ -14,10 +14,15 @@
 //           posts to the channel the webhook targets (#intranet-alerts).
 //           Absent webhook, slack delivery is skipped (email still goes out).
 //
+// Secret (preferred): Edge Function secret GHL_PIT — the HighLevel Private
+//   Integration Token, set via `supabase secrets set GHL_PIT=...`. Kept out of
+//   the DB so it never lands in backups/dumps/query logs. loadConfig() overlays
+//   it onto the ghl_pit key, so the dispatch_config row below is only a fallback.
+//
 // Config table: public.dispatch_config (RLS on, no policies — service role only)
-//   ghl_pit            HighLevel Private Integration Token
+//   ghl_pit            HighLevel PIT — fallback only; prefer the GHL_PIT secret
 //   ghl_location_id    HighLevel location (KTU: nHLCxHPidnhV1NFzRtZZ)
-//   email_from         From header, e.g. "Axyom <noreply@...>"
+//   email_from         From header, e.g. "Axyom <tlivingston@kitchentuneup.com>"
 //   default_recipient  Fallback when a row has no recipient_email
 //   slack_webhook_url  Optional Slack incoming webhook
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -30,7 +35,14 @@ const sb = createClient(
 async function loadConfig(): Promise<Record<string, string>> {
   const { data, error } = await sb.from("dispatch_config").select("key,value");
   if (error) throw error;
-  return Object.fromEntries((data ?? []).map((r) => [r.key, r.value]));
+  const cfg = Object.fromEntries((data ?? []).map((r) => [r.key, r.value]));
+  // The HighLevel token is a secret, so prefer the encrypted Edge Function
+  // secret (set via `supabase secrets set GHL_PIT=...`) over the dispatch_config
+  // row. The row stays supported as a fallback for backward-compat, but the
+  // secret is the intended home so the token never lives in the DB.
+  const secretPit = Deno.env.get("GHL_PIT");
+  if (secretPit) cfg.ghl_pit = secretPit;
+  return cfg;
 }
 
 function escapeHtml(s: string): string {
