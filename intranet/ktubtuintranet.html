@@ -1523,9 +1523,27 @@
     <section class="panel" id="trades">
       <div class="page-head">
         <h1 class="page-title">Subcontractors &amp; Trades</h1>
-        <p class="page-sub">Trade contacts by specialty — the field crew rolodex.</p>
+        <p class="page-sub">The field-crew rolodex by specialty. Add subs inline; attach a Google Drive folder (pricing, COIs, W-9s) to any row.</p>
       </div>
-      <div class="card"><div id="trades_root" class="loading">Loading…</div></div>
+      <div class="card">
+        <div class="sec-title">Add a subcontractor / trade</div>
+        <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 1.2fr .8fr auto;gap:8px;align-items:end">
+          <div><label class="hint">Name / company</label><input id="trName" placeholder="e.g. Alex — Gelex LLC" style="width:100%"></div>
+          <div><label class="hint">Trade</label><input id="trService" placeholder="Flooring, Plumber…" style="width:100%"></div>
+          <div><label class="hint">Phone</label><input id="trPhone" placeholder="(optional)" style="width:100%"></div>
+          <div><label class="hint">Email</label><input id="trEmail" placeholder="(optional)" style="width:100%"></div>
+          <div><label class="hint">Brand</label><select id="trBrand" style="width:100%"><option>Both</option><option>KTU</option><option>BTU</option></select></div>
+          <button class="btn sm" onclick="addTrade()">+ Add</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px;margin-top:8px">
+          <input id="trDrive" placeholder="Google Drive link (pricing / COI / W-9) — optional">
+          <input id="trNotes" placeholder="Notes (optional)">
+        </div>
+      </div>
+      <div class="card">
+        <div id="trFilters" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"></div>
+        <div id="trades_root" class="loading">Loading…</div>
+      </div>
     </section>
 
     <!-- ============ ROLES ============ -->
@@ -2210,6 +2228,7 @@ function go(tab,push=true){
   if(tab==='projects'){ renderProjects(); }
   if(tab==='techstack'){ renderTechStack(); }
   if(tab==='resources'){ renderResources(); }
+  if(tab==='trades'){ renderTrades(); }
   if(tab==='tasks'){ renderTasks(); }
   if(tab==='ordering'){ renderBtuOrdering(); }
   if(tab==='mktplan'){ renderMktPlan(); }
@@ -2619,9 +2638,7 @@ const SECTIONS = {
     display:f=>`<h3>${esc(f.vendor)}</h3><div class="meta"><b>Contact:</b> ${esc(f.contact)}</div>
       <div class="meta"><b>Pricing:</b> ${esc(f.pricing)}</div><div class="note">Pay terms: ${esc(f.terms)}</div>`, kind:'cards' },
   ordering_storage:{ root:'ordering_storage_root', columns:[{k:'text',label:'Storage & delivery notes',type:'textarea'}], kind:'text' },
-  trades:{ root:'trades_root', columns:[
-      {k:'name',label:'Name'},{k:'service',label:'Service'},{k:'contact',label:'Contact',type:'textarea'}],
-    display:f=>`<h3>${esc(f.name)}</h3><div class="role">${esc(f.service)}</div><div class="note">${esc(f.contact)}</div>`, kind:'cards' },
+  // trades: rendered by the dedicated editable renderTrades() below (not the generic renderer).
   roles:{ root:'roles_root', columns:[{k:'text',label:'Role / template'}], kind:'list' },
   daily_ops:{ root:'daily_ops_root', columns:[{k:'text',label:'Task'}], kind:'list' },
   training:{ root:'training_root', columns:[{k:'text',label:'Resource'}], kind:'list' },
@@ -3804,6 +3821,72 @@ async function renderResources(){
   }).join('')}</tbody></table></div>`;
 }
 
+/* ---------- Subcontractors & Trades (editable list) ---------- */
+let TR_EDIT=null, TR_FILTER='all';
+function tradeContact(f){ // prefer structured, fall back to legacy free-text
+  const parts=[f.phone,f.email].filter(Boolean);
+  return parts.length?parts.join(' · '):(f.contact||'');
+}
+async function addTrade(){
+  const name=val('trName'); if(!name){toast('Name it first.',1);return;}
+  const phone=val('trPhone')||null, email=val('trEmail')||null;
+  const fields={name,service:val('trService')||null,phone,email,
+    contact:[phone,email].filter(Boolean).join(' · ')||null,
+    drive_url:val('trDrive')||null,notes:val('trNotes')||null,source:'intranet'};
+  const {error}=await sb.from('intranet_records').insert({section:'trades',brand:val('trBrand')||'Both',sort_order:await nextSortOrder('trades'),fields});
+  if(error){toast('Failed: '+error.message,1);return;}
+  ['trName','trService','trPhone','trEmail','trDrive','trNotes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  toast('Added.');renderTrades();
+}
+function editTrade(id){ TR_EDIT=id; renderTrades(); }
+async function saveTrade(id){
+  const phone=val('ts_phone_'+id)||null, email=val('ts_email_'+id)||null;
+  const {data:cur}=await sb.from('intranet_records').select('fields').eq('id',id).single();
+  const fields=Object.assign({},cur?.fields||{},{name:val('ts_name_'+id),service:val('ts_service_'+id)||null,
+    phone,email,contact:[phone,email].filter(Boolean).join(' · ')||null,
+    drive_url:val('ts_drive_'+id)||null,notes:val('ts_notes_'+id)||null});
+  const brand=document.getElementById('ts_brand_'+id).value;
+  const {error}=await sb.from('intranet_records').update({fields,brand}).eq('id',id);
+  if(error){toast(error.message,1);return;}
+  TR_EDIT=null;toast('Saved.');renderTrades();
+}
+async function deleteTrade(id){
+  if(!confirm('Remove this subcontractor?'))return;
+  const {error}=await sb.from('intranet_records').delete().eq('id',id);
+  if(error){toast(error.message,1);return;}
+  renderTrades();
+}
+async function renderTrades(){
+  const root=document.getElementById('trades_root'); if(!root) return;
+  const rows=await fetchRecords('trades');   // workspace-scoped
+  const trades=['all',...new Set(rows.map(r=>r.fields.service).filter(Boolean))];
+  const fEl=document.getElementById('trFilters');
+  if(fEl) fEl.innerHTML=trades.map(t=>`<button class="fbtn ${TR_FILTER===t?'active':''}" onclick="TR_FILTER=${JSON.stringify(t)};renderTrades()">${t==='all'?'All':esc(t)}</button>`).join('');
+  const shown=TR_FILTER==='all'?rows:rows.filter(r=>r.fields.service===TR_FILTER);
+  if(!shown.length){root.innerHTML='<div class="empty">No subs yet. Add one above.</div>';return;}
+  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr><th>Name / company</th><th>Trade</th><th>Contact</th><th>Files</th><th>Brand</th><th>Notes</th><th></th></tr></thead><tbody>
+  ${shown.map(r=>{const f=r.fields;
+    if(TR_EDIT===r.id){
+      return `<tr>
+        <td><input class="f" id="ts_name_${r.id}" value="${esc(f.name)}"></td>
+        <td><input class="f" id="ts_service_${r.id}" value="${esc(f.service)}"></td>
+        <td><input class="f" id="ts_phone_${r.id}" placeholder="Phone" value="${esc(f.phone)}"><input class="f" id="ts_email_${r.id}" placeholder="Email" value="${esc(f.email)}" style="margin-top:4px"></td>
+        <td><input class="f" id="ts_drive_${r.id}" placeholder="Drive link" value="${esc(f.drive_url)}"></td>
+        <td><select class="f" id="ts_brand_${r.id}">${['Both','KTU','BTU'].map(b=>`<option ${b===r.brand?'selected':''}>${b}</option>`).join('')}</select></td>
+        <td><input class="f" id="ts_notes_${r.id}" value="${esc(f.notes)}"></td>
+        <td class="row-actions" style="white-space:nowrap"><button class="btn sm" onclick="saveTrade('${r.id}')">Save</button> <button class="btn sm ghost" onclick="TR_EDIT=null;renderTrades()">✕</button></td></tr>`;
+    }
+    return `<tr>
+      <td><b>${esc(f.name)}</b></td>
+      <td>${esc(f.service)||'—'}</td>
+      <td>${esc(tradeContact(f))||'—'}</td>
+      <td>${f.drive_url?`<a href="${esc(f.drive_url)}" target="_blank" rel="noopener">📁 Open</a>`:'—'}</td>
+      <td>${brandTag(r.brand)}</td>
+      <td><small style="color:var(--text-mute)">${esc(f.notes||'')}</small></td>
+      <td class="row-actions" style="white-space:nowrap"><button class="btn sm ghost" onclick="editTrade('${r.id}')">✎</button> <button class="btn sm danger" onclick="deleteTrade('${r.id}')">🗑</button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
 /* ---------- Tasks & follow-ups ---------- */
 async function taskAssignees(){
   const [team,profs]=await Promise.all([fetchRecords('team'),sb.from('profiles').select('email,display_name').then(r=>r.data||[])]);
@@ -4215,6 +4298,8 @@ function rtRefreshActive(force){
   if(tab==='clients'&&window.renderClients) renderClients();
   if(tab==='projects'&&window.renderProjects) renderProjects();
   if(tab==='techstack'&&window.renderTechStack) renderTechStack();
+  if(tab==='resources'&&window.renderResources) renderResources();
+  if(tab==='trades'&&window.renderTrades) renderTrades();
   if(tab==='tasks'&&window.renderTasks) renderTasks();
   if(tab==='ordering'&&window.renderBtuOrdering){ renderBtuOrdering(); }
   if(tab==='mktplan'&&window.renderMktPlan) renderMktPlan();
