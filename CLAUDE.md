@@ -105,6 +105,28 @@ connectors (Gmail, HighLevel, QuickBooks, Bank Connection, Shopify,
 monday, Slack, Zapier, Facebook) load from the account automatically and need
 no bootstrap.
 
+## Scheduling & notification delivery (how the automation actually runs)
+
+Two independent schedulers — do not confuse them:
+
+- **Daily/hourly agents (Goldeneye, Moola, Foreman, Paid, Organic, Tekki, Ax)** run
+  as **Claude Code Remote Routines** (CCR cron triggers), *not* Supabase cron. Each
+  firing spins up a fresh non-interactive Claude session that reads the agent's
+  `.claude/agents/*.md` and writes to Supabase. If a Routine's session can't
+  authenticate its connectors, it fires but writes nothing (silent failure).
+- **Notification delivery + freshness** run in **Supabase pg_cron** (enabled 2026-07-06;
+  `pg_cron` + `pg_net`):
+  - `dispatch-notify` (every minute) → the `dispatch-notify` Edge Function drains
+    `notify_queue` (Slack DM via bot token / webhook, email via Resend). It is
+    **dormant until `SLACK_BOT_TOKEN` is set** as a function secret; until then Ax's
+    hourly run is the primary dispatcher. Auth is a shared secret in `public.app_config`.
+  - `agent-freshness-watchdog` (hourly) → `check_agent_freshness()` writes stale agents
+    to the `system_health` section and queues one alert per stale section per day.
+
+To activate real-time delivery, set function secrets on the `dispatch-notify` function:
+`SLACK_BOT_TOKEN` (scopes `chat:write`, `users:read.email`, `im:write`), optional
+`SLACK_ALERTS_CHANNEL`, and `RESEND_API_KEY` + `NOTIFY_FROM_EMAIL` for email.
+
 ## Connection ownership (pipe → consumer agent)
 
 Which agent depends on which pipe — so a broken connection maps straight to the
@@ -140,7 +162,7 @@ brief it degrades. Tekkie audits all of these daily.
 | Group | Purpose | URL |
 |-------|---------|-----|
 | Shared | Axyom Intranet — agent briefings; Finance tab = Moola (owner-only). Source of truth `intranet/ktubtuintranet.html`, deploy per `intranet/DEPLOY.md` | https://dash.goaxyom.com |
-| Jatalia | Ops dashboard | https://jataliamarketplace.com |
+| Jatalia | Ops dashboard | https://go.jataliamarketplace.com/ |
 
 ## Cloudflare Workers
 

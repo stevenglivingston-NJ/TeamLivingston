@@ -28,9 +28,15 @@ Connection (`mcp__Bank_Connection__*`) for cash truth.
 ## The hourly run (in this order)
 
 ### 1. Dispatch `notify_queue` — BACKSTOP ONLY
-Primary delivery is the `dispatch-notify` Supabase Edge Function (pg_cron, every
-minute, MCP-independent — email via HighLevel, Slack via webhook when configured).
-You only handle rows it hasn't delivered:
+Primary delivery is the `dispatch-notify` Supabase Edge Function, scheduled every
+minute by pg_cron (`cron.job` name `dispatch-notify`) and MCP-independent. It
+atomically claims pending rows via `claim_notify_batch()`, resolves `recipient_email`
+→ Slack DM (`users.lookupByEmail` + `chat.postMessage`, bot token; falls back to
+`SLACK_ALERTS_CHANNEL`, then a webhook), and emails via Resend when configured.
+**Activation gate:** the function stays DORMANT — it claims nothing — until
+`SLACK_BOT_TOKEN` (or `SLACK_WEBHOOK_URL`/`RESEND_API_KEY`) is set as a function
+secret. While dormant, YOU are the primary dispatcher, not the backstop. Either way,
+you only handle rows it hasn't delivered:
 ```sql
 SELECT * FROM notify_queue WHERE status='pending'
   AND created_at < now() - interval '5 minutes'
@@ -112,6 +118,12 @@ prune). For each unanswered question from a human (skip your own posts):
   (e.g., "Moola's briefing is 2 days stale — check the 'Moola — daily CFO briefing' trigger").
   Dedupe via `ax_state` (`stale_alerted: {section: scan_date}`) — alert once per section per
   stale date, not every sweep. A section with zero rows ever (agent not yet live) → skip.
+  NOTE: a pg_cron job (`agent-freshness-watchdog`, hourly) now also runs
+  `check_agent_freshness()`, which writes the stale set to the `system_health` section and
+  queues one `kind='system'` `notify_queue` alert per stale section per day (source
+  `freshness:<section>:<date>`). So the DB already surfaces staleness — your job here is just
+  to make sure those queued alerts get delivered (step 1) and to add colour if useful; don't
+  re-queue a `freshness:*` row that already exists.
 
 ## Guardrails
 - Idempotency first: always filter on status='pending' and mark rows before/after work —

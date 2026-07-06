@@ -1799,7 +1799,7 @@
           <h2>Jatalia Marketplace ops dashboard</h2>
           <div class="sub">Consolidated Amazon + Walmart + Shopify + ShipStation view. This is the daily-driver dashboard for Earthwise ops.</div>
         </div>
-        <a class="btn" href="https://jataliamarketplace.com" target="_blank" rel="noopener">Open dashboard ↗</a>
+        <a class="btn" href="https://go.jataliamarketplace.com/" target="_blank" rel="noopener">Open dashboard ↗</a>
       </div>
       <div class="ch-cards">
         <div class="ch-card"><div class="h"><span class="dot on"></span><span class="name">Shopify · Earthwise Seed</span></div><div class="meta">earthwiseseed.com · Shopify Plus · connector live</div></div>
@@ -1838,7 +1838,7 @@
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
             <a class="btn ghost sm" href="https://admin.shopify.com/store/earthwise-seed/products" target="_blank" rel="noopener">Shopify products ↗</a>
             <a class="btn ghost sm" href="https://sellercentral.amazon.com/inventory" target="_blank" rel="noopener">Amazon inventory ↗</a>
-            <a class="btn ghost sm" href="https://jataliamarketplace.com" target="_blank" rel="noopener">Jatalia dashboard ↗</a>
+            <a class="btn ghost sm" href="https://go.jataliamarketplace.com/" target="_blank" rel="noopener">Jatalia dashboard ↗</a>
           </div>
         </div>
       </div>
@@ -1886,7 +1886,7 @@
       <div class="card">
         <div class="build">
           <b>Live source:</b> the Jatalia dashboard already pulls the majority of channel-level KPIs. This tab will bookmark specific views (buy-box % over time, review flow, listing quality alerts) and add editable notes per marketplace.
-          <div style="margin-top:10px"><a class="btn" href="https://jataliamarketplace.com" target="_blank" rel="noopener">Open Jatalia dashboard ↗</a></div>
+          <div style="margin-top:10px"><a class="btn" href="https://go.jataliamarketplace.com/" target="_blank" rel="noopener">Open Jatalia dashboard ↗</a></div>
         </div>
       </div>
     </section>
@@ -3024,7 +3024,7 @@ const INTEGRATIONS = [
   {cat:'Jatalia / eCommerce', name:'ShipStation', type:'Direct MCP', scope:'Jatalia', status:'ok', d:'2026-06-04', note:'Shipment data — drives Jatalia ops dashboard'},
   {cat:'Jatalia / eCommerce', name:'Amazon Ads', type:'via Windsor', scope:'Jatalia', status:'ok', d:'2026-05-01', note:'Amazon advertising (account 1035588453215307)'},
   {cat:'Jatalia / eCommerce', name:'Zapier (Jatalia)', type:'Zapier MCP', scope:'Jatalia', status:'ok', d:'2026-05-16', note:'Automation bridge for Jatalia'},
-  {cat:'Jatalia / eCommerce', name:'Jatalia Ops Dashboard', type:'Web', scope:'Jatalia', status:'ok', d:'2026-07-02', note:'jataliamarketplace.com — consolidated Amazon/Walmart/Shopify/ShipStation view'},
+  {cat:'Jatalia / eCommerce', name:'Jatalia Ops Dashboard', type:'Web', scope:'Jatalia', status:'ok', d:'2026-07-02', note:'go.jataliamarketplace.com — consolidated Amazon/Walmart/Shopify/ShipStation view'},
 
   // ---- Infrastructure & Automation ----
   {cat:'Infrastructure & Automation', name:'Cloudflare Pages / Workers', type:'REST token', scope:'All', status:'ok', d:'2026-07-02', note:'Hosts dashboards + this intranet; Git-integration deploys'},
@@ -3118,7 +3118,7 @@ function buildCmdkIndex(){
     {kind:'action', label:'New resource', cat:'Actions', run:()=>go('resources')},
     {kind:'action', label:'Add item', cat:'Actions', run:()=>go('items')},
     {kind:'action', label:'New job', cat:'Actions', run:()=>go('jobs')},
-    {kind:'action', label:'Open Jatalia dashboard', cat:'Actions', run:()=>window.open('https://jataliamarketplace.com','_blank')},
+    {kind:'action', label:'Open Jatalia dashboard', cat:'Actions', run:()=>window.open('https://go.jataliamarketplace.com/','_blank')},
     {kind:'action', label:'Open Shopify admin', cat:'Actions', run:()=>window.open('https://admin.shopify.com/store/earthwise-seed','_blank')},
     {kind:'action', label:'Open Seller Central', cat:'Actions', run:()=>window.open('https://sellercentral.amazon.com','_blank')},
     {kind:'action', label:'Sign out', cat:'Actions', run:()=>logout()},
