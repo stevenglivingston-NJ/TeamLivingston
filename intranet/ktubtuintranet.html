@@ -1111,7 +1111,9 @@
           <select class="f" id="cBrand"><option>KTU</option><option>BTU</option><option>Both</option></select>
           <button class="btn" onclick="addContact()">Add</button>
         </div>
-        <input class="f" id="cSearch" placeholder="Search contacts…" oninput="renderContacts()" style="margin-bottom:14px;width:100%" />
+        <div id="cFilters" style="display:flex;gap:8px;margin:4px 0 10px;flex-wrap:wrap"></div>
+        <input class="f" id="cSearch" placeholder="Search contacts…" oninput="renderContacts()" style="margin-bottom:8px;width:100%" />
+        <div id="cCount" class="sub" style="margin-bottom:10px"></div>
         <table><thead><tr><th>Name</th><th>Company</th><th>Phone</th><th>Email</th><th>Type</th><th>Brand</th><th></th></tr></thead>
           <tbody id="cBody"></tbody></table>
         <div class="empty" id="cEmpty">No contacts yet. Add one above.</div>
@@ -2325,12 +2327,35 @@ async function saveContact(id){
   await sb.from('contacts').update(c).eq('id',id);
   editingContactId=null; renderContacts();
 }
+let CON_FILTER='all';
 async function renderContacts(){
   const q=val('cSearch').toLowerCase();
+  const body=document.getElementById('cBody'), empty=document.getElementById('cEmpty');
   const {data,error}=await sb.from('contacts').select('*').order('created_at',{ascending:false});
-  if(error){document.getElementById('cBody').innerHTML='';document.getElementById('cEmpty').textContent='Error loading: '+error.message;document.getElementById('cEmpty').style.display='block';return}
-  const a=(data||[]).filter(c=>!q||JSON.stringify(c).toLowerCase().includes(q));
-  document.getElementById('cBody').innerHTML=a.map(c=>{
+  if(error){body.innerHTML='';empty.textContent='Error loading: '+error.message;empty.style.display='block';return}
+  // 1) Workspace brand scope — same rule the rest of the app uses (see fetchRecords).
+  const brands=wsBrands();
+  let rows=(data||[]).filter(c=>!brands||!c.brand||brands.includes(c.brand));
+  // 2) In-tab brand chips — only shown when the workspace exposes more than one brand
+  //    (e.g. the "Axyom / all" view). Selecting KTU or BTU further separates the list.
+  const multi = !brands || brands.filter(b=>b!=='Both').length>1;
+  const filtEl=document.getElementById('cFilters');
+  if(multi){
+    if(!['all','KTU','BTU'].includes(CON_FILTER)) CON_FILTER='all';
+    filtEl.style.display='flex';
+    filtEl.innerHTML=[['all','All'],['KTU','KTU'],['BTU','BTU']]
+      .map(([k,l])=>`<button class="fbtn ${CON_FILTER===k?'active':''}" onclick="CON_FILTER='${k}';renderContacts()">${l}</button>`).join('');
+  } else { CON_FILTER='all'; filtEl.style.display='none'; filtEl.innerHTML=''; }
+  if(CON_FILTER==='KTU') rows=rows.filter(c=>c.brand==='KTU'||c.brand==='Both');
+  if(CON_FILTER==='BTU') rows=rows.filter(c=>c.brand==='BTU'||c.brand==='Both');
+  // 3) De-duplicate — collapse the same person (name + phone + email), keep newest.
+  const seen=new Set();
+  rows=rows.filter(c=>{const k=(c.name||'').trim().toLowerCase()+'|'+String(c.phone||'').replace(/\D/g,'')+'|'+String(c.email||'').trim().toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
+  // 4) Search
+  const a=rows.filter(c=>!q||JSON.stringify(c).toLowerCase().includes(q));
+  const cnt=document.getElementById('cCount');
+  if(cnt) cnt.textContent = a.length ? `${a.length} contact${a.length>1?'s':''}${CON_FILTER!=='all'?' · '+CON_FILTER:''}` : '';
+  body.innerHTML=a.map(c=>{
     if(c.id===editingContactId){
       return `<tr><td><input class="f" id="ecName_${c.id}" value="${esc(c.name)}"></td>
         <td><input class="f" id="ecCompany_${c.id}" value="${esc(c.company)}"></td>
