@@ -18,26 +18,44 @@ Finance tab, `renderMoola()`:
 4. **Icon map knows all kinds** — added `liability` 🏦, `risk` 🎯, `question` ❓, `status` 📊, `paid-challenge` ⚖️.
 5. Fixed the outdated "RLS lands later" security note (RLS is live).
 
+## Structure
+
+```
+intranet/
+├── ktubtuintranet.html   # SOURCE OF TRUTH — edit this, nothing else
+├── wrangler.jsonc        # Worker config: name, custom domain, workers_dev=false
+├── build.mjs             # wraps the HTML into worker.js (generated, gitignored)
+├── package.json          # npm run build / npm run deploy
+├── DEPLOY.md             # this file
+└── worker.js             # BUILD ARTIFACT — gitignored, never commit, never hand-edit
+```
+
+`wrangler.jsonc` pins two things worth knowing:
+- **`workers_dev: false` / `preview_urls: false`** — the intranet is internal
+  (Supabase-authed), so it should only be reachable at the custom domain, not
+  also at a public `*.workers.dev` URL. A pre-wrangler manual deploy had left
+  the preview subdomain enabled; deploying via this config turns it off.
+- **`routes: [{ pattern: "dash.goaxyom.com", custom_domain: true }]`** — the
+  Custom Domain binding is declared in config, so every deploy keeps it bound
+  instead of relying on a one-time manual dashboard step.
+
 ## How to deploy
 
 From any session/machine with a Cloudflare API token for the account
 (`CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`, see `mcp-servers/.env.example`):
 
 ```bash
-# wrap the HTML in a minimal module worker
 cd intranet
-node -e "
-const fs=require('fs');
-const html=JSON.stringify(fs.readFileSync('ktubtuintranet.html','utf8'));
-fs.writeFileSync('worker.js',
-  'const HTML='+html+';export default{fetch(){return new Response(HTML,{headers:{\"content-type\":\"text/html;charset=utf-8\"}})}}');
-"
-npx wrangler deploy worker.js --name ktubtuintranet --compatibility-date 2026-01-01
+npm install      # first time only — installs wrangler
+npm run deploy   # builds worker.js from ktubtuintranet.html, then wrangler deploy
 ```
 
-Or paste the wrapped `worker.js` into the Cloudflare dashboard editor for the
-`ktubtuintranet` worker. After deploying, hard-refresh https://dash.goaxyom.com
-and confirm the Finance tab renders (owner login required).
+`npm run deploy` = `npm run build && wrangler deploy`. Run `npm run build` alone
+if you just want to regenerate `worker.js` (e.g. to hand-paste into the
+Cloudflare dashboard editor instead of using wrangler).
+
+After deploying, hard-refresh https://dash.goaxyom.com and confirm it renders
+(owner login required).
 
 **Before deploying, diff against live first** (`curl -s https://dash.goaxyom.com`)
 in case someone shipped a change that isn't in the repo yet — merge, don't clobber.
