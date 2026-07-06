@@ -860,7 +860,6 @@
         <div class="nav-label">Operations</div>
         <div class="nav-item" data-tab="dailyops"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 10h6M9 14h6"/></svg></span><span class="lbl">Daily Ops</span><span class="pin" onclick="event.stopPropagation();togglePin('dailyops','Daily Ops')">Pin</span></div>
         <div class="nav-item" data-tab="playbook"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 4h11a5 5 0 010 10H4z"/><path d="M4 14v6"/></svg></span><span class="lbl">Playbook</span><span class="pin" onclick="event.stopPropagation();togglePin('playbook','Playbook')">Pin</span></div>
-        <div class="nav-item" data-tab="jobflow"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 6h6l2 2h8v10H4z"/></svg></span><span class="lbl">Job Flow</span><span class="pin" onclick="event.stopPropagation();togglePin('jobflow','Job Flow')">Pin</span></div>
         <div class="nav-item" data-tab="projects"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-8h6v8"/></svg></span><span class="lbl">Projects</span><span class="pin" onclick="event.stopPropagation();togglePin('projects','Projects')">Pin</span></div>
         <div class="nav-item" data-tab="clients"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0116 0"/><path d="M17 3l4 4"/></svg></span><span class="lbl">Clients</span><span class="pin" onclick="event.stopPropagation();togglePin('clients','Clients')">Pin</span></div>
         <div class="nav-item" data-tab="tasks"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 11l3 3 5-6"/></svg></span><span class="lbl">Tasks</span><span class="pin" onclick="event.stopPropagation();togglePin('tasks','Tasks & Follow-ups')">Pin</span></div>
@@ -907,6 +906,7 @@
       <div class="nav-group" data-scope="shared">
         <div class="nav-label">Systems</div>
         <div class="nav-item" data-tab="techstack"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 7l3.5 8M17 7l-3.5 8M7.2 6h9.6"/></svg></span><span class="lbl">Tech Stack</span><span class="pin" onclick="event.stopPropagation();togglePin('techstack','Tech Stack')">Pin</span></div>
+        <div class="nav-item" data-tab="resources"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0110 0v3"/></svg></span><span class="lbl">Resources</span><span class="pin" onclick="event.stopPropagation();togglePin('resources','Resources')">Pin</span></div>
         <div class="nav-item" data-tab="systems"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><circle cx="7" cy="7.5" r=".8"/><circle cx="7" cy="16.5" r=".8"/></svg></span><span class="lbl">Systems</span><span class="pin" onclick="event.stopPropagation();togglePin('systems','Systems')">Pin</span></div>
         <div class="nav-item" data-tab="integrations"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M9 6l-3 3 3 3M15 12l3-3-3-3M6 18l3-3M15 15l3 3"/></svg></span><span class="lbl">Integrations</span><span class="pin" onclick="event.stopPropagation();togglePin('integrations','Integrations')">Pin</span></div>
       </div>
@@ -1214,7 +1214,7 @@
     <section class="panel" id="techstack">
       <div class="page-head">
         <h1 class="page-title">Tech Stack</h1>
-        <p class="page-sub">How every system talks to the next — from a lead's first click to money in the bank — plus the SOW behind each integration.</p>
+        <p class="page-sub">How every system talks to the next — from a lead's first click to money in the bank. SOWs live under Playbook.</p>
       </div>
 
       <div class="card">
@@ -1271,22 +1271,38 @@
 
       <div class="card">
         <h2>KTU App — lead integrations portal</h2>
-        <div class="sub">The integration hub that joins lead sources into the stack. SOW below.</div>
+        <div class="sub">The integration hub that joins lead sources into the stack. SOW lives under Playbook.</div>
         <div class="doc-grid">
           <a class="doc-link" href="https://integration.ktuleads.com" target="_blank" rel="noopener"><div class="ico">⚡</div><div class="body"><div class="t">integration.ktuleads.com</div><div class="d">KTU App integrations portal — live</div></div></a>
         </div>
       </div>
+    </section>
 
-      <div class="card">
-        <h2>Statements of Work</h2>
-        <div class="sub">The SOW behind each integration build — what was scoped, built, and delivered. Add links as new SOWs are signed.</div>
-        <div id="sow_docs_root" class="loading">Loading…</div>
+    <!-- ============ RESOURCES ============ -->
+    <section class="panel" id="resources">
+      <div class="page-head">
+        <h1 class="page-title">Resources</h1>
+        <p class="page-sub">Logins, weblinks, and Google Drive folders the team needs to use our software — one list, click to reveal a password.</p>
       </div>
-
       <div class="card">
-        <h2>Build documents</h2>
-        <div class="sub">Authored setup docs living in this intranet (editable).</div>
-        <div id="sow_authored_root" class="loading">Loading…</div>
+        <div class="sec-title">Add a resource</div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px;align-items:end">
+          <div><label class="hint">Name</label><input id="resLabel" placeholder="e.g. QuickBooks Online, Team Drive — Contracts" style="width:100%"></div>
+          <div><label class="hint">Category</label><select id="resCategory" style="width:100%"><option>Software Login</option><option>Google Drive</option><option>Weblink</option><option>Other</option></select></div>
+          <div><label class="hint">Brand</label><select id="resBrand" style="width:100%"><option>Both</option><option>KTU</option><option>BTU</option><option>Earthwise</option></select></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:8px;align-items:end;margin-top:8px">
+          <div><label class="hint">URL / Drive link</label><input id="resUrl" placeholder="https://…" style="width:100%"></div>
+          <div><label class="hint">Username</label><input id="resUser" placeholder="(optional)" style="width:100%"></div>
+          <div><label class="hint">Password</label><input id="resPass" placeholder="(optional)" style="width:100%"></div>
+          <button class="btn sm" onclick="addResource()">+ Add</button>
+        </div>
+        <div style="margin-top:8px"><input id="resNotes" placeholder="Notes (optional)" style="width:100%"></div>
+        <div class="sub" style="margin-top:6px">Anyone with intranet access can see everything here — this is a shared team vault, not per-person secrets. Don't store banking or payroll credentials; keep those in a proper password manager.</div>
+      </div>
+      <div class="card">
+        <div id="resFilters" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"></div>
+        <div id="resources_root" class="loading">Loading…</div>
       </div>
     </section>
 
@@ -1478,7 +1494,7 @@
     <section class="panel" id="tasks">
       <div class="page-head">
         <h1 class="page-title">Tasks &amp; Follow-ups</h1>
-        <p class="page-sub">Assign tasks to each other. Every assignment pings the assignee on Slack + email; completions notify the team.</p>
+        <p class="page-sub">Assign tasks to each other. Every assignment pings the assignee on Slack + email; a repeating task pings again each cadence, right on the due date; completions notify the team.</p>
       </div>
       <div class="card">
         <div class="sec-title">New task</div>
@@ -1489,7 +1505,11 @@
           <div><label class="hint">Brand</label><select id="tkBrand" style="width:100%"><option>Both</option><option>KTU</option><option>BTU</option><option>Earthwise</option></select></div>
           <button class="btn sm" onclick="createTask()">Assign</button>
         </div>
-        <div style="margin-top:8px"><input id="tkDetail" placeholder="Detail / context (optional)" style="width:100%"></div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-top:8px">
+          <input id="tkDetail" placeholder="Detail / context (optional)" style="width:100%">
+          <div><label class="hint">Repeats</label><select id="tkCadence" style="width:100%"><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
+          <div><label class="hint">Drive link (optional)</label><input id="tkDrive" placeholder="https://drive.google.com/…" style="width:100%"></div>
+        </div>
       </div>
       <div class="card">
         <div class="sec-title">Open</div>
@@ -1529,8 +1549,8 @@
     <!-- ============ PLAYBOOK ============ -->
     <section class="panel" id="playbook">
       <div class="page-head">
-        <h1 class="page-title">Sales Playbook &amp; Training</h1>
-        <p class="page-sub">Training resources plus the full cabinet-painting sales script.</p>
+        <h1 class="page-title">Playbook</h1>
+        <p class="page-sub">Training, sales scripts, the job flow from lead to install, and the SOWs behind how we operate.</p>
       </div>
       <div class="card">
         <div class="sec-title">Training Resources</div>
@@ -1540,15 +1560,21 @@
         <div class="sec-title">Service Finance Setup (KTU + BTU)</div>
         <div id="service_finance_root" class="loading">Loading…</div>
       </div>
-    </section>
-
-    <!-- ============ JOB FLOW ============ -->
-    <section class="panel" id="jobflow">
-      <div class="page-head">
-        <h1 class="page-title">Job Flow — Front Office to Back Office</h1>
-        <p class="page-sub">The lead-to-install process map, step by step.</p>
+      <div class="card">
+        <div class="sec-title">Job Flow — Front Office to Back Office</div>
+        <div class="sub">The lead-to-install process map, step by step.</div>
+        <div id="job_flow_root" class="loading">Loading…</div>
       </div>
-      <div class="card"><div id="job_flow_root" class="loading">Loading…</div></div>
+      <div class="card">
+        <div class="sec-title">Statements of Work</div>
+        <div class="sub">The SOW behind each integration build — what was scoped, built, and delivered. Add links as new SOWs are signed.</div>
+        <div id="sow_docs_root" class="loading">Loading…</div>
+      </div>
+      <div class="card">
+        <div class="sec-title">Build documents</div>
+        <div class="sub">Authored setup docs living in this intranet (editable).</div>
+        <div id="sow_authored_root" class="loading">Loading…</div>
+      </div>
     </section>
 
     <!-- ============ TERRITORIES ============ -->
@@ -2149,7 +2175,7 @@ const TAB_TITLES = {
   vendors:'Vendors', systems:'Systems', integrations:'Integrations', franchise:'Franchise',
   pipeline:'Pipeline', marketing:'Marketing', onboarding:'Onboarding', ordering:'Ordering', trades:'Trades',
   clients:'Clients', tasks:'Tasks & Follow-ups', projects:'Projects',
-  roles:'Roles', dailyops:'Daily Ops', playbook:'Playbook', jobflow:'Job Flow',
+  roles:'Roles', dailyops:'Daily Ops', playbook:'Playbook', resources:'Resources',
   territories:'Territories', showroom:'Showroom', reports:'Reports', adminconsole:'Admin Console', axyomfin:'Axyom Financials',
   'earth-overview':'Earthwise · Overview','earth-products':'Earthwise · Products',
   'earth-orders':'Earthwise · Orders','earth-inventory':'Earthwise · Inventory',
@@ -2183,6 +2209,7 @@ function go(tab,push=true){
   if(tab==='clients'){ renderClients(); }
   if(tab==='projects'){ renderProjects(); }
   if(tab==='techstack'){ renderTechStack(); }
+  if(tab==='resources'){ renderResources(); }
   if(tab==='tasks'){ renderTasks(); }
   if(tab==='ordering'){ renderBtuOrdering(); }
   if(tab==='mktplan'){ renderMktPlan(); }
@@ -2474,7 +2501,8 @@ async function renderRecent(){
     onboarding_priorities:'onboarding', onboarding_donotchange:'onboarding', onboarding_phase_tasks:'onboarding',
     ordering_accounts:'ordering', ordering_reps:'ordering', ordering_storage:'ordering',
     trades:'trades', roles:'roles', daily_ops:'dailyops', training:'playbook',
-    playbook_scripts:'playbook', service_finance:'playbook', job_flow:'jobflow',
+    playbook_scripts:'playbook', service_finance:'playbook', job_flow:'playbook',
+    sow_docs:'playbook', sow_authored:'playbook', resources:'resources',
     zip_territories:'territories', reports:'reports',
     showroom_details:'showroom', showroom_features:'showroom', showroom_notes:'showroom' };
   box.innerHTML=data.map(r=>{
@@ -3069,6 +3097,8 @@ function buildCmdkIndex(){
   }));
   const actions=[
     {kind:'action', label:'New contact', cat:'Actions', run:()=>go('contacts')},
+    {kind:'action', label:'New task', cat:'Actions', run:()=>go('tasks')},
+    {kind:'action', label:'New resource', cat:'Actions', run:()=>go('resources')},
     {kind:'action', label:'Add item', cat:'Actions', run:()=>go('items')},
     {kind:'action', label:'New job', cat:'Actions', run:()=>go('jobs')},
     {kind:'action', label:'Open Jatalia dashboard', cat:'Actions', run:()=>window.open('https://jataliamarketplace.com','_blank')},
@@ -3712,6 +3742,68 @@ function linkifyTechNodes(rows){
   });
 }
 
+/* ---------- Resources (logins, weblinks, Google Drive) ---------- */
+let RES_EDIT=null, RES_FILTER='all';
+async function addResource(){
+  const label=val('resLabel'); if(!label){toast('Name it first.',1);return;}
+  const r={label,category:val('resCategory')||'Other',brand:val('resBrand')||'Both',
+    url:val('resUrl')||null,username:val('resUser')||null,password:val('resPass')||null,notes:val('resNotes')||null,
+    created_by:user?.id||null,created_by_name:(prof&&prof.display_name)||(user&&user.email)||null};
+  const {error}=await sb.from('resources').insert(r);
+  if(error){toast('Failed: '+error.message,1);return;}
+  ['resLabel','resUrl','resUser','resPass','resNotes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  toast('Resource added.');renderResources();
+}
+function editResource(id){ RES_EDIT=id; renderResources(); }
+async function saveResource(id){
+  const fields={label:val('rl_'+id),url:val('ru_'+id)||null,username:val('rn_'+id)||null,password:val('rp_'+id)||null,
+    category:document.getElementById('rc_'+id).value,brand:document.getElementById('rb_'+id).value,notes:val('rt_'+id)||null};
+  const {error}=await sb.from('resources').update(fields).eq('id',id);
+  if(error){toast(error.message,1);return;}
+  RES_EDIT=null;toast('Saved.');renderResources();
+}
+async function deleteResource(id){
+  if(!confirm('Remove this resource?'))return;
+  const {error}=await sb.from('resources').delete().eq('id',id);
+  if(error){toast(error.message,1);return;}
+  renderResources();
+}
+async function renderResources(){
+  const root=document.getElementById('resources_root'); if(!root) return;
+  const {data,error}=await sb.from('resources').select('*').order('category',{ascending:true}).order('label',{ascending:true});
+  if(error){root.innerHTML=`<div class="empty">Resources table not reachable: ${esc(error.message)}</div>`;return;}
+  // Scope to the active workspace, same rule the rest of the app uses (see fetchRecords).
+  const brands=wsBrands();
+  const rows=(data||[]).filter(r=>!brands||!r.brand||brands.includes(r.brand));
+  const cats=['all',...new Set(rows.map(r=>r.category).filter(Boolean))];
+  document.getElementById('resFilters').innerHTML=cats.map(c=>`<button class="fbtn ${RES_FILTER===c?'active':''}" onclick="RES_FILTER='${esc(c)}';renderResources()">${c==='all'?'All':esc(c)}</button>`).join('');
+  const shown=RES_FILTER==='all'?rows:rows.filter(r=>r.category===RES_FILTER);
+  if(!shown.length){root.innerHTML='<div class="empty">Nothing here yet. Add a login, weblink, or Drive folder above.</div>';return;}
+  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr><th>Name</th><th>Category</th><th>Brand</th><th>Link</th><th>Username</th><th>Password</th><th>Notes</th><th></th></tr></thead><tbody>
+  ${shown.map(r=>{
+    if(RES_EDIT===r.id){
+      return `<tr>
+        <td><input class="f" id="rl_${r.id}" value="${esc(r.label)}"></td>
+        <td><select class="f" id="rc_${r.id}">${['Software Login','Google Drive','Weblink','Other'].map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}</select></td>
+        <td><select class="f" id="rb_${r.id}">${['Both','KTU','BTU','Earthwise'].map(b=>`<option ${b===r.brand?'selected':''}>${b}</option>`).join('')}</select></td>
+        <td><input class="f" id="ru_${r.id}" value="${esc(r.url)}"></td>
+        <td><input class="f" id="rn_${r.id}" value="${esc(r.username)}"></td>
+        <td><input class="f" id="rp_${r.id}" value="${esc(r.password)}"></td>
+        <td><input class="f" id="rt_${r.id}" value="${esc(r.notes)}"></td>
+        <td class="row-actions"><button class="btn sm" onclick="saveResource('${r.id}')">Save</button> <button class="btn sm ghost" onclick="RES_EDIT=null;renderResources()">✕</button></td></tr>`;
+    }
+    return `<tr>
+      <td><b>${esc(r.label)}</b></td>
+      <td><small style="color:var(--text-mute)">${esc(r.category||'')}</small></td>
+      <td>${brandTag(r.brand)}</td>
+      <td>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">Open ↗</a>`:'—'}</td>
+      <td>${r.username?esc(r.username):'—'}</td>
+      <td>${r.password?`<span class="pwmask" data-pw="${esc(r.password)}" onclick="togglePw(this)" style="cursor:pointer" title="Click to reveal">••••••</span>`:'—'}</td>
+      <td><small style="color:var(--text-mute)">${esc(r.notes||'')}</small></td>
+      <td class="row-actions" style="white-space:nowrap"><button class="btn sm ghost" onclick="editResource('${r.id}')">✎</button> <button class="btn sm danger" onclick="deleteResource('${r.id}')">🗑</button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
 /* ---------- Tasks & follow-ups ---------- */
 async function taskAssignees(){
   const [team,profs]=await Promise.all([fetchRecords('team'),sb.from('profiles').select('email,display_name').then(r=>r.data||[])]);
@@ -3728,10 +3820,11 @@ async function renderTasks(){
   if(error){openRoot.innerHTML=`<div class="empty">Tasks table not reachable: ${esc(error.message)}</div>`;document.getElementById('tasksDoneRoot').innerHTML='';return;}
   const open=(data||[]).filter(t=>t.status==='open'||t.status==='in_progress');
   const done=(data||[]).filter(t=>t.status==='done').slice(0,10);
+  const CADENCE_LBL={daily:'Daily',weekly:'Weekly',monthly:'Monthly'};
   const row=t=>{const late=t.due_date&&t.status!=='done'&&new Date(t.due_date)<new Date();return `<tr>
-    <td><b>${esc(t.title)}</b>${t.detail?`<br><small style="color:var(--text-mute)">${esc(t.detail)}</small>`:''}</td>
+    <td><b>${esc(t.title)}</b>${t.detail?`<br><small style="color:var(--text-mute)">${esc(t.detail)}</small>`:''}${t.drive_url?` <a href="${esc(t.drive_url)}" target="_blank" rel="noopener" title="Open linked Drive file">📎</a>`:''}</td>
     <td>${esc(t.assignee)}</td><td>${esc(t.brand||'Both')}</td>
-    <td>${t.due_date?`<span class="${late?'ax-pill overdue':''}">${esc(t.due_date)}</span>`:'—'}</td>
+    <td>${t.due_date?`<span class="${late?'ax-pill overdue':''}">${esc(t.due_date)}</span>`:'—'}${t.cadence&&t.cadence!=='once'?`<br><small style="color:var(--text-mute)">↻ ${CADENCE_LBL[t.cadence]||esc(t.cadence)}</small>`:''}</td>
     <td><small style="color:var(--text-mute)">${esc(t.created_by_name||'')}</small></td>
     <td style="white-space:nowrap">${t.status!=='done'?`<button class="btn sm ghost" onclick="remindTask('${t.id}')" title="Ping ${esc(t.assignee)} again on Slack + email">🔔 Remind</button> <button class="btn sm ghost" onclick="setTaskStatus('${t.id}','done')">✓ Done</button>`:''}</td></tr>`;};
   openRoot.innerHTML=open.length?`<div style="overflow-x:auto"><table class="btable"><thead><tr><th>Task</th><th>Assignee</th><th>Brand</th><th>Due</th><th>By</th><th></th></tr></thead><tbody>${open.map(row).join('')}</tbody></table></div>`:'<div class="empty">Nothing open. Assign something above.</div>';
@@ -3741,15 +3834,37 @@ async function createTask(){
   const title=val('tkTitle');if(!title){toast('Give the task a title.',1);return;}
   const sel=document.getElementById('tkAssignee');const opt=sel.options[sel.selectedIndex];
   const t={title,detail:val('tkDetail')||null,assignee:sel.value,assignee_email:opt?opt.dataset.email||null:null,
-    due_date:val('tkDue')||null,brand:val('tkBrand')||'Both',created_by:user?.id||null,created_by_name:(prof&&prof.display_name)||(user&&user.email)||null};
+    due_date:val('tkDue')||null,brand:val('tkBrand')||'Both',cadence:val('tkCadence')||'once',drive_url:val('tkDrive')||null,
+    created_by:user?.id||null,created_by_name:(prof&&prof.display_name)||(user&&user.email)||null};
   const {error}=await sb.from('team_tasks').insert(t);
   if(error){toast('Failed: '+error.message,1);return;}
-  ['tkTitle','tkDetail','tkDue'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['tkTitle','tkDetail','tkDue','tkDrive'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   toast(`Assigned to ${t.assignee} — Slack + email ping queued.`);renderTasks();
 }
+function nextCadenceDate(dateStr,cadence){
+  const d=new Date(dateStr+'T00:00:00');
+  if(cadence==='daily') d.setDate(d.getDate()+1);
+  else if(cadence==='weekly') d.setDate(d.getDate()+7);
+  else if(cadence==='monthly') d.setMonth(d.getMonth()+1);
+  else return null;
+  return d.toISOString().slice(0,10);
+}
 async function setTaskStatus(id,status){
+  const {data:t,error:e0}=await sb.from('team_tasks').select('*').eq('id',id).single();
   const {error}=await sb.from('team_tasks').update({status,completed_at:status==='done'?new Date().toISOString():null}).eq('id',id);
-  if(error){toast(error.message,1);return;} toast('Updated.');renderTasks();
+  if(error){toast(error.message,1);return;}
+  if(status==='done' && t && t.cadence && t.cadence!=='once'){
+    // Spawn the next occurrence. The team_tasks INSERT trigger auto-enqueues the
+    // task_assigned Slack+email ping — do NOT enqueue it here or it double-sends.
+    const nextDue=nextCadenceDate(t.due_date||new Date().toISOString().slice(0,10),t.cadence);
+    const nt={title:t.title,detail:t.detail,assignee:t.assignee,assignee_email:t.assignee_email,
+      due_date:nextDue,brand:t.brand,cadence:t.cadence,drive_url:t.drive_url,status:'open',
+      created_by:t.created_by,created_by_name:t.created_by_name};
+    const {error:e1}=await sb.from('team_tasks').insert(nt);
+    if(e1){toast('Marked done, but could not schedule next: '+e1.message,1);renderTasks();return;}
+    toast(`Done — next ${t.cadence} occurrence created (due ${nextDue}).`);renderTasks();return;
+  }
+  toast('Updated.');renderTasks();
 }
 async function remindTask(id){
   const {data:t,error:e1}=await sb.from('team_tasks').select('*').eq('id',id).single();
@@ -4120,6 +4235,7 @@ function startRealtime(){
       .on('postgres_changes',{event:'*',schema:'public',table:'team_tasks'},rtKick)
       .on('postgres_changes',{event:'*',schema:'public',table:'action_queue'},rtKick)
       .on('postgres_changes',{event:'*',schema:'public',table:'notify_queue'},rtKick)
+      .on('postgres_changes',{event:'*',schema:'public',table:'resources'},rtKick)
       .subscribe();
   }catch(e){ console.warn('realtime unavailable, falling back to polling',e); }
   // Refresh when the user returns to the tab/window

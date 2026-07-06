@@ -97,7 +97,10 @@ prune). For each unanswered question from a human (skip your own posts):
 - **Birthdays & anniversaries**: `SELECT fields FROM intranet_records WHERE section='team_dates'`.
   Anyone whose birthday (month/day) is today → 🎂 shout-out in #general by first name.
   Work anniversary today → 🎉 with the year count ("3 years with the team today!").
-- **Overdue tasks**: team_tasks where status='open' and due_date < today → one grouped
+- **Tasks due today → DM the assignee**: `SELECT * FROM team_tasks WHERE status IN ('open','in_progress') AND due_date = <today ET>`. For each, enqueue a `task_reminder` so the dispatcher (step 1) DMs the assignee on Slack + email:
+  `INSERT INTO notify_queue (kind, recipient_email, subject, body, source) VALUES ('task_reminder', <assignee_email>, '[Axyom Reminder] '||title||' is due today → '||assignee, coalesce(detail,'')||' (due '||due_date||')'||case when drive_url is not null then ' · file: '||drive_url else '' end||case when cadence<>'once' then ' · recurring '||cadence else '' end, 'team_tasks:'||id);`
+  Dedupe: skip if a `task_reminder` row with the same `source` was already inserted today (this daily step runs once, first-run-after-7AM-ET, so one ping per task per due date). Recurring tasks are covered automatically — each completed occurrence spawns the next with its own due_date, which lands here on that day.
+- **Overdue tasks**: team_tasks where status IN ('open','in_progress') and due_date < today → one grouped
   reminder in #intranet-alerts (assignee, task, days overdue). No DM nagging.
 - **Queue health**: if notify_queue or action_queue has rows stuck 'pending' > 24h or any
   'error', summarize them in #intranet-alerts so a human can intervene.
