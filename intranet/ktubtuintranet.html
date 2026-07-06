@@ -1930,10 +1930,30 @@
         <div id="adminUsers_root" class="loading">Loading…</div>
       </div>
       <div class="card">
+        <h2>Section visibility</h2>
+        <p class="page-sub" style="margin-bottom:10px">Fine-tune what a workspace can see, beyond the default KTU/BTU-vs-Earthwise split — e.g. hide "Vendors &amp; Ordering" from a role, or grant "Financial Reporting" to one without the rest of Owner. <b>Admin always sees everything</b> — Admin isn't selectable here, so this can never lock the console itself out.</p>
+        <div class="add-bar">
+          <select class="f" id="tpRole">
+            <option value="homeservices">KTU/BTU workspace</option>
+            <option value="ecommerce">Earthwise workspace</option>
+          </select>
+          <select class="f" id="tpTab" style="min-width:220px"></select>
+          <select class="f" id="tpVisible">
+            <option value="true">Show</option>
+            <option value="false">Hide</option>
+          </select>
+          <button class="btn" onclick="tabPermSave()">Save</button>
+        </div>
+        <div class="build" id="tpMsg" style="display:none"></div>
+        <div id="tabPerms_root" class="loading" style="margin-top:12px">Loading…</div>
+      </div>
+      <div class="card">
         <div class="build"><b>How access works:</b> <i>KTU/BTU workspace</i> sees the home-services side only.
           <i>Earthwise workspace</i> sees Earthwise/Jatalia only. <i>Admin</i> sees everything, including
           Financial Reporting and this console. Sign-in is enforced at the database level (RLS) — no
-          account, no data. Passwords must be at least 8 characters; you can reset anyone's here at any time.</div>
+          account, no data. Passwords must be at least 8 characters; you can reset anyone's here at any time.
+          Section visibility above is an override on top of that default split — resetting a row returns
+          that tab to its normal default for the role.</div>
       </div>
     </section>
 
@@ -2051,21 +2071,17 @@ async function enterApp(){
     display_name:(user.email||'user').split('@')[0], role:'homeservices'};
   const name=CURRENT_PROFILE.display_name||user.email;
   const avatar=String(name).trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase()||'AX';
-  showApp({role:CURRENT_PROFILE.role, name, avatar, email:user.email});
+  await showApp({role:CURRENT_PROFILE.role, name, avatar, email:user.email});
 }
 function getSession(){
   return CURRENT_PROFILE ? {role:CURRENT_PROFILE.role,
     name:CURRENT_PROFILE.display_name||CURRENT_PROFILE.email} : null;
 }
 async function logout(){ try{await sb.auth.signOut()}catch(_){ } location.reload(); }
-function showApp(s){
+async function showApp(s){
   if(!s) return;
   document.getElementById('login').style.display='none';
   document.getElementById('app').style.display='block';
-  // Deep link: restore the tab from the URL hash (also seeds the history entry)
-  const hashTab=(location.hash||'').slice(1);
-  if(hashTab && hashTab!=='home' && document.getElementById(hashTab)){ setTimeout(()=>go(hashTab,false),0); }
-  else { try{history.replaceState({tab:'home'},'','#home');}catch(_){} }
   const h=new Date().getHours();
   const greet=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
   document.querySelector('.welcome .hi').innerHTML=`${greet}, <span class="name">${esc(s.name)}</span>.`;
@@ -2074,9 +2090,14 @@ function showApp(s){
   document.getElementById('userAvatar').textContent=s.avatar;
   document.querySelector('.user-chip .who .sub').textContent=
     s.role==='admin'?'Owner · full access':s.role==='ecommerce'?'Earthwise workspace':'KTU/BTU workspace';
-  applyRole(s.role);
+  // Permissions must be loaded BEFORE any deep-link navigation, so a hash
+  // pointing at a hidden tab is caught by go()'s route guard on first paint.
+  await applyRole(s.role);
+  const hashTab=(location.hash||'').slice(1);
+  if(hashTab && hashTab!=='home' && document.getElementById(hashTab)){ setTimeout(()=>go(hashTab,false),0); }
+  else { try{history.replaceState({tab:'home'},'','#home');}catch(_){} }
   renderAll();
-  if(s.role==='admin') renderAdminConsole();
+  if(s.role==='admin'){ renderAdminConsole(); renderTabPermissions(); }
 }
 document.getElementById('p').addEventListener('keydown',e=>{if(e.key==='Enter')login()});
 
@@ -2147,6 +2168,53 @@ async function adminDeleteUser(user_id,email){
 }
 
 /* ================================================================
+   Section visibility — per-role tab permission overrides (Supabase
+   `tab_permissions`, RLS: admin writes, each role reads its own).
+   Uses TAB_SECTIONS/TAB_TITLES (defined below) — safe to reference here,
+   since this only runs on user interaction, well after the whole script
+   has parsed and those consts exist.
+   ================================================================ */
+function tpMsg(text,ok){
+  const m=document.getElementById('tpMsg');
+  m.style.display='block'; m.innerHTML=(ok?'✅ ':'⚠️ ')+esc(text);
+}
+function populateTabPermSelect(){
+  const sel=document.getElementById('tpTab'); if(!sel || sel.options.length) return;
+  sel.innerHTML = TAB_SECTIONS.map(s=>
+    `<optgroup label="${esc(s.label)}">${s.tabs.map(t=>`<option value="${esc(t)}">${esc(TAB_TITLES[t]||t)}</option>`).join('')}</optgroup>`
+  ).join('');
+}
+async function tabPermSave(){
+  const role=val('tpRole'), tab=val('tpTab'), visible=val('tpVisible')==='true';
+  const {error}=await sb.from('tab_permissions').upsert({role,tab,visible,updated_by:CURRENT_PROFILE&&CURRENT_PROFILE.id});
+  if(error){ tpMsg(error.message,false); return; }
+  tpMsg(`${visible?'Showing':'Hiding'} "${TAB_TITLES[tab]||tab}" for ${ROLE_LABEL[role]}.`,true);
+  renderTabPermissions();
+}
+async function tabPermReset(role,tab){
+  if(!confirm(`Reset "${TAB_TITLES[tab]||tab}" for ${ROLE_LABEL[role]} back to its default visibility?`)) return;
+  const {error}=await sb.from('tab_permissions').delete().eq('role',role).eq('tab',tab);
+  if(error){ alert(error.message); return; }
+  renderTabPermissions();
+}
+async function renderTabPermissions(){
+  const root=document.getElementById('tabPerms_root'); if(!root) return;
+  populateTabPermSelect();
+  const {data,error}=await sb.from('tab_permissions').select('*').order('role').order('tab');
+  if(error){ root.innerHTML='<div class="empty">'+esc(error.message)+'</div>'; return; }
+  const rows=data||[];
+  if(!rows.length){ root.innerHTML='<div class="sub">No overrides set — every workspace is on its default section split.</div>'; return; }
+  root.innerHTML = `<table><thead><tr><th>Workspace</th><th>Section</th><th>Tab</th><th>Setting</th><th></th></tr></thead><tbody>`+
+    rows.map(r=>`<tr>
+      <td>${esc(ROLE_LABEL[r.role]||r.role)}</td>
+      <td>${esc(tabSectionLabel(r.tab))}</td>
+      <td>${esc(TAB_TITLES[r.tab]||r.tab)}</td>
+      <td>${r.visible?'👁️ Shown (override)':'🚫 Hidden (override)'}</td>
+      <td><button class="btn sm ghost" onclick="tabPermReset('${esc(r.role)}','${esc(r.tab)}')">Reset to default</button></td>
+    </tr>`).join('')+`</tbody></table>`;
+}
+
+/* ================================================================
    Tabs / navigation (sidebar)
    ================================================================ */
 const TAB_TITLES = {
@@ -2164,6 +2232,9 @@ const TAB_TITLES = {
 };
 function go(tab,push=true){
   if(!document.getElementById(tab)) tab='home';
+  // Route guard: a tab hidden from this role/permission set can't be reached
+  // by typing its hash directly either — nav-hiding alone was UI-only.
+  if(!isTabVisible(tab)) tab='home';
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
   const nav=document.querySelector('.nav-item[data-tab="'+tab+'"]'); if(nav) nav.classList.add('active');
@@ -2181,7 +2252,7 @@ function go(tab,push=true){
   // Live-refresh Home cards when navigating back to home
   if(tab==='home'){ renderRecent(); renderHealth(); renderFavPanel(); renderDash(); }
   if(tab==='directory'){ renderDirectory(); }
-  if(tab==='adminconsole'){ renderAdminConsole(); }
+  if(tab==='adminconsole'){ renderAdminConsole(); renderTabPermissions(); }
   if(tab==='pipeline'){ renderPipeline(); }
   if(tab==='organic'){ switchPO(PO_VIEW); }
   if(tab==='team'){ renderOrgChart(); }
@@ -2229,8 +2300,52 @@ const ROLE_WS = {
 let CURRENT_ROLE = 'homeservices';
 let CURRENT_WS = 'all';
 
-function applyRole(role){
+/* ================================================================
+   Tab permissions — per-role visibility overrides (Admin Console →
+   Section Visibility). Default visibility still comes from the
+   scope/workspace rules below; an override in Supabase `tab_permissions`
+   can force a tab on or off for a given role. Admin is always exempt —
+   full access, always — so a mis-set override can never lock the owner
+   out of the console that controls this.
+   ================================================================ */
+const TAB_SECTIONS = [
+  {key:'ops',      label:'Operations',                 scope:'hs',    tabs:['dailyops','playbook','jobflow','projects','clients','tasks','trades','roles']},
+  {key:'people',   label:'People',                     scope:'hs',    tabs:['team','onboarding']},
+  {key:'catalog',  label:'Catalog & Jobs',              scope:'hs',    tabs:['contacts','items','jobs']},
+  {key:'vendors',  label:'Vendors & Ordering',          scope:'hs',    tabs:['vendors','ordering']},
+  {key:'growth',   label:'Growth',                      scope:'hs',    tabs:['pipeline','organic','marketing','mktplan','mktspend','reports']},
+  {key:'franchise',label:'Franchise & Place',           scope:'hs',    tabs:['franchise','territories','showroom']},
+  {key:'systems',  label:'Systems',                     scope:'shared',tabs:['techstack','systems','integrations']},
+  {key:'earth',    label:'Earthwise / Jatalia',         scope:'earth', tabs:['earth-overview','earth-products','earth-orders','earth-inventory','earth-marketplaces','earth-vendors','earth-content']},
+  {key:'owner',    label:'Owner (Financials & Admin)',  scope:'admin', tabs:['finance','adminconsole','axyomfin','syshealth']}
+];
+const TAB_TO_SCOPE = (()=>{ const m={}; TAB_SECTIONS.forEach(s=>s.tabs.forEach(t=>m[t]=s.scope)); return m; })();
+function tabSectionLabel(tab){ const s=TAB_SECTIONS.find(s=>s.tabs.includes(tab)); return s?s.label:'—'; }
+function defaultTabVisible(tab, role, ws){
+  const scope=TAB_TO_SCOPE[tab];
+  if(!scope) return true; // ungrouped (home/directory/docs) — always visible
+  if(scope==='hs')    return role!=='ecommerce' && ws!=='earth';
+  if(scope==='earth') return (role==='admin' && (ws==='all'||ws==='earth')) || role==='ecommerce';
+  if(scope==='admin') return role==='admin';
+  return true; // shared
+}
+let TAB_PERM_OVERRIDES = {};
+async function loadTabPermissions(role){
+  TAB_PERM_OVERRIDES = {};
+  if(role==='admin') return; // admin is never restricted — can't lock itself out
+  const {data,error}=await sb.from('tab_permissions').select('tab,visible').eq('role',role);
+  if(error){ console.error('tab_permissions',error); return; }
+  (data||[]).forEach(r=>{ TAB_PERM_OVERRIDES[r.tab]=r.visible; });
+}
+function isTabVisible(tab){
+  if(CURRENT_ROLE==='admin') return true;
+  if(Object.prototype.hasOwnProperty.call(TAB_PERM_OVERRIDES,tab)) return TAB_PERM_OVERRIDES[tab];
+  return defaultTabVisible(tab, CURRENT_ROLE, CURRENT_WS);
+}
+
+async function applyRole(role){
   CURRENT_ROLE=role;
+  await loadTabPermissions(role);
   const allowed=ROLE_WS[role]||['all'];
   const saved=localStorage.getItem('axyom_ws_'+role);
   CURRENT_WS = allowed.includes(saved) ? saved : allowed[0];
@@ -2251,21 +2366,24 @@ function setWS(k){
   CURRENT_WS=k; localStorage.setItem('axyom_ws_'+CURRENT_ROLE,k);
   document.body.dataset.ws = k==='all' ? '' : k;
   renderWsSwitch();
-  // Nav group visibility: scope × role × workspace
+  // Nav item visibility: scope × role × workspace, with per-tab permission
+  // overrides layered on top (isTabVisible checks TAB_PERM_OVERRIDES first).
+  document.querySelectorAll('.nav-item[data-tab]').forEach(item=>{
+    item.style.display = isTabVisible(item.dataset.tab) ? '' : 'none';
+  });
+  // A nav-group hides only once EVERY item inside it is hidden — so an
+  // override granting a single tab within an otherwise-restricted group
+  // (e.g. "Financial Reporting" for a homeservices role) still surfaces it.
   document.querySelectorAll('.nav-group[data-scope]').forEach(g=>{
-    const scope=g.dataset.scope;
-    let show=true;
-    if(scope==='hs')    show = CURRENT_ROLE!=='ecommerce' && k!=='earth';
-    if(scope==='earth') show = (CURRENT_ROLE==='admin' && (k==='all'||k==='earth')) || CURRENT_ROLE==='ecommerce';
-    if(scope==='admin') show = CURRENT_ROLE==='admin';
-    if(scope==='shared')show = true;
-    g.style.display = show ? '' : 'none';
+    const items=[...g.querySelectorAll('.nav-item[data-tab]')];
+    const anyVisible=items.some(it=>it.style.display!=='none');
+    g.style.display = anyVisible ? '' : 'none';
   });
   // Goldeneye card shows for every role — brand filtering scopes the callouts
   // (ecommerce sees only Earthwise/marketplace items, team sees only KTU/BTU).
-  // If the active tab just got hidden, bounce home
+  // If the active tab is no longer visible (group- or override-hidden), bounce home
   const activeNav=document.querySelector('.nav-item.active');
-  if(activeNav && activeNav.closest('.nav-group') && activeNav.closest('.nav-group').style.display==='none') go('home');
+  if(activeNav && !isTabVisible(activeNav.dataset.tab)) go('home');
   // Re-render data with new brand filter
   renderAllSections(); renderContacts&&renderContacts(); renderItems&&renderItems(); renderJobs&&renderJobs();
   renderRecent(); renderFavPanel();
@@ -4133,7 +4251,7 @@ function rtRefreshActive(force){
   if(tab==='team'){ window.renderTeamDates&&renderTeamDates(); window.renderOrgChart&&renderOrgChart(); }
   if(tab==='pipeline'&&window.renderPipeline) renderPipeline();
   if(tab==='organic'&&window.renderPO) renderPO();
-  if(tab==='adminconsole'&&window.renderAdminConsole) renderAdminConsole();
+  if(tab==='adminconsole'&&window.renderAdminConsole){ renderAdminConsole(); renderTabPermissions&&renderTabPermissions(); }
   // Section-driven roots (throttled full pass — covers every *_root container)
   const now=Date.now();
   if(force || now-RT_LAST_FULL>30000){ RT_LAST_FULL=now; window.renderAllSections&&renderAllSections(); }
