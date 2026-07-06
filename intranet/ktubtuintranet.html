@@ -3646,10 +3646,12 @@ async function printProjectDoc(project){
 
 /* ---------- Tech Stack registry (Tekki's table) ---------- */
 const TECH_COLS=[
-  {k:'name',label:'System',w:130},{k:'category',label:'Category',w:110},{k:'purpose',label:'Purpose',w:220},
-  {k:'url',label:'Link',w:70},{k:'username',label:'Username',w:150},{k:'password',label:'Password',w:110},
+  {k:'name',label:'System',w:130},{k:'category',label:'Category',w:110},{k:'priority',label:'Priority',w:90},
+  {k:'purpose',label:'Purpose',w:200},{k:'cost',label:'Cost',w:110},
+  {k:'url',label:'Link',w:70},{k:'username',label:'Username',w:140},{k:'password',label:'Password',w:110},
   {k:'sow_url',label:'SOW',w:70},{k:'notes',label:'Notes',w:150}
 ];
+const TECH_PRIORITY_COLOR={critical:'var(--danger)',high:'var(--accent)',medium:'var(--info)',low:'var(--text-mute)'};
 let TECH_EDIT=null;
 function techSowCell(v,name){
   if(!v) return `<small style="color:var(--text-mute)">— <span title="Tekki drafts SOWs for rows missing one">(pending)</span></small>`;
@@ -3665,6 +3667,7 @@ async function renderTechStack(){
     if(c.k==='url') return `<td>${v?`<a href="${esc(v)}" target="_blank" rel="noopener">Open ↗</a>`:'—'}</td>`;
     if(c.k==='sow_url') return `<td>${techSowCell(v,r.fields.name)}</td>`;
     if(c.k==='password') return `<td>${v?`<span class="pwmask" data-pw="${esc(v)}" onclick="togglePw(this)" style="cursor:pointer" title="Click to reveal">••••••</span>`:'—'}</td>`;
+    if(c.k==='priority') return `<td>${v?`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${TECH_PRIORITY_COLOR[v]||'var(--text-mute)'};flex-shrink:0"></span>${esc(v)}</span>`:'—'}</td>`;
     if(c.k==='name') return `<td><b>${esc(v)}</b></td>`;
     return `<td>${esc(v)||'—'}</td>`;
   };
@@ -3676,7 +3679,7 @@ async function renderTechStack(){
   <tr>${TECH_COLS.map(c=>`<td><input id="te_new_${c.k}" placeholder="${c.label}" style="width:${c.w-14}px"></td>`).join('')}
     <td><button class="btn sm" onclick="addTechRow()">+ Add</button></td></tr>
   </tbody></table></div>
-  <div class="sub" style="margin-top:6px">SOW column accepts a URL, or <code>sow:Title</code> to open a doc stored under Statements of Work. Passwords are visible to all intranet users — keep anything sensitive in a proper password manager and note it here instead.</div>`;
+  <div class="sub" style="margin-top:6px">SOW column accepts a URL, or <code>sow:Title</code> to open a doc stored under Statements of Work. Cost is sourced from real card/bill spend where Tekki can confirm it, public pricing otherwise. Priority is Tekki's estimate of what breaks if a system goes dark (critical/high/medium/low) — override it inline if it's wrong. Passwords are visible to all intranet users — keep anything sensitive in a proper password manager and note it here instead; Tekki never writes this field.</div>`;
   linkifyTechNodes(rows);
 }
 function togglePw(el){ el.textContent = el.textContent==='••••••' ? el.dataset.pw : '••••••'; }
