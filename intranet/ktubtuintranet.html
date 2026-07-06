@@ -890,7 +890,7 @@
       <div class="nav-group" data-scope="hs">
         <div class="nav-label">Growth</div>
         <div class="nav-item" data-tab="pipeline"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg></span><span class="lbl">Pipeline</span><span class="pin" onclick="event.stopPropagation();togglePin('pipeline','Pipeline')">Pin</span></div>
-        <div class="nav-item" data-tab="organic"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 22c5-3 8-7 8-12a8 8 0 10-16 0c0 5 3 9 8 12z"/><path d="M12 22V10"/></svg></span><span class="lbl">Organic</span><span class="pin" onclick="event.stopPropagation();togglePin('organic','Organic')">Pin</span></div>
+        <div class="nav-item" data-tab="organic"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 22c5-3 8-7 8-12a8 8 0 10-16 0c0 5 3 9 8 12z"/><path d="M12 22V10"/></svg></span><span class="lbl">Paid &amp; Organic</span><span class="pin" onclick="event.stopPropagation();togglePin('organic','Paid &amp; Organic')">Pin</span></div>
         <div class="nav-item" data-tab="marketing"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 3l9 9 4-4 5 5"/><path d="M14 3h7v7"/></svg></span><span class="lbl">Marketing</span><span class="pin" onclick="event.stopPropagation();togglePin('marketing','Marketing')">Pin</span></div>
         <div class="nav-item" data-tab="mktplan"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14l2.5 2.5L16 12"/></svg></span><span class="lbl">Marketing Plan</span><span class="pin" onclick="event.stopPropagation();togglePin('mktplan','Marketing Plan')">Pin</span></div>
         <div class="nav-item" data-tab="mktspend"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 2v20M17 6H9.5a3 3 0 000 6h5a3 3 0 010 6H6"/></svg></span><span class="lbl">Marketing Spend</span><span class="pin" onclick="event.stopPropagation();togglePin('mktspend','Marketing Spend')">Pin</span></div>
@@ -1379,12 +1379,20 @@
 
     <section class="panel" id="organic">
       <div class="page-head">
-        <h1 class="page-title">🌱 Organic</h1>
-        <p class="page-sub">Organic search, local pack &amp; competitive intelligence — SEO rankings, GMB performance, keyword &amp; content plays, and where competitors are gaining. Owns the ~84% of pipeline that isn't bought.</p>
+        <h1 class="page-title">📈 Paid &amp; Organic</h1>
+        <p class="page-sub">Your two search levers side by side — <b>Paid</b> acquisition (Google Ads / LSA / Meta) and <b>Organic</b> visibility (SEO, local pack, GMB). Toggle to switch; together they cover the full demand picture.</p>
+      </div>
+      <div id="poToggle" style="display:inline-flex;gap:2px;padding:3px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px">
+        <button class="po-btn active" data-po="organic" onclick="switchPO('organic')" style="border:0;background:var(--accent);color:#fff;font:inherit;font-weight:600;padding:6px 15px;border-radius:calc(var(--radius) - 3px);cursor:pointer">🌱 Organic</button>
+        <button class="po-btn" data-po="paid" onclick="switchPO('paid')" style="border:0;background:none;color:var(--text-dim);font:inherit;font-weight:600;padding:6px 15px;border-radius:calc(var(--radius) - 3px);cursor:pointer">💰 Paid</button>
       </div>
       <div class="card" id="organicCard">
         <h2>🌱 Organic — needs attention</h2>
         <div id="organic_root" class="loading">Loading…</div>
+      </div>
+      <div class="card" id="paidCard" style="display:none">
+        <h2>💰 Paid — acquisition brief</h2>
+        <div id="paid_root" class="loading">Loading…</div>
       </div>
     </section>
 
@@ -2152,7 +2160,7 @@ const TAB_TITLES = {
   'earth-overview':'Earthwise · Overview','earth-products':'Earthwise · Products',
   'earth-orders':'Earthwise · Orders','earth-inventory':'Earthwise · Inventory',
   'earth-marketplaces':'Earthwise · Marketplace Ops','earth-vendors':'Earthwise · Vendors',
-  'earth-content':'Earthwise · Content', finance:'Financial Reporting', organic:'Organic'
+  'earth-content':'Earthwise · Content', finance:'Financial Reporting', organic:'Paid & Organic'
 };
 function go(tab,push=true){
   if(!document.getElementById(tab)) tab='home';
@@ -2175,7 +2183,7 @@ function go(tab,push=true){
   if(tab==='directory'){ renderDirectory(); }
   if(tab==='adminconsole'){ renderAdminConsole(); }
   if(tab==='pipeline'){ renderPipeline(); }
-  if(tab==='organic'){ renderOrganic(); }
+  if(tab==='organic'){ switchPO(PO_VIEW); }
   if(tab==='team'){ renderOrgChart(); }
   if(tab==='team'){ renderTeamDates(); }
   if(tab==='clients'){ renderClients(); }
@@ -3293,6 +3301,47 @@ async function renderOrganic(){
     + `<div class="ge-meta" style="margin-top:4px">Scan: ${esc(latest||'—')} · Organic runs daily; deep competitive/backlink pulls weekly.</div>`;
 }
 
+// Paid ⇄ Organic switch (shared "Paid & Organic" tab)
+let PO_VIEW='organic';
+function switchPO(v){
+  PO_VIEW=v;
+  document.querySelectorAll('#poToggle .po-btn').forEach(b=>{
+    const on=b.dataset.po===v;
+    b.classList.toggle('active',on);
+    b.style.background = on ? 'var(--accent)' : 'none';
+    b.style.color = on ? '#fff' : 'var(--text-dim)';
+  });
+  const oc=document.getElementById('organicCard'), pc=document.getElementById('paidCard');
+  if(oc) oc.style.display = v==='organic'?'':'none';
+  if(pc) pc.style.display = v==='paid'?'':'none';
+  renderPO();
+}
+function renderPO(){ if(PO_VIEW==='paid'){ window.renderPaid&&renderPaid(); } else { window.renderOrganic&&renderOrganic(); } }
+
+async function renderPaid(){
+  const el=document.getElementById('paid_root'); if(!el) return;
+  const rows=await fetchRecords('paid_brief');
+  const dates=[...new Set(rows.map(r=>r.fields.scan_date).filter(Boolean))].sort().reverse();
+  const latest=dates[0];
+  const show=(latest?rows.filter(r=>r.fields.scan_date===latest):rows)
+    .sort((a,b)=>({urgent:0,warn:1,info:2}[a.fields.severity]??3)-({urgent:0,warn:1,info:2}[b.fields.severity]??3));
+  if(!show.length){
+    el.innerHTML='<div class="ge-clear">💤 No Paid brief yet — Paid runs daily (Google Ads/LSA, Meta, ROI tie-back). First brief lands with the next scan.</div>';
+    return;
+  }
+  const ICO={urgent:'🚨',warn:'⚠️',info:'💡'};
+  el.innerHTML = show.map(r=>{const f=r.fields;return `
+    <div class="ge-row ${esc(f.severity||'info')}">
+      <div class="ge-ico">${ICO[f.severity]||'💡'}</div>
+      <div class="ge-body">
+        <div class="ge-title">${esc(f.title)}${f.metric?' <span class="ge-meta" style="opacity:.8">· '+esc(f.metric)+'</span>':''}</div>
+        <div class="ge-detail">${esc(f.detail||'')}</div>
+        <div class="ge-meta">${esc(f.kind?('['+f.kind+'] '):'')}${esc(f.source||'')}${f.scan_date?' · scanned '+esc(f.scan_date):''}</div>
+      </div>
+    </div>`}).join('')
+    + `<div class="ge-meta" style="margin-top:4px">Scan: ${esc(latest||'—')} · Paid ties spend to revenue; margin questions go to Moola.</div>`;
+}
+
 async function renderMoola(){
   const el=document.getElementById('moola_root'); if(!el) return;
   if(CURRENT_ROLE!=='admin'){ el.innerHTML='<div class="ge-clear">Owner only.</div>'; return; }
@@ -4080,7 +4129,7 @@ function rtRefreshActive(force){
   if(tab==='mktplan'&&window.renderMktPlan) renderMktPlan();
   if(tab==='team'){ window.renderTeamDates&&renderTeamDates(); window.renderOrgChart&&renderOrgChart(); }
   if(tab==='pipeline'&&window.renderPipeline) renderPipeline();
-  if(tab==='organic'&&window.renderOrganic) renderOrganic();
+  if(tab==='organic'&&window.renderPO) renderPO();
   if(tab==='adminconsole'&&window.renderAdminConsole) renderAdminConsole();
   // Section-driven roots (throttled full pass — covers every *_root container)
   const now=Date.now();
