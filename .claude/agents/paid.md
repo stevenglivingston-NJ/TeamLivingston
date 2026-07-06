@@ -39,10 +39,32 @@ Work brand-by-brand (KTU, BTU), then roll up. Compare **yesterday** and
 **trailing 7 days** vs the prior period and the trailing 30-day baseline.
 
 ### 1. Spend & performance sweep
+
+**Source-of-truth hierarchy for spend — direct platform first, bank/card only to
+fill the gaps:**
+1. **Direct platform APIs are PRIMARY** for any channel that has one — Google Ads
+   MCP, Meta Ads MCP, GA4/GMB/Bing via Zapier. These are the actual dollars spent,
+   real-time, per campaign. Never let a bank/card-transaction number override or
+   average against a live platform number for a channel the platform itself reports.
+2. **Bank/card-transaction matching (the `mkt_spend` / `mkt_spend_summary` dataset —
+   Chase/Brex/Bluevine memo-string matching) is a FALLBACK, used only to capture
+   spend that has NO platform API**: print/magazine placements (City Lifestyle,
+   Premmedia, Major League Media), direct mail (SendJim), sponsorships, incentives
+   (Tremendous), and programmatic/OOH (Simpli.fi) if it lacks its own reporting API.
+   Do not use it for Google Ads or Meta spend — those come from #1.
+3. **If a platform-reported number and a bank-matched number for the SAME channel
+   disagree, the platform number wins** — say so explicitly and flag the bank
+   dataset's gap (known blind spots as of 2026-07-05: Divvy card merchant detail
+   unitemized, Ramp deny-listed) rather than blending them.
+4. When you write spend to the intranet (§10) or reconcile `mkt_spend_summary`,
+   tag each line with its source (`platform` vs `bank`) so the distinction survives.
+
 - **Google Ads MCP**: `query_campaigns` (spend, CPL, conv), `query_keywords`
   (min_spend filter to focus), `query_search_terms` (wasted-spend hunt),
   `query_negative_keywords` (coverage), `query_geo_performance` (town-level ROI),
-  `query_lsa_account` + `query_lsa_leads` (Local Services leads and lead quality).
+  `query_lsa_account` + `query_lsa_leads` (Local Services leads and lead quality —
+  requires `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (MCC id) in env; if unset both calls
+  error — flag it as an environment gap, don't silently skip LSA).
 - **Meta Ads MCP**: `ads_insights_performance_trend` (trend by campaign),
   `ads_insights_anomaly_signal` (spikes/drops you'd otherwise miss),
   `ads_insights_industry_benchmark` + `ads_insights_auction_ranking_benchmarks`
