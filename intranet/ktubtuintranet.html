@@ -320,6 +320,55 @@
   .card h2{margin:0 0 6px;font-size:18px;font-weight:600;letter-spacing:-.2px}
   .card .sub{color:var(--text-mute);font-size:13px;margin-bottom:18px;line-height:1.55}
 
+  /* ---------- Collapsible cards & sections ---------- */
+  .card>h2{cursor:pointer;display:flex;align-items:center;user-select:none}
+  .card>h2::after{content:'▾';margin-left:auto;font-size:12px;color:var(--text-dim);
+    transition:transform var(--dur) var(--ease)}
+  .card.collapsed>h2::after{transform:rotate(-90deg)}
+  .card.collapsed>*:not(h2){display:none!important}
+  .card.collapsed{padding-bottom:18px}
+  .card.collapsed>h2{margin-bottom:0}
+  .sec-title{cursor:pointer;user-select:none;position:relative}
+  .sec-title::after{content:'▾';position:absolute;right:0;font-size:11px;color:var(--text-dim);
+    transition:transform var(--dur) var(--ease)}
+  .sec-title.sec-closed::after{transform:rotate(-90deg)}
+
+  /* ---------- Collapsible sidebar groups ---------- */
+  .nav-group .nav-label{cursor:pointer;user-select:none;display:flex;align-items:center}
+  .nav-group .nav-label::after{content:'▾';margin-left:auto;margin-right:10px;font-size:10px;
+    color:var(--text-dim);transition:transform var(--dur) var(--ease)}
+  .nav-group.closed .nav-label::after{transform:rotate(-90deg)}
+  .nav-group.closed .nav-item{display:none}
+
+  /* ---------- Frozen table headers (scroll inside the card, not the page) ---------- */
+  .card div[style*="overflow-x:auto"]{max-height:70vh;overflow:auto}
+  .btable thead th{position:sticky;top:0;background:var(--surface);z-index:2;
+    box-shadow:0 1px 0 var(--border)}
+
+  /* ---------- Inline charts (SVG-free, div bars) ---------- */
+  .chart-title{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--text-mute);margin-bottom:10px}
+  .pulse-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px}
+  .cbar{display:grid;grid-template-columns:minmax(84px,auto) 1fr auto;gap:10px;align-items:center;
+    font-size:12.5px;margin-bottom:8px}
+  .cbar .cl{color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cbar .ct{background:var(--surface-2);border-radius:5px;height:18px;overflow:hidden;position:relative}
+  .cbar .cf{height:100%;border-radius:4px;min-width:2px;transition:width .5s var(--ease)}
+  .cbar .cv{font-variant-numeric:tabular-nums;color:var(--text);font-weight:600;white-space:nowrap;font-size:12px}
+  .cbar:hover .ct{outline:1px solid var(--border-strong)}
+  .agent-strip{display:flex;gap:8px;flex-wrap:wrap}
+  .agent-chip{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;
+    border:1px solid var(--border);background:var(--surface-2);font-size:12px;cursor:default}
+  .agent-chip .nm{font-weight:600}
+  .agent-chip .dt{color:var(--text-mute);font-variant-numeric:tabular-nums}
+  .agent-chip.ok{border-color:color-mix(in srgb,var(--success) 35%,transparent);background:var(--success-soft)}
+  .agent-chip.stale{border-color:color-mix(in srgb,var(--warn) 40%,transparent);background:var(--warn-soft)}
+  .agent-chip.never{border-color:color-mix(in srgb,var(--danger) 35%,transparent);background:var(--danger-soft)}
+  .due-item{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--border)}
+  .due-item:last-child{border-bottom:none}
+  .due-item .dd{font-variant-numeric:tabular-nums;color:var(--text-mute);margin-left:auto;white-space:nowrap}
+  .due-item.late .dd{color:var(--danger);font-weight:600}
+
   .split{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:18px}
   @media(max-width:1000px){.split{grid-template-columns:1fr}}
 
@@ -991,9 +1040,10 @@
           <div class="hi">Welcome back, <span class="name" id="greetName">team</span>.</div>
           <div class="sub">Everything for KTU, BTU, and Earthwise in one place. Pin what you use often, search anything with <b>⌘K</b>, and click any KPI to jump to the source.</div>
           <div class="quick-actions">
+            <button class="qa" onclick="go('tasks')"><span class="ico">＋</span>Assign a task</button>
             <button class="qa" onclick="go('contacts')"><span class="ico">＋</span>New contact</button>
-            <button class="qa" onclick="go('items')"><span class="ico">＋</span>Add item</button>
             <button class="qa" onclick="go('jobs')"><span class="ico">＋</span>New job</button>
+            <button class="qa" onclick="go('resources')"><span class="ico">🔐</span>Logins &amp; links</button>
             <button class="qa" onclick="go('reports')"><span class="ico">↗</span>Open reports</button>
             <button class="qa" onclick="go('earth-overview')"><span class="ico">🌱</span>Earthwise ops</button>
           </div>
@@ -1012,23 +1062,49 @@
         <div class="kpi ktu" onclick="go('contacts')" style="cursor:pointer">
           <div class="label">Contacts</div>
           <div class="value" id="kpiContacts">—</div>
-          <div class="trend">Shared address book</div>
+          <div class="trend" id="kpiContactsSub">Shared address book</div>
         </div>
         <div class="kpi btu" onclick="go('items')" style="cursor:pointer">
           <div class="label">Catalog items</div>
           <div class="value" id="kpiItems">—</div>
-          <div class="trend">KTU + BTU catalog</div>
+          <div class="trend" id="kpiItemsSub">KTU + BTU catalog</div>
         </div>
         <div class="kpi" onclick="go('jobs')" style="cursor:pointer">
           <div class="label">Open jobs</div>
           <div class="value" id="kpiJobs">—</div>
-          <div class="trend">Estimate → In progress</div>
+          <div class="trend" id="kpiJobsSub">Estimate → In progress</div>
         </div>
         <div class="kpi earth" onclick="go('jobs')" style="cursor:pointer">
           <div class="label">Pipeline value</div>
           <div class="value" id="kpiValue">—</div>
-          <div class="trend">Unbilled remodeling work</div>
+          <div class="trend" id="kpiValueSub">Unbilled remodeling work</div>
         </div>
+        <div class="kpi" onclick="go('tasks')" style="cursor:pointer">
+          <div class="label">Tasks due</div>
+          <div class="value" id="kpiTasks">—</div>
+          <div class="trend" id="kpiTasksSub">Next 7 days</div>
+        </div>
+      </div>
+
+      <div class="card" id="pulseCard">
+        <h2>📊 Business pulse</h2>
+        <div class="sub">Live from Job Costing and Tasks — scoped to the workspace you're viewing.</div>
+        <div class="pulse-grid">
+          <div>
+            <div class="chart-title">Open pipeline by stage</div>
+            <div id="pulseStages" class="loading">Loading…</div>
+          </div>
+          <div>
+            <div class="chart-title">Open pipeline by brand</div>
+            <div id="pulseBrands" class="loading">Loading…</div>
+          </div>
+          <div>
+            <div class="chart-title">Due &amp; overdue tasks</div>
+            <div id="pulseTasks" class="loading">Loading…</div>
+          </div>
+        </div>
+        <div class="chart-title" style="margin-top:16px">Daily agent briefings — freshness</div>
+        <div id="pulseAgents" class="agent-strip loading">Loading…</div>
       </div>
 
       <div class="home-grid">
@@ -1108,7 +1184,7 @@
             <option>Customer</option><option>Vendor</option>
             <option>Subcontractor</option><option>Lead</option>
           </select>
-          <select class="f" id="cBrand"><option>KTU</option><option>BTU</option><option>Both</option></select>
+          <select class="f" id="cBrand"><option>KTU</option><option>BTU</option><option>Both</option><option>Earthwise</option></select>
           <button class="btn" onclick="addContact()">Add</button>
         </div>
         <div id="cFilters" style="display:flex;gap:8px;margin:4px 0 10px;flex-wrap:wrap"></div>
@@ -1377,6 +1453,7 @@
       </div>
       <div class="card">
         <h2>The funnel — where we are</h2>
+        <div id="pipeline_funnel_chart" style="max-width:560px"></div>
         <div id="pipeline_funnel_root" class="loading">Loading…</div>
       </div>
       <div class="card">
@@ -2306,8 +2383,10 @@ function setWS(k){
   // If the active tab just got hidden, bounce home
   const activeNav=document.querySelector('.nav-item.active');
   if(activeNav && activeNav.closest('.nav-group') && activeNav.closest('.nav-group').style.display==='none') go('home');
-  // Re-render data with new brand filter
+  // Re-render data with new brand filter — every scoped view refreshes on switch
   renderAllSections(); renderContacts&&renderContacts(); renderItems&&renderItems(); renderJobs&&renderJobs();
+  window.renderTasks&&renderTasks(); window.renderTrades&&renderTrades(); window.renderResources&&renderResources();
+  window.renderDash&&renderDash(); window.renderDirectory&&renderDirectory(); window.renderClients&&renderClients();
   renderRecent(); renderFavPanel();
 }
 function wsBrands(){
@@ -2321,6 +2400,8 @@ function wsBrands(){
   if(CURRENT_WS==='earth') return ['Earthwise','Both'];
   return (WORKSPACES[CURRENT_WS]||{}).brands || null;
 }
+// One rule for every list in the app: does this row belong in the active workspace?
+function inWs(brand){ const b=wsBrands(); return !b || !brand || b.includes(brand); }
 
 /* ================================================================
    Favorites (localStorage — client-only for v1)
@@ -2408,7 +2489,7 @@ async function renderContacts(){
         <td><input class="f" id="ecPhone_${c.id}" value="${esc(c.phone)}"></td>
         <td><input class="f" id="ecEmail_${c.id}" value="${esc(c.email)}"></td>
         <td><select class="f" id="ecType_${c.id}">${['Customer','Vendor','Subcontractor','Lead'].map(t=>`<option ${t===c.type?'selected':''}>${t}</option>`).join('')}</select></td>
-        <td><select class="f" id="ecBrand_${c.id}">${['KTU','BTU','Both'].map(t=>`<option ${t===c.brand?'selected':''}>${t}</option>`).join('')}</select></td>
+        <td><select class="f" id="ecBrand_${c.id}">${['KTU','BTU','Both','Earthwise'].map(t=>`<option ${t===c.brand?'selected':''}>${t}</option>`).join('')}</select></td>
         <td class="row-actions"><button class="btn sm" onclick="saveContact('${c.id}')">Save</button><button class="btn sm ghost" onclick="editingContactId=null;renderContacts()">Cancel</button></td></tr>`;
     }
     return `<tr><td>${esc(c.name)}</td><td>${esc(c.company)}</td><td>${esc(c.phone)}</td>
@@ -2438,7 +2519,7 @@ async function saveItem(id){
 async function renderItems(){
   const {data,error}=await sb.from('items').select('*').order('created_at',{ascending:false});
   if(error){document.getElementById('iBody').innerHTML='';document.getElementById('iEmpty').textContent='Error loading: '+error.message;document.getElementById('iEmpty').style.display='block';return}
-  const a=data||[];
+  const a=(data||[]).filter(i=>inWs(i.brand));   // scope to the active workspace
   document.getElementById('iBody').innerHTML=a.map(i=>{
     if(i.id===editingItemId){
       return `<tr><td><input class="f" id="eiName_${i.id}" value="${esc(i.name)}"></td>
@@ -2476,7 +2557,7 @@ async function saveJob(id){
 async function renderJobs(){
   const {data,error}=await sb.from('jobs').select('*').order('created_at',{ascending:false});
   if(error){document.getElementById('jBody').innerHTML='';document.getElementById('jEmpty').textContent='Error loading: '+error.message;document.getElementById('jEmpty').style.display='block';return}
-  const a=data||[];
+  const a=(data||[]).filter(j=>inWs(j.brand));   // scope to the active workspace
   document.getElementById('jBody').innerHTML=a.map(j=>{
     if(j.id===editingJobId){
       return `<tr><td><input class="f" id="ejName_${j.id}" value="${esc(j.name)}"></td>
@@ -2495,15 +2576,98 @@ async function renderJobs(){
   document.getElementById('jEmpty').style.display=a.length?'none':'block';
 }
 
+/* Chart bar row — direct label + value, native tooltip, 4px data-end radius. */
+const CHART_HUES={KTU:'var(--brand-ktu)',BTU:'#2c5f9e',Earthwise:'var(--brand-earth)',Both:'var(--accent)'};
+function cbarRow(label,value,max,color,valText,tip){
+  const w=max>0?Math.max(2,Math.round(value/max*100)):0;
+  return `<div class="cbar" title="${esc(tip||label+': '+(valText??value))}">
+    <span class="cl">${esc(label)}</span>
+    <span class="ct"><span class="cf" style="width:${w}%;background:${color}"></span></span>
+    <span class="cv">${esc(valText??value)}</span></div>`;
+}
+function brandSplitText(rows,key='brand'){
+  const c={}; rows.forEach(r=>{const b=r[key]||'—';c[b]=(c[b]||0)+1;});
+  return ['KTU','BTU','Both','Earthwise'].filter(b=>c[b]).map(b=>`${b} ${c[b]}`).join(' · ')||'—';
+}
 async function renderDash(){
-  const [{data:contacts},{data:items},{data:jobs}] = await Promise.all([
-    sb.from('contacts').select('id'), sb.from('items').select('id'), sb.from('jobs').select('status,price')
+  const [{data:contactsAll},{data:itemsAll},{data:jobsAll},{data:tasksAll},{data:healthRows}] = await Promise.all([
+    sb.from('contacts').select('brand'),
+    sb.from('items').select('brand'),
+    sb.from('jobs').select('brand,status,price'),
+    sb.from('team_tasks').select('title,assignee,brand,due_date,status,cadence'),
+    sb.from('intranet_records').select('fields').eq('section','system_health')
   ]);
-  document.getElementById('kpiContacts').textContent=(contacts||[]).length;
-  document.getElementById('kpiItems').textContent=(items||[]).length;
-  const open=(jobs||[]).filter(j=>j.status!=='Complete');
-  document.getElementById('kpiJobs').textContent=open.length;
-  document.getElementById('kpiValue').textContent=money(open.reduce((s,j)=>s+(Number(j.price)||0),0));
+  // Everything on Home respects the workspace switcher.
+  const contacts=(contactsAll||[]).filter(c=>inWs(c.brand));
+  const items=(itemsAll||[]).filter(i=>inWs(i.brand));
+  const jobs=(jobsAll||[]).filter(j=>inWs(j.brand));
+  const tasks=(tasksAll||[]).filter(t=>inWs(t.brand)&&(t.status==='open'||t.status==='in_progress'));
+
+  const put=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  put('kpiContacts',contacts.length);      put('kpiContactsSub',brandSplitText(contacts));
+  put('kpiItems',items.length);            put('kpiItemsSub',brandSplitText(items));
+  const open=jobs.filter(j=>j.status!=='Complete');
+  put('kpiJobs',open.length);              put('kpiJobsSub',brandSplitText(open));
+  put('kpiValue',money(open.reduce((s,j)=>s+(Number(j.price)||0),0)));
+  const vByBrand={}; open.forEach(j=>{const b=j.brand||'—';vByBrand[b]=(vByBrand[b]||0)+(Number(j.price)||0);});
+  put('kpiValueSub',Object.entries(vByBrand).map(([b,v])=>`${b} ${money(v)}`).join(' · ')||'Unbilled remodeling work');
+
+  const today=new Date().toISOString().slice(0,10);
+  const week=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+  const dueSoon=tasks.filter(t=>t.due_date&&t.due_date<=week).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));
+  const overdue=dueSoon.filter(t=>t.due_date<today);
+  put('kpiTasks',dueSoon.length);
+  put('kpiTasksSub',overdue.length?`⚠ ${overdue.length} overdue`:'Next 7 days');
+
+  // ---- Pulse charts ----
+  const stEl=document.getElementById('pulseStages');
+  if(stEl){
+    const ORDER=['Estimate','Approved','In Progress','Complete'];
+    const byStage={}; jobs.forEach(j=>{const s=j.status||'—';byStage[s]=byStage[s]||{n:0,v:0};byStage[s].n++;byStage[s].v+=Number(j.price)||0;});
+    const stages=ORDER.filter(s=>byStage[s]).concat(Object.keys(byStage).filter(s=>!ORDER.includes(s)));
+    const max=Math.max(1,...stages.map(s=>byStage[s].v));
+    stEl.classList.remove('loading');
+    stEl.innerHTML=stages.length
+      ? stages.map(s=>cbarRow(s,byStage[s].v,max,'var(--accent)',money(byStage[s].v),`${s}: ${byStage[s].n} job${byStage[s].n>1?'s':''} · ${money(byStage[s].v)}`)).join('')
+      : '<div class="empty">No jobs yet.</div>';
+  }
+  const brEl=document.getElementById('pulseBrands');
+  if(brEl){
+    const ents=Object.entries(vByBrand).sort((a,b)=>b[1]-a[1]);
+    const max=Math.max(1,...ents.map(([,v])=>v));
+    brEl.classList.remove('loading');
+    brEl.innerHTML=ents.length
+      ? ents.map(([b,v])=>cbarRow(b,v,max,CHART_HUES[b]||'var(--accent)',money(v))).join('')
+      : '<div class="empty">No open jobs.</div>';
+  }
+  const tkEl=document.getElementById('pulseTasks');
+  if(tkEl){
+    tkEl.classList.remove('loading');
+    tkEl.innerHTML=dueSoon.length
+      ? dueSoon.slice(0,6).map(t=>{const late=t.due_date<today;return `<div class="due-item ${late?'late':''}" title="${esc(t.title)} → ${esc(t.assignee)}${t.cadence&&t.cadence!=='once'?' · repeats '+esc(t.cadence):''}">
+          <b>${esc(String(t.title).slice(0,34))}</b> <small style="color:var(--text-mute)">${esc(t.assignee||'')}</small>
+          <span class="dd">${late?'overdue · ':''}${esc(t.due_date)}</span></div>`;}).join('')
+        +(dueSoon.length>6?`<div class="due-item"><a href="#tasks" onclick="go('tasks');return false" style="color:var(--accent)">+${dueSoon.length-6} more →</a></div>`:'')
+      : '<div class="empty">Nothing due in the next 7 days. 🎉</div>';
+  }
+  // ---- Agent freshness strip (from the pg_cron watchdog + live sections) ----
+  const agEl=document.getElementById('pulseAgents');
+  if(agEl){
+    const AGENTS=[['goldeneye_callouts','Goldeneye'],['moola_briefing','Moola'],['foreman_briefing','Foreman'],
+                  ['pipeline_briefing','Pipeline'],['organic_report','Organic'],['tekky_status','Tekki']];
+    const stale={}; (healthRows||[]).forEach(r=>{const f=r.fields||{};if(f.agent)stale[f.agent]=f.latest_scan_date||'never';});
+    const {data:latests}=await sb.from('intranet_records').select('section,fields->scan_date')
+      .in('section',AGENTS.map(a=>a[0]));
+    const lastBy={}; (latests||[]).forEach(r=>{const d=r.scan_date;if(d&&(!lastBy[r.section]||d>lastBy[r.section]))lastBy[r.section]=String(d).replace(/"/g,'');});
+    agEl.classList.remove('loading');
+    agEl.innerHTML=AGENTS.map(([sec,name])=>{
+      const last=lastBy[sec]||stale[sec];
+      const cls=!last||last==='never'?'never':(last>=today?'ok':(stale[sec]?'stale':(last>=new Date(Date.now()-864e5).toISOString().slice(0,10)?'ok':'stale')));
+      const ico=cls==='ok'?'✓':cls==='stale'?'⏰':'✗';
+      return `<span class="agent-chip ${cls}" title="${esc(name)} — last published ${esc(last||'never')}">
+        <span>${ico}</span><span class="nm">${esc(name)}</span><span class="dt">${esc(last||'never')}</span></span>`;
+    }).join('');
+  }
 }
 
 /* ================================================================
@@ -2902,10 +3066,11 @@ let DIR_FILTER = 'all';
 async function renderDirectory(){
   const root=document.getElementById('dirRoot'); if(!root) return;
   const q=(val('dirSearch')||'').toLowerCase();
-  const [team, vendors, trades, reps, contacts] = await Promise.all([
+  const [team, vendors, trades, reps, contactsRaw] = await Promise.all([
     fetchRecords('team'), fetchRecords('vendors'), fetchRecords('trades'),
     fetchRecords('ordering_reps'), sb.from('contacts').select('*').limit(500).then(r=>r.data||[])
   ]);
+  const contacts=contactsRaw.filter(c=>inWs(c.brand));   // fetchRecords sections already scope; contacts must too
   const items = [
     ...team.map(r=>({kind:'team', name:r.fields.name, role:r.fields.role, meta:r.fields.strengths, tab:'team', extra:r.fields.business})),
     ...vendors.map(r=>({kind:'vendor', name:r.fields.vendor, role:r.fields.category, meta:r.fields.relationship, tab:'vendors'})),
@@ -3339,6 +3504,20 @@ async function renderPipeline(){
   }
   // metric sections use the generic engine
   ['pipeline_funnel','pipeline_sources','pipeline_revival','pipeline_playbook'].forEach(s=>renderSection&&renderSection(s));
+  // Funnel chart — magnitude down the stages, one hue, values parsed from the section
+  const fc=document.getElementById('pipeline_funnel_chart');
+  if(fc){
+    const fr=await fetchRecords('pipeline_funnel');
+    const steps=fr.map(r=>({stage:r.fields.stage,n:parseFloat(String(r.fields.value||'').replace(/[^0-9.]/g,'')),
+      rate:r.fields.rate,raw:r.fields.value})).filter(s=>s.stage&&isFinite(s.n)&&s.n>0);
+    const fmax=Math.max(1,...steps.map(s=>s.n));
+    fc.innerHTML=steps.length>=2
+      ? `<div class="chart-title">Funnel at a glance</div>`+steps.map(s=>
+          cbarRow(s.stage,s.n,fmax,'var(--accent)',String(s.raw??s.n),
+            `${s.stage}: ${s.raw??s.n}${s.rate?' · '+s.rate:''}`)).join('')
+        +`<div style="height:12px"></div>`
+      : '';
+  }
 }
 
 async function renderOrganic(){
@@ -3416,7 +3595,15 @@ async function renderClients(){
   const list=rows.filter(r=>{const f=r.fields;if(CLI_FILTER==='KTU'||CLI_FILTER==='BTU')return f.brand===CLI_FILTER;if(CLI_FILTER==='flagged')return f.flags;return true;});
   if(!list.length){root.innerHTML='<div class="empty">No client rows yet — the sync agent seeds this daily from ServiceMinder + JobTread.</div>';return;}
   const totOut=list.reduce((s,r)=>s+(Number(r.fields.outstanding)||0),0);
+  // Outstanding-by-brand mini chart (identity → brand hues, direct labels)
+  const byB={}; list.forEach(r=>{const b=r.fields.brand||'—'; byB[b]=(byB[b]||0)+(Number(r.fields.outstanding)||0);});
+  const bEnts=Object.entries(byB).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const bMax=Math.max(1,...bEnts.map(([,v])=>v));
+  const brandBars=bEnts.length>1?`<div style="max-width:440px;margin-bottom:14px">
+    <div class="chart-title">Outstanding by brand</div>
+    ${bEnts.map(([b,v])=>cbarRow(b,v,bMax,CHART_HUES[b]||'var(--accent)',fmt$(v))).join('')}</div>`:'';
   root.innerHTML=`<div class="sub" style="margin-bottom:8px"><b>${list.length}</b> clients · <b>${fmt$(totOut)}</b> outstanding${list[0]?.fields?.scan_date?` · as of ${esc(list[0].fields.scan_date)}`:''}</div>
+  ${brandBars}
   <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Client</th><th>Brand</th><th>Stage</th><th class="num">Contract</th><th class="num">Paid</th><th class="num">Outstanding</th><th>Last payment</th><th>JT #</th><th>Flags</th><th></th></tr></thead><tbody>
   ${list.map(r=>{const f=r.fields;return `<tr>
     <td><b>${esc(f.client||'—')}</b><br><small style="color:var(--text-mute)">${esc(f.service||'')}</small></td>
@@ -3901,8 +4088,9 @@ async function renderTasks(){
   if(sel && !sel.options.length) sel.innerHTML=ppl.map(p=>`<option value="${esc(p.name)}" data-email="${esc(p.email||'')}">${esc(p.name)}</option>`).join('');
   const {data,error}=await sb.from('team_tasks').select('*').order('created_at',{ascending:false}).limit(200);
   if(error){openRoot.innerHTML=`<div class="empty">Tasks table not reachable: ${esc(error.message)}</div>`;document.getElementById('tasksDoneRoot').innerHTML='';return;}
-  const open=(data||[]).filter(t=>t.status==='open'||t.status==='in_progress');
-  const done=(data||[]).filter(t=>t.status==='done').slice(0,10);
+  const scoped=(data||[]).filter(t=>inWs(t.brand));   // workspace switcher applies here too
+  const open=scoped.filter(t=>t.status==='open'||t.status==='in_progress');
+  const done=scoped.filter(t=>t.status==='done').slice(0,10);
   const CADENCE_LBL={daily:'Daily',weekly:'Weekly',monthly:'Monthly'};
   const row=t=>{const late=t.due_date&&t.status!=='done'&&new Date(t.due_date)<new Date();return `<tr>
     <td><b>${esc(t.title)}</b>${t.detail?`<br><small style="color:var(--text-mute)">${esc(t.detail)}</small>`:''}${t.drive_url?` <a href="${esc(t.drive_url)}" target="_blank" rel="noopener" title="Open linked Drive file">📎</a>`:''}</td>
@@ -4329,6 +4517,55 @@ function startRealtime(){
   // Safety net: full revalidation every 5 minutes while visible
   setInterval(()=>{ if(!document.hidden) rtRefreshActive(true); },300000);
 }
+/* ================================================================
+   Collapsible cards, sections, and sidebar groups — state persisted
+   ================================================================ */
+const COLL_KEY='axyom_collapse_v1';
+function collState(){ try{return JSON.parse(localStorage.getItem(COLL_KEY)||'{}')}catch(_){return {}} }
+function collSave(s){ localStorage.setItem(COLL_KEY,JSON.stringify(s)) }
+function collId(el){
+  const panel=el.closest('.panel');
+  return (panel?panel.id:'x')+'::'+(el.textContent||'').trim().replace(/\s+/g,' ').slice(0,48);
+}
+function applySecTitle(t,closed){
+  t.classList.toggle('sec-closed',closed);
+  let n=t.nextElementSibling;
+  while(n && !n.classList.contains('sec-title')){ n.style.display=closed?'none':''; n=n.nextElementSibling; }
+}
+let COLL_INIT=false;
+function initCollapsibles(){
+  if(COLL_INIT) return; COLL_INIT=true;
+  const s=collState();
+  document.querySelectorAll('.card>h2').forEach(h=>{
+    const card=h.parentElement, id='card::'+collId(h);
+    if(s[id]) card.classList.add('collapsed');
+    h.addEventListener('click',e=>{
+      if(e.target.closest('a,button,input,select,textarea,.pin')) return;
+      const c=card.classList.toggle('collapsed');
+      const st=collState(); if(c) st[id]=1; else delete st[id]; collSave(st);
+    });
+  });
+  document.querySelectorAll('.card .sec-title').forEach(t=>{
+    const id='sec::'+collId(t);
+    if(s[id]) applySecTitle(t,true);
+    t.addEventListener('click',()=>{
+      const closed=!t.classList.contains('sec-closed');
+      applySecTitle(t,closed);
+      const st=collState(); if(closed) st[id]=1; else delete st[id]; collSave(st);
+    });
+  });
+  document.querySelectorAll('.nav-group').forEach(g=>{
+    const lab=g.querySelector('.nav-label'); if(!lab) return;
+    const id='nav::'+(lab.textContent||'').trim();
+    if(s[id]) g.classList.add('closed');
+    lab.addEventListener('click',()=>{
+      const c=g.classList.toggle('closed');
+      const st=collState(); if(c) st[id]=1; else delete st[id]; collSave(st);
+    });
+  });
+}
+initCollapsibles();
+
 sb.auth.onAuthStateChange((_ev,session)=>{ if(session) startRealtime(); });
 
 /* Restore session on load (supabase-js persists it in localStorage) */
