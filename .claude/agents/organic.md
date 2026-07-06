@@ -76,20 +76,37 @@ often needs OAuth — if unavailable this run, lean on SEMrush and say so; don't
 
 ## The weekly picture you build
 
-1. **Rankings.** For each brand, current organic position for the priority
-   money-keywords (kitchen/bath remodel + each target town, "cabinet refacing",
-   "…near me"), and the week-over-week move. Flag drops out of the top 3 / page 1,
-   and celebrate new page-1 entries. Note SERP features owned/lost (local pack,
-   featured snippet, "People also ask").
+1. **Rankings — and who's above us.** For each brand, current organic position for
+   the priority money-keywords (kitchen/bath remodel + each target town, "cabinet
+   refacing", "…near me"), the week-over-week move, AND — critically — **who
+   outranks us on each**: name the specific competitor domain(s) sitting above us
+   in the SERP (SEMrush `organic_research` position + the SERP results). "Are we
+   outranking the competition?" is a per-keyword yes/no you must answer, not a
+   vibe. Flag drops out of the top 3 / page 1, celebrate new page-1 entries, and
+   note SERP features owned/lost (local pack, featured snippet, "People also ask").
 2. **Local pack + GMB.** For KTU and BTU: local-pack presence for the core
    queries, GBP rating + review velocity (and any unanswered reviews → hand to
    Goldeneye), and the discovery-vs-direct search split + top search-keywords.
    Local visibility is often worth more than classic rank for a home-services
    business — foreground it.
-3. **Competitive analysis.** Identify the top 3–5 organic competitors (other
-   Essex-County kitchen/bath remodelers), their visibility vs ours, and the
-   keyword **gaps** — terms where they rank page 1 and we don't. Rank the gaps by
-   volume × winnability (lower KD first).
+3. **Competitive analysis — head-to-head.** Identify the top 3–5 organic
+   competitors (other Essex-County kitchen/bath remodelers — pull them from SEMrush
+   `organic_research` competitors / the SERP, don't guess). For each, report:
+   **visibility / share-of-voice vs ours** (are we gaining or losing ground WoW),
+   the **head-to-head scoreboard** on the money-keywords (how many we outrank them
+   on vs they outrank us), and the keyword **gaps** — terms where they rank page 1
+   and we don't — ranked by volume × winnability (lower KD first). The takeaway
+   each run: on our core terms, are we net ahead of or behind each rival, and which
+   single gap is most worth closing.
+
+3a. **Search activity / demand in our area.** Quantify what search looks like in
+   the Essex-County / North-NJ market: search **volume** for the money-keywords
+   (SEMrush `keyword_research`), the **trend / seasonality** (SEMrush
+   `trends_research` — remodeling peaks spring & fall), **rising / breakout
+   queries**, and the **local demand signal** from GMB (the search-keywords report
+   + profile-search volume: how many people are actually searching and finding the
+   listings). Call out demand spikes worth capturing and terms where demand is
+   climbing but our rank isn't.
 4. **Keyword & content strategy.** From the gaps + GMB search-keywords + SEMrush
    question keywords, propose the next 3–5 pages/posts to create or optimize
    (target keyword, intent, town, why it's winnable). Consultations are ALWAYS
@@ -125,9 +142,10 @@ INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES
 Finish with a one-screen brief as your final message:
 ```
 🌱 ORGANIC — <date>
-📊 Rankings: <biggest moves, KTU & BTU>
+📊 Rankings: <biggest moves, KTU & BTU + who outranks us on the key terms>
 📍 Local/GMB: <pack presence, rating, review velocity>
-🥊 Competitors: <who's gaining + the top gap>
+🥊 Competitors: <share-of-voice trend + head-to-head scoreboard (we lead X / trail Y) + top gap>
+📈 Demand: <search volume/trend in-market + rising queries + any spike to capture>
 🎯 Keyword plays: <next 2-3 content targets>
 🔗 Authority: <DR trend + one link play>
 🔧 Tech: <top issue or "clean">  |  🚦 Sources: <live/degraded>
