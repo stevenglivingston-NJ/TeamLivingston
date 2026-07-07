@@ -105,6 +105,38 @@ connectors (Gmail, HighLevel, QuickBooks, Bank Connection, Shopify,
 monday, Slack, Zapier, Facebook) load from the account automatically and need
 no bootstrap.
 
+### HighLevel access — two paths, and the KTU gotcha
+
+HighLevel is reachable **two different ways**, and they are NOT interchangeable —
+this is the #1 cause of "HighLevel connection broken" and of Goldeneye/Paid
+coming back blind on KTU:
+
+1. **The claude.ai `Highlevel` connector (OAuth)** — loads from the account, no
+   bootstrap. But it is **locked to a single sub-account: Bath Tune-Up**
+   (`isAgencySubAccount: false`). It cannot switch locations, so it covers **BTU
+   only**. There is no location parameter that makes it reach KTU.
+2. **The per-location PIT servers `ghl-ktu` / `ghl-btu`** (LeadConnector hosted
+   HTTP MCP, registered by `bootstrap.sh`) — each scoped to one location by a
+   Private Integration Token in an env var:
+   - `ghl-ktu` → KTU location `nHLCxHPidnhV1NFzRtZZ`, token `GHL_PIT_KTU`
+   - `ghl-btu` → BTU location `0uWA8M5BzHrrcJftuaDe`, token `GHL_PIT_BTU`
+
+**KTU HighLevel only works via `ghl-ktu`.** If `GHL_PIT_KTU` isn't set in the
+environment's env-var config, `bootstrap.sh` skips that server, the intranet /
+Tekki health check flags the KTU HighLevel pipe as broken, and any agent that
+reads KTU conversations (Goldeneye, Paid, Foreman) silently misses all KTU
+SMS/email/calls. BTU can still *look* fine because the OAuth connector covers it —
+masking the fact that KTU is dark.
+
+**Fix = wire the two env vars** (values are the location PITs; set them in the
+Cloud environment's env-var/secrets config, never in the repo). To sanity-check a
+PIT without registering anything, curl it directly — a valid token returns 200
+with the location name:
+`curl -H "Authorization: Bearer $GHL_PIT_KTU" -H "Version: 2021-07-28" https://services.leadconnectorhq.com/locations/nHLCxHPidnhV1NFzRtZZ`
+A 401 there means the token itself is revoked/expired → regenerate the location's
+Private Integration Token in HighLevel and update the env var. A 200 there while
+the pipe still shows broken means it's purely the env-var wiring.
+
 ## Scheduling & notification delivery (how the automation actually runs)
 
 Two independent schedulers — do not confuse them:

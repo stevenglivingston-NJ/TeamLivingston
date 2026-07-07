@@ -140,6 +140,20 @@ No wall of jargon. If a section would only make sense to a developer, rewrite it
   the `sow_authored` row stands on its own.
 - If a human already linked an external SOW URL, leave it alone.
 
+**System-specific gotchas the SOW MUST spell out (in the Dependencies + Access
+sections) when you write/refresh these:**
+- **HighLevel** — there are TWO non-interchangeable access paths, and confusing
+  them is the top cause of "HighLevel connection broken" and of agents going
+  blind on KTU. State plainly: (1) the claude.ai **Highlevel OAuth connector is
+  BTU-only** (locked to sub-account `0uWA8M5BzHrrcJftuaDe`, `isAgencySubAccount:
+  false` — it cannot reach KTU); (2) **KTU HighLevel works only via the `ghl-ktu`
+  PIT server**, which needs env var **`GHL_PIT_KTU`** set (BTU's own server is
+  `ghl-btu` / **`GHL_PIT_BTU`**). Dependency line: "if `GHL_PIT_KTU` is unset,
+  bootstrap skips `ghl-ktu` and Goldeneye/Paid/Foreman silently miss all KTU
+  SMS/email/calls while BTU still looks fine." Include the 1-line PIT health check
+  (curl `/locations/{id}` with the token → 200 = token good, wiring issue; 401 =
+  regenerate the PIT). Name the env vars, never their values.
+
 ### 2a. Internal automations are systems too — keep their SOWs current
 The business now runs on our own automations as much as on vendors, and each
 one needs an SOW with its **cadence and dependencies** kept honest as they
