@@ -72,6 +72,16 @@ you enforce daily:
   Production Gate review").
 - **ServiceMinder**: `query_proposals` (accepted scope + contract price),
   `query_appointments`, invoices/payments. This is the money truth.
+  - **Duplicate-invoice cross-check (do this before calling anything "outstanding AR").**
+    An Open invoice with a non-zero balance is NOT automatically collectible AR. Before
+    flagging it, check whether the **same `ProposalId`** already has a **Paid** invoice
+    (BalanceDue 0, DatePaid set). If it does, the Open one is almost certainly a
+    **duplicate re-invoice** on an already-completed-and-paid job → flag it "duplicate,
+    void in ServiceMinder," do NOT count it as AR or raise a collection task. (Real
+    example: Pat Rabbitt — invoice I476112 $14,800 fully paid, then a duplicate I476143
+    $15,145 sat Open; the job was done.) Duplicates inflate the open-AR total — subtract
+    them and say so. Only treat an Open invoice as real AR when its proposal has no paid
+    twin.
 - **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).
@@ -83,7 +93,28 @@ you enforce daily:
   served location by name on the first call.
 
 ### 2. Pace & duration — is every job on time?
-For each active job compute, from **contract-signature date**:
+
+**FIRST establish the installation date — pace is meaningless without it.** For every
+active job, find the **production/installation appointment** (ServiceMinder
+`query_appointments` — the install appointment, NOT the "Consultation - In-Home"
+appointment; and/or the JobTread production schedule). Classify each job by install
+date before judging pace:
+- **Install date in the past** → job should be in/through production; measure
+  production pace from the install start and infer field phase from photos.
+- **Install date in the future** → scheduled and on track by definition; only flag if
+  the future date breaches the track target measured from signature, or if it keeps
+  slipping. Not behind, not dark.
+- **No install appointment set at all** → the job is **Sold — awaiting production
+  scheduling**, NOT behind-track and NOT going dark. A deposit invoice raised months
+  ago with no install scheduled is a *scheduling* gap ("sold, needs an install date"),
+  not aging AR or a stalled job. NEVER report an unscheduled job as stalled/going dark
+  or compute "weeks late" on it from the invoice date — that was a real past error
+  (Murchison, Gimlett flagged as "20wk going dark" when they had only a consultation
+  and no install). Report them as a distinct list: *sold jobs with no install date —
+  schedule these.*
+
+Then, for jobs with an install date, compute from **contract-signature date** (for the
+sales-cycle view) AND from **install start** (for the production view):
 - Days elapsed vs its **track target** (A: 5–7/4–5 wks; B: 9–12 wks) and days in the
   **current milestone** vs that milestone's target (the table above).
 - Whose court is it in — Sales, PM, Client, or Vendor? Attribute the delay to the
@@ -93,7 +124,10 @@ For each active job compute, from **contract-signature date**:
 - Infer **field phase from photos** (demo/prep → boxes & install → doors/fronts →
   hardware & trim → countertop → punch → complete) using photo cadence, labels,
   notes; state confidence and evidence. "Complete" needs corroboration (punch label,
-  final burst, or paid invoice). A job with no photos in N days is **going dark**.
+  final burst, or paid invoice). A job is **going dark** ONLY if it has an install
+  appointment whose date has arrived/passed (production should be underway) AND photos
+  have stopped for N days. A job with no install scheduled is *awaiting scheduling*,
+  not dark — do not conflate the two.
 - Flag: 🔴 behind track target or >5 biz days over a milestone · 🟡 trending late
   (milestone at 80% consumed, phase not advanced) · 🟢 on/ahead.
 
@@ -279,7 +313,11 @@ exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 ve
   address before relying on it; fall back to the main Gmail connector.
 - 🟡 **CompanyCam & JobTread stdio MCPs** live at `/root/code` (Steven's Mac) —
   in cloud, use the Zapier routes above before declaring a gap.
-- 🟡 **CompanyCam is KTU-scoped today** — BTU documentation is thinner; say so.
+- 🟢 **CompanyCam covers BOTH brands** — the subscription lives under the KTU account,
+  but BTU projects are captured in the same CompanyCam account. Do NOT report BTU as
+  "unphotographed / undocumented by tool scope." If a BTU job lacks photos, that's a
+  crew capture-discipline gap on that job, not a coverage limitation — treat it the
+  same as a KTU job with missing photos.
 - 🟢 **HighLevel fully live for BOTH brands** — `mcp__ghl-ktu__*` = KTU,
   `mcp__ghl-btu__*` = BTU (PIT-scoped, bootstrap-registered); `mcp__Highlevel__*`
   connector = BTU too. A missing ghl-* server = unset env var — flag it.
