@@ -89,10 +89,18 @@ HTTP-transport servers (registered by bootstrap.sh, no local code):
 
 Point the Cloud environment's **Setup script** at the MCP bootstrap so every
 fresh session (including the scheduled agent runs — Goldeneye, Moola, Paid)
-re-registers the custom stdio MCP servers, not just this repo's clone:
+re-registers the custom stdio MCP servers, not just this repo's clone.
+
+Use this **path-robust** form (it never fails with exit 127 if the repo isn't at
+the expected path when setup runs — the old `git -C /home/user/TeamLivingston …`
+form returned an empty string and ran `bash /mcp-servers/bootstrap.sh` →
+"No such file or directory" → exit 127, which is what produced the "setup script
+failed" pings):
 
 ```bash
-bash "$(git -C /home/user/TeamLivingston rev-parse --show-toplevel)/mcp-servers/bootstrap.sh"
+for d in /home/user/TeamLivingston /workspace/TeamLivingston "$HOME/TeamLivingston"; do
+  [ -f "$d/mcp-servers/bootstrap.sh" ] && { bash "$d/mcp-servers/bootstrap.sh"; break; }
+done
 ```
 
 `bootstrap.sh` installs Python deps and registers every custom stdio server
