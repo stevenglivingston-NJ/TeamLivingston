@@ -1070,6 +1070,13 @@
         <div id="goldeneye_root" class="loading">Loading…</div>
       </div>
 
+      <!-- Perceptionist call notes (email-fed) -->
+      <div class="card" id="callNotesCard" data-scope="hs">
+        <h2>📞 Recent call notes <span id="cnCount" class="tag" style="margin-left:6px"></span></h2>
+        <div class="sub">Perceptionist call notes emailed in and captured automatically. Goldeneye scrapes the caller into the Directory and flags follow-ups.</div>
+        <div id="callnotes_root" class="loading">Loading…</div>
+      </div>
+
       <div class="grid">
         <div class="kpi ktu" onclick="go('contacts')" style="cursor:pointer">
           <div class="label">Contacts</div>
@@ -2148,6 +2155,39 @@
         <div id="moola_root" class="loading">Loading…</div>
       </div>
 
+      <div class="card" id="payablesCard">
+        <style>
+          #payablesCard .ap-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+          @media(max-width:760px){#payablesCard .ap-sum{grid-template-columns:repeat(2,1fr)}}
+          #payablesCard .pf{display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px}
+          #payablesCard .pf select,#payablesCard .pf input{font:inherit;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 9px}
+          #payablesCard table{width:100%;border-collapse:collapse;font-size:13px}
+          #payablesCard td,#payablesCard th{padding:8px 9px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
+          #payablesCard th{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-mute)}
+          #payablesCard td.num,#payablesCard th.num{text-align:right;font-variant-numeric:tabular-nums}
+          #payablesCard .pri{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px}
+          #payablesCard .pri.urgent{background:rgba(248,113,113,.15);color:var(--danger)}
+          #payablesCard .pri.high{background:rgba(251,146,60,.15);color:#c2620a}
+          #payablesCard .pri.normal{background:var(--surface-inset);color:var(--text-dim)}
+          #payablesCard .pri.low{background:var(--surface-inset);color:var(--text-mute)}
+          #payablesCard .age.over{color:var(--danger);font-weight:700}
+          #payablesCard .age.soon{color:#c2620a;font-weight:600}
+          #payablesCard .stx{font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);cursor:pointer;font:inherit;font-weight:600}
+          #payablesCard tr.paid{opacity:.5}
+        </style>
+        <h2>🧾 Accounts Payable — bills to track &amp; pay</h2>
+        <div class="sub">Emailed invoices (via firstgentalent@gmail.com) land here automatically with amount, date sent and due date. Moola ages them, prioritizes who to pay when, and folds them into the true P&amp;L and cash forecast. Mark paid when you send it.</div>
+        <div class="ap-sum" id="apSummary"></div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px">
+          <label class="pf">Business<select id="payBrand" onchange="renderPayables()">
+            <option value="">All</option><option value="KTU">Kitchen Tune-Up</option><option value="BTU">Bath Tune-Up</option><option value="Earthwise">Earthwise</option></select></label>
+          <label class="pf">Status<select id="payStatus" onchange="renderPayables()">
+            <option value="open">Open (unpaid + scheduled)</option><option value="unpaid">Unpaid</option><option value="scheduled">Scheduled</option><option value="paid">Paid</option><option value="">All</option></select></label>
+          <button class="btn sm" onclick="payAddRow()" style="margin-left:auto">+ Add bill</button>
+        </div>
+        <div id="payables_root" class="loading">Loading…</div>
+      </div>
+
       <div class="grid">
         <div class="kpi ktu"><div class="label">KTU — First Generation USA</div><div class="value">P&amp;L</div><div class="trend">QuickBooks · accrual · S-Corp</div></div>
         <div class="kpi btu"><div class="label">BTU — Oracabessa LLC</div><div class="value">P&amp;L</div><div class="trend">QuickBooks · accrual</div></div>
@@ -2430,7 +2470,8 @@ function go(tab,push=true){
   document.querySelector('.sidebar').classList.remove('open');
   window.scrollTo({top:0,behavior:'instant'});
   // Live-refresh Home cards when navigating back to home
-  if(tab==='home'){ renderRecent(); renderHealth(); renderFavPanel(); renderDash(); }
+  if(tab==='home'){ renderRecent(); renderHealth(); renderFavPanel(); renderDash(); renderCallNotes(); }
+  if(tab==='finance'){ renderMoola(); renderPayables(); }
   if(tab==='directory'){ renderDirectory(); }
   if(tab==='adminconsole'){ renderAdminConsole(); renderTabPermissions(); }
   if(tab==='pipeline'){ renderPipeline(); }
@@ -3945,11 +3986,140 @@ async function renderMoola(){
     </div>`}).join('');
 }
 
+/* ================================================================
+   Perceptionist call notes (email-fed) — Home card.
+   Reads the call_notes table directly; scoped to the active workspace.
+   ================================================================ */
+async function renderCallNotes(){
+  const root=document.getElementById('callnotes_root'); if(!root) return;
+  const {data,error}=await sb.from('call_notes').select('*').order('call_time',{ascending:false,nullsFirst:false}).limit(50);
+  if(error){ root.innerHTML='<div class="ge-clear">Could not load call notes.</div>'; return; }
+  const rows=(data||[]).filter(r=>inWs(r.brand));
+  const cnt=document.getElementById('cnCount'); if(cnt) cnt.textContent=rows.length?rows.length:'';
+  if(!rows.length){ root.innerHTML='<div class="ge-clear">📭 No call notes yet — Perceptionist notes emailed to firstgentalent@gmail.com land here automatically, and Goldeneye files the caller into the Directory.</div>'; return; }
+  root.innerHTML=rows.slice(0,12).map(r=>{
+    const fu=r.follow_up&&!r.handled;
+    return `<div class="ge-row ${fu?'warn':'info'}">
+      <div class="ge-ico">📞</div>
+      <div class="ge-body">
+        <div class="ge-title">${esc(r.caller_name||'Caller')}${r.caller_phone?` · <a href="tel:${esc(r.caller_phone)}" style="color:var(--accent)">${esc(r.caller_phone)}</a>`:''} ${r.brand?brandTag(r.brand):''}${r.disposition?` <span class="tag">${esc(r.disposition)}</span>`:''}</div>
+        <div class="ge-detail">${esc(String(r.summary||'').slice(0,240))}</div>
+        <div class="ge-meta">${esc(r.call_time?new Date(r.call_time).toLocaleString():'')}${r.handled?' · ✓ handled':fu?' · needs follow-up':''}</div>
+      </div>
+      ${!r.handled?`<button class="ge-dismiss" title="Mark handled" onclick="cnHandled('${r.id}')">✓</button>`:''}
+    </div>`;
+  }).join('');
+}
+async function cnHandled(id){ const {error}=await sb.from('call_notes').update({handled:true,follow_up:false}).eq('id',id); if(error){alert(error.message);return} renderCallNotes(); }
+
+/* ================================================================
+   Accounts Payable tracker (email-fed bills) — Finance tab, owner only.
+   Reads the payables table directly (its own Business/Status filters —
+   independent of the left-nav). Moola ages + prioritizes; humans mark paid.
+   ================================================================ */
+let editingPayableId=null, payFormOpen=false;
+function payAddRow(){ editingPayableId=null; payFormOpen=true; renderPayables(); }
+function payEdit(id){ editingPayableId=id; payFormOpen=true; renderPayables(); }
+function payCancel(){ editingPayableId=null; payFormOpen=false; renderPayables(); }
+async function paySetStatus(id,status){
+  const patch={status, paid_date: status==='paid'? new Date().toISOString().slice(0,10): null};
+  const {error}=await sb.from('payables').update(patch).eq('id',id);
+  if(error){alert(error.message);return} renderPayables();
+}
+async function payDelete(id){ if(!confirm('Delete this bill?'))return; const {error}=await sb.from('payables').delete().eq('id',id); if(error){alert(error.message);return} renderPayables(); }
+async function paySave(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():''};
+  const rec={vendor:g('pf_vendor'),brand:g('pf_brand')||null,invoice_number:g('pf_inv')||null,
+    amount:parseFloat(g('pf_amt'))||0,invoice_date:g('pf_sent')||null,due_date:g('pf_due')||null,
+    priority:g('pf_pri')||'normal',status:g('pf_status')||'unpaid',notes:g('pf_notes')||null};
+  if(!rec.vendor){alert('Vendor is required');return}
+  let error;
+  if(editingPayableId){ ({error}=await sb.from('payables').update(rec).eq('id',editingPayableId)); }
+  else { rec.source='manual'; ({error}=await sb.from('payables').insert(rec)); }
+  if(error){alert('Save failed: '+error.message);return}
+  editingPayableId=null; payFormOpen=false; renderPayables();
+}
+async function renderPayables(){
+  const root=document.getElementById('payables_root'); if(!root) return;
+  if(CURRENT_ROLE!=='admin'){ root.innerHTML='<div class="ge-clear">Owner only.</div>'; return; }
+  const {data,error}=await sb.from('payables').select('*');
+  if(error){ root.innerHTML='<div class="empty">Could not load payables: '+esc(error.message)+'</div>'; return; }
+  const all=data||[];
+  const fB=val('payBrand'), fS=val('payStatus');
+  const today=new Date().toISOString().slice(0,10);
+  const in7=d=>{ if(!d)return false; const diff=(new Date(d)-new Date(today))/864e5; return diff>=0&&diff<=7; };
+  const scope=all.filter(r=>!fB||r.brand===fB||r.brand==='Both');
+  const open=scope.filter(r=>r.status==='unpaid'||r.status==='scheduled');
+  const sum=arr=>arr.reduce((s,r)=>s+(Number(r.amount)||0),0);
+  const overdue=open.filter(r=>r.due_date&&r.due_date<today);
+  const dueSoon=open.filter(r=>in7(r.due_date));
+  const paidMonth=scope.filter(r=>r.status==='paid'&&r.paid_date&&r.paid_date.slice(0,7)===today.slice(0,7));
+  document.getElementById('apSummary').innerHTML=[
+    ['Open to pay',money(sum(open)),open.length+' bills',''],
+    ['Overdue',money(sum(overdue)),overdue.length+' bills','danger'],
+    ['Due ≤ 7 days',money(sum(dueSoon)),dueSoon.length+' bills','warn'],
+    ['Paid this month',money(sum(paidMonth)),paidMonth.length+' bills',''],
+  ].map(([l,v,s,c])=>`<div class="kpi" style="padding:12px 14px"><div class="label">${l}</div><div class="value" style="font-size:20px${c==='danger'?';color:var(--danger)':c==='warn'?';color:#c2620a':''}">${v}</div><div class="trend">${s}</div></div>`).join('');
+  let rows=scope.filter(r=> fS==='open'?(r.status==='unpaid'||r.status==='scheduled'): fS? r.status===fS : true);
+  const PRI={urgent:0,high:1,normal:2,low:3};
+  rows.sort((a,b)=>{
+    const ao=a.status==='paid'?1:0, bo=b.status==='paid'?1:0; if(ao!==bo)return ao-bo;
+    const pd=(PRI[a.priority]??2)-(PRI[b.priority]??2); if(pd)return pd;
+    return String(a.due_date||'9999').localeCompare(String(b.due_date||'9999'));
+  });
+  const ageCell=r=>{
+    const base=r.due_date||r.invoice_date;
+    if(r.status==='paid'||!base) return '<td>—</td>';
+    const days=Math.round((new Date(today)-new Date(base))/864e5);
+    if(r.due_date&&r.due_date<today) return `<td class="age over">${days}d overdue</td>`;
+    if(r.due_date&&in7(r.due_date)) return `<td class="age soon">due soon</td>`;
+    return `<td>${days>=0?days+'d':'in '+(-days)+'d'}</td>`;
+  };
+  const er=editingPayableId?all.find(r=>r.id===editingPayableId):null;
+  const opt=(v,cur)=>`<option value="${v}"${(cur===v)?' selected':''}>${v}</option>`;
+  const form = payFormOpen ? `<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;background:var(--surface-inset)">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <label class="pf">Vendor<input id="pf_vendor" value="${esc(er?.vendor||'')}"></label>
+        <label class="pf">Business<select id="pf_brand"><option value=""></option>${['KTU','BTU','Earthwise','Both'].map(b=>opt(b,er?.brand)).join('')}</select></label>
+        <label class="pf">Invoice #<input id="pf_inv" value="${esc(er?.invoice_number||'')}"></label>
+        <label class="pf">Amount<input id="pf_amt" type="number" step="0.01" value="${er?.amount??''}"></label>
+        <label class="pf">Sent<input id="pf_sent" type="date" value="${esc(er?.invoice_date||'')}"></label>
+        <label class="pf">Due<input id="pf_due" type="date" value="${esc(er?.due_date||'')}"></label>
+        <label class="pf">Priority<select id="pf_pri">${['urgent','high','normal','low'].map(b=>opt(b,er?.priority||'normal')).join('')}</select></label>
+        <label class="pf">Status<select id="pf_status">${['unpaid','scheduled','paid','disputed'].map(b=>opt(b,er?.status||'unpaid')).join('')}</select></label>
+      </div>
+      <label class="pf" style="display:block;margin-top:8px">Notes<input id="pf_notes" style="width:100%" value="${esc(er?.notes||'')}"></label>
+      <div style="margin-top:10px;display:flex;gap:8px"><button class="btn sm" onclick="paySave()">${er?'Save changes':'Add bill'}</button><button class="btn sm ghost" onclick="payCancel()">Cancel</button></div>
+    </div>` : '';
+  const body = rows.length? rows.map(r=>`
+    <tr class="${r.status==='paid'?'paid':''}">
+      <td><span class="pri ${esc(r.priority||'normal')}">${esc(r.priority||'normal')}</span></td>
+      <td><b>${esc(r.vendor||'—')}</b>${r.notes?`<br><small style="color:var(--text-mute)">${esc(String(r.notes).slice(0,64))}</small>`:''}</td>
+      <td>${r.brand?brandTag(r.brand):'—'}</td>
+      <td>${esc(r.invoice_number||'—')}</td>
+      <td class="num">${money(r.amount)}</td>
+      <td>${esc(r.invoice_date||'—')}</td>
+      <td>${esc(r.due_date||'—')}</td>
+      ${ageCell(r)}
+      <td>${esc(r.status)}</td>
+      <td style="white-space:nowrap">
+        ${r.status!=='paid'?`<button class="stx" onclick="paySetStatus('${r.id}','paid')" title="Mark paid">✓</button>`:`<button class="stx" onclick="paySetStatus('${r.id}','unpaid')" title="Reopen">↺</button>`}
+        ${r.status==='unpaid'?`<button class="stx" onclick="paySetStatus('${r.id}','scheduled')" title="Schedule">🗓</button>`:''}
+        <button class="stx" onclick="payEdit('${r.id}')" title="Edit">✎</button>
+        <button class="stx" onclick="payDelete('${r.id}')" title="Delete">🗑</button>
+      </td>
+    </tr>`).join('') : `<tr><td colspan="10" class="empty" style="border:0">No bills ${fS==='paid'?'marked paid':'to pay'} for this view. Invoices emailed to firstgentalent@gmail.com appear here automatically.</td></tr>`;
+  root.innerHTML = form + `<div style="overflow-x:auto"><table>
+    <thead><tr><th>Priority</th><th>Vendor</th><th>Biz</th><th>Invoice #</th><th class="num">Amount</th><th>Sent</th><th>Due</th><th>Age</th><th>Status</th><th></th></tr></thead>
+    <tbody>${body}</tbody></table></div>`;
+}
+
 function renderAll(){
   renderFavNav(); renderFavPanel();
   renderContacts(); renderItems(); renderJobs(); renderDash();
   renderAllSections(); renderIntegrations();
   renderRecent(); renderHealth(); renderGoldeneye(); renderMoola();
+  renderCallNotes(); renderPayables();
 }
 
 /* ================================================================
@@ -4908,7 +5078,8 @@ function rtRefreshActive(force){
   const active=document.querySelector('.panel.active'); if(!active) return;
   const tab=active.id;
   // Custom-rendered tabs
-  if(tab==='home'){ renderRecent&&renderRecent(); renderHealth&&renderHealth(); renderDash&&renderDash(); renderFavPanel&&renderFavPanel(); }
+  if(tab==='home'){ renderRecent&&renderRecent(); renderHealth&&renderHealth(); renderDash&&renderDash(); renderFavPanel&&renderFavPanel(); window.renderCallNotes&&renderCallNotes(); }
+  if(tab==='finance'){ window.renderMoola&&renderMoola(); window.renderPayables&&renderPayables(); }
   if(tab==='directory'&&window.renderDirectory) renderDirectory();
   if(tab==='clients'&&window.renderClients) renderClients();
   if(tab==='projects'&&window.renderProjects) renderProjects();
@@ -4937,6 +5108,8 @@ function startRealtime(){
       .on('postgres_changes',{event:'*',schema:'public',table:'action_queue'},rtKick)
       .on('postgres_changes',{event:'*',schema:'public',table:'notify_queue'},rtKick)
       .on('postgres_changes',{event:'*',schema:'public',table:'resources'},rtKick)
+      .on('postgres_changes',{event:'*',schema:'public',table:'payables'},rtKick)
+      .on('postgres_changes',{event:'*',schema:'public',table:'call_notes'},rtKick)
       .subscribe();
   }catch(e){ console.warn('realtime unavailable, falling back to polling',e); }
   // Refresh when the user returns to the tab/window
