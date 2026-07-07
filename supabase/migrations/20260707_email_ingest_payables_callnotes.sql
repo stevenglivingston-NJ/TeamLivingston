@@ -1,7 +1,11 @@
--- Email-driven pipe: firstgentalent@gmail.com (via Zapier) → Supabase.
--- Three tables: raw capture (inbox_emails), payable bills we owe (payables),
--- and Perceptionist call notes (call_notes). Agents (Moola, Goldeneye) refine
--- the raw captures into structured rows; the intranet reads them live.
+-- Email-driven pipe: the firstgentalent@gmail.com inbox → Supabase.
+-- PRIMARY path: the agents pull that inbox DIRECTLY via the Gmail MCP each run —
+--   Moola reads invoices → `payables`, Goldeneye reads Perceptionist notes →
+--   `call_notes`, and both scrape senders into the `contacts` Directory.
+-- OPTIONAL push path: the `ingest-email` edge function + `inbox_emails` raw table
+--   (a webhook), kept available if a push source is ever wired. Not required for
+--   the live Gmail-pull flow.
+-- Tables: inbox_emails (raw/optional), payables (bills we owe), call_notes.
 -- Applied 2026-07-07.
 
 -- 1) Raw email capture (the landing zone the Zap/edge function writes to).

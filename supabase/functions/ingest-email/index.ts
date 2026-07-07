@@ -1,5 +1,9 @@
-// ingest-email — landing endpoint for emails forwarded from firstgentalent@gmail.com
-// via Zapier (Webhooks by Zapier → POST here, or Zapier's native Supabase step).
+// ingest-email — OPTIONAL push endpoint for the firstgentalent@gmail.com pipe.
+//
+// NOTE: the live path is a direct Gmail-MCP PULL — Moola and Goldeneye read the
+// firstgentalent inbox themselves each run and write payables/call_notes/contacts.
+// This webhook is only needed if a push source (a forwarding rule / external
+// poster) is ever wired instead; it writes the same tables so both paths agree.
 //
 // Auth: shared secret. Send it as header `x-ingest-secret: <value>` OR as a
 // query param `?token=<value>` (dispatch_config.ingest_secret). No Supabase JWT
