@@ -898,6 +898,11 @@
           <span class="lbl">Files &amp; Docs</span>
           <span class="pin" onclick="event.stopPropagation();togglePin('docs','Files & Docs')">Pin</span>
         </div>
+        <div class="nav-item" data-tab="library">
+          <span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h5v18H6a2 2 0 01-2-2z"/><path d="M13 3h5a2 2 0 012 2v14a2 2 0 01-2 2h-5z"/><path d="M8 7h1M16 7h1"/></svg></span>
+          <span class="lbl">Library</span>
+          <span class="pin" onclick="event.stopPropagation();togglePin('library','Library')">Pin</span>
+        </div>
       </div>
 
       <div class="nav-group" id="favGroup" style="display:none">
@@ -1165,6 +1170,22 @@
         <div class="sec-title">Templates &amp; Playbooks</div>
         <div id="docs_templates_root" class="loading">Loading…</div>
         <div class="build" style="margin-top:16px"><b>Tip:</b> Each link is editable — add your own frequently used files here to keep everyone on the same page.</div>
+      </div>
+    </section>
+
+    <!-- ============ LIBRARY ============ -->
+    <section class="panel" id="library">
+      <div class="page-head">
+        <h1 class="page-title">Library</h1>
+        <p class="page-sub">Everything in the Google Drive, mapped and searchable. The Librarian re-scans the Drive every Monday, links each file into the tab it belongs to, and files anything without a home here — categorized. Search across every document below.</p>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+          <input class="f" id="libSearch" placeholder="Search the whole library — title, category, description…" oninput="renderLibrary()" style="flex:1;min-width:280px">
+          <span id="libCount" class="sub" style="margin:0;white-space:nowrap"></span>
+        </div>
+        <div id="libFilters" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap"></div>
+        <div id="library_root" class="loading">Loading…</div>
       </div>
     </section>
 
@@ -2346,7 +2367,7 @@ const TAB_TITLES = {
   vendors:'Vendors', systems:'Systems', integrations:'Integrations', franchise:'Franchise',
   pipeline:'Pipeline', marketing:'Marketing', onboarding:'Onboarding', ordering:'Ordering', trades:'Trades',
   clients:'Clients', tasks:'Tasks & Follow-ups', projects:'Projects',
-  roles:'Roles', dailyops:'Daily Ops', playbook:'Playbook', resources:'Resources',
+  roles:'Roles', dailyops:'Daily Ops', playbook:'Playbook', resources:'Resources', library:'Library',
   territories:'Territories', showroom:'Showroom', reports:'Reports', adminconsole:'Admin Console', axyomfin:'Axyom Financials',
   'earth-overview':'Earthwise · Overview','earth-products':'Earthwise · Products',
   'earth-orders':'Earthwise · Orders','earth-inventory':'Earthwise · Inventory',
@@ -2384,6 +2405,7 @@ function go(tab,push=true){
   if(tab==='projects'){ renderProjects(); }
   if(tab==='techstack'){ renderTechStack(); }
   if(tab==='resources'){ renderResources(); }
+  if(tab==='library'){ renderLibrary(); }
   if(tab==='trades'){ renderTrades(); }
   if(tab==='tasks'){ renderTasks(); }
   if(tab==='ordering'){ renderBtuOrdering(); }
@@ -2811,7 +2833,7 @@ async function renderRecent(){
     ordering_accounts:'ordering', ordering_reps:'ordering', ordering_storage:'ordering',
     trades:'trades', roles:'roles', daily_ops:'dailyops', training:'playbook',
     playbook_scripts:'playbook', service_finance:'playbook', job_flow:'playbook',
-    sow_docs:'playbook', sow_authored:'playbook', resources:'resources',
+    sow_docs:'playbook', sow_authored:'playbook', resources:'resources', library_docs:'library',
     zip_territories:'territories', reports:'reports',
     showroom_details:'showroom', showroom_features:'showroom', showroom_notes:'showroom' };
   box.innerHTML=data.map(r=>{
@@ -4178,6 +4200,53 @@ async function renderResources(){
   }).join('')}</tbody></table></div>`;
 }
 
+/* ---------- Library (Google Drive map — categorized + searchable) ---------- */
+let LIB_FILTER='all';
+function libIcon(t){
+  const s=(t||'').toLowerCase();
+  if(s.includes('folder')) return '📁';
+  if(s.includes('spreadsheet')||s.includes('excel')||s.includes('sheet')) return '📊';
+  if(s.includes('document')||s.includes('word')||s.includes('doc')) return '📄';
+  if(s.includes('presentation')||s.includes('slide')) return '📽️';
+  if(s.includes('pdf')) return '📕';
+  if(s.includes('image')||s.includes('photo')||s.includes('png')||s.includes('jpg')) return '🖼️';
+  if(s.includes('video')) return '🎬';
+  return '🔗';
+}
+async function renderLibrary(){
+  const root=document.getElementById('library_root'); if(!root) return;
+  const q=(val('libSearch')||'').toLowerCase();
+  const rows=await fetchRecords('library_docs');   // workspace-scoped like everything else
+  const cnt=document.getElementById('libCount');
+  if(!rows.length){
+    root.innerHTML='<div class="empty">The Librarian hasn’t mapped the Drive yet. It scans every Monday and files everything here — check back after the next run, or fire it from the agents list.</div>';
+    if(cnt) cnt.textContent=''; document.getElementById('libFilters').innerHTML=''; return;
+  }
+  // Category chips (Drive's numbered top-level folders become the categories)
+  const cats=[...new Set(rows.map(r=>r.fields.category).filter(Boolean))].sort();
+  document.getElementById('libFilters').innerHTML=
+    [['all','All']].concat(cats.map(c=>[c,c])).map(([k,l])=>
+      `<button class="fbtn ${LIB_FILTER===k?'active':''}" onclick="LIB_FILTER=${JSON.stringify(k)};renderLibrary()">${esc(l)}</button>`).join('');
+  // Filter + search
+  let show=LIB_FILTER==='all'?rows:rows.filter(r=>r.fields.category===LIB_FILTER);
+  if(q) show=show.filter(r=>JSON.stringify(r.fields).toLowerCase().includes(q));
+  if(cnt) cnt.textContent=`${show.length} item${show.length===1?'':'s'}${LIB_FILTER!=='all'?' · '+LIB_FILTER:''}`;
+  if(!show.length){ root.innerHTML='<div class="empty">No documents match — try a different search or category.</div>'; return; }
+  // Group by category, then render clean link rows
+  const groups={}; show.forEach(r=>{const c=r.fields.category||'Uncategorized';(groups[c]=groups[c]||[]).push(r);});
+  root.innerHTML=Object.keys(groups).sort().map(cat=>{
+    const items=groups[cat].sort((a,b)=>String(a.fields.title||'').localeCompare(String(b.fields.title||'')));
+    return `<div class="sec-title">${esc(cat)} <span style="color:var(--text-dim);font-weight:500">· ${items.length}</span></div>
+      <div class="doc-grid">${items.map(r=>{const f=r.fields;
+        const href=f.url||'#';
+        return `<a class="doc-link" href="${esc(href)}" target="_blank" rel="noopener">
+          <div class="ico">${libIcon(f.file_type)}</div>
+          <div class="body"><div class="t">${esc(f.title||'Untitled')}${f.mapped_to?` <small style="color:var(--accent)">→ ${esc(f.mapped_to)}</small>`:''}</div>
+          <div class="d">${esc(f.description||f.subcategory||f.drive_folder||'')}${f.updated?` · ${esc(f.updated)}`:''}</div></div>
+        </a>`;}).join('')}</div>`;
+  }).join('');
+}
+
 /* ---------- Subcontractors & Trades (editable list) ---------- */
 let TR_EDIT=null, TR_FILTER='all';
 function tradeContact(f){ // prefer structured, fall back to legacy free-text
@@ -4657,6 +4726,7 @@ function rtRefreshActive(force){
   if(tab==='projects'&&window.renderProjects) renderProjects();
   if(tab==='techstack'&&window.renderTechStack) renderTechStack();
   if(tab==='resources'&&window.renderResources) renderResources();
+  if(tab==='library'&&window.renderLibrary) renderLibrary();
   if(tab==='trades'&&window.renderTrades) renderTrades();
   if(tab==='tasks'&&window.renderTasks) renderTasks();
   if(tab==='ordering'&&window.renderBtuOrdering){ renderBtuOrdering(); }
