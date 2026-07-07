@@ -4306,6 +4306,17 @@ const PROJ_SECTIONS={
     ${goalRow}`;
   }},
   vendor:{label:'Vendor & materials status',render:c=>`<div class="sec-title">Vendor &amp; materials</div>${c.vItems.length?c.vItems.map(v=>`<div class="sub" style="margin-bottom:4px">${v.flag?'🚩 ':''}<b>${esc(v.vendor||'')}</b> — ${esc(v.item||'')} · ${esc(v.status||'')}${v.eta?` · ETA ${esc(v.eta)}`:''}${v.flag?`<br><small>${esc(v.flag)}</small>`:''}</div>`).join(''):'<div class="sub">No open vendor orders on file.</div>'}`},
+  design:{label:'Design review & scope/budget',render:c=>{
+    const f=c.f;
+    const has=f.design_review||f.scope_budget_review||f.design_packet||f.design_status;
+    if(!has) return `<div class="sec-title">Design review &amp; scope/budget</div><div class="sub">No design packet reviewed yet — Foreman reviews CAD/materials packets emailed in and posts feedback here.</div>`;
+    const st={aligned:'✅ Design, scope &amp; price aligned',issues:'⚠️ Scope/budget issues',awaiting:'⏳ Awaiting design packet'}[f.design_status]||'';
+    return `<div class="sec-title">Design review &amp; scope/budget <small style="color:var(--text-mute)">(Foreman ↔ Moola)</small></div>
+    ${st?`<div class="sub">${st}</div>`:''}
+    ${f.design_packet?`<div class="sub" style="color:var(--text-mute)">Packet on file: ${esc(f.design_packet)}</div>`:''}
+    ${f.design_review?`<div class="sub" style="margin-top:6px"><b>Design feedback:</b> ${esc(f.design_review)}</div>`:''}
+    ${f.scope_budget_review?`<div class="sub" style="margin-top:6px"><b>Budget &amp; scope:</b> ${esc(f.scope_budget_review)}</div>`:''}`;
+  }},
   gate:{label:'Production Gate',render:c=>`<div class="sec-title">Production Gate</div><div class="sub">${c.g?`${c.g.gate_status==='Pass'?'✅ Pass':'⚠️ '+esc(c.g.gate_status||'Returned')}${c.g.missing?` — missing: ${esc(c.g.missing)}`:''}${c.g.owner?` · owner ${esc(c.g.owner)}`:''}${c.g.age?` · ${esc(c.g.age)} days outstanding`:''}`:'No gate exposure on file.'}</div>`},
   ledger:{label:'Job cost ledger (line items)',render:(c,opts={})=>{
     const t=ledgerTotals(c);
@@ -4349,7 +4360,7 @@ async function openProjectDetail(project){
   const c=await projCtx(project);
   const bg=document.createElement('div');bg.className='ax-modal-bg';bg.onclick=e=>{if(e.target===bg)bg.remove();};
   bg.dataset.project=project;
-  const order=['scope','pace','install','margins','ledger','pricing','payments','gate','vendor'];
+  const order=['scope','pace','install','design','margins','ledger','pricing','payments','gate','vendor'];
   bg.innerHTML=`<div class="ax-modal" style="max-width:680px">
     <h3>${esc(project)} <small style="color:var(--text-mute)">(${esc(c.f.brand||c.cli.brand||'')})</small></h3>
     ${c.flags.length?c.flags.map(fl=>`<div class="ax-pill overdue" style="display:block;margin-bottom:6px;white-space:normal;text-align:left">${esc(fl.title||'')}<br><small>${esc(fl.detail||'')}</small></div>`).join(''):''}

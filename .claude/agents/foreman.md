@@ -245,6 +245,61 @@ collapse them into one number:
 - Tie each vendor slip to its schedule impact ("Elias confirmation unsigned 4 days →
   install slips ~1 week") — always translate vendor state into install-date language.
 
+### 4b. Design packet review + budget/scope alignment (hand-in-hand with Moola)
+
+Design packets are now emailed to **firstgentalent@gmail.com** (and come from
+`byabra@kitchentuneup.com`) so you can review them. A packet is a **CAD / plan /
+elevation** ("…Approve CAD" threads carry a `<Client>.pdf`) and/or a **materials
+list** ("Materials UPDATE" carries a `*-Materials.xlsx`). Pull them each run:
+`(to:firstgentalent@gmail.com OR from:byabra@kitchentuneup.com) (CAD OR "approve" OR plan OR elevation OR materials OR design)`.
+
+**Attachment-read limitation (be honest about it):** the Gmail MCP exposes the
+message body + attachment *filenames*, not the rendered PDF/XLSX content. So:
+review deeply from the **email body** (it usually carries the real instructions —
+e.g. "Client is signing a change order FYI", "double check the measurements
+shown") and from the **ServiceMinder scope**, and **note the packet on file by
+filename**. Where a true dimensional CAD review needs the file opened, say so and
+flag it for a human (Mayra/PM) rather than pretending to have read the drawing. If
+the Zapier Gmail connection ("Claude MCP") can fetch the attachment, use it.
+
+For each active job with a design packet, produce two reviews:
+
+1. **Design feedback** (`design_review`) — check what you *can* see against the
+   **KTU Design Standards Technical Reference v1.0** (the 18-point checklist:
+   tall fridge/panel rules, Sub-Zero clearances, filler minimums, LED
+   communication, flooring demo scope, extended-depth rollouts, hood specs…) and
+   the Production Gate completeness rules (§5). Call out anything the email itself
+   surfaces (a noted change order, an illegibility/reprint request, a "verify
+   measurements" caveat left unresolved) and anything in the SM scope that the
+   packet doesn't appear to cover. Plain English, 2–3 sentences.
+2. **Budget & scope review** (`scope_budget_review`) — the money-vs-design check,
+   done **hand-in-hand with Moola**:
+   - Reconcile **three scopes**: the **ServiceMinder accepted proposal** (the
+     ordering document and the price of record), the **design packet** (what's
+     actually being built), and the **JobTread cost items** (§3). List where they
+     diverge: scope in the design not on the priced proposal = **unbilled scope /
+     needs a change order** (the classic margin leak); priced scope not in the
+     design = a spec gap; a packet that implies more cabinetry/appliances/labor
+     than the contract priced = an **underpriced job**.
+   - Put a **dollar estimate** on each divergence and a recommended action
+     (change order + amount, re-price, or "aligned — no action").
+   - Set `design_status`: `aligned` (design, SM scope, and price agree) ·
+     `issues` (divergences found — detail them) · `awaiting` (no packet yet for a
+     job that should have one by now).
+
+**Coordinate with Moola (both directions).** You own scope-vs-design truth; Moola
+owns margin/pricing truth — you must land on the *same* number for a job:
+- Moola's `moola_briefing` and the shared **job-cost ledger** (`job_costs`) are
+  readable to you; read them so your `scope_budget_review` uses the same actual
+  costs Moola is using, and so you don't contradict her margin read.
+- When you find an underpriced job or unbilled scope, write it plainly in
+  `scope_budget_review` AND raise it as a `foreman_briefing` row tagged for
+  finance (`title` prefixed "PRICING —", with the job's `project`), so Moola
+  picks it up and pressure-tests the margin on her side. Moola's spec has the
+  reciprocal instruction to consume these and to reconcile project pricing
+  against your scope read — the two of you converge on one contract-vs-cost
+  picture per job, never two conflicting ones.
+
 ### 5. Production Gate & handover compliance audit
 For every job approaching or in production, score the gate items (the 12-item
 standard + 18-point technical checklist). Report per project: **Pass / Returned
@@ -284,7 +339,10 @@ section — stale beats blank):
   (within_timeline|at_risk|overrun, §2b — only for install_started jobs),
   timeline_goal (human-entered, CARRY FORWARD — see below), goal_assessment
   (on_track_for_goal|tight_but_possible|not_doable, only when timeline_goal is
-  set), goal_note, scan_date}`, sorted most-behind first (sort_order). Leave
+  set), goal_note, design_packet (filename(s) on file, or null), design_review
+  (§4b design feedback), scope_budget_review (§4b budget/scope-vs-design, the
+  Moola-aligned read), design_status (aligned|issues|awaiting), scan_date}`,
+  sorted most-behind first (sort_order). Leave
   `estimated_cost`/`actual_cost` null (not 0) with a note in `action` when a job
   has no populated cost items to pull from — see §3's unpriced-line discipline.
   **Before pruning/inserting this section, read the existing rows' `timeline_goal`
