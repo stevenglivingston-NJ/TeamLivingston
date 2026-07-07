@@ -4238,18 +4238,28 @@ async function renderProjects(){
   if(PROJ_FILTER==='gate') list=list.filter(r=>{const g=gateByProject[r.fields.project];return g&&g.gate_status&&g.gate_status.toLowerCase()!=='pass';});
   if(!list.length){root.innerHTML='<div class="empty">No project rows yet — Foreman seeds this daily from JobTread + ServiceMinder + CompanyCam.</div>';return;}
   root.innerHTML=`<div class="sub" style="margin-bottom:8px"><b>${list.length}</b> active project${list.length>1?'s':''}${board[0]?.fields?.scan_date?` · as of ${esc(board[0].fields.scan_date)}`:''}</div>
-  <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Project</th><th>Brand</th><th>Stage</th><th>Pace</th><th class="num">Est. GP%</th><th class="num">Actual GP%</th><th>Gate</th><th>Vendor</th></tr></thead><tbody>
+  <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Project</th><th>Brand</th><th>Stage</th><th>Pace</th><th>Timeline</th><th class="num">Est. GP%</th><th class="num">Actual GP%</th><th>Gate</th><th>Vendor</th></tr></thead><tbody>
   ${list.map(r=>{const f=r.fields;const g=gateByProject[f.project];const vFlags=vendorFlagByProject[f.project]||0;
     return `<tr>
     <td><a href="javascript:void(0)" onclick="openProjectDetail(${JSON.stringify(f.project||'')})"><b>${esc(f.project||'—')}</b></a>${f.scope_summary?`<br><small style="color:var(--text-mute)">${esc(String(f.scope_summary).slice(0,70))}</small>`:''}</td>
     <td>${esc(f.brand||'')}</td>
     <td>${stageBadge(f.stage)}</td>
     <td>${esc(f.status||'')} ${f.variance?`<small style="color:var(--text-mute)">${esc(f.variance)}</small>`:''}</td>
+    <td>${timelineBadge(f)}</td>
     <td class="num">${pct(f.estimated_gp_pct)}${coverageNote(f.estimated_cost_coverage_pct)}</td>
     <td class="num">${pct(f.actual_gp_pct)}${coverageNote(f.actual_cost_coverage_pct)}</td>
     <td>${g?(g.gate_status==='Pass'?'✅':'⚠️ '+esc(g.gate_status||'')):'—'}</td>
     <td>${vFlags?`<span class="ax-pill overdue">🚚 ${vFlags}</span>`:'—'}</td>
   </tr>`;}).join('')}</tbody></table></div>`;
+}
+const TIMELINE_LABEL={within_timeline:'🟢 Within timeline',at_risk:'🟡 At risk',overrun:'🔴 Overrun'};
+const TIMELINE_CLASS={within_timeline:'complete',at_risk:'production',overrun:'overdue'};
+function timelineBadge(f){
+  if(!f.install_started) return '<span class="ax-pill proposal">Pre-install</span>';
+  const label=TIMELINE_LABEL[f.timeline_status]||'—';
+  const cls=TIMELINE_CLASS[f.timeline_status]||'proposal';
+  const tip=[f.pm_comment,f.timeline_goal?`Goal: ${f.timeline_goal}`:'',f.goal_note].filter(Boolean).join(' — ');
+  return `<span class="ax-pill ${cls}" title="${esc(tip)}">${esc(label)}</span>`;
 }
 const COST_CATS=['Materials','Labor','Other'];
 async function projCtx(project){
@@ -4275,6 +4285,26 @@ function ledgerTotals(ctx){
 const PROJ_SECTIONS={
   scope:{label:'Scope & stage',render:c=>`<div class="sec-title">Scope &amp; stage</div>${stageProgressBar(c.f.stage)}${c.f.scope_summary?`<div class="sub"><b>Scope:</b> ${esc(c.f.scope_summary)}</div>`:'<div class="sub">No scope summary on file.</div>'}`},
   pace:{label:'Timeline & pace',render:c=>`<div class="sec-title">Timeline &amp; pace</div><div class="sub">${esc(c.f.status||'—')} · phase <b>${esc(c.f.phase||'—')}</b> · ${esc(c.f.days_in_phase||'—')} days in phase (target ${esc(c.f.target||'—')})${c.f.variance?` · ${esc(c.f.variance)}`:''}</div>${c.f.action?`<div class="sub"><b>Next step:</b> ${esc(c.f.action)}</div>`:''}`},
+  install:{label:'Install progress & timeline goal',render:c=>{
+    const f=c.f;
+    if(!f.install_started){
+      return `<div class="sec-title">Install progress &amp; timeline goal</div><div class="sub">Not in production yet — this section fills in once Foreman confirms the install date has passed.</div>`;
+    }
+    const badge=timelineBadge(f);
+    const goalRow = f.goal_assessment
+      ? `<div class="sub" style="margin-top:6px"><b>Goal check:</b> ${esc({on_track_for_goal:'✅ on track',tight_but_possible:'⚠️ tight but possible',not_doable:'🔴 not doable'}[f.goal_assessment]||f.goal_assessment)}${f.goal_note?` — ${esc(f.goal_note)}`:''}</div>`
+      : '';
+    return `<div class="sec-title">Install progress &amp; timeline goal</div>
+    <div class="sub">${badge} · install started ${esc(f.install_date||'—')}</div>
+    ${f.pm_comment?`<div class="sub" style="margin-top:6px"><b>Foreman's read:</b> ${esc(f.pm_comment)}</div>`:''}
+    <div style="display:flex;gap:6px;align-items:center;margin-top:10px">
+      <label class="hint" style="margin:0">Timeline goal</label>
+      <input id="tgInput_${esc(c.project).replace(/[^a-zA-Z0-9]/g,'_')}" placeholder="e.g. finish by 8/15" value="${esc(f.timeline_goal||'')}" style="flex:1;min-width:140px">
+      <button class="btn sm" onclick='saveTimelineGoal(${JSON.stringify(c.project)})'>Save</button>
+    </div>
+    <div class="sub" style="margin-top:4px;color:var(--text-mute)">Foreman checks this against known pace, remaining scope, and the vendor cycle on the next sweep.</div>
+    ${goalRow}`;
+  }},
   vendor:{label:'Vendor & materials status',render:c=>`<div class="sec-title">Vendor &amp; materials</div>${c.vItems.length?c.vItems.map(v=>`<div class="sub" style="margin-bottom:4px">${v.flag?'🚩 ':''}<b>${esc(v.vendor||'')}</b> — ${esc(v.item||'')} · ${esc(v.status||'')}${v.eta?` · ETA ${esc(v.eta)}`:''}${v.flag?`<br><small>${esc(v.flag)}</small>`:''}</div>`).join(''):'<div class="sub">No open vendor orders on file.</div>'}`},
   gate:{label:'Production Gate',render:c=>`<div class="sec-title">Production Gate</div><div class="sub">${c.g?`${c.g.gate_status==='Pass'?'✅ Pass':'⚠️ '+esc(c.g.gate_status||'Returned')}${c.g.missing?` — missing: ${esc(c.g.missing)}`:''}${c.g.owner?` · owner ${esc(c.g.owner)}`:''}${c.g.age?` · ${esc(c.g.age)} days outstanding`:''}`:'No gate exposure on file.'}</div>`},
   ledger:{label:'Job cost ledger (line items)',render:(c,opts={})=>{
@@ -4319,7 +4349,7 @@ async function openProjectDetail(project){
   const c=await projCtx(project);
   const bg=document.createElement('div');bg.className='ax-modal-bg';bg.onclick=e=>{if(e.target===bg)bg.remove();};
   bg.dataset.project=project;
-  const order=['scope','pace','margins','ledger','pricing','payments','gate','vendor'];
+  const order=['scope','pace','install','margins','ledger','pricing','payments','gate','vendor'];
   bg.innerHTML=`<div class="ax-modal" style="max-width:680px">
     <h3>${esc(project)} <small style="color:var(--text-mute)">(${esc(c.f.brand||c.cli.brand||'')})</small></h3>
     ${c.flags.length?c.flags.map(fl=>`<div class="ax-pill overdue" style="display:block;margin-bottom:6px;white-space:normal;text-align:left">${esc(fl.title||'')}<br><small>${esc(fl.detail||'')}</small></div>`).join(''):''}
@@ -4356,6 +4386,17 @@ async function deleteJobCost(id,project){
   if(!confirm('Delete this cost entry?'))return;
   const {error}=await sb.from('intranet_records').delete().eq('id',id);
   if(error){toast(error.message,1);return;}
+  refreshProjectDetail(project);
+}
+async function saveTimelineGoal(project){
+  const inputId='tgInput_'+String(project).replace(/[^a-zA-Z0-9]/g,'_');
+  const goal=val(inputId);
+  const row=(window._PROJ_DATA?.board||[]).find(r=>r.fields.project===project);
+  if(!row){toast('Could not find this project\'s row — try refreshing.',1);return;}
+  const fields={...row.fields, timeline_goal: goal||null};
+  const {error}=await sb.from('intranet_records').update({fields}).eq('id',row.id);
+  if(error){toast('Failed: '+error.message,1);return;}
+  toast(goal?'Timeline goal saved — Foreman checks it on the next sweep.':'Timeline goal cleared.');
   refreshProjectDetail(project);
 }
 function applyProjPreset(k){

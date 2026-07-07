@@ -97,6 +97,51 @@ For each active job compute, from **contract-signature date**:
 - Flag: 🔴 behind track target or >5 biz days over a milestone · 🟡 trending late
   (milestone at 80% consumed, phase not advanced) · 🟢 on/ahead.
 
+### 2b. Install-phase tracking + timeline-goal check (jobs where install has started)
+
+This is a second, more pointed lens on top of §2 — once a job's **install date has
+passed**, the team wants a plain-English read on how it's actually going, not just
+a phase/target table.
+
+- **Determine `install_started` + `install_date`.** Evidence, in priority order:
+  (1) a JobTread task/milestone dated in the past whose name indicates
+  install/production start ("Install Start", "Production Start", "Demo"); (2) a
+  ServiceMinder job/appointment marked started; (3) CompanyCam photo evidence of
+  demo/prep or later phases (§2's phase inference). Set `install_started = true`
+  and `install_date` = the earliest of these with real evidence — never guess a
+  date with no evidence behind it. Jobs still in Design/Selections or Production
+  Gate are `install_started = false`; skip the rest of this section for them.
+- **`pm_comment`** — 2-3 plain-English sentences on how the job is actually
+  tracking: current phase vs. where it should be at this many elapsed days, what
+  moved it recently (a photo burst, a vendor update, a stall), and the reasoning
+  behind the `timeline_status` verdict below. Write this like you're telling
+  Steven what he needs to know in the standup, not restating the raw fields.
+- **`timeline_status`** — exactly one of `within_timeline` | `at_risk` | `overrun`:
+  - `overrun` — elapsed days since `install_date` already exceed the job's track
+    window (Track A 5–7wk / Track B 9–12wk total, not just this phase), OR the
+    current phase has run >150% of its target with no earlier phase run ahead of
+    pace to compensate.
+  - `at_risk` — on pace to miss the track window if nothing changes: ≥80% of the
+    track window elapsed with <80% of expected phase progress, an open vendor
+    flag with a stated schedule impact (§4), or a returned Production Gate item
+    still open this deep into production.
+  - `within_timeline` — elapsed pace ≤ the track window's pace and no open
+    blocking flag.
+- **`timeline_goal` is human-entered on the intranet — READ, never overwrite.**
+  Steven or the PM can set a target completion date per project from the Projects
+  tab. If `timeline_goal` is set on the existing row for this project, evaluate it
+  against everything you know (remaining scope, the fixed 3–4wk vendor cycle when
+  a vendor step is still open, current velocity, open flags) and write:
+  - `goal_assessment` — `on_track_for_goal` | `tight_but_possible` | `not_doable`.
+  - `goal_note` — one sentence of concrete reasoning (e.g., "vendor cycle alone
+    needs 3 of the remaining 4 weeks — not doable without expediting the Elias
+    order today"). Never say "not doable" without naming the specific constraint.
+  If no `timeline_goal` is set for this project, leave `goal_assessment` and
+  `goal_note` null — do not invent a goal to evaluate against.
+- **Carry `timeline_goal` forward on every refresh** — see the write rule in §7.
+  This is the one field on `foreman_board` a human owns; everything else in this
+  section you recompute fresh each run.
+
 **Lifecycle `stage` vocabulary** — use exactly these values (in this order) for the
 `stage` field on `client_status`/`foreman_board`, so the intranet can render a clean
 sale-to-final-payment progress indicator. Never invent a different label:
@@ -182,6 +227,19 @@ collapse them into one number:
   **"Materials UPDATE"** emails (clients who have completed selections), Designer
   Appliances spec packages, countertop/tile partner scheduling, vendor invoices
   (e.g. "Invoice IN…"), CAD approval threads ("…Approve CAD").
+- **Design-gate signal — Ben Yabra's project updates (direct Gmail MCP pull, not Zapier).**
+  This is the read that tells you where a job stands on selections/CAD before
+  Production Gate. Ben's updates come from `byabra@kitchentuneup.com`, and
+  **`firstgentalent@gmail.com` is a directly connected mailbox on this same Gmail
+  MCP** — search it too (`to:firstgentalent@gmail.com`) since some threads land or
+  get relayed there. Query both scopes each run:
+  `(from:byabra@kitchentuneup.com OR to:firstgentalent@gmail.com) (materials OR "design" OR CAD OR "selection" OR "design brief")`.
+  Pull the body **and attachments** — Ben's "Materials UPDATE" emails are often a
+  bare signature block with the real content in an attached `*-Materials.xlsx`;
+  note the attachment exists and name the clients listed in the subject/snippet
+  even if you can't open the spreadsheet. Use this to set/advance `stage`
+  (`Design/Selections` → `Production Gate`) and to populate the Production Gate
+  audit (§5) with real evidence instead of guessing.
 - Track per order: vendor, item, status, ETA, last update. **Silent past ETA = flag.**
   Delivery due within 7 days with no site-readiness photo evidence = flag.
 - Tie each vendor slip to its schedule impact ("Elias confirmation unsigned 4 days →
@@ -222,9 +280,19 @@ section — stale beats blank):
   contract_total, estimated_cost, actual_cost, estimated_cost_coverage_pct,
   actual_cost_coverage_pct, estimated_gp_pct, actual_gp_pct, price_grade
   (over_market|at_market|under_market|no_catalog — BTU only, per §3), status
-  (🟢/🟡/🔴), action, scan_date}`, sorted most-behind first (sort_order). Leave
+  (🟢/🟡/🔴), action, install_started, install_date, pm_comment, timeline_status
+  (within_timeline|at_risk|overrun, §2b — only for install_started jobs),
+  timeline_goal (human-entered, CARRY FORWARD — see below), goal_assessment
+  (on_track_for_goal|tight_but_possible|not_doable, only when timeline_goal is
+  set), goal_note, scan_date}`, sorted most-behind first (sort_order). Leave
   `estimated_cost`/`actual_cost` null (not 0) with a note in `action` when a job
   has no populated cost items to pull from — see §3's unpriced-line discipline.
+  **Before pruning/inserting this section, read the existing rows' `timeline_goal`
+  by `project` and carry that exact value forward into the new row for that
+  project — never blank or overwrite a human-set goal.** Every other new field
+  above (`install_started`, `install_date`, `pm_comment`, `timeline_status`,
+  `goal_assessment`, `goal_note`) is yours to recompute fresh each run — this
+  mirrors the existing `status`-preservation carve-out on `btu_ordering` below.
 - `foreman_vendor` — one row per open order: `{project, vendor, item, status, eta,
   last_update, flag, scan_date}`.
 - `foreman_gates` — one row per job with gate exposure: `{project, gate_status,
