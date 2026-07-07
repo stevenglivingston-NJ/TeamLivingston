@@ -3706,15 +3706,28 @@ async function renderPipeline(){
    ================================================================ */
 let AP_METRIC='appts';
 const AP_METRICS=[
-  {k:'appts',         label:'Appointments',    fmt:'n'},
-  {k:'proposals',     label:'Proposals',       fmt:'n'},
-  {k:'wins',          label:'Wins',            fmt:'n'},
-  {k:'proposal_value',label:'Proposal value',  fmt:'$'},
-  {k:'win_value',     label:'Win value',       fmt:'$'},
-  {k:'close_rate',    label:'Close rate',      fmt:'%'},
-  {k:'cancels',       label:'Cancellations',   fmt:'n'},
-  {k:'avg_sale',      label:'Avg sale value',  fmt:'$'},
+  {k:'appts',         label:'Appointments',    fmt:'n', up:true},
+  {k:'proposals',     label:'Proposals',       fmt:'n', up:true},
+  {k:'wins',          label:'Wins',            fmt:'n', up:true},
+  {k:'proposal_value',label:'Proposal value',  fmt:'$', up:true},
+  {k:'win_value',     label:'Win value',       fmt:'$', up:true},
+  {k:'close_rate',    label:'Close rate',      fmt:'%', up:true},
+  {k:'cancels',       label:'Cancellations',   fmt:'n', up:false}, // fewer is better
+  {k:'avg_sale',      label:'Avg sale value',  fmt:'$', up:true},
 ];
+// Year-over-year badge: green when the move is good (per metric.up), red when bad.
+function apYoY(cur,ly,up){
+  if(ly==null||!isFinite(ly)||ly===0||cur==null||!isFinite(cur)) return '';
+  const pct=(cur-ly)/Math.abs(ly)*100;
+  if(!isFinite(pct)) return '';
+  const rounded=Math.abs(pct)>=100?Math.round(pct):Math.round(pct*10)/10;
+  const flat=Math.abs(pct)<0.05;
+  const good=flat?null:((pct>0)===up);
+  const color=flat?'var(--text-mute)':(good?'var(--success)':'var(--danger)');
+  const arrow=flat?'→':(pct>0?'▲':'▼');
+  const bg=flat?'transparent':(good?'rgba(74,222,128,.12)':'rgba(248,113,113,.12)');
+  return `<span title="vs same period last year" style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:${color};background:${bg};border-radius:999px;padding:1px 7px;margin-top:6px;font-variant-numeric:tabular-nums">${arrow} ${Math.abs(rounded)}% <span style="font-weight:500;opacity:.7">vs LY</span></span>`;
+}
 const AP_MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function apFmt(v,fmt){
   if(v==null||v===''||isNaN(v)) return '—';
@@ -3723,17 +3736,24 @@ function apFmt(v,fmt){
   return Math.round(v).toLocaleString();
 }
 function apSetMetric(k){ AP_METRIC=k; renderAgentPerf(); }
-function apVBars(vals,mdef){
+function apVBars(vals,mdef,mtdIdx){
   const max=Math.max(1,...vals.map(v=>+v||0));
   const H=180,W=560,pad=28,step=(W-pad*2)/12,bw=step*0.6;
   const bars=vals.map((v,i)=>{
     const val=+v||0, h=max>0?Math.max(0,val/max*(H-34)):0;
     const x=pad+step*i+(step-bw)/2, y=H-20-h;
-    return `<g><rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="var(--accent)"><title>${esc(AP_MONTHS[i])}: ${esc(apFmt(val,mdef.fmt))}</title></rect>`
+    const isMtd=i===mtdIdx;
+    // Current (in-progress) month is month-to-date — draw it hollow/dashed so a
+    // partial month doesn't read as a real drop.
+    const rectAttrs=isMtd
+      ? `fill="var(--accent)" fill-opacity="0.4" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="3 2"`
+      : `fill="var(--accent)"`;
+    return `<g><rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="3" ${rectAttrs}><title>${esc(AP_MONTHS[i])}${isMtd?' (month-to-date)':''}: ${esc(apFmt(val,mdef.fmt))}</title></rect>`
       +(val>0?`<text x="${(x+bw/2).toFixed(1)}" y="${(y-4).toFixed(1)}" text-anchor="middle" font-size="8.5" fill="var(--text-mute)">${esc(apFmt(val,mdef.fmt))}</text>`:'')
-      +`<text x="${(x+bw/2).toFixed(1)}" y="${H-5}" text-anchor="middle" font-size="9" fill="var(--text-mute)">${esc(AP_MONTHS[i][0])}</text></g>`;
+      +`<text x="${(x+bw/2).toFixed(1)}" y="${H-5}" text-anchor="middle" font-size="9" fill="${isMtd?'var(--accent)':'var(--text-mute)'}" font-weight="${isMtd?'700':'400'}">${esc(AP_MONTHS[i][0])}</text></g>`;
   }).join('');
-  return `<div class="chart-title">${esc(mdef.label)} by month</div><svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:600px;height:auto">${bars}</svg>`;
+  const cap=mtdIdx>=0?`<div class="page-sub" style="margin-top:2px;font-size:11.5px">⃞ ${esc(AP_MONTHS[mtdIdx])} is <b>month-to-date</b> — the month isn't over, so it's a partial number.</div>`:'';
+  return `<div class="chart-title">${esc(mdef.label)} by month</div><svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:600px;height:auto">${bars}</svg>${cap}`;
 }
 async function renderAgentPerf(){
   const card=document.getElementById('agentPerfCard'); if(!card) return;
@@ -3769,25 +3789,44 @@ async function renderAgentPerf(){
     t.appts+=+r.appts||0; t.proposals+=+r.proposals||0; t.wins+=+r.wins||0;
     t.customers+=+(r.customers!=null?r.customers:r.wins)||0; t.cancels+=+r.cancels||0;
     t.proposal_value+=+r.proposal_value||0; t.win_value+=+r.win_value||0;});
-  const derive=t=>({...t, close_rate:t.appts?t.customers/t.appts:null, avg_sale:t.wins?t.win_value/t.wins:null});
-  const MM=M.map(derive);
-  const T=M.reduce((a,t)=>{for(const k in t)a[k]=(a[k]||0)+t[k];return a;},{});
-  T.close_rate=T.appts?T.customers/T.appts:null; T.avg_sale=T.wins?T.win_value/T.wins:null;
-  // ---- KPI tiles (period totals; click to plot that metric) ----
+  const BASE=['appts','proposals','wins','customers','cancels','proposal_value','win_value'];
+  const sumMonths=(arr,idxs)=>idxs.reduce((a,i)=>{BASE.forEach(k=>a[k]=(a[k]||0)+(arr[i][k]||0));return a;},{});
+  const deriveRates=t=>{t.close_rate=t.appts?t.customers/t.appts:null; t.avg_sale=t.wins?t.win_value/t.wins:null; return t;};
+  const MM=M.map(t=>deriveRates({...t}));
+  // Which months to total: only those with real activity (so future months and
+  // the un-started tail don't dilute rates or the vs-LY comparison).
+  const activeIdx=M.map((t,i)=>i).filter(i=>BASE.some(k=>k!=='customers'&&M[i][k]));
+  const T=deriveRates(sumMonths(M,activeIdx));
+  // ---- Current (in-progress) month → month-to-date marker ----
+  const now=new Date(), nowY=now.getFullYear(), nowM=now.getMonth();
+  const cmpYear=fYear?Number(fYear):null;
+  const mtdIdx=(cmpYear===nowY)?nowM:-1;
+  // ---- Last-year totals over the SAME months (fair YTD vs YTD) ----
+  let LY=null;
+  if(cmpYear){
+    const lyRows=rows.filter(r=>(!fAgent||r.agent===fAgent)&&(!fBiz||r.brand===fBiz)&&String(r.year)===String(cmpYear-1));
+    if(lyRows.length){
+      const LM=Array.from({length:12},()=>({}));
+      lyRows.forEach(r=>{const m=Number(r.month)-1; if(m<0||m>11)return; const t=LM[m];
+        BASE.forEach(k=>{const src=k==='customers'?(r.customers!=null?r.customers:r.wins):r[k]; t[k]=(t[k]||0)+(+src||0);});});
+      LY=deriveRates(sumMonths(LM,activeIdx));
+    }
+  }
+  // ---- KPI tiles (period totals + vs-LY badge; click to plot that metric) ----
   document.getElementById('apKpis').innerHTML=AP_METRICS.map(m=>`
-    <div class="kpi" style="padding:12px 14px;cursor:pointer${AP_METRIC===m.k?';border-color:var(--accent)':''}" onclick="apSetMetric('${m.k}')" title="Plot ${esc(m.label)} by month">
-      <div class="label">${esc(m.label)}</div><div class="value" style="font-size:20px">${apFmt(T[m.k],m.fmt)}</div></div>`).join('');
+    <div class="kpi" style="padding:12px 14px;cursor:pointer;display:flex;flex-direction:column${AP_METRIC===m.k?';border-color:var(--accent)':''}" onclick="apSetMetric('${m.k}')" title="Plot ${esc(m.label)} by month">
+      <div class="label">${esc(m.label)}</div><div class="value" style="font-size:20px">${apFmt(T[m.k],m.fmt)}</div>${LY?apYoY(T[m.k],LY[m.k],m.up):''}</div>`).join('');
   // ---- Metric chips ----
   document.getElementById('apMetricChips').innerHTML=AP_METRICS.map(m=>`
     <button class="ap-chip${AP_METRIC===m.k?' on':''}" onclick="apSetMetric('${m.k}')">${esc(m.label)}</button>`).join('');
   // ---- Chart (selected metric) ----
   const mdef=AP_METRICS.find(m=>m.k===AP_METRIC)||AP_METRICS[0];
-  document.getElementById('apChart').innerHTML=apVBars(MM.map(t=>t[mdef.k]),mdef);
+  document.getElementById('apChart').innerHTML=apVBars(MM.map(t=>t[mdef.k]),mdef,mtdIdx);
   // ---- Table (every metric, months with activity) ----
-  const active=MM.map((t,i)=>({t,i})).filter(x=>['appts','proposals','wins','cancels','proposal_value','win_value'].some(k=>x.t[k]));
+  const active=MM.map((t,i)=>({t,i})).filter(x=>BASE.some(k=>k!=='customers'&&x.t[k]));
   document.getElementById('apTableWrap').innerHTML = active.length
     ? `<table><thead><tr><th style="text-align:left">Month</th>${AP_METRICS.map(m=>`<th style="text-align:right">${esc(m.label)}</th>`).join('')}</tr></thead><tbody>${
-        active.map(({t,i})=>`<tr><td><b>${AP_MONTHS[i]}${fYear?' '+fYear:''}</b></td>${AP_METRICS.map(m=>`<td style="text-align:right">${apFmt(t[m.k],m.fmt)}</td>`).join('')}</tr>`).join('')
+        active.map(({t,i})=>`<tr><td><b>${AP_MONTHS[i]}${fYear?' '+fYear:''}</b>${i===mtdIdx?' <span style="color:var(--accent);font-size:10.5px;font-weight:700">MTD</span>':''}</td>${AP_METRICS.map(m=>`<td style="text-align:right">${apFmt(t[m.k],m.fmt)}</td>`).join('')}</tr>`).join('')
       }<tr class="ap-total"><td><b>Total</b></td>${AP_METRICS.map(m=>`<td style="text-align:right"><b>${apFmt(T[m.k],m.fmt)}</b></td>`).join('')}</tr></tbody></table>`
     : '<div class="empty">No activity for this selection.</div>';
 }
