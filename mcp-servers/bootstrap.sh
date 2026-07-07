@@ -6,9 +6,16 @@
 # daily agent triggers — Goldeneye, Moola, Paid — spawn) have the direct MCP
 # connections, not just the account's claude.ai connectors.
 #
-# Run this from the environment SETUP SCRIPT (Cloud env → Setup script):
-#     bash "$(git -C /home/user/TeamLivingston rev-parse --show-toplevel)/mcp-servers/bootstrap.sh"
-# or, if the repo lives elsewhere, just point at this file directly.
+# Run this from the environment SETUP SCRIPT (Cloud env → Setup script). Use the
+# PATH-ROBUST form below — it never exits 127 if the repo isn't at the expected
+# path yet (the old `git -C /home/user/TeamLivingston …` form returned empty and
+# tried `bash /mcp-servers/bootstrap.sh` → "No such file or directory" → exit 127):
+#
+#   for d in /home/user/TeamLivingston /workspace/TeamLivingston "$HOME/TeamLivingston"; do
+#     [ -f "$d/mcp-servers/bootstrap.sh" ] && { bash "$d/mcp-servers/bootstrap.sh"; break; }
+#   done
+#
+# (Falls through quietly if none exist yet — a later session re-runs setup.)
 #
 # SECRETS: this script reads all API keys from ENVIRONMENT VARIABLES. No key is
 # ever stored in the repo. Set the vars in the Cloud environment's env-var
@@ -23,10 +30,17 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "▸ MCP bootstrap — server dir: $DIR"
 
 # ---- 1. Python deps (union of every requirements.txt) ----------------------
+# NOTE: `--ignore-installed PyJWT` is required because the base image ships a
+# Debian-packaged PyJWT with no RECORD file, so pip cannot uninstall it to
+# satisfy google-ads' pin ("Cannot uninstall PyJWT … RECORD file not found").
+# Without this the whole pip install aborts and the google-ads / gmb stdio
+# servers start with missing deps and fail to register (connector flapping).
+# `--break-system-packages` tolerates PEP-668 externally-managed environments.
 echo "▸ Installing Python deps…"
-pip install --quiet --disable-pip-version-check \
-  "mcp[cli]>=1.2.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" \
-  2>/dev/null || echo "  (pip install had warnings — continuing)"
+PIP_DEPS=( "mcp[cli]>=1.2.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" )
+pip install --quiet --disable-pip-version-check --ignore-installed PyJWT "${PIP_DEPS[@]}" 2>/dev/null \
+  || pip install --quiet --disable-pip-version-check --break-system-packages --ignore-installed PyJWT "${PIP_DEPS[@]}" 2>/dev/null \
+  || echo "  (pip install had warnings — continuing; stdio servers may lack deps)"
 
 # ---- helpers ---------------------------------------------------------------
 ok=(); skipped=()
