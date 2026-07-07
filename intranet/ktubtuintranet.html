@@ -775,6 +775,13 @@
   .ge-title{font-weight:600;font-size:13px;color:var(--text)}
   .ge-detail{font-size:12px;color:var(--text-2);margin-top:2px;line-height:1.5}
   .ge-meta{font-size:10.5px;color:var(--text-dim);margin-top:5px;text-transform:uppercase;letter-spacing:.4px}
+  .ge-dismiss{
+    flex-shrink:0;border:0;background:none;cursor:pointer;color:var(--text-dim);
+    font-size:13px;line-height:1;padding:3px 6px;border-radius:6px;margin:-2px -4px 0 4px;
+    opacity:.55;transition:opacity .12s,background .12s;
+  }
+  .ge-row:hover .ge-dismiss{opacity:.9}
+  .ge-dismiss:hover{background:var(--surface-inset);color:var(--text);opacity:1}
   .ge-clear{
     display:flex;align-items:center;gap:10px;padding:14px;border:1px dashed var(--border);border-radius:10px;
     color:var(--text-mute);font-size:13px;background:var(--surface-inset);
@@ -3526,7 +3533,11 @@ async function renderGoldeneye(){
     return;
   }
   const ICO={urgent:'🚨',warn:'⚠️',info:'💡'};
-  el.innerHTML = show.map(r=>{const f=r.fields;return `
+  GE_SHOWN_IDS=show.map(r=>r.id).filter(Boolean);
+  el.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button class="btn sm ghost" onclick="clearGoldeneye()" title="Dismiss all of today's callouts">Clear all (${show.length})</button>
+    </div>`
+    + show.map(r=>{const f=r.fields;return `
     <div class="ge-row ${esc(f.severity||'info')}">
       <div class="ge-ico">${ICO[f.severity]||'💡'}</div>
       <div class="ge-body">
@@ -3534,8 +3545,22 @@ async function renderGoldeneye(){
         <div class="ge-detail">${esc(f.detail||'')}</div>
         <div class="ge-meta">${esc(f.source||'')}${f.scan_date?' · scanned '+esc(f.scan_date):''}</div>
       </div>
+      ${r.id?`<button class="ge-dismiss" title="Dismiss this callout" onclick="dismissCallout('${r.id}')">✕</button>`:''}
     </div>`}).join('')
     + `<div class="ge-meta" style="margin-top:4px">Scan: ${esc(latest||'—')} · Goldeneye runs daily and replaces these callouts each morning.</div>`;
+}
+let GE_SHOWN_IDS=[];
+async function dismissCallout(id){
+  const {error}=await sb.from('intranet_records').delete().eq('id',id);
+  if(error){ alert('Could not clear that notification: '+error.message); return; }
+  renderGoldeneye();
+}
+async function clearGoldeneye(){
+  if(!GE_SHOWN_IDS.length) return;
+  if(!confirm(`Clear all ${GE_SHOWN_IDS.length} callout(s)? Goldeneye will surface fresh ones on its next run.`)) return;
+  const {error}=await sb.from('intranet_records').delete().in('id',GE_SHOWN_IDS);
+  if(error){ alert('Could not clear notifications: '+error.message); return; }
+  GE_SHOWN_IDS=[]; renderGoldeneye();
 }
 
 /* ================================================================
