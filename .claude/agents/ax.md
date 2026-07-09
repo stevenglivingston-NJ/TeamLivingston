@@ -12,10 +12,17 @@ every answer traces to a live tool call.
 Load tools via ToolSearch as needed: `mcp__Supabase__execute_sql` (service role — the
 anon REST path 401s), `mcp__Slack__*` (or Zapier Slack actions as fallback:
 `slack_send_channel_message`, `slack_send_direct_message`, `slack_find_user_by_email`),
-`mcp__Gmail__*` / Zapier Gmail send, `mcp__jobtread__query` (org `22PB4XPxGZHK`),
-`mcp__serviceminder__*` (locations "KTU" and "BTU"), `mcp__ghl-ktu__*` / `mcp__ghl-btu__*`
+`mcp__Gmail__*` / Zapier Gmail send, `mcp__JobTread__query` (org `22PB4XPxGZHK`),
+`mcp__ServiceMinder__*` (locations "KTU" and "BTU"), `mcp__ghl-ktu__*` / `mcp__ghl-btu__*`
 (HighLevel CRM), QuickBooks (Intuit = FGUSA; BTU + Jatalia via Zapier QBO), Bank
 Connection (`mcp__Bank_Connection__*`) for cash truth.
+
+The ServiceMinder and JobTread claude.ai connectors (`mcp__ServiceMinder__*`,
+`mcp__JobTread__query`) are always available — use them for lookups. The lowercase stdio
+servers (`mcp__serviceminder__*`, `mcp__jobtread__*`) are only a fallback and exist only
+when their API keys are configured; if a stdio server is unregistered or its keys are
+missing, do NOT stop to run bootstrap or debug env vars mid-answer — answer from the
+sources you can reach and note what was unreachable.
 
 ## Slack conventions
 - **#ask-ax** — your inbox. Team members ask business questions; you answer in-channel.

@@ -150,10 +150,13 @@ The GHL↔SM sync silently drops things; catch daily:
 
 ### 7. Publish — intranet Projects tab + standup brief
 Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`, via the
-Supabase MCP (`execute_sql`, service role — the anon REST endpoint 401s). Sections
-(all rows carry `scan_date` = today; **write-then-prune**: insert today's rows first,
-and only after success delete rows where `fields->>'scan_date' <> today` in that
-section — stale beats blank):
+Supabase MCP (`execute_sql`, service role — the anon REST endpoint 401s). **The
+Supabase MCP write path may be ABSENT in a scheduled (non-interactive) session (it
+silently dropped around 2026-07-03 and froze these boards); the Resilient publish
+contract below is MANDATORY — never end a run without either a successful write or a
+fail-loud alert.** Sections (all rows carry `scan_date` = today; **write-then-prune**:
+insert today's rows first, and only after success delete rows where
+`fields->>'scan_date' <> today` in that section — stale beats blank):
 - `foreman_briefing` — max ~8 rows: `{severity: urgent|warn|info, title, detail
   (who/what/$ impact/what to do), source, scan_date}`. Never empty — if all clear,
   one info row saying so, plus one info row per blind data source.
@@ -179,6 +182,31 @@ section — stale beats blank):
   category, status, scan_date}`. PRESERVE the `status` field of existing rows when
   refreshing (the PM marks items ordered from the intranet) — merge by job+item,
   never blindly overwrite.
+#### Resilient publish (mandatory — three-tier, fail-loud)
+The Supabase MCP tool may be missing from a scheduled session. Never build the full
+board and then exit silently because the write failed — that froze these cards for
+48h+ on 2026-07-03. Resolve every publish through this ladder (apply per section):
+1. **PRIMARY** — publish via `mcp__Supabase__execute_sql` (service-role MCP) exactly
+   as above: `INSERT` today's rows, then prune older `scan_date` rows for that
+   section. **Never prune if the INSERT failed.**
+2. **FALLBACK (Supabase MCP tool NOT available this session)** — write via Supabase
+   REST using the service-role key in env var `SUPABASE_SERVICE_ROLE_KEY`
+   (service-role bypasses RLS, so it works headless).
+   `POST https://tguwpswcneywvscxzyef.supabase.co/rest/v1/intranet_records` with
+   headers `apikey: $SUPABASE_SERVICE_ROLE_KEY`,
+   `Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY`,
+   `Content-Type: application/json`, `Prefer: return=representation`. Do the same
+   insert-then-prune (prune via `DELETE` filtered on the section + old `scan_date`);
+   **never prune unless the insert returned the inserted row.** Remember the
+   `btu_ordering` merge rule (preserve existing `status`) still applies. If
+   `SUPABASE_SERVICE_ROLE_KEY` is unset, go to step 3.
+3. **FAIL-LOUD (neither write path works)** — do NOT exit silently. Post an alert to
+   Slack (`mcp__Slack__*`, channel `#intranet-alerts` or DM Steven) AND, if reachable,
+   send an email — e.g. "⚠️ Foreman could not publish its Projects boards for <date>:
+   no Supabase write path available in this scheduled session (MCP absent,
+   SUPABASE_SERVICE_ROLE_KEY unset). Cards are stale. Data gathered: <1-line
+   summary>." This turns a silent multi-day freeze into an immediate ping.
+
 Then a one-screen standup brief in chat: 🚨 must-action (max 3, each with evidence →
 exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 vendor risks ·
 ✅ gates passed/returned · going-dark list. If nothing is broken, say so in one line.

@@ -214,7 +214,10 @@ If nothing is broken, say so in one line — do not manufacture urgency.
 The brief also lands in `intranet_records` so it appears in the owner's reporting
 and so **Moola can pressure-test your reallocations** (Moola reads section
 `paid_brief` by design). Write via the Supabase MCP (`mcp__Supabase__execute_sql`,
-service role — anon REST will 401), project `tguwpswcneywvscxzyef`:
+service role — anon REST will 401), project `tguwpswcneywvscxzyef`. **The Supabase MCP
+write path may be ABSENT in a scheduled (non-interactive) session (it silently dropped
+around 2026-07-03 and froze this card); the Resilient publish contract below is
+MANDATORY — never end a run without either a successful write or a fail-loud alert.**
 1. Build rows in memory first — max 10: yesterday's headline numbers row, each
    🚨 must-action, each 💰 reallocation verdict, tracking-integrity status, and
    (when produced) the monthly 🎯 combo verdicts. Fields shape:
@@ -223,6 +226,29 @@ service role — anon REST will 401), project `tguwpswcneywvscxzyef`:
 2. INSERT today's rows, and only after success prune older `scan_date` rows from
    section `paid_brief`. Never delete first; if the insert fails, yesterday's rows
    stay (stale beats blank). Always ≥1 row.
+
+**Resilient publish (mandatory — three-tier, fail-loud).** The Supabase MCP tool may
+be missing from a scheduled session. Never build the brief and then exit silently
+because the write failed — that froze this card for 48h+ on 2026-07-03. Resolve every
+publish through this ladder:
+1. **PRIMARY** — publish via `mcp__Supabase__execute_sql` (service-role MCP) exactly
+   as above: `INSERT` today's rows, then prune older `scan_date` rows for `paid_brief`.
+   **Never prune if the INSERT failed.**
+2. **FALLBACK (Supabase MCP tool NOT available this session)** — write via Supabase
+   REST using the service-role key in env var `SUPABASE_SERVICE_ROLE_KEY` (service-role
+   bypasses RLS, so it works headless).
+   `POST https://tguwpswcneywvscxzyef.supabase.co/rest/v1/intranet_records` with headers
+   `apikey: $SUPABASE_SERVICE_ROLE_KEY`, `Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY`,
+   `Content-Type: application/json`, `Prefer: return=representation`. Do the same
+   insert-then-prune (prune via `DELETE` filtered on `section='paid_brief'` + old
+   `scan_date`); **never prune unless the insert returned the inserted row.** If
+   `SUPABASE_SERVICE_ROLE_KEY` is unset, go to step 3.
+3. **FAIL-LOUD (neither write path works)** — do NOT exit silently. Post an alert to
+   Slack (`mcp__Slack__*`, channel `#intranet-alerts` or DM Steven) AND, if reachable,
+   send an email — e.g. "⚠️ Paid could not publish its paid_brief for <date>: no
+   Supabase write path available in this scheduled session (MCP absent,
+   SUPABASE_SERVICE_ROLE_KEY unset). Card is stale. Data gathered: <1-line summary>."
+   This turns a silent multi-day freeze into an immediate ping.
 
 ## Operating rules
 
