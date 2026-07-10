@@ -320,6 +320,55 @@
   .card h2{margin:0 0 6px;font-size:18px;font-weight:600;letter-spacing:-.2px}
   .card .sub{color:var(--text-mute);font-size:13px;margin-bottom:18px;line-height:1.55}
 
+  /* ---------- Collapsible cards & sections ---------- */
+  .card>h2{cursor:pointer;display:flex;align-items:center;user-select:none}
+  .card>h2::after{content:'▾';margin-left:auto;font-size:12px;color:var(--text-dim);
+    transition:transform var(--dur) var(--ease)}
+  .card.collapsed>h2::after{transform:rotate(-90deg)}
+  .card.collapsed>*:not(h2){display:none!important}
+  .card.collapsed{padding-bottom:18px}
+  .card.collapsed>h2{margin-bottom:0}
+  .sec-title{cursor:pointer;user-select:none;position:relative}
+  .sec-title::after{content:'▾';position:absolute;right:0;font-size:11px;color:var(--text-dim);
+    transition:transform var(--dur) var(--ease)}
+  .sec-title.sec-closed::after{transform:rotate(-90deg)}
+
+  /* ---------- Collapsible sidebar groups ---------- */
+  .nav-group .nav-label{cursor:pointer;user-select:none;display:flex;align-items:center}
+  .nav-group .nav-label::after{content:'▾';margin-left:auto;margin-right:10px;font-size:10px;
+    color:var(--text-dim);transition:transform var(--dur) var(--ease)}
+  .nav-group.closed .nav-label::after{transform:rotate(-90deg)}
+  .nav-group.closed .nav-item{display:none}
+
+  /* ---------- Frozen table headers (scroll inside the card, not the page) ---------- */
+  .card div[style*="overflow-x:auto"]{max-height:70vh;overflow:auto}
+  .btable thead th{position:sticky;top:0;background:var(--surface);z-index:2;
+    box-shadow:0 1px 0 var(--border)}
+
+  /* ---------- Inline charts (SVG-free, div bars) ---------- */
+  .chart-title{font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--text-mute);margin-bottom:10px}
+  .pulse-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:22px}
+  .cbar{display:grid;grid-template-columns:minmax(84px,auto) 1fr auto;gap:10px;align-items:center;
+    font-size:12.5px;margin-bottom:8px}
+  .cbar .cl{color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cbar .ct{background:var(--surface-2);border-radius:5px;height:18px;overflow:hidden;position:relative}
+  .cbar .cf{height:100%;border-radius:4px;min-width:2px;transition:width .5s var(--ease)}
+  .cbar .cv{font-variant-numeric:tabular-nums;color:var(--text);font-weight:600;white-space:nowrap;font-size:12px}
+  .cbar:hover .ct{outline:1px solid var(--border-strong)}
+  .agent-strip{display:flex;gap:8px;flex-wrap:wrap}
+  .agent-chip{display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;
+    border:1px solid var(--border);background:var(--surface-2);font-size:12px;cursor:default}
+  .agent-chip .nm{font-weight:600}
+  .agent-chip .dt{color:var(--text-mute);font-variant-numeric:tabular-nums}
+  .agent-chip.ok{border-color:color-mix(in srgb,var(--success) 35%,transparent);background:var(--success-soft)}
+  .agent-chip.stale{border-color:color-mix(in srgb,var(--warn) 40%,transparent);background:var(--warn-soft)}
+  .agent-chip.never{border-color:color-mix(in srgb,var(--danger) 35%,transparent);background:var(--danger-soft)}
+  .due-item{display:flex;align-items:center;gap:8px;font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--border)}
+  .due-item:last-child{border-bottom:none}
+  .due-item .dd{font-variant-numeric:tabular-nums;color:var(--text-mute);margin-left:auto;white-space:nowrap}
+  .due-item.late .dd{color:var(--danger);font-weight:600}
+
   .split{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:18px}
   @media(max-width:1000px){.split{grid-template-columns:1fr}}
 
@@ -726,10 +775,55 @@
   .ge-title{font-weight:600;font-size:13px;color:var(--text)}
   .ge-detail{font-size:12px;color:var(--text-2);margin-top:2px;line-height:1.5}
   .ge-meta{font-size:10.5px;color:var(--text-dim);margin-top:5px;text-transform:uppercase;letter-spacing:.4px}
+  .ge-dismiss{
+    flex-shrink:0;border:0;background:none;cursor:pointer;color:var(--text-dim);
+    font-size:13px;line-height:1;padding:3px 6px;border-radius:6px;margin:-2px -4px 0 4px;
+    opacity:.55;transition:opacity .12s,background .12s;
+  }
+  .ge-row:hover .ge-dismiss{opacity:.9}
+  .ge-dismiss:hover{background:var(--surface-inset);color:var(--text);opacity:1}
   .ge-clear{
     display:flex;align-items:center;gap:10px;padding:14px;border:1px dashed var(--border);border-radius:10px;
     color:var(--text-mute);font-size:13px;background:var(--surface-inset);
   }
+
+  /* ---------- Cash Flow command center ---------- */
+  .cf-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+  .cf-kpi{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--surface)}
+  .cf-kpi .k-label{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-mute);font-weight:600}
+  .cf-kpi .k-value{font-size:23px;font-weight:700;margin-top:6px;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+  .cf-kpi .k-sub{font-size:11.5px;color:var(--text-mute);margin-top:4px}
+  .cf-kpi.good .k-value{color:var(--success)} .cf-kpi.warn .k-value{color:var(--warn)} .cf-kpi.bad .k-value{color:var(--danger)}
+  .cf-chart-wrap{overflow-x:auto;padding:4px 0}
+  .cf-chart{min-width:640px;width:100%;height:230px;display:block}
+  .cf-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;color:var(--text-mute)}
+  .cf-legend span{display:inline-flex;align-items:center;gap:6px}
+  .cf-swatch{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .cf-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .cf-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-mute);font-weight:600;padding:7px 10px;border-bottom:1px solid var(--border)}
+  .cf-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text-2);vertical-align:top}
+  .cf-table tr:last-child td{border-bottom:none}
+  .cf-table td.num,.cf-table th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .cf-table-wrap{overflow-x:auto}
+  .cf-chip{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10.5px;font-weight:600;line-height:1.6}
+  .cf-chip.ktu{background:rgba(244,93,34,.12);color:var(--brand-ktu)}
+  .cf-chip.btu{background:rgba(27,54,93,.12);color:var(--brand-btu)}
+  .cf-chip.earth{background:rgba(23,138,76,.12);color:var(--brand-earth)}
+  .cf-chip.both{background:var(--surface-inset);color:var(--text-mute)}
+  .cf-chip.in{background:rgba(22,163,74,.12);color:var(--success)}
+  .cf-chip.out{background:rgba(220,38,38,.10);color:var(--danger)}
+  .cf-chip.known{background:rgba(68,104,177,.12);color:var(--accent)}
+  .cf-chip.projected{background:rgba(217,119,6,.12);color:var(--warn)}
+  .cf-chip.estimated{background:var(--surface-inset);color:var(--text-dim)}
+  .cf-age-cur{color:var(--success);font-weight:600}
+  .cf-age-1{color:var(--text-2);font-weight:600}
+  .cf-age-2{color:var(--warn);font-weight:600}
+  .cf-age-3{color:var(--danger);font-weight:700}
+  .cf-term-h{font-size:12px;font-weight:700;color:var(--text);margin:14px 0 6px;display:flex;justify-content:space-between}
+  .cf-term-h .t-tot{color:var(--text-mute);font-weight:600}
+  .cf-in{color:var(--success);font-weight:600} .cf-out{color:var(--danger);font-weight:600}
+  .cf-stale{background:#fdfaf3;border:1px solid var(--warn);border-left-width:4px;border-radius:10px;padding:10px 14px;font-size:12.5px;color:#7a5206;margin-bottom:16px}
+  .cf-sub2{font-size:11.5px;color:var(--text-mute);margin:-4px 0 12px}
 
   /* ---------- Tech stack flow map ---------- */
   .flow-lane{margin-bottom:22px}
@@ -849,6 +943,11 @@
           <span class="lbl">Files &amp; Docs</span>
           <span class="pin" onclick="event.stopPropagation();togglePin('docs','Files & Docs')">Pin</span>
         </div>
+        <div class="nav-item" data-tab="library">
+          <span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 5a2 2 0 012-2h5v18H6a2 2 0 01-2-2z"/><path d="M13 3h5a2 2 0 012 2v14a2 2 0 01-2 2h-5z"/><path d="M8 7h1M16 7h1"/></svg></span>
+          <span class="lbl">Library</span>
+          <span class="pin" onclick="event.stopPropagation();togglePin('library','Library')">Pin</span>
+        </div>
       </div>
 
       <div class="nav-group" id="favGroup" style="display:none">
@@ -860,7 +959,6 @@
         <div class="nav-label">Operations</div>
         <div class="nav-item" data-tab="dailyops"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 10h6M9 14h6"/></svg></span><span class="lbl">Daily Ops</span><span class="pin" onclick="event.stopPropagation();togglePin('dailyops','Daily Ops')">Pin</span></div>
         <div class="nav-item" data-tab="playbook"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 4h11a5 5 0 010 10H4z"/><path d="M4 14v6"/></svg></span><span class="lbl">Playbook</span><span class="pin" onclick="event.stopPropagation();togglePin('playbook','Playbook')">Pin</span></div>
-        <div class="nav-item" data-tab="jobflow"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 6h6l2 2h8v10H4z"/></svg></span><span class="lbl">Job Flow</span><span class="pin" onclick="event.stopPropagation();togglePin('jobflow','Job Flow')">Pin</span></div>
         <div class="nav-item" data-tab="projects"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-8h6v8"/></svg></span><span class="lbl">Projects</span><span class="pin" onclick="event.stopPropagation();togglePin('projects','Projects')">Pin</span></div>
         <div class="nav-item" data-tab="clients"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0116 0"/><path d="M17 3l4 4"/></svg></span><span class="lbl">Clients</span><span class="pin" onclick="event.stopPropagation();togglePin('clients','Clients')">Pin</span></div>
         <div class="nav-item" data-tab="tasks"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 11l3 3 5-6"/></svg></span><span class="lbl">Tasks</span><span class="pin" onclick="event.stopPropagation();togglePin('tasks','Tasks & Follow-ups')">Pin</span></div>
@@ -907,6 +1005,7 @@
       <div class="nav-group" data-scope="shared">
         <div class="nav-label">Systems</div>
         <div class="nav-item" data-tab="techstack"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><circle cx="5" cy="6" r="2.2"/><circle cx="19" cy="6" r="2.2"/><circle cx="12" cy="18" r="2.2"/><path d="M7 7l3.5 8M17 7l-3.5 8M7.2 6h9.6"/></svg></span><span class="lbl">Tech Stack</span><span class="pin" onclick="event.stopPropagation();togglePin('techstack','Tech Stack')">Pin</span></div>
+        <div class="nav-item" data-tab="resources"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0110 0v3"/></svg></span><span class="lbl">Resources</span><span class="pin" onclick="event.stopPropagation();togglePin('resources','Resources')">Pin</span></div>
         <div class="nav-item" data-tab="systems"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><circle cx="7" cy="7.5" r=".8"/><circle cx="7" cy="16.5" r=".8"/></svg></span><span class="lbl">Systems</span><span class="pin" onclick="event.stopPropagation();togglePin('systems','Systems')">Pin</span></div>
         <div class="nav-item" data-tab="integrations"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M9 6l-3 3 3 3M15 12l3-3-3-3M6 18l3-3M15 15l3 3"/></svg></span><span class="lbl">Integrations</span><span class="pin" onclick="event.stopPropagation();togglePin('integrations','Integrations')">Pin</span></div>
       </div>
@@ -927,6 +1026,11 @@
         <div class="nav-item" data-tab="finance">
           <span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 2v20M17 6H9.5a3 3 0 000 6h5a3 3 0 010 6H6"/></svg></span>
           <span class="lbl">Financial Reporting</span>
+          <span class="nav-badge">Private</span>
+        </div>
+        <div class="nav-item" data-tab="cashflow">
+          <span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 5-7"/></svg></span>
+          <span class="lbl">Cash Flow</span>
           <span class="nav-badge">Private</span>
         </div>
         <div class="nav-item" data-tab="adminconsole">
@@ -991,9 +1095,10 @@
           <div class="hi">Welcome back, <span class="name" id="greetName">team</span>.</div>
           <div class="sub">Everything for KTU, BTU, and Earthwise in one place. Pin what you use often, search anything with <b>⌘K</b>, and click any KPI to jump to the source.</div>
           <div class="quick-actions">
+            <button class="qa" onclick="go('tasks')"><span class="ico">＋</span>Assign a task</button>
             <button class="qa" onclick="go('contacts')"><span class="ico">＋</span>New contact</button>
-            <button class="qa" onclick="go('items')"><span class="ico">＋</span>Add item</button>
             <button class="qa" onclick="go('jobs')"><span class="ico">＋</span>New job</button>
+            <button class="qa" onclick="go('resources')"><span class="ico">🔐</span>Logins &amp; links</button>
             <button class="qa" onclick="go('reports')"><span class="ico">↗</span>Open reports</button>
             <button class="qa" onclick="go('earth-overview')"><span class="ico">🌱</span>Earthwise ops</button>
           </div>
@@ -1008,27 +1113,60 @@
         <div id="goldeneye_root" class="loading">Loading…</div>
       </div>
 
+      <!-- Perceptionist call notes (email-fed) -->
+      <div class="card" id="callNotesCard" data-scope="hs">
+        <h2>📞 Recent call notes <span id="cnCount" class="tag" style="margin-left:6px"></span></h2>
+        <div class="sub">Perceptionist call notes emailed in and captured automatically. Goldeneye scrapes the caller into the Directory and flags follow-ups.</div>
+        <div id="callnotes_root" class="loading">Loading…</div>
+      </div>
+
       <div class="grid">
         <div class="kpi ktu" onclick="go('contacts')" style="cursor:pointer">
           <div class="label">Contacts</div>
           <div class="value" id="kpiContacts">—</div>
-          <div class="trend">Shared address book</div>
+          <div class="trend" id="kpiContactsSub">Shared address book</div>
         </div>
         <div class="kpi btu" onclick="go('items')" style="cursor:pointer">
           <div class="label">Catalog items</div>
           <div class="value" id="kpiItems">—</div>
-          <div class="trend">KTU + BTU catalog</div>
+          <div class="trend" id="kpiItemsSub">KTU + BTU catalog</div>
         </div>
         <div class="kpi" onclick="go('jobs')" style="cursor:pointer">
           <div class="label">Open jobs</div>
           <div class="value" id="kpiJobs">—</div>
-          <div class="trend">Estimate → In progress</div>
+          <div class="trend" id="kpiJobsSub">Estimate → In progress</div>
         </div>
         <div class="kpi earth" onclick="go('jobs')" style="cursor:pointer">
           <div class="label">Pipeline value</div>
           <div class="value" id="kpiValue">—</div>
-          <div class="trend">Unbilled remodeling work</div>
+          <div class="trend" id="kpiValueSub">Unbilled remodeling work</div>
         </div>
+        <div class="kpi" onclick="go('tasks')" style="cursor:pointer">
+          <div class="label">Tasks due</div>
+          <div class="value" id="kpiTasks">—</div>
+          <div class="trend" id="kpiTasksSub">Next 7 days</div>
+        </div>
+      </div>
+
+      <div class="card" id="pulseCard">
+        <h2>📊 Business pulse</h2>
+        <div class="sub">Live from Job Costing and Tasks — scoped to the workspace you're viewing.</div>
+        <div class="pulse-grid">
+          <div>
+            <div class="chart-title">Open pipeline by stage</div>
+            <div id="pulseStages" class="loading">Loading…</div>
+          </div>
+          <div>
+            <div class="chart-title">Open pipeline by brand</div>
+            <div id="pulseBrands" class="loading">Loading…</div>
+          </div>
+          <div>
+            <div class="chart-title">Due &amp; overdue tasks</div>
+            <div id="pulseTasks" class="loading">Loading…</div>
+          </div>
+        </div>
+        <div class="chart-title" style="margin-top:16px">Daily agent briefings — freshness</div>
+        <div id="pulseAgents" class="agent-strip loading">Loading…</div>
       </div>
 
       <div class="home-grid">
@@ -1092,6 +1230,22 @@
       </div>
     </section>
 
+    <!-- ============ LIBRARY ============ -->
+    <section class="panel" id="library">
+      <div class="page-head">
+        <h1 class="page-title">Library</h1>
+        <p class="page-sub">Everything in the Google Drive, mapped and searchable. The Librarian re-scans the Drive every Monday, links each file into the tab it belongs to, and files anything without a home here — categorized. Search across every document below.</p>
+      </div>
+      <div class="card">
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+          <input class="f" id="libSearch" placeholder="Search the whole library — title, category, description…" oninput="renderLibrary()" style="flex:1;min-width:280px">
+          <span id="libCount" class="sub" style="margin:0;white-space:nowrap"></span>
+        </div>
+        <div id="libFilters" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap"></div>
+        <div id="library_root" class="loading">Loading…</div>
+      </div>
+    </section>
+
     <!-- ============ CONTACTS ============ -->
     <section class="panel" id="contacts">
       <div class="page-head">
@@ -1108,10 +1262,12 @@
             <option>Customer</option><option>Vendor</option>
             <option>Subcontractor</option><option>Lead</option>
           </select>
-          <select class="f" id="cBrand"><option>KTU</option><option>BTU</option><option>Both</option></select>
+          <select class="f" id="cBrand"><option>KTU</option><option>BTU</option><option>Both</option><option>Earthwise</option></select>
           <button class="btn" onclick="addContact()">Add</button>
         </div>
-        <input class="f" id="cSearch" placeholder="Search contacts…" oninput="renderContacts()" style="margin-bottom:14px;width:100%" />
+        <div id="cFilters" style="display:flex;gap:8px;margin:4px 0 10px;flex-wrap:wrap"></div>
+        <input class="f" id="cSearch" placeholder="Search contacts…" oninput="renderContacts()" style="margin-bottom:8px;width:100%" />
+        <div id="cCount" class="sub" style="margin-bottom:10px"></div>
         <table><thead><tr><th>Name</th><th>Company</th><th>Phone</th><th>Email</th><th>Type</th><th>Brand</th><th></th></tr></thead>
           <tbody id="cBody"></tbody></table>
         <div class="empty" id="cEmpty">No contacts yet. Add one above.</div>
@@ -1212,7 +1368,7 @@
     <section class="panel" id="techstack">
       <div class="page-head">
         <h1 class="page-title">Tech Stack</h1>
-        <p class="page-sub">How every system talks to the next — from a lead's first click to money in the bank — plus the SOW behind each integration.</p>
+        <p class="page-sub">How every system talks to the next — from a lead's first click to money in the bank. SOWs live under Playbook.</p>
       </div>
 
       <div class="card">
@@ -1269,22 +1425,38 @@
 
       <div class="card">
         <h2>KTU App — lead integrations portal</h2>
-        <div class="sub">The integration hub that joins lead sources into the stack. SOW below.</div>
+        <div class="sub">The integration hub that joins lead sources into the stack. SOW lives under Playbook.</div>
         <div class="doc-grid">
           <a class="doc-link" href="https://integration.ktuleads.com" target="_blank" rel="noopener"><div class="ico">⚡</div><div class="body"><div class="t">integration.ktuleads.com</div><div class="d">KTU App integrations portal — live</div></div></a>
         </div>
       </div>
+    </section>
 
-      <div class="card">
-        <h2>Statements of Work</h2>
-        <div class="sub">The SOW behind each integration build — what was scoped, built, and delivered. Add links as new SOWs are signed.</div>
-        <div id="sow_docs_root" class="loading">Loading…</div>
+    <!-- ============ RESOURCES ============ -->
+    <section class="panel" id="resources">
+      <div class="page-head">
+        <h1 class="page-title">Resources</h1>
+        <p class="page-sub">Logins, weblinks, and Google Drive folders the team needs to use our software — one list, click to reveal a password.</p>
       </div>
-
       <div class="card">
-        <h2>Build documents</h2>
-        <div class="sub">Authored setup docs living in this intranet (editable).</div>
-        <div id="sow_authored_root" class="loading">Loading…</div>
+        <div class="sec-title">Add a resource</div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px;align-items:end">
+          <div><label class="hint">Name</label><input id="resLabel" placeholder="e.g. QuickBooks Online, Team Drive — Contracts" style="width:100%"></div>
+          <div><label class="hint">Category</label><select id="resCategory" style="width:100%"><option>Software Login</option><option>Google Drive</option><option>Weblink</option><option>Other</option></select></div>
+          <div><label class="hint">Brand</label><select id="resBrand" style="width:100%"><option>Both</option><option>KTU</option><option>BTU</option><option>Earthwise</option></select></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:8px;align-items:end;margin-top:8px">
+          <div><label class="hint">URL / Drive link</label><input id="resUrl" placeholder="https://…" style="width:100%"></div>
+          <div><label class="hint">Username</label><input id="resUser" placeholder="(optional)" style="width:100%"></div>
+          <div><label class="hint">Password</label><input id="resPass" placeholder="(optional)" style="width:100%"></div>
+          <button class="btn sm" onclick="addResource()">+ Add</button>
+        </div>
+        <div style="margin-top:8px"><input id="resNotes" placeholder="Notes (optional)" style="width:100%"></div>
+        <div class="sub" style="margin-top:6px">Anyone with intranet access can see everything here — this is a shared team vault, not per-person secrets. Don't store banking or payroll credentials; keep those in a proper password manager.</div>
+      </div>
+      <div class="card">
+        <div id="resFilters" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"></div>
+        <div id="resources_root" class="loading">Loading…</div>
       </div>
     </section>
 
@@ -1353,12 +1525,42 @@
         <h1 class="page-title">🎯 Pipeline</h1>
         <p class="page-sub">Your customer-acquisition analyst. Tracks lead flow, booking ratios, consult-to-close, source performance, cancellations and revival — and tells Paid where to optimize spend.</p>
       </div>
+      <div class="card" id="agentPerfCard">
+        <style>
+          #agentPerfCard .ap-f{display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px}
+          #agentPerfCard .ap-f select{font:inherit;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 10px;min-width:150px}
+          #agentPerfCard .ap-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+          @media(max-width:760px){#agentPerfCard .ap-kpis{grid-template-columns:repeat(2,1fr)}}
+          #agentPerfCard .ap-chip{font:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text-dim);border-radius:999px;padding:5px 12px;margin:0 6px 6px 0}
+          #agentPerfCard .ap-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+          #agentPerfCard table{width:100%;border-collapse:collapse;font-size:13px}
+          #agentPerfCard .ap-total td{border-top:2px solid var(--border-strong)}
+          #agentPerfCard td,#agentPerfCard th{font-variant-numeric:tabular-nums}
+        </style>
+        <h2>🏅 Agent Performance</h2>
+        <p class="page-sub" style="margin-bottom:14px">Sales-agent scorecard from ServiceMinder — appointments, proposals, wins, values, close rate and cancellations by month. <b>These filters are independent of the workspace switcher on the left.</b></p>
+        <div class="ap-filters" style="display:flex;flex-wrap:wrap;gap:14px;margin-bottom:16px">
+          <label class="ap-f">Agent<select id="apAgent" onchange="renderAgentPerf()"></select></label>
+          <label class="ap-f">Year<select id="apYear" onchange="renderAgentPerf()"></select></label>
+          <label class="ap-f">Business<select id="apBiz" onchange="renderAgentPerf()">
+            <option value="">All businesses</option>
+            <option value="KTU">Kitchen Tune-Up</option>
+            <option value="BTU">Bath Tune-Up</option>
+          </select></label>
+        </div>
+        <div id="apKpis" class="ap-kpis"></div>
+        <div id="apMetricChips" style="margin:16px 0 4px"></div>
+        <div id="apChart"></div>
+        <div id="apTableWrap" style="overflow-x:auto;margin-top:16px"></div>
+        <div id="apEmpty" class="empty" style="display:none"></div>
+      </div>
       <div class="card" id="pipelineCard">
         <h2>🎯 Pipeline — funnel briefing</h2>
         <div id="pipeline_briefing_root" class="loading">Loading…</div>
       </div>
       <div class="card">
         <h2>The funnel — where we are</h2>
+        <div id="pipeline_funnel_chart" style="max-width:560px"></div>
         <div id="pipeline_funnel_root" class="loading">Loading…</div>
       </div>
       <div class="card">
@@ -1484,7 +1686,7 @@
     <section class="panel" id="tasks">
       <div class="page-head">
         <h1 class="page-title">Tasks &amp; Follow-ups</h1>
-        <p class="page-sub">Assign tasks to each other. Every assignment pings the assignee on Slack + email; completions notify the team.</p>
+        <p class="page-sub">Assign tasks to each other. Every assignment pings the assignee on Slack + email; a repeating task pings again each cadence, right on the due date; completions notify the team.</p>
       </div>
       <div class="card">
         <div class="sec-title">New task</div>
@@ -1495,7 +1697,11 @@
           <div><label class="hint">Brand</label><select id="tkBrand" style="width:100%"><option>Both</option><option>KTU</option><option>BTU</option><option>Earthwise</option></select></div>
           <button class="btn sm" onclick="createTask()">Assign</button>
         </div>
-        <div style="margin-top:8px"><input id="tkDetail" placeholder="Detail / context (optional)" style="width:100%"></div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px;margin-top:8px">
+          <input id="tkDetail" placeholder="Detail / context (optional)" style="width:100%">
+          <div><label class="hint">Repeats</label><select id="tkCadence" style="width:100%"><option value="once">Once</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
+          <div><label class="hint">Drive link (optional)</label><input id="tkDrive" placeholder="https://drive.google.com/…" style="width:100%"></div>
+        </div>
       </div>
       <div class="card">
         <div class="sec-title">Open</div>
@@ -1509,9 +1715,27 @@
     <section class="panel" id="trades">
       <div class="page-head">
         <h1 class="page-title">Subcontractors &amp; Trades</h1>
-        <p class="page-sub">Trade contacts by specialty — the field crew rolodex.</p>
+        <p class="page-sub">The field-crew rolodex by specialty. Add subs inline; attach a Google Drive folder (pricing, COIs, W-9s) to any row.</p>
       </div>
-      <div class="card"><div id="trades_root" class="loading">Loading…</div></div>
+      <div class="card">
+        <div class="sec-title">Add a subcontractor / trade</div>
+        <div style="display:grid;grid-template-columns:1.3fr 1fr 1fr 1.2fr .8fr auto;gap:8px;align-items:end">
+          <div><label class="hint">Name / company</label><input id="trName" placeholder="e.g. Alex — Gelex LLC" style="width:100%"></div>
+          <div><label class="hint">Trade</label><input id="trService" placeholder="Flooring, Plumber…" style="width:100%"></div>
+          <div><label class="hint">Phone</label><input id="trPhone" placeholder="(optional)" style="width:100%"></div>
+          <div><label class="hint">Email</label><input id="trEmail" placeholder="(optional)" style="width:100%"></div>
+          <div><label class="hint">Brand</label><select id="trBrand" style="width:100%"><option>Both</option><option>KTU</option><option>BTU</option></select></div>
+          <button class="btn sm" onclick="addTrade()">+ Add</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px;margin-top:8px">
+          <input id="trDrive" placeholder="Google Drive link (pricing / COI / W-9) — optional">
+          <input id="trNotes" placeholder="Notes (optional)">
+        </div>
+      </div>
+      <div class="card">
+        <div id="trFilters" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"></div>
+        <div id="trades_root" class="loading">Loading…</div>
+      </div>
     </section>
 
     <!-- ============ ROLES ============ -->
@@ -1535,8 +1759,8 @@
     <!-- ============ PLAYBOOK ============ -->
     <section class="panel" id="playbook">
       <div class="page-head">
-        <h1 class="page-title">Sales Playbook &amp; Training</h1>
-        <p class="page-sub">Training resources plus the full cabinet-painting sales script.</p>
+        <h1 class="page-title">Playbook</h1>
+        <p class="page-sub">Training, sales scripts, the job flow from lead to install, and the SOWs behind how we operate.</p>
       </div>
       <div class="card">
         <div class="sec-title">Training Resources</div>
@@ -1546,15 +1770,21 @@
         <div class="sec-title">Service Finance Setup (KTU + BTU)</div>
         <div id="service_finance_root" class="loading">Loading…</div>
       </div>
-    </section>
-
-    <!-- ============ JOB FLOW ============ -->
-    <section class="panel" id="jobflow">
-      <div class="page-head">
-        <h1 class="page-title">Job Flow — Front Office to Back Office</h1>
-        <p class="page-sub">The lead-to-install process map, step by step.</p>
+      <div class="card">
+        <div class="sec-title">Job Flow — Front Office to Back Office</div>
+        <div class="sub">The lead-to-install process map, step by step.</div>
+        <div id="job_flow_root" class="loading">Loading…</div>
       </div>
-      <div class="card"><div id="job_flow_root" class="loading">Loading…</div></div>
+      <div class="card">
+        <div class="sec-title">Statements of Work</div>
+        <div class="sub">The SOW behind each integration build — what was scoped, built, and delivered. Add links as new SOWs are signed.</div>
+        <div id="sow_docs_root" class="loading">Loading…</div>
+      </div>
+      <div class="card">
+        <div class="sec-title">Build documents</div>
+        <div class="sub">Authored setup docs living in this intranet (editable).</div>
+        <div id="sow_authored_root" class="loading">Loading…</div>
+      </div>
     </section>
 
     <!-- ============ TERRITORIES ============ -->
@@ -1761,7 +1991,7 @@
           <h2>Jatalia Marketplace ops dashboard</h2>
           <div class="sub">Consolidated Amazon + Walmart + Shopify + ShipStation view. This is the daily-driver dashboard for Earthwise ops.</div>
         </div>
-        <a class="btn" href="https://jataliamarketplace.com" target="_blank" rel="noopener">Open dashboard ↗</a>
+        <a class="btn" href="https://go.jataliamarketplace.com/" target="_blank" rel="noopener">Open dashboard ↗</a>
       </div>
       <div class="ch-cards">
         <div class="ch-card"><div class="h"><span class="dot on"></span><span class="name">Shopify · Earthwise Seed</span></div><div class="meta">earthwiseseed.com · Shopify Plus · connector live</div></div>
@@ -1800,7 +2030,7 @@
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
             <a class="btn ghost sm" href="https://admin.shopify.com/store/earthwise-seed/products" target="_blank" rel="noopener">Shopify products ↗</a>
             <a class="btn ghost sm" href="https://sellercentral.amazon.com/inventory" target="_blank" rel="noopener">Amazon inventory ↗</a>
-            <a class="btn ghost sm" href="https://jataliamarketplace.com" target="_blank" rel="noopener">Jatalia dashboard ↗</a>
+            <a class="btn ghost sm" href="https://go.jataliamarketplace.com/" target="_blank" rel="noopener">Jatalia dashboard ↗</a>
           </div>
         </div>
       </div>
@@ -1848,7 +2078,7 @@
       <div class="card">
         <div class="build">
           <b>Live source:</b> the Jatalia dashboard already pulls the majority of channel-level KPIs. This tab will bookmark specific views (buy-box % over time, review flow, listing quality alerts) and add editable notes per marketplace.
-          <div style="margin-top:10px"><a class="btn" href="https://jataliamarketplace.com" target="_blank" rel="noopener">Open Jatalia dashboard ↗</a></div>
+          <div style="margin-top:10px"><a class="btn" href="https://go.jataliamarketplace.com/" target="_blank" rel="noopener">Open Jatalia dashboard ↗</a></div>
         </div>
       </div>
     </section>
@@ -1968,6 +2198,39 @@
         <div id="moola_root" class="loading">Loading…</div>
       </div>
 
+      <div class="card" id="payablesCard">
+        <style>
+          #payablesCard .ap-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+          @media(max-width:760px){#payablesCard .ap-sum{grid-template-columns:repeat(2,1fr)}}
+          #payablesCard .pf{display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px}
+          #payablesCard .pf select,#payablesCard .pf input{font:inherit;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 9px}
+          #payablesCard table{width:100%;border-collapse:collapse;font-size:13px}
+          #payablesCard td,#payablesCard th{padding:8px 9px;border-bottom:1px solid var(--border);text-align:left;vertical-align:middle}
+          #payablesCard th{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-mute)}
+          #payablesCard td.num,#payablesCard th.num{text-align:right;font-variant-numeric:tabular-nums}
+          #payablesCard .pri{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px}
+          #payablesCard .pri.urgent{background:rgba(248,113,113,.15);color:var(--danger)}
+          #payablesCard .pri.high{background:rgba(251,146,60,.15);color:#c2620a}
+          #payablesCard .pri.normal{background:var(--surface-inset);color:var(--text-dim)}
+          #payablesCard .pri.low{background:var(--surface-inset);color:var(--text-mute)}
+          #payablesCard .age.over{color:var(--danger);font-weight:700}
+          #payablesCard .age.soon{color:#c2620a;font-weight:600}
+          #payablesCard .stx{font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg);cursor:pointer;font:inherit;font-weight:600}
+          #payablesCard tr.paid{opacity:.5}
+        </style>
+        <h2>🧾 Accounts Payable — bills to track &amp; pay</h2>
+        <div class="sub">Emailed invoices (via firstgentalent@gmail.com) land here automatically with amount, date sent and due date. Moola ages them, prioritizes who to pay when, and folds them into the true P&amp;L and cash forecast. Mark paid when you send it.</div>
+        <div class="ap-sum" id="apSummary"></div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px">
+          <label class="pf">Business<select id="payBrand" onchange="renderPayables()">
+            <option value="">All</option><option value="KTU">Kitchen Tune-Up</option><option value="BTU">Bath Tune-Up</option><option value="Earthwise">Earthwise</option></select></label>
+          <label class="pf">Status<select id="payStatus" onchange="renderPayables()">
+            <option value="open">Open (unpaid + scheduled)</option><option value="unpaid">Unpaid</option><option value="scheduled">Scheduled</option><option value="paid">Paid</option><option value="">All</option></select></label>
+          <button class="btn sm" onclick="payAddRow()" style="margin-left:auto">+ Add bill</button>
+        </div>
+        <div id="payables_root" class="loading">Loading…</div>
+      </div>
+
       <div class="grid">
         <div class="kpi ktu"><div class="label">KTU — First Generation USA</div><div class="value">P&amp;L</div><div class="trend">QuickBooks · accrual · S-Corp</div></div>
         <div class="kpi btu"><div class="label">BTU — Oracabessa LLC</div><div class="value">P&amp;L</div><div class="trend">QuickBooks · accrual</div></div>
@@ -2000,8 +2263,17 @@
           <a class="doc-link" href="https://app.bill.com" target="_blank" rel="noopener"><div class="ico">🧾</div><div class="body"><div class="t">Bill.com</div><div class="d">AP + vendor invoice management</div></div></a>
           <a class="doc-link" href="https://runpayroll.adp.com" target="_blank" rel="noopener"><div class="ico">👥</div><div class="body"><div class="t">ADP Run</div><div class="d">Bi-weekly payroll · W-2 team</div></div></a>
         </div>
-        <div class="build"><b>Security note:</b> this tab is hidden for the team and Earthwise logins. Front-end gating is UX only — database-level RLS lands with the Supabase Auth rollout (01_Login_and_RLS_Model.md) to make it enforceable.</div>
+        <div class="build"><b>Security note:</b> this tab is owner-only and enforced at the database level. Row-Level Security on <code>intranet_records</code> requires an admin session for every finance section (<code>moola_*</code>, <code>axyom_*</code>, <code>docs_finance</code>) — the anon key alone returns nothing, so hiding the tab is defense-in-depth on top of a real DB grant, not the only lock.</div>
       </div>
+    </section>
+
+    <!-- ==================== CASH FLOW COMMAND CENTER (owner only) ==================== -->
+    <section class="panel" id="cashflow">
+      <div class="page-head">
+        <h1 class="page-title">Cash Flow <span class="tag" style="background:#fdf3e3;color:#8a5a06;vertical-align:middle;margin-left:8px">Owner only</span></h1>
+        <p class="page-sub">The full picture — runway, dated inflows/outflows, aged receivables, payables queue, and every bank &amp; liability balance. Refreshed each morning by Moola. Visible only on the owner login.</p>
+      </div>
+      <div id="cf_root" class="loading">Loading…</div>
     </section>
 
     </div></div>
@@ -2178,14 +2450,25 @@ function tpMsg(text,ok){
   const m=document.getElementById('tpMsg');
   m.style.display='block'; m.innerHTML=(ok?'✅ ':'⚠️ ')+esc(text);
 }
+// Owner-scope tabs (Financial Reporting, Cash Flow, Admin Console, Axyom
+// Financials, System Health) are enforced at the DATABASE level (RLS requires
+// is_admin() for their sections). Granting UI visibility on them via this
+// override would only surface an empty, data-less page — so they are excluded
+// from the grantable list entirely. Finance access is a deliberate DB grant,
+// never a one-click dropdown toggle.
+function isGrantableTab(tab){
+  const s=TAB_SECTIONS.find(s=>s.tabs.includes(tab));
+  return !s || s.scope!=='admin';
+}
 function populateTabPermSelect(){
   const sel=document.getElementById('tpTab'); if(!sel || sel.options.length) return;
-  sel.innerHTML = TAB_SECTIONS.map(s=>
+  sel.innerHTML = TAB_SECTIONS.filter(s=>s.scope!=='admin').map(s=>
     `<optgroup label="${esc(s.label)}">${s.tabs.map(t=>`<option value="${esc(t)}">${esc(TAB_TITLES[t]||t)}</option>`).join('')}</optgroup>`
   ).join('');
 }
 async function tabPermSave(){
   const role=val('tpRole'), tab=val('tpTab'), visible=val('tpVisible')==='true';
+  if(!isGrantableTab(tab)){ tpMsg('That tab is owner-only and locked at the database level — it cannot be granted here.',false); return; }
   const {error}=await sb.from('tab_permissions').upsert({role,tab,visible,updated_by:CURRENT_PROFILE&&CURRENT_PROFILE.id});
   if(error){ tpMsg(error.message,false); return; }
   tpMsg(`${visible?'Showing':'Hiding'} "${TAB_TITLES[tab]||tab}" for ${ROLE_LABEL[role]}.`,true);
@@ -2223,12 +2506,12 @@ const TAB_TITLES = {
   vendors:'Vendors', systems:'Systems', integrations:'Integrations', franchise:'Franchise',
   pipeline:'Pipeline', marketing:'Marketing', onboarding:'Onboarding', ordering:'Ordering', trades:'Trades',
   clients:'Clients', tasks:'Tasks & Follow-ups', projects:'Projects',
-  roles:'Roles', dailyops:'Daily Ops', playbook:'Playbook', jobflow:'Job Flow',
+  roles:'Roles', dailyops:'Daily Ops', playbook:'Playbook', resources:'Resources', library:'Library',
   territories:'Territories', showroom:'Showroom', reports:'Reports', adminconsole:'Admin Console', axyomfin:'Axyom Financials',
   'earth-overview':'Earthwise · Overview','earth-products':'Earthwise · Products',
   'earth-orders':'Earthwise · Orders','earth-inventory':'Earthwise · Inventory',
   'earth-marketplaces':'Earthwise · Marketplace Ops','earth-vendors':'Earthwise · Vendors',
-  'earth-content':'Earthwise · Content', finance:'Financial Reporting', organic:'Paid & Organic'
+  'earth-content':'Earthwise · Content', finance:'Financial Reporting', cashflow:'Cash Flow', organic:'Paid & Organic'
 };
 function go(tab,push=true){
   if(!document.getElementById(tab)) tab='home';
@@ -2250,9 +2533,11 @@ function go(tab,push=true){
   document.querySelector('.sidebar').classList.remove('open');
   window.scrollTo({top:0,behavior:'instant'});
   // Live-refresh Home cards when navigating back to home
-  if(tab==='home'){ renderRecent(); renderHealth(); renderFavPanel(); renderDash(); }
+  if(tab==='home'){ renderRecent(); renderHealth(); renderFavPanel(); renderDash(); renderCallNotes(); }
+  if(tab==='finance'){ renderMoola(); renderPayables(); }
   if(tab==='directory'){ renderDirectory(); }
   if(tab==='adminconsole'){ renderAdminConsole(); renderTabPermissions(); }
+  if(tab==='cashflow'){ renderCashflow(); }
   if(tab==='pipeline'){ renderPipeline(); }
   if(tab==='organic'){ switchPO(PO_VIEW); }
   if(tab==='team'){ renderOrgChart(); }
@@ -2260,6 +2545,9 @@ function go(tab,push=true){
   if(tab==='clients'){ renderClients(); }
   if(tab==='projects'){ renderProjects(); }
   if(tab==='techstack'){ renderTechStack(); }
+  if(tab==='resources'){ renderResources(); }
+  if(tab==='library'){ renderLibrary(); }
+  if(tab==='trades'){ renderTrades(); }
   if(tab==='tasks'){ renderTasks(); }
   if(tab==='ordering'){ renderBtuOrdering(); }
   if(tab==='mktplan'){ renderMktPlan(); }
@@ -2317,7 +2605,7 @@ const TAB_SECTIONS = [
   {key:'franchise',label:'Franchise & Place',           scope:'hs',    tabs:['franchise','territories','showroom']},
   {key:'systems',  label:'Systems',                     scope:'shared',tabs:['techstack','systems','integrations']},
   {key:'earth',    label:'Earthwise / Jatalia',         scope:'earth', tabs:['earth-overview','earth-products','earth-orders','earth-inventory','earth-marketplaces','earth-vendors','earth-content']},
-  {key:'owner',    label:'Owner (Financials & Admin)',  scope:'admin', tabs:['finance','adminconsole','axyomfin','syshealth']}
+  {key:'owner',    label:'Owner (Financials & Admin)',  scope:'admin', tabs:['finance','cashflow','adminconsole','axyomfin','syshealth']}
 ];
 const TAB_TO_SCOPE = (()=>{ const m={}; TAB_SECTIONS.forEach(s=>s.tabs.forEach(t=>m[t]=s.scope)); return m; })();
 function tabSectionLabel(tab){ const s=TAB_SECTIONS.find(s=>s.tabs.includes(tab)); return s?s.label:'—'; }
@@ -2384,9 +2672,14 @@ function setWS(k){
   // If the active tab is no longer visible (group- or override-hidden), bounce home
   const activeNav=document.querySelector('.nav-item.active');
   if(activeNav && !isTabVisible(activeNav.dataset.tab)) go('home');
-  // Re-render data with new brand filter
+  // Re-render data with new brand filter — every scoped view refreshes on switch
   renderAllSections(); renderContacts&&renderContacts(); renderItems&&renderItems(); renderJobs&&renderJobs();
+  window.renderTasks&&renderTasks(); window.renderTrades&&renderTrades(); window.renderResources&&renderResources();
+  window.renderDash&&renderDash(); window.renderDirectory&&renderDirectory(); window.renderClients&&renderClients();
   renderRecent(); renderFavPanel();
+  // Cash Flow is entity-filtered too — refresh it live when it's the open tab
+  const cfP=document.getElementById('cashflow');
+  if(cfP&&cfP.classList.contains('active')) renderCashflow&&renderCashflow();
 }
 function wsBrands(){
   // Role is the hard boundary; workspace narrows within it.
@@ -2399,6 +2692,8 @@ function wsBrands(){
   if(CURRENT_WS==='earth') return ['Earthwise','Both'];
   return (WORKSPACES[CURRENT_WS]||{}).brands || null;
 }
+// One rule for every list in the app: does this row belong in the active workspace?
+function inWs(brand){ const b=wsBrands(); return !b || !brand || b.includes(brand); }
 
 /* ================================================================
    Favorites (localStorage — client-only for v1)
@@ -2451,19 +2746,42 @@ async function saveContact(id){
   await sb.from('contacts').update(c).eq('id',id);
   editingContactId=null; renderContacts();
 }
+let CON_FILTER='all';
 async function renderContacts(){
   const q=val('cSearch').toLowerCase();
+  const body=document.getElementById('cBody'), empty=document.getElementById('cEmpty');
   const {data,error}=await sb.from('contacts').select('*').order('created_at',{ascending:false});
-  if(error){document.getElementById('cBody').innerHTML='';document.getElementById('cEmpty').textContent='Error loading: '+error.message;document.getElementById('cEmpty').style.display='block';return}
-  const a=(data||[]).filter(c=>!q||JSON.stringify(c).toLowerCase().includes(q));
-  document.getElementById('cBody').innerHTML=a.map(c=>{
+  if(error){body.innerHTML='';empty.textContent='Error loading: '+error.message;empty.style.display='block';return}
+  // 1) Workspace brand scope — same rule the rest of the app uses (see fetchRecords).
+  const brands=wsBrands();
+  let rows=(data||[]).filter(c=>!brands||!c.brand||brands.includes(c.brand));
+  // 2) In-tab brand chips — only shown when the workspace exposes more than one brand
+  //    (e.g. the "Axyom / all" view). Selecting KTU or BTU further separates the list.
+  const multi = !brands || brands.filter(b=>b!=='Both').length>1;
+  const filtEl=document.getElementById('cFilters');
+  if(multi){
+    if(!['all','KTU','BTU'].includes(CON_FILTER)) CON_FILTER='all';
+    filtEl.style.display='flex';
+    filtEl.innerHTML=[['all','All'],['KTU','KTU'],['BTU','BTU']]
+      .map(([k,l])=>`<button class="fbtn ${CON_FILTER===k?'active':''}" onclick="CON_FILTER='${k}';renderContacts()">${l}</button>`).join('');
+  } else { CON_FILTER='all'; filtEl.style.display='none'; filtEl.innerHTML=''; }
+  if(CON_FILTER==='KTU') rows=rows.filter(c=>c.brand==='KTU'||c.brand==='Both');
+  if(CON_FILTER==='BTU') rows=rows.filter(c=>c.brand==='BTU'||c.brand==='Both');
+  // 3) De-duplicate — collapse the same person (name + phone + email), keep newest.
+  const seen=new Set();
+  rows=rows.filter(c=>{const k=(c.name||'').trim().toLowerCase()+'|'+String(c.phone||'').replace(/\D/g,'')+'|'+String(c.email||'').trim().toLowerCase();if(seen.has(k))return false;seen.add(k);return true;});
+  // 4) Search
+  const a=rows.filter(c=>!q||JSON.stringify(c).toLowerCase().includes(q));
+  const cnt=document.getElementById('cCount');
+  if(cnt) cnt.textContent = a.length ? `${a.length} contact${a.length>1?'s':''}${CON_FILTER!=='all'?' · '+CON_FILTER:''}` : '';
+  body.innerHTML=a.map(c=>{
     if(c.id===editingContactId){
       return `<tr><td><input class="f" id="ecName_${c.id}" value="${esc(c.name)}"></td>
         <td><input class="f" id="ecCompany_${c.id}" value="${esc(c.company)}"></td>
         <td><input class="f" id="ecPhone_${c.id}" value="${esc(c.phone)}"></td>
         <td><input class="f" id="ecEmail_${c.id}" value="${esc(c.email)}"></td>
         <td><select class="f" id="ecType_${c.id}">${['Customer','Vendor','Subcontractor','Lead'].map(t=>`<option ${t===c.type?'selected':''}>${t}</option>`).join('')}</select></td>
-        <td><select class="f" id="ecBrand_${c.id}">${['KTU','BTU','Both'].map(t=>`<option ${t===c.brand?'selected':''}>${t}</option>`).join('')}</select></td>
+        <td><select class="f" id="ecBrand_${c.id}">${['KTU','BTU','Both','Earthwise'].map(t=>`<option ${t===c.brand?'selected':''}>${t}</option>`).join('')}</select></td>
         <td class="row-actions"><button class="btn sm" onclick="saveContact('${c.id}')">Save</button><button class="btn sm ghost" onclick="editingContactId=null;renderContacts()">Cancel</button></td></tr>`;
     }
     return `<tr><td>${esc(c.name)}</td><td>${esc(c.company)}</td><td>${esc(c.phone)}</td>
@@ -2493,7 +2811,7 @@ async function saveItem(id){
 async function renderItems(){
   const {data,error}=await sb.from('items').select('*').order('created_at',{ascending:false});
   if(error){document.getElementById('iBody').innerHTML='';document.getElementById('iEmpty').textContent='Error loading: '+error.message;document.getElementById('iEmpty').style.display='block';return}
-  const a=data||[];
+  const a=(data||[]).filter(i=>inWs(i.brand));   // scope to the active workspace
   document.getElementById('iBody').innerHTML=a.map(i=>{
     if(i.id===editingItemId){
       return `<tr><td><input class="f" id="eiName_${i.id}" value="${esc(i.name)}"></td>
@@ -2531,7 +2849,7 @@ async function saveJob(id){
 async function renderJobs(){
   const {data,error}=await sb.from('jobs').select('*').order('created_at',{ascending:false});
   if(error){document.getElementById('jBody').innerHTML='';document.getElementById('jEmpty').textContent='Error loading: '+error.message;document.getElementById('jEmpty').style.display='block';return}
-  const a=data||[];
+  const a=(data||[]).filter(j=>inWs(j.brand));   // scope to the active workspace
   document.getElementById('jBody').innerHTML=a.map(j=>{
     if(j.id===editingJobId){
       return `<tr><td><input class="f" id="ejName_${j.id}" value="${esc(j.name)}"></td>
@@ -2550,15 +2868,98 @@ async function renderJobs(){
   document.getElementById('jEmpty').style.display=a.length?'none':'block';
 }
 
+/* Chart bar row — direct label + value, native tooltip, 4px data-end radius. */
+const CHART_HUES={KTU:'var(--brand-ktu)',BTU:'#2c5f9e',Earthwise:'var(--brand-earth)',Both:'var(--accent)'};
+function cbarRow(label,value,max,color,valText,tip){
+  const w=max>0?Math.max(2,Math.round(value/max*100)):0;
+  return `<div class="cbar" title="${esc(tip||label+': '+(valText??value))}">
+    <span class="cl">${esc(label)}</span>
+    <span class="ct"><span class="cf" style="width:${w}%;background:${color}"></span></span>
+    <span class="cv">${esc(valText??value)}</span></div>`;
+}
+function brandSplitText(rows,key='brand'){
+  const c={}; rows.forEach(r=>{const b=r[key]||'—';c[b]=(c[b]||0)+1;});
+  return ['KTU','BTU','Both','Earthwise'].filter(b=>c[b]).map(b=>`${b} ${c[b]}`).join(' · ')||'—';
+}
 async function renderDash(){
-  const [{data:contacts},{data:items},{data:jobs}] = await Promise.all([
-    sb.from('contacts').select('id'), sb.from('items').select('id'), sb.from('jobs').select('status,price')
+  const [{data:contactsAll},{data:itemsAll},{data:jobsAll},{data:tasksAll},{data:healthRows}] = await Promise.all([
+    sb.from('contacts').select('brand'),
+    sb.from('items').select('brand'),
+    sb.from('jobs').select('brand,status,price'),
+    sb.from('team_tasks').select('title,assignee,brand,due_date,status,cadence'),
+    sb.from('intranet_records').select('fields').eq('section','system_health')
   ]);
-  document.getElementById('kpiContacts').textContent=(contacts||[]).length;
-  document.getElementById('kpiItems').textContent=(items||[]).length;
-  const open=(jobs||[]).filter(j=>j.status!=='Complete');
-  document.getElementById('kpiJobs').textContent=open.length;
-  document.getElementById('kpiValue').textContent=money(open.reduce((s,j)=>s+(Number(j.price)||0),0));
+  // Everything on Home respects the workspace switcher.
+  const contacts=(contactsAll||[]).filter(c=>inWs(c.brand));
+  const items=(itemsAll||[]).filter(i=>inWs(i.brand));
+  const jobs=(jobsAll||[]).filter(j=>inWs(j.brand));
+  const tasks=(tasksAll||[]).filter(t=>inWs(t.brand)&&(t.status==='open'||t.status==='in_progress'));
+
+  const put=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  put('kpiContacts',contacts.length);      put('kpiContactsSub',brandSplitText(contacts));
+  put('kpiItems',items.length);            put('kpiItemsSub',brandSplitText(items));
+  const open=jobs.filter(j=>j.status!=='Complete');
+  put('kpiJobs',open.length);              put('kpiJobsSub',brandSplitText(open));
+  put('kpiValue',money(open.reduce((s,j)=>s+(Number(j.price)||0),0)));
+  const vByBrand={}; open.forEach(j=>{const b=j.brand||'—';vByBrand[b]=(vByBrand[b]||0)+(Number(j.price)||0);});
+  put('kpiValueSub',Object.entries(vByBrand).map(([b,v])=>`${b} ${money(v)}`).join(' · ')||'Unbilled remodeling work');
+
+  const today=new Date().toISOString().slice(0,10);
+  const week=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+  const dueSoon=tasks.filter(t=>t.due_date&&t.due_date<=week).sort((a,b)=>String(a.due_date).localeCompare(String(b.due_date)));
+  const overdue=dueSoon.filter(t=>t.due_date<today);
+  put('kpiTasks',dueSoon.length);
+  put('kpiTasksSub',overdue.length?`⚠ ${overdue.length} overdue`:'Next 7 days');
+
+  // ---- Pulse charts ----
+  const stEl=document.getElementById('pulseStages');
+  if(stEl){
+    const ORDER=['Estimate','Approved','In Progress','Complete'];
+    const byStage={}; jobs.forEach(j=>{const s=j.status||'—';byStage[s]=byStage[s]||{n:0,v:0};byStage[s].n++;byStage[s].v+=Number(j.price)||0;});
+    const stages=ORDER.filter(s=>byStage[s]).concat(Object.keys(byStage).filter(s=>!ORDER.includes(s)));
+    const max=Math.max(1,...stages.map(s=>byStage[s].v));
+    stEl.classList.remove('loading');
+    stEl.innerHTML=stages.length
+      ? stages.map(s=>cbarRow(s,byStage[s].v,max,'var(--accent)',money(byStage[s].v),`${s}: ${byStage[s].n} job${byStage[s].n>1?'s':''} · ${money(byStage[s].v)}`)).join('')
+      : '<div class="empty">No jobs yet.</div>';
+  }
+  const brEl=document.getElementById('pulseBrands');
+  if(brEl){
+    const ents=Object.entries(vByBrand).sort((a,b)=>b[1]-a[1]);
+    const max=Math.max(1,...ents.map(([,v])=>v));
+    brEl.classList.remove('loading');
+    brEl.innerHTML=ents.length
+      ? ents.map(([b,v])=>cbarRow(b,v,max,CHART_HUES[b]||'var(--accent)',money(v))).join('')
+      : '<div class="empty">No open jobs.</div>';
+  }
+  const tkEl=document.getElementById('pulseTasks');
+  if(tkEl){
+    tkEl.classList.remove('loading');
+    tkEl.innerHTML=dueSoon.length
+      ? dueSoon.slice(0,6).map(t=>{const late=t.due_date<today;return `<div class="due-item ${late?'late':''}" title="${esc(t.title)} → ${esc(t.assignee)}${t.cadence&&t.cadence!=='once'?' · repeats '+esc(t.cadence):''}">
+          <b>${esc(String(t.title).slice(0,34))}</b> <small style="color:var(--text-mute)">${esc(t.assignee||'')}</small>
+          <span class="dd">${late?'overdue · ':''}${esc(t.due_date)}</span></div>`;}).join('')
+        +(dueSoon.length>6?`<div class="due-item"><a href="#tasks" onclick="go('tasks');return false" style="color:var(--accent)">+${dueSoon.length-6} more →</a></div>`:'')
+      : '<div class="empty">Nothing due in the next 7 days. 🎉</div>';
+  }
+  // ---- Agent freshness strip (from the pg_cron watchdog + live sections) ----
+  const agEl=document.getElementById('pulseAgents');
+  if(agEl){
+    const AGENTS=[['goldeneye_callouts','Goldeneye'],['moola_briefing','Moola'],['foreman_briefing','Foreman'],
+                  ['pipeline_briefing','Pipeline'],['organic_report','Organic'],['tekky_status','Tekki']];
+    const stale={}; (healthRows||[]).forEach(r=>{const f=r.fields||{};if(f.agent)stale[f.agent]=f.latest_scan_date||'never';});
+    const {data:latests}=await sb.from('intranet_records').select('section,fields->scan_date')
+      .in('section',AGENTS.map(a=>a[0]));
+    const lastBy={}; (latests||[]).forEach(r=>{const d=r.scan_date;if(d&&(!lastBy[r.section]||d>lastBy[r.section]))lastBy[r.section]=String(d).replace(/"/g,'');});
+    agEl.classList.remove('loading');
+    agEl.innerHTML=AGENTS.map(([sec,name])=>{
+      const last=lastBy[sec]||stale[sec];
+      const cls=!last||last==='never'?'never':(last>=today?'ok':(stale[sec]?'stale':(last>=new Date(Date.now()-864e5).toISOString().slice(0,10)?'ok':'stale')));
+      const ico=cls==='ok'?'✓':cls==='stale'?'⏰':'✗';
+      return `<span class="agent-chip ${cls}" title="${esc(name)} — last published ${esc(last||'never')}">
+        <span>${ico}</span><span class="nm">${esc(name)}</span><span class="dt">${esc(last||'never')}</span></span>`;
+    }).join('');
+  }
 }
 
 /* ================================================================
@@ -2575,7 +2976,8 @@ async function renderRecent(){
     onboarding_priorities:'onboarding', onboarding_donotchange:'onboarding', onboarding_phase_tasks:'onboarding',
     ordering_accounts:'ordering', ordering_reps:'ordering', ordering_storage:'ordering',
     trades:'trades', roles:'roles', daily_ops:'dailyops', training:'playbook',
-    playbook_scripts:'playbook', service_finance:'playbook', job_flow:'jobflow',
+    playbook_scripts:'playbook', service_finance:'playbook', job_flow:'playbook',
+    sow_docs:'playbook', sow_authored:'playbook', resources:'resources', library_docs:'library',
     zip_territories:'territories', reports:'reports',
     showroom_details:'showroom', showroom_features:'showroom', showroom_notes:'showroom' };
   box.innerHTML=data.map(r=>{
@@ -2692,9 +3094,7 @@ const SECTIONS = {
     display:f=>`<h3>${esc(f.vendor)}</h3><div class="meta"><b>Contact:</b> ${esc(f.contact)}</div>
       <div class="meta"><b>Pricing:</b> ${esc(f.pricing)}</div><div class="note">Pay terms: ${esc(f.terms)}</div>`, kind:'cards' },
   ordering_storage:{ root:'ordering_storage_root', columns:[{k:'text',label:'Storage & delivery notes',type:'textarea'}], kind:'text' },
-  trades:{ root:'trades_root', columns:[
-      {k:'name',label:'Name'},{k:'service',label:'Service'},{k:'contact',label:'Contact',type:'textarea'}],
-    display:f=>`<h3>${esc(f.name)}</h3><div class="role">${esc(f.service)}</div><div class="note">${esc(f.contact)}</div>`, kind:'cards' },
+  // trades: rendered by the dedicated editable renderTrades() below (not the generic renderer).
   roles:{ root:'roles_root', columns:[{k:'text',label:'Role / template'}], kind:'list' },
   daily_ops:{ root:'daily_ops_root', columns:[{k:'text',label:'Task'}], kind:'list' },
   training:{ root:'training_root', columns:[{k:'text',label:'Resource'}], kind:'list' },
@@ -2958,10 +3358,11 @@ let DIR_FILTER = 'all';
 async function renderDirectory(){
   const root=document.getElementById('dirRoot'); if(!root) return;
   const q=(val('dirSearch')||'').toLowerCase();
-  const [team, vendors, trades, reps, contacts] = await Promise.all([
+  const [team, vendors, trades, reps, contactsRaw] = await Promise.all([
     fetchRecords('team'), fetchRecords('vendors'), fetchRecords('trades'),
     fetchRecords('ordering_reps'), sb.from('contacts').select('*').limit(500).then(r=>r.data||[])
   ]);
+  const contacts=contactsRaw.filter(c=>inWs(c.brand));   // fetchRecords sections already scope; contacts must too
   const items = [
     ...team.map(r=>({kind:'team', name:r.fields.name, role:r.fields.role, meta:r.fields.strengths, tab:'team', extra:r.fields.business})),
     ...vendors.map(r=>({kind:'vendor', name:r.fields.vendor, role:r.fields.category, meta:r.fields.relationship, tab:'vendors'})),
@@ -3080,7 +3481,7 @@ const INTEGRATIONS = [
   {cat:'Jatalia / eCommerce', name:'ShipStation', type:'Direct MCP', scope:'Jatalia', status:'ok', d:'2026-06-04', note:'Shipment data — drives Jatalia ops dashboard'},
   {cat:'Jatalia / eCommerce', name:'Amazon Ads', type:'via Windsor', scope:'Jatalia', status:'ok', d:'2026-05-01', note:'Amazon advertising (account 1035588453215307)'},
   {cat:'Jatalia / eCommerce', name:'Zapier (Jatalia)', type:'Zapier MCP', scope:'Jatalia', status:'ok', d:'2026-05-16', note:'Automation bridge for Jatalia'},
-  {cat:'Jatalia / eCommerce', name:'Jatalia Ops Dashboard', type:'Web', scope:'Jatalia', status:'ok', d:'2026-07-02', note:'jataliamarketplace.com — consolidated Amazon/Walmart/Shopify/ShipStation view'},
+  {cat:'Jatalia / eCommerce', name:'Jatalia Ops Dashboard', type:'Web', scope:'Jatalia', status:'ok', d:'2026-07-02', note:'go.jataliamarketplace.com — consolidated Amazon/Walmart/Shopify/ShipStation view'},
 
   // ---- Infrastructure & Automation ----
   {cat:'Infrastructure & Automation', name:'Cloudflare Pages / Workers', type:'REST token', scope:'All', status:'ok', d:'2026-07-02', note:'Hosts dashboards + this intranet; Git-integration deploys'},
@@ -3170,9 +3571,11 @@ function buildCmdkIndex(){
   }));
   const actions=[
     {kind:'action', label:'New contact', cat:'Actions', run:()=>go('contacts')},
+    {kind:'action', label:'New task', cat:'Actions', run:()=>go('tasks')},
+    {kind:'action', label:'New resource', cat:'Actions', run:()=>go('resources')},
     {kind:'action', label:'Add item', cat:'Actions', run:()=>go('items')},
     {kind:'action', label:'New job', cat:'Actions', run:()=>go('jobs')},
-    {kind:'action', label:'Open Jatalia dashboard', cat:'Actions', run:()=>window.open('https://jataliamarketplace.com','_blank')},
+    {kind:'action', label:'Open Jatalia dashboard', cat:'Actions', run:()=>window.open('https://go.jataliamarketplace.com/','_blank')},
     {kind:'action', label:'Open Shopify admin', cat:'Actions', run:()=>window.open('https://admin.shopify.com/store/earthwise-seed','_blank')},
     {kind:'action', label:'Open Seller Central', cat:'Actions', run:()=>window.open('https://sellercentral.amazon.com','_blank')},
     {kind:'action', label:'Sign out', cat:'Actions', run:()=>logout()},
@@ -3238,7 +3641,11 @@ async function renderGoldeneye(){
     return;
   }
   const ICO={urgent:'🚨',warn:'⚠️',info:'💡'};
-  el.innerHTML = show.map(r=>{const f=r.fields;return `
+  GE_SHOWN_IDS=show.map(r=>r.id).filter(Boolean);
+  el.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <button class="btn sm ghost" onclick="clearGoldeneye()" title="Dismiss all of today's callouts">Clear all (${show.length})</button>
+    </div>`
+    + show.map(r=>{const f=r.fields;return `
     <div class="ge-row ${esc(f.severity||'info')}">
       <div class="ge-ico">${ICO[f.severity]||'💡'}</div>
       <div class="ge-body">
@@ -3246,8 +3653,22 @@ async function renderGoldeneye(){
         <div class="ge-detail">${esc(f.detail||'')}</div>
         <div class="ge-meta">${esc(f.source||'')}${f.scan_date?' · scanned '+esc(f.scan_date):''}</div>
       </div>
+      ${r.id?`<button class="ge-dismiss" title="Dismiss this callout" onclick="dismissCallout('${r.id}')">✕</button>`:''}
     </div>`}).join('')
     + `<div class="ge-meta" style="margin-top:4px">Scan: ${esc(latest||'—')} · Goldeneye runs daily and replaces these callouts each morning.</div>`;
+}
+let GE_SHOWN_IDS=[];
+async function dismissCallout(id){
+  const {error}=await sb.from('intranet_records').delete().eq('id',id);
+  if(error){ alert('Could not clear that notification: '+error.message); return; }
+  renderGoldeneye();
+}
+async function clearGoldeneye(){
+  if(!GE_SHOWN_IDS.length) return;
+  if(!confirm(`Clear all ${GE_SHOWN_IDS.length} callout(s)? Goldeneye will surface fresh ones on its next run.`)) return;
+  const {error}=await sb.from('intranet_records').delete().in('id',GE_SHOWN_IDS);
+  if(error){ alert('Could not clear notifications: '+error.message); return; }
+  GE_SHOWN_IDS=[]; renderGoldeneye();
 }
 
 /* ================================================================
@@ -3391,8 +3812,156 @@ async function renderPipeline(){
       </div>`}).join('')
       + `<div class="ge-meta" style="margin-top:4px">Scan: ${esc(latest||'—')} · Pipeline runs daily and shares findings with Paid.</div>`;
   }
+  window.renderAgentPerf&&renderAgentPerf();
   // metric sections use the generic engine
   ['pipeline_funnel','pipeline_sources','pipeline_revival','pipeline_playbook'].forEach(s=>renderSection&&renderSection(s));
+  // Funnel chart — magnitude down the stages, one hue, values parsed from the section
+  const fc=document.getElementById('pipeline_funnel_chart');
+  if(fc){
+    const fr=await fetchRecords('pipeline_funnel');
+    const steps=fr.map(r=>({stage:r.fields.stage,n:parseFloat(String(r.fields.value||'').replace(/[^0-9.]/g,'')),
+      rate:r.fields.rate,raw:r.fields.value})).filter(s=>s.stage&&isFinite(s.n)&&s.n>0);
+    const fmax=Math.max(1,...steps.map(s=>s.n));
+    fc.innerHTML=steps.length>=2
+      ? `<div class="chart-title">Funnel at a glance</div>`+steps.map(s=>
+          cbarRow(s.stage,s.n,fmax,'var(--accent)',String(s.raw??s.n),
+            `${s.stage}: ${s.raw??s.n}${s.rate?' · '+s.rate:''}`)).join('')
+        +`<div style="height:12px"></div>`
+      : '';
+  }
+}
+
+/* ================================================================
+   Agent Performance — sales-agent scorecard by month.
+   Deliberately independent of the workspace switcher: it reads the
+   `agent_perf` section directly (NOT fetchRecords) and applies its own
+   Agent / Year / Business filters.
+   ================================================================ */
+let AP_METRIC='appts';
+const AP_METRICS=[
+  {k:'appts',         label:'Appointments',    fmt:'n', up:true},
+  {k:'proposals',     label:'Proposals',       fmt:'n', up:true},
+  {k:'wins',          label:'Wins',            fmt:'n', up:true},
+  {k:'proposal_value',label:'Proposal value',  fmt:'$', up:true},
+  {k:'win_value',     label:'Win value',       fmt:'$', up:true},
+  {k:'close_rate',    label:'Close rate',      fmt:'%', up:true},
+  {k:'cancels',       label:'Cancellations',   fmt:'n', up:false}, // fewer is better
+  {k:'avg_sale',      label:'Avg sale value',  fmt:'$', up:true},
+];
+// Year-over-year badge: green when the move is good (per metric.up), red when bad.
+function apYoY(cur,ly,up){
+  if(ly==null||!isFinite(ly)||ly===0||cur==null||!isFinite(cur)) return '';
+  const pct=(cur-ly)/Math.abs(ly)*100;
+  if(!isFinite(pct)) return '';
+  const rounded=Math.abs(pct)>=100?Math.round(pct):Math.round(pct*10)/10;
+  const flat=Math.abs(pct)<0.05;
+  const good=flat?null:((pct>0)===up);
+  const color=flat?'var(--text-mute)':(good?'var(--success)':'var(--danger)');
+  const arrow=flat?'→':(pct>0?'▲':'▼');
+  const bg=flat?'transparent':(good?'rgba(74,222,128,.12)':'rgba(248,113,113,.12)');
+  return `<span title="vs same period last year" style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:${color};background:${bg};border-radius:999px;padding:1px 7px;margin-top:6px;font-variant-numeric:tabular-nums">${arrow} ${Math.abs(rounded)}% <span style="font-weight:500;opacity:.7">vs LY</span></span>`;
+}
+const AP_MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function apFmt(v,fmt){
+  if(v==null||v===''||isNaN(v)) return '—';
+  if(fmt==='$') return money(Math.round(v));
+  if(fmt==='%') return (Math.round(v*1000)/10)+'%';
+  return Math.round(v).toLocaleString();
+}
+function apSetMetric(k){ AP_METRIC=k; renderAgentPerf(); }
+function apVBars(vals,mdef,mtdIdx){
+  const max=Math.max(1,...vals.map(v=>+v||0));
+  const H=180,W=560,pad=28,step=(W-pad*2)/12,bw=step*0.6;
+  const bars=vals.map((v,i)=>{
+    const val=+v||0, h=max>0?Math.max(0,val/max*(H-34)):0;
+    const x=pad+step*i+(step-bw)/2, y=H-20-h;
+    const isMtd=i===mtdIdx;
+    // Current (in-progress) month is month-to-date — draw it hollow/dashed so a
+    // partial month doesn't read as a real drop.
+    const rectAttrs=isMtd
+      ? `fill="var(--accent)" fill-opacity="0.4" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="3 2"`
+      : `fill="var(--accent)"`;
+    return `<g><rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="3" ${rectAttrs}><title>${esc(AP_MONTHS[i])}${isMtd?' (month-to-date)':''}: ${esc(apFmt(val,mdef.fmt))}</title></rect>`
+      +(val>0?`<text x="${(x+bw/2).toFixed(1)}" y="${(y-4).toFixed(1)}" text-anchor="middle" font-size="8.5" fill="var(--text-mute)">${esc(apFmt(val,mdef.fmt))}</text>`:'')
+      +`<text x="${(x+bw/2).toFixed(1)}" y="${H-5}" text-anchor="middle" font-size="9" fill="${isMtd?'var(--accent)':'var(--text-mute)'}" font-weight="${isMtd?'700':'400'}">${esc(AP_MONTHS[i][0])}</text></g>`;
+  }).join('');
+  const cap=mtdIdx>=0?`<div class="page-sub" style="margin-top:2px;font-size:11.5px">⃞ ${esc(AP_MONTHS[mtdIdx])} is <b>month-to-date</b> — the month isn't over, so it's a partial number.</div>`:'';
+  return `<div class="chart-title">${esc(mdef.label)} by month</div><svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:600px;height:auto">${bars}</svg>${cap}`;
+}
+async function renderAgentPerf(){
+  const card=document.getElementById('agentPerfCard'); if(!card) return;
+  const {data}=await sb.from('intranet_records').select('brand,fields').eq('section','agent_perf');
+  const all=(data||[]).map(r=>({...(r.fields||{}), brand:r.brand||(r.fields||{}).brand}));
+  const rows=all.filter(f=>f && f.month && f.agent);
+  const empty=document.getElementById('apEmpty');
+  if(!rows.length){
+    ['apKpis','apChart','apTableWrap','apMetricChips'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML='';});
+    const info=all.find(f=>f&&f.info);
+    empty.style.display='block';
+    empty.textContent=info
+      ? '⏳ '+info.info+' — numbers appear once ServiceMinder is connected and the monthly sync runs.'
+      : '💤 No agent-performance data yet. It lands when the ServiceMinder sync runs.';
+    return;
+  }
+  empty.style.display='none';
+  // ---- Filters (populate once, preserve current selection) ----
+  const agSel=document.getElementById('apAgent'), yrSel=document.getElementById('apYear'), bizSel=document.getElementById('apBiz');
+  const agents=[...new Set(rows.map(r=>r.agent))].sort();
+  const years=[...new Set(rows.map(r=>Number(r.year)).filter(Boolean))].sort((a,b)=>b-a);
+  const curA=agSel.value;
+  agSel.innerHTML='<option value="">All agents</option>'+agents.map(a=>`<option${a===curA?' selected':''}>${esc(a)}</option>`).join('');
+  if(yrSel.dataset.filled!=='1'){
+    yrSel.innerHTML='<option value="">All years</option>'+years.map(y=>`<option>${y}</option>`).join('');
+    yrSel.value=String(years[0]||''); yrSel.dataset.filled='1';
+  }
+  const fAgent=agSel.value, fYear=yrSel.value, fBiz=bizSel.value;
+  // ---- Filter + aggregate by calendar month ----
+  const sel=rows.filter(r=>(!fAgent||r.agent===fAgent)&&(!fYear||String(r.year)===fYear)&&(!fBiz||r.brand===fBiz));
+  const M=Array.from({length:12},()=>({appts:0,proposals:0,wins:0,customers:0,cancels:0,proposal_value:0,win_value:0}));
+  sel.forEach(r=>{const m=Number(r.month)-1; if(m<0||m>11)return; const t=M[m];
+    t.appts+=+r.appts||0; t.proposals+=+r.proposals||0; t.wins+=+r.wins||0;
+    t.customers+=+(r.customers!=null?r.customers:r.wins)||0; t.cancels+=+r.cancels||0;
+    t.proposal_value+=+r.proposal_value||0; t.win_value+=+r.win_value||0;});
+  const BASE=['appts','proposals','wins','customers','cancels','proposal_value','win_value'];
+  const sumMonths=(arr,idxs)=>idxs.reduce((a,i)=>{BASE.forEach(k=>a[k]=(a[k]||0)+(arr[i][k]||0));return a;},{});
+  const deriveRates=t=>{t.close_rate=t.appts?t.customers/t.appts:null; t.avg_sale=t.wins?t.win_value/t.wins:null; return t;};
+  const MM=M.map(t=>deriveRates({...t}));
+  // Which months to total: only those with real activity (so future months and
+  // the un-started tail don't dilute rates or the vs-LY comparison).
+  const activeIdx=M.map((t,i)=>i).filter(i=>BASE.some(k=>k!=='customers'&&M[i][k]));
+  const T=deriveRates(sumMonths(M,activeIdx));
+  // ---- Current (in-progress) month → month-to-date marker ----
+  const now=new Date(), nowY=now.getFullYear(), nowM=now.getMonth();
+  const cmpYear=fYear?Number(fYear):null;
+  const mtdIdx=(cmpYear===nowY)?nowM:-1;
+  // ---- Last-year totals over the SAME months (fair YTD vs YTD) ----
+  let LY=null;
+  if(cmpYear){
+    const lyRows=rows.filter(r=>(!fAgent||r.agent===fAgent)&&(!fBiz||r.brand===fBiz)&&String(r.year)===String(cmpYear-1));
+    if(lyRows.length){
+      const LM=Array.from({length:12},()=>({}));
+      lyRows.forEach(r=>{const m=Number(r.month)-1; if(m<0||m>11)return; const t=LM[m];
+        BASE.forEach(k=>{const src=k==='customers'?(r.customers!=null?r.customers:r.wins):r[k]; t[k]=(t[k]||0)+(+src||0);});});
+      LY=deriveRates(sumMonths(LM,activeIdx));
+    }
+  }
+  // ---- KPI tiles (period totals + vs-LY badge; click to plot that metric) ----
+  document.getElementById('apKpis').innerHTML=AP_METRICS.map(m=>`
+    <div class="kpi" style="padding:12px 14px;cursor:pointer;display:flex;flex-direction:column${AP_METRIC===m.k?';border-color:var(--accent)':''}" onclick="apSetMetric('${m.k}')" title="Plot ${esc(m.label)} by month">
+      <div class="label">${esc(m.label)}</div><div class="value" style="font-size:20px">${apFmt(T[m.k],m.fmt)}</div>${LY?apYoY(T[m.k],LY[m.k],m.up):''}</div>`).join('');
+  // ---- Metric chips ----
+  document.getElementById('apMetricChips').innerHTML=AP_METRICS.map(m=>`
+    <button class="ap-chip${AP_METRIC===m.k?' on':''}" onclick="apSetMetric('${m.k}')">${esc(m.label)}</button>`).join('');
+  // ---- Chart (selected metric) ----
+  const mdef=AP_METRICS.find(m=>m.k===AP_METRIC)||AP_METRICS[0];
+  document.getElementById('apChart').innerHTML=apVBars(MM.map(t=>t[mdef.k]),mdef,mtdIdx);
+  // ---- Table (every metric, months with activity) ----
+  const active=MM.map((t,i)=>({t,i})).filter(x=>BASE.some(k=>k!=='customers'&&x.t[k]));
+  document.getElementById('apTableWrap').innerHTML = active.length
+    ? `<table><thead><tr><th style="text-align:left">Month</th>${AP_METRICS.map(m=>`<th style="text-align:right">${esc(m.label)}</th>`).join('')}</tr></thead><tbody>${
+        active.map(({t,i})=>`<tr><td><b>${AP_MONTHS[i]}${fYear?' '+fYear:''}</b>${i===mtdIdx?' <span style="color:var(--accent);font-size:10.5px;font-weight:700">MTD</span>':''}</td>${AP_METRICS.map(m=>`<td style="text-align:right">${apFmt(t[m.k],m.fmt)}</td>`).join('')}</tr>`).join('')
+      }<tr class="ap-total"><td><b>Total</b></td>${AP_METRICS.map(m=>`<td style="text-align:right"><b>${apFmt(T[m.k],m.fmt)}</b></td>`).join('')}</tr></tbody></table>`
+    : '<div class="empty">No activity for this selection.</div>';
 }
 
 async function renderOrganic(){
@@ -3403,7 +3972,7 @@ async function renderOrganic(){
   const show=(latest?rows.filter(r=>r.fields.scan_date===latest):rows)
     .sort((a,b)=>({urgent:0,warn:1,info:2}[a.fields.severity]??3)-({urgent:0,warn:1,info:2}[b.fields.severity]??3));
   if(!show.length){
-    el.innerHTML='<div class="ge-clear">💤 No report yet — Organic scans rankings, the local pack/GMB, competitors, keywords and backlinks. First report lands with the next scan.</div>';
+    el.innerHTML='<div class="ge-clear">💤 No report yet — Organic scans rankings, the local pack/GMB, competitors, keywords, backlinks, on-page/technical SEO, landing-page friction (Clarity), page speed, and organic social performance. First report lands with the next scan.</div>';
     return;
   }
   const ICO={urgent:'🚨',warn:'⚠️',info:'💡'};
@@ -3484,11 +4053,366 @@ async function renderMoola(){
     </div>`}).join('');
 }
 
+/* ================================================================
+   Perceptionist call notes (email-fed) — Home card.
+   Reads the call_notes table directly; scoped to the active workspace.
+   ================================================================ */
+async function renderCallNotes(){
+  const root=document.getElementById('callnotes_root'); if(!root) return;
+  const {data,error}=await sb.from('call_notes').select('*').order('call_time',{ascending:false,nullsFirst:false}).limit(50);
+  if(error){ root.innerHTML='<div class="ge-clear">Could not load call notes.</div>'; return; }
+  const rows=(data||[]).filter(r=>inWs(r.brand));
+  const cnt=document.getElementById('cnCount'); if(cnt) cnt.textContent=rows.length?rows.length:'';
+  if(!rows.length){ root.innerHTML='<div class="ge-clear">📭 No call notes yet — Perceptionist notes emailed to firstgentalent@gmail.com land here automatically, and Goldeneye files the caller into the Directory.</div>'; return; }
+  root.innerHTML=rows.slice(0,12).map(r=>{
+    const fu=r.follow_up&&!r.handled;
+    return `<div class="ge-row ${fu?'warn':'info'}">
+      <div class="ge-ico">📞</div>
+      <div class="ge-body">
+        <div class="ge-title">${esc(r.caller_name||'Caller')}${r.caller_phone?` · <a href="tel:${esc(r.caller_phone)}" style="color:var(--accent)">${esc(r.caller_phone)}</a>`:''} ${r.brand?brandTag(r.brand):''}${r.disposition?` <span class="tag">${esc(r.disposition)}</span>`:''}</div>
+        <div class="ge-detail">${esc(String(r.summary||'').slice(0,240))}</div>
+        <div class="ge-meta">${esc(r.call_time?new Date(r.call_time).toLocaleString():'')}${r.handled?' · ✓ handled':fu?' · needs follow-up':''}</div>
+      </div>
+      ${!r.handled?`<button class="ge-dismiss" title="Mark handled" onclick="cnHandled('${r.id}')">✓</button>`:''}
+    </div>`;
+  }).join('');
+}
+async function cnHandled(id){ const {error}=await sb.from('call_notes').update({handled:true,follow_up:false}).eq('id',id); if(error){alert(error.message);return} renderCallNotes(); }
+
+/* ================================================================
+   Accounts Payable tracker (email-fed bills) — Finance tab, owner only.
+   Reads the payables table directly (its own Business/Status filters —
+   independent of the left-nav). Moola ages + prioritizes; humans mark paid.
+   ================================================================ */
+let editingPayableId=null, payFormOpen=false;
+function payAddRow(){ editingPayableId=null; payFormOpen=true; renderPayables(); }
+function payEdit(id){ editingPayableId=id; payFormOpen=true; renderPayables(); }
+function payCancel(){ editingPayableId=null; payFormOpen=false; renderPayables(); }
+async function paySetStatus(id,status){
+  const patch={status, paid_date: status==='paid'? new Date().toISOString().slice(0,10): null};
+  const {error}=await sb.from('payables').update(patch).eq('id',id);
+  if(error){alert(error.message);return} renderPayables();
+}
+async function payDelete(id){ if(!confirm('Delete this bill?'))return; const {error}=await sb.from('payables').delete().eq('id',id); if(error){alert(error.message);return} renderPayables(); }
+async function paySave(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():''};
+  const rec={vendor:g('pf_vendor'),brand:g('pf_brand')||null,invoice_number:g('pf_inv')||null,
+    amount:parseFloat(g('pf_amt'))||0,invoice_date:g('pf_sent')||null,due_date:g('pf_due')||null,
+    priority:g('pf_pri')||'normal',status:g('pf_status')||'unpaid',notes:g('pf_notes')||null};
+  if(!rec.vendor){alert('Vendor is required');return}
+  let error;
+  if(editingPayableId){ ({error}=await sb.from('payables').update(rec).eq('id',editingPayableId)); }
+  else { rec.source='manual'; ({error}=await sb.from('payables').insert(rec)); }
+  if(error){alert('Save failed: '+error.message);return}
+  editingPayableId=null; payFormOpen=false; renderPayables();
+}
+async function renderPayables(){
+  const root=document.getElementById('payables_root'); if(!root) return;
+  if(CURRENT_ROLE!=='admin'){ root.innerHTML='<div class="ge-clear">Owner only.</div>'; return; }
+  const {data,error}=await sb.from('payables').select('*');
+  if(error){ root.innerHTML='<div class="empty">Could not load payables: '+esc(error.message)+'</div>'; return; }
+  const all=data||[];
+  const fB=val('payBrand'), fS=val('payStatus');
+  const today=new Date().toISOString().slice(0,10);
+  const in7=d=>{ if(!d)return false; const diff=(new Date(d)-new Date(today))/864e5; return diff>=0&&diff<=7; };
+  const scope=all.filter(r=>!fB||r.brand===fB||r.brand==='Both');
+  const open=scope.filter(r=>r.status==='unpaid'||r.status==='scheduled');
+  const sum=arr=>arr.reduce((s,r)=>s+(Number(r.amount)||0),0);
+  const overdue=open.filter(r=>r.due_date&&r.due_date<today);
+  const dueSoon=open.filter(r=>in7(r.due_date));
+  const paidMonth=scope.filter(r=>r.status==='paid'&&r.paid_date&&r.paid_date.slice(0,7)===today.slice(0,7));
+  document.getElementById('apSummary').innerHTML=[
+    ['Open to pay',money(sum(open)),open.length+' bills',''],
+    ['Overdue',money(sum(overdue)),overdue.length+' bills','danger'],
+    ['Due ≤ 7 days',money(sum(dueSoon)),dueSoon.length+' bills','warn'],
+    ['Paid this month',money(sum(paidMonth)),paidMonth.length+' bills',''],
+  ].map(([l,v,s,c])=>`<div class="kpi" style="padding:12px 14px"><div class="label">${l}</div><div class="value" style="font-size:20px${c==='danger'?';color:var(--danger)':c==='warn'?';color:#c2620a':''}">${v}</div><div class="trend">${s}</div></div>`).join('');
+  let rows=scope.filter(r=> fS==='open'?(r.status==='unpaid'||r.status==='scheduled'): fS? r.status===fS : true);
+  const PRI={urgent:0,high:1,normal:2,low:3};
+  rows.sort((a,b)=>{
+    const ao=a.status==='paid'?1:0, bo=b.status==='paid'?1:0; if(ao!==bo)return ao-bo;
+    const pd=(PRI[a.priority]??2)-(PRI[b.priority]??2); if(pd)return pd;
+    return String(a.due_date||'9999').localeCompare(String(b.due_date||'9999'));
+  });
+  const ageCell=r=>{
+    const base=r.due_date||r.invoice_date;
+    if(r.status==='paid'||!base) return '<td>—</td>';
+    const days=Math.round((new Date(today)-new Date(base))/864e5);
+    if(r.due_date&&r.due_date<today) return `<td class="age over">${days}d overdue</td>`;
+    if(r.due_date&&in7(r.due_date)) return `<td class="age soon">due soon</td>`;
+    return `<td>${days>=0?days+'d':'in '+(-days)+'d'}</td>`;
+  };
+  const er=editingPayableId?all.find(r=>r.id===editingPayableId):null;
+  const opt=(v,cur)=>`<option value="${v}"${(cur===v)?' selected':''}>${v}</option>`;
+  const form = payFormOpen ? `<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;background:var(--surface-inset)">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+        <label class="pf">Vendor<input id="pf_vendor" value="${esc(er?.vendor||'')}"></label>
+        <label class="pf">Business<select id="pf_brand"><option value=""></option>${['KTU','BTU','Earthwise','Both'].map(b=>opt(b,er?.brand)).join('')}</select></label>
+        <label class="pf">Invoice #<input id="pf_inv" value="${esc(er?.invoice_number||'')}"></label>
+        <label class="pf">Amount<input id="pf_amt" type="number" step="0.01" value="${er?.amount??''}"></label>
+        <label class="pf">Sent<input id="pf_sent" type="date" value="${esc(er?.invoice_date||'')}"></label>
+        <label class="pf">Due<input id="pf_due" type="date" value="${esc(er?.due_date||'')}"></label>
+        <label class="pf">Priority<select id="pf_pri">${['urgent','high','normal','low'].map(b=>opt(b,er?.priority||'normal')).join('')}</select></label>
+        <label class="pf">Status<select id="pf_status">${['unpaid','scheduled','paid','disputed'].map(b=>opt(b,er?.status||'unpaid')).join('')}</select></label>
+      </div>
+      <label class="pf" style="display:block;margin-top:8px">Notes<input id="pf_notes" style="width:100%" value="${esc(er?.notes||'')}"></label>
+      <div style="margin-top:10px;display:flex;gap:8px"><button class="btn sm" onclick="paySave()">${er?'Save changes':'Add bill'}</button><button class="btn sm ghost" onclick="payCancel()">Cancel</button></div>
+    </div>` : '';
+  const body = rows.length? rows.map(r=>`
+    <tr class="${r.status==='paid'?'paid':''}">
+      <td><span class="pri ${esc(r.priority||'normal')}">${esc(r.priority||'normal')}</span></td>
+      <td><b>${esc(r.vendor||'—')}</b>${r.notes?`<br><small style="color:var(--text-mute)">${esc(String(r.notes).slice(0,64))}</small>`:''}</td>
+      <td>${r.brand?brandTag(r.brand):'—'}</td>
+      <td>${esc(r.invoice_number||'—')}</td>
+      <td class="num">${money(r.amount)}</td>
+      <td>${esc(r.invoice_date||'—')}</td>
+      <td>${esc(r.due_date||'—')}</td>
+      ${ageCell(r)}
+      <td>${esc(r.status)}</td>
+      <td style="white-space:nowrap">
+        ${r.status!=='paid'?`<button class="stx" onclick="paySetStatus('${r.id}','paid')" title="Mark paid">✓</button>`:`<button class="stx" onclick="paySetStatus('${r.id}','unpaid')" title="Reopen">↺</button>`}
+        ${r.status==='unpaid'?`<button class="stx" onclick="paySetStatus('${r.id}','scheduled')" title="Schedule">🗓</button>`:''}
+        <button class="stx" onclick="payEdit('${r.id}')" title="Edit">✎</button>
+        <button class="stx" onclick="payDelete('${r.id}')" title="Delete">🗑</button>
+      </td>
+    </tr>`).join('') : `<tr><td colspan="10" class="empty" style="border:0">No bills ${fS==='paid'?'marked paid':'to pay'} for this view. Invoices emailed to firstgentalent@gmail.com appear here automatically.</td></tr>`;
+  root.innerHTML = form + `<div style="overflow-x:auto"><table>
+    <thead><tr><th>Priority</th><th>Vendor</th><th>Biz</th><th>Invoice #</th><th class="num">Amount</th><th>Sent</th><th>Due</th><th>Age</th><th>Status</th><th></th></tr></thead>
+    <tbody>${body}</tbody></table></div>`;
+}
+
 function renderAll(){
   renderFavNav(); renderFavPanel();
   renderContacts(); renderItems(); renderJobs(); renderDash();
   renderAllSections(); renderIntegrations();
   renderRecent(); renderHealth(); renderGoldeneye(); renderMoola();
+  renderCallNotes(); renderPayables(); renderCashflow();
+}
+
+/* ================================================================
+   Cash Flow command center (owner only) — reads five structured
+   sections Moola publishes each morning:
+     moola_runway     one snapshot/scan: cash, burn, runway, low point
+     moola_balances   one row per bank account / liability (term-bucketed)
+     moola_ar         aged receivables, named
+     moola_ap         payables queue, named, in pay-priority order
+     moola_cashledger dated 90-day inflow/outflow events (confidence-tagged)
+   Every row is brand-tagged, so the workspace switcher filters this view
+   by entity for free (fetchRecords already applies the brand filter).
+   ================================================================ */
+function cfNum(v){ if(v==null) return 0; if(typeof v==='number') return v;
+  const n=parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; }
+function cf$(n){ const x=Math.round(cfNum(n)); return (x<0?'-$':'$')+Math.abs(x).toLocaleString(); }
+function cfLatest(rows){ const d=[...new Set(rows.map(r=>r.fields.scan_date).filter(Boolean))].sort().reverse()[0];
+  return d?rows.filter(r=>r.fields.scan_date===d):rows; }
+function cfBrandChip(b){ const k=(b||'Both').toLowerCase(); const cls=k==='ktu'?'ktu':k==='btu'?'btu':k==='earthwise'||k==='earth'?'earth':'both';
+  return `<span class="cf-chip ${cls}">${esc(b||'Both')}</span>`; }
+
+async function renderCashflow(){
+  const el=document.getElementById('cf_root'); if(!el) return;
+  if(CURRENT_ROLE!=='admin'){ el.innerHTML='<div class="ge-clear">Owner only.</div>'; return; }
+  el.classList.remove('loading');
+  const [balAll,arAll,apAll,ledAll,runAll]=await Promise.all(
+    ['moola_balances','moola_ar','moola_ap','moola_cashledger','moola_runway'].map(fetchRecords));
+  const bal=cfLatest(balAll), ar=cfLatest(arAll), ap=cfLatest(apAll), led=cfLatest(ledAll), run=cfLatest(runAll);
+
+  if(!bal.length && !ar.length && !ap.length && !led.length && !run.length){
+    el.innerHTML='<div class="ge-clear">💤 No cash-flow data yet — Moola publishes the runway, dated ledger, receivables, payables, and balances on her next morning run (6:30am ET). The page fills in automatically once she does.</div>';
+    return;
+  }
+
+  const today=new Date(); today.setHours(0,0,0,0);
+  const staleDate=[...new Set([...bal,...run,...led].map(r=>r.fields.scan_date).filter(Boolean))].sort().reverse()[0];
+  const staleBanner = (staleDate && staleDate < todayStr()) ?
+    `<div class="cf-stale">⏰ Latest scan is <b>${esc(staleDate)}</b>, not today — Moola's morning run may not have completed. Numbers below are from the last successful scan.</div>` : '';
+
+  el.innerHTML = staleBanner
+    + cfKpis(run, bal, ar, ap, led, today)
+    + cfChartCard(led, run, bal, today)
+    + cfLedgerCard(led, today)
+    + cfArCard(ar)
+    + cfApCard(ap)
+    + cfBalanceCard(bal);
+}
+
+function cfKpis(run, bal, ar, ap, led, today){
+  const r=run[0]?run[0].fields:{};
+  const cash = r.total_cash!=null ? cfNum(r.total_cash)
+    : bal.filter(b=>(b.fields.type||'').toLowerCase()==='cash').reduce((s,b)=>s+cfNum(b.fields.balance),0);
+  const runwayWks = r.runway_weeks!=null ? r.runway_weeks : '—';
+  const in30=led.filter(l=>cfDir(l)==='in'&&cfWithin(l.fields.date,today,30)).reduce((s,l)=>s+cfNum(l.fields.amount),0);
+  const out30=led.filter(l=>cfDir(l)==='out'&&cfWithin(l.fields.date,today,30)).reduce((s,l)=>s+cfNum(l.fields.amount),0);
+  const net30 = r.net_30!=null ? cfNum(r.net_30) : (in30-out30);
+  const arTot=ar.reduce((s,a)=>s+cfNum(a.fields.amount),0);
+  const apTot=ap.filter(a=>cfWithin(a.fields.due_date,today,30)).reduce((s,a)=>s+cfNum(a.fields.amount),0);
+  const rw = typeof runwayWks==='number'||/^\d/.test(String(runwayWks));
+  const rwCls = rw ? (cfNum(runwayWks)>=8?'good':cfNum(runwayWks)>=4?'warn':'bad') : '';
+  const lowTxt = r.low_point_balance!=null ? `${cf$(r.low_point_balance)}${r.low_point_date?' · '+esc(r.low_point_date):''}` : '—';
+  const lowCls = r.low_point_balance!=null ? (cfNum(r.low_point_balance)<0?'bad':cfNum(r.low_point_balance)<cfNum(r.weekly_burn)*4?'warn':'good') : '';
+  const K=(label,value,sub,cls)=>`<div class="cf-kpi ${cls||''}"><div class="k-label">${esc(label)}</div><div class="k-value">${value}</div><div class="k-sub">${sub||''}</div></div>`;
+  return `<div class="cf-kpis">
+    ${K('Cash on hand', cf$(cash), 'Operating accounts (excl. LOC)')}
+    ${K('Runway', rw?esc(String(runwayWks))+' wk':'—', r.weekly_burn?('Burn '+cf$(r.weekly_burn)+'/wk'):'8-wk buffer target', rwCls)}
+    ${K('Net · next 30d', (net30>=0?'+':'')+cf$(net30), 'Expected in − out', net30>=0?'good':'bad')}
+    ${K('Lowest point', r.low_point_balance!=null?cf$(r.low_point_balance):'—', r.low_point_date?('hits '+esc(r.low_point_date)):'projected trough', lowCls)}
+    ${K('AR outstanding', cf$(arTot), ar.length+' invoice'+(ar.length===1?'':'s'))}
+    ${K('AP · due 30d', cf$(apTot), ap.length+' payable'+(ap.length===1?'':'s'))}
+  </div>`;
+}
+
+function cfDir(l){ return (l.fields.direction||'').toLowerCase().startsWith('in')?'in':'out'; }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function cfParseDate(s){ if(!s) return null; const d=new Date(String(s).slice(0,10)+'T00:00:00'); return isNaN(d)?null:d; }
+function cfWithin(s,today,days){ const d=cfParseDate(s); if(!d) return false; const diff=(d-today)/86400000; return diff>=-3 && diff<=days; }
+function cfWeekIdx(s,today){ const d=cfParseDate(s); if(!d) return 0; return Math.max(0,Math.min(12,Math.floor((d-today)/604800000))); }
+
+function cfChartCard(led, run, bal, today){
+  if(!led.length){
+    return `<div class="card"><h2>13-week cash flow</h2><div class="ge-clear">No dated cash events yet — Moola builds this from install-keyed inflows and known outflows.</div></div>`;
+  }
+  const r=run[0]?run[0].fields:{};
+  const B0 = r.total_cash!=null ? cfNum(r.total_cash)
+    : bal.filter(b=>(b.fields.type||'').toLowerCase()==='cash').reduce((s,b)=>s+cfNum(b.fields.balance),0);
+  const net=Array(13).fill(0), inW=Array(13).fill(0), outW=Array(13).fill(0);
+  led.forEach(l=>{ const w=cfWeekIdx(l.fields.date,today); const a=cfNum(l.fields.amount);
+    if(cfDir(l)==='in'){ net[w]+=a; inW[w]+=a; } else { net[w]-=a; outW[w]+=a; } });
+  const run$=[]; let acc=B0; for(let w=0;w<13;w++){ acc+=net[w]; run$.push(acc); }
+  const buffer = cfNum(r.weekly_burn)*8;
+  const vals=[...run$, B0, 0]; if(buffer>0) vals.push(buffer);
+  const yMax=Math.max(...vals), yMin=Math.min(...vals);
+  const W=800,H=210, padL=6,padR=10,padT=14,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
+  const span=(yMax-yMin)||1;
+  const X=w=>padL + (w/12)*plotW;
+  const Y=v=>padT + (yMax-v)/span*plotH;
+  // running-balance area + line
+  let area=`M ${X(0)} ${Y(run$[0])}`; run$.forEach((v,w)=>{ area+=` L ${X(w)} ${Y(v)}`; });
+  const line=area;
+  area+=` L ${X(12)} ${Y(yMin)} L ${X(0)} ${Y(yMin)} Z`;
+  const zeroLine = (yMin<0&&yMax>0)?`<line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--text-dim)" stroke-width="1" stroke-dasharray="2 3"/>`:'';
+  const bufLine = buffer>0?`<line x1="${padL}" y1="${Y(buffer)}" x2="${W-padR}" y2="${Y(buffer)}" stroke="var(--warn)" stroke-width="1.2" stroke-dasharray="5 4"/><text x="${W-padR}" y="${Y(buffer)-4}" text-anchor="end" font-size="10" fill="var(--warn)">8-wk buffer ${cf$(buffer)}</text>`:'';
+  // low point marker
+  let loIdx=0; run$.forEach((v,w)=>{ if(v<run$[loIdx]) loIdx=w; });
+  const loDot=`<circle cx="${X(loIdx)}" cy="${Y(run$[loIdx])}" r="4" fill="var(--danger)"/><text x="${X(loIdx)}" y="${Y(run$[loIdx])+ (run$[loIdx]<0?16:-9)}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--danger)">${cf$(run$[loIdx])}</text>`;
+  // week ticks (label every other week)
+  let ticks=''; for(let w=0;w<13;w+=2){ const d=new Date(today.getTime()+w*604800000);
+    const anchor = w===0?'start':w>=12?'end':'middle';
+    ticks+=`<text x="${X(w)}" y="${H-8}" text-anchor="${anchor}" font-size="9.5" fill="var(--text-dim)">${d.getMonth()+1}/${d.getDate()}</text>`; }
+  const svg=`<svg class="cf-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    ${bufLine}${zeroLine}
+    <path d="${area}" fill="rgba(68,104,177,.10)"/>
+    <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    ${loDot}${ticks}
+  </svg>`;
+  return `<div class="card"><h2>13-week cash flow</h2>
+    <div class="cf-sub2">Running cash balance from ${cf$(B0)} today, projected on dated inflows/outflows. Dashed line = 8-week fixed-cost buffer; red dot = projected low point.</div>
+    <div class="cf-chart-wrap">${svg}</div>
+    <div class="cf-legend">
+      <span><span class="cf-swatch" style="background:var(--accent)"></span>Running balance</span>
+      <span><span class="cf-swatch" style="background:var(--warn)"></span>8-week buffer floor</span>
+      <span><span class="cf-swatch" style="background:var(--danger)"></span>Projected low point</span>
+    </div></div>`;
+}
+
+function cfLedgerCard(led, today){
+  if(!led.length) return '';
+  const rows=[...led].sort((a,b)=>String(a.fields.date||'').localeCompare(String(b.fields.date||'')))
+    .filter(l=>{ const d=cfParseDate(l.fields.date); return !d || (d-today)/86400000 <= 92; });
+  const body=rows.map(l=>{const f=l.fields; const dir=cfDir(l); const conf=(f.confidence||'known').toLowerCase();
+    return `<tr>
+      <td>${esc(f.date||'—')}</td>
+      <td>${cfBrandChip(f.brand||f.entity)}</td>
+      <td>${esc(f.counterparty||'—')}<div style="color:var(--text-dim);font-size:11px">${esc(f.category||'')}</div></td>
+      <td><span class="cf-chip ${conf}">${esc(f.confidence||'known')}</span></td>
+      <td class="num ${dir==='in'?'cf-in':'cf-out'}">${dir==='in'?'+':'−'}${cf$(f.amount)}</td>
+    </tr>`;}).join('');
+  return `<div class="card"><h2>Dated cash ledger — next 90 days</h2>
+    <div class="cf-sub2"><b>known</b> = invoice/bill with a set date · <b>projected</b> = install-keyed 40%/10% draw · <b>estimated</b> = historical run-rate spend.</div>
+    <div class="cf-table-wrap"><table class="cf-table">
+      <thead><tr><th>Date</th><th>Entity</th><th>Counterparty</th><th>Confidence</th><th class="num">Amount</th></tr></thead>
+      <tbody>${body}</tbody></table></div></div>`;
+}
+
+function cfArCard(ar){
+  if(!ar.length) return `<div class="card"><h2>Aged receivables</h2><div class="ge-clear">No open receivables tracked yet.</div></div>`;
+  const bucketCls=b=>{ const s=(b||'').toLowerCase(); return s.includes('60')||s.includes('31')?'cf-age-3':s.includes('15')||s.includes('30')?'cf-age-2':s.includes('1')?'cf-age-1':'cf-age-cur'; };
+  const tot=ar.reduce((s,a)=>s+cfNum(a.fields.amount),0);
+  const over30=ar.filter(a=>cfNum(a.fields.age_days)>30).reduce((s,a)=>s+cfNum(a.fields.amount),0);
+  const rows=[...ar].sort((a,b)=>cfNum(b.fields.age_days)-cfNum(a.fields.age_days)).map(a=>{const f=a.fields;
+    return `<tr>
+      <td>${esc(f.customer||'—')}${cfBrandChip(f.brand||f.entity)}</td>
+      <td>${esc(f.tranche||'—')}</td>
+      <td>${esc(f.due_date||'—')}</td>
+      <td class="${bucketCls(f.bucket)}">${esc(f.bucket||(f.age_days!=null?f.age_days+'d':'—'))}</td>
+      <td>${esc(f.action||'')}</td>
+      <td class="num">${cf$(f.amount)}</td>
+    </tr>`;}).join('');
+  return `<div class="card"><h2>Aged receivables — who owes you</h2>
+    <div class="cf-sub2">Total open <b>${cf$(tot)}</b>${over30>0?` · <span style="color:var(--danger)">${cf$(over30)} aged >30 days</span>`:''}</div>
+    <div class="cf-table-wrap"><table class="cf-table">
+      <thead><tr><th>Customer</th><th>Tranche</th><th>Due</th><th>Age</th><th>Action</th><th class="num">Amount</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></div>`;
+}
+
+function cfApCard(ap){
+  if(!ap.length) return `<div class="card"><h2>Payables queue</h2><div class="ge-clear">No payables tracked yet.</div></div>`;
+  const tot=ap.reduce((s,a)=>s+cfNum(a.fields.amount),0);
+  const rows=[...ap].sort((a,b)=>cfNum(a.fields.pay_rank||99)-cfNum(b.fields.pay_rank||99)).map(a=>{const f=a.fields;
+    return `<tr>
+      <td>${f.pay_rank?'<b>#'+esc(f.pay_rank)+'</b> ':''}${esc(f.vendor||'—')}${cfBrandChip(f.brand||f.entity)}</td>
+      <td>${esc(f.due_date||'—')}</td>
+      <td>${esc(f.terms||f.note||'')}</td>
+      <td class="num">${cf$(f.amount)}</td>
+    </tr>`;}).join('');
+  return `<div class="card"><h2>Payables queue — who you owe (pay order)</h2>
+    <div class="cf-sub2">Total queued <b>${cf$(tot)}</b> · ranked by lien/late-fee risk, then discounts worth taking, then job-critical vendors.</div>
+    <div class="cf-table-wrap"><table class="cf-table">
+      <thead><tr><th>Vendor</th><th>Pay by</th><th>Terms / note</th><th class="num">Amount</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></div>`;
+}
+
+function cfBalanceCard(bal){
+  if(!bal.length) return `<div class="card"><h2>Bank &amp; liability balances</h2><div class="ge-clear">No balances published yet.</div></div>`;
+  const cash=bal.filter(b=>(b.fields.type||'').toLowerCase()==='cash');
+  const liabs=bal.filter(b=>(b.fields.type||'').toLowerCase()!=='cash');
+  const cashTot=cash.reduce((s,b)=>s+cfNum(b.fields.balance),0);
+  const cashRows=cash.map(b=>{const f=b.fields; const d=cfNum(f.wow_delta);
+    return `<tr>
+      <td>${esc(f.institution||f.account||'—')}${cfBrandChip(f.brand||f.entity)}</td>
+      <td>${esc(f.account||'')}</td>
+      <td class="num">${cf$(f.balance)}</td>
+      <td class="num" style="color:${d>0?'var(--success)':d<0?'var(--danger)':'var(--text-dim)'}">${d?(d>0?'+':'')+cf$(d):'—'}</td>
+    </tr>`;}).join('');
+  const cashTable=`<table class="cf-table">
+    <thead><tr><th>Account</th><th>Detail</th><th class="num">Balance</th><th class="num">WoW Δ</th></tr></thead>
+    <tbody>${cashRows}<tr><td colspan="2"><b>Total cash</b></td><td class="num"><b>${cf$(cashTot)}</b></td><td></td></tr></tbody></table>`;
+
+  const termOrder={short:0,medium:1,long:2};
+  const termLabel={short:'Short-term (&lt;1 yr) — cards, LOC draws, accruals',medium:'Medium-term (1–3 yr)',long:'Long-term (&gt;3 yr) — SBA / term debt'};
+  const groups={short:[],medium:[],long:[],other:[]};
+  liabs.forEach(b=>{ const t=(b.fields.term||'other').toLowerCase(); (groups[t]||groups.other).push(b); });
+  let liabTot=0, liabHtml='';
+  ['short','medium','long','other'].forEach(t=>{ const g=groups[t]; if(!g.length) return;
+    const gt=g.reduce((s,b)=>s+cfNum(b.fields.balance),0); liabTot+=gt;
+    liabHtml+=`<div class="cf-term-h"><span>${t==='other'?'Unclassified':termLabel[t]}</span><span class="t-tot">${cf$(gt)}</span></div>`;
+    liabHtml+=`<div class="cf-table-wrap"><table class="cf-table">
+      <thead><tr><th>Facility</th><th>Type</th><th class="num">Balance</th><th class="num">APR</th><th class="num">Int/mo</th><th>Next pmt</th></tr></thead>
+      <tbody>${g.sort((a,b)=>cfNum(b.fields.apr)-cfNum(a.fields.apr)).map(b=>{const f=b.fields;
+        return `<tr>
+          <td>${esc(f.institution||f.account||'—')}${cfBrandChip(f.brand||f.entity)}${f.available?`<div style="color:var(--text-dim);font-size:11px">${cf$(f.available)} available</div>`:''}</td>
+          <td>${esc(f.type||'—')}</td>
+          <td class="num">${cf$(f.balance)}</td>
+          <td class="num">${f.apr?esc(String(f.apr)):'—'}</td>
+          <td class="num">${f.monthly_interest?cf$(f.monthly_interest):'—'}</td>
+          <td>${esc(f.next_payment||'—')}${f.min_due?`<div style="color:var(--text-dim);font-size:11px">min ${cf$(f.min_due)}</div>`:''}</td>
+        </tr>`;}).join('')}</tbody></table></div>`;
+  });
+
+  return `<div class="card"><h2>Bank &amp; liability balances</h2>
+    <div class="cf-sub2">Cash = operating deposit accounts only. Lines of credit show drawn balance with available credit separately — never counted as cash.</div>
+    <div class="cf-table-wrap">${cashTable}</div>
+    <div class="cf-term-h" style="margin-top:20px;font-size:13px"><span>Liabilities by term</span><span class="t-tot">Total owed ${cf$(liabTot)}</span></div>
+    ${liabHtml}
+  </div>`;
 }
 
 /* ================================================================
@@ -3511,7 +4435,15 @@ async function renderClients(){
   const list=rows.filter(r=>{const f=r.fields;if(CLI_FILTER==='KTU'||CLI_FILTER==='BTU')return f.brand===CLI_FILTER;if(CLI_FILTER==='flagged')return f.flags;return true;});
   if(!list.length){root.innerHTML='<div class="empty">No client rows yet — the sync agent seeds this daily from ServiceMinder + JobTread.</div>';return;}
   const totOut=list.reduce((s,r)=>s+(Number(r.fields.outstanding)||0),0);
+  // Outstanding-by-brand mini chart (identity → brand hues, direct labels)
+  const byB={}; list.forEach(r=>{const b=r.fields.brand||'—'; byB[b]=(byB[b]||0)+(Number(r.fields.outstanding)||0);});
+  const bEnts=Object.entries(byB).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  const bMax=Math.max(1,...bEnts.map(([,v])=>v));
+  const brandBars=bEnts.length>1?`<div style="max-width:440px;margin-bottom:14px">
+    <div class="chart-title">Outstanding by brand</div>
+    ${bEnts.map(([b,v])=>cbarRow(b,v,bMax,CHART_HUES[b]||'var(--accent)',fmt$(v))).join('')}</div>`:'';
   root.innerHTML=`<div class="sub" style="margin-bottom:8px"><b>${list.length}</b> clients · <b>${fmt$(totOut)}</b> outstanding${list[0]?.fields?.scan_date?` · as of ${esc(list[0].fields.scan_date)}`:''}</div>
+  ${brandBars}
   <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Client</th><th>Brand</th><th>Stage</th><th class="num">Contract</th><th class="num">Paid</th><th class="num">Outstanding</th><th>Last payment</th><th>JT #</th><th>Flags</th><th></th></tr></thead><tbody>
   ${list.map(r=>{const f=r.fields;return `<tr>
     <td><b>${esc(f.client||'—')}</b><br><small style="color:var(--text-mute)">${esc(f.service||'')}</small></td>
@@ -3599,18 +4531,28 @@ async function renderProjects(){
   if(PROJ_FILTER==='gate') list=list.filter(r=>{const g=gateByProject[r.fields.project];return g&&g.gate_status&&g.gate_status.toLowerCase()!=='pass';});
   if(!list.length){root.innerHTML='<div class="empty">No project rows yet — Foreman seeds this daily from JobTread + ServiceMinder + CompanyCam.</div>';return;}
   root.innerHTML=`<div class="sub" style="margin-bottom:8px"><b>${list.length}</b> active project${list.length>1?'s':''}${board[0]?.fields?.scan_date?` · as of ${esc(board[0].fields.scan_date)}`:''}</div>
-  <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Project</th><th>Brand</th><th>Stage</th><th>Pace</th><th class="num">Est. GP%</th><th class="num">Actual GP%</th><th>Gate</th><th>Vendor</th></tr></thead><tbody>
+  <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Project</th><th>Brand</th><th>Stage</th><th>Pace</th><th>Timeline</th><th class="num">Est. GP%</th><th class="num">Actual GP%</th><th>Gate</th><th>Vendor</th></tr></thead><tbody>
   ${list.map(r=>{const f=r.fields;const g=gateByProject[f.project];const vFlags=vendorFlagByProject[f.project]||0;
     return `<tr>
     <td><a href="javascript:void(0)" onclick="openProjectDetail(${JSON.stringify(f.project||'')})"><b>${esc(f.project||'—')}</b></a>${f.scope_summary?`<br><small style="color:var(--text-mute)">${esc(String(f.scope_summary).slice(0,70))}</small>`:''}</td>
     <td>${esc(f.brand||'')}</td>
     <td>${stageBadge(f.stage)}</td>
     <td>${esc(f.status||'')} ${f.variance?`<small style="color:var(--text-mute)">${esc(f.variance)}</small>`:''}</td>
+    <td>${timelineBadge(f)}</td>
     <td class="num">${pct(f.estimated_gp_pct)}${coverageNote(f.estimated_cost_coverage_pct)}</td>
     <td class="num">${pct(f.actual_gp_pct)}${coverageNote(f.actual_cost_coverage_pct)}</td>
     <td>${g?(g.gate_status==='Pass'?'✅':'⚠️ '+esc(g.gate_status||'')):'—'}</td>
     <td>${vFlags?`<span class="ax-pill overdue">🚚 ${vFlags}</span>`:'—'}</td>
   </tr>`;}).join('')}</tbody></table></div>`;
+}
+const TIMELINE_LABEL={within_timeline:'🟢 Within timeline',at_risk:'🟡 At risk',overrun:'🔴 Overrun'};
+const TIMELINE_CLASS={within_timeline:'complete',at_risk:'production',overrun:'overdue'};
+function timelineBadge(f){
+  if(!f.install_started) return '<span class="ax-pill proposal">Pre-install</span>';
+  const label=TIMELINE_LABEL[f.timeline_status]||'—';
+  const cls=TIMELINE_CLASS[f.timeline_status]||'proposal';
+  const tip=[f.pm_comment,f.timeline_goal?`Goal: ${f.timeline_goal}`:'',f.goal_note].filter(Boolean).join(' — ');
+  return `<span class="ax-pill ${cls}" title="${esc(tip)}">${esc(label)}</span>`;
 }
 const COST_CATS=['Materials','Labor','Other'];
 async function projCtx(project){
@@ -3636,7 +4578,38 @@ function ledgerTotals(ctx){
 const PROJ_SECTIONS={
   scope:{label:'Scope & stage',render:c=>`<div class="sec-title">Scope &amp; stage</div>${stageProgressBar(c.f.stage)}${c.f.scope_summary?`<div class="sub"><b>Scope:</b> ${esc(c.f.scope_summary)}</div>`:'<div class="sub">No scope summary on file.</div>'}`},
   pace:{label:'Timeline & pace',render:c=>`<div class="sec-title">Timeline &amp; pace</div><div class="sub">${esc(c.f.status||'—')} · phase <b>${esc(c.f.phase||'—')}</b> · ${esc(c.f.days_in_phase||'—')} days in phase (target ${esc(c.f.target||'—')})${c.f.variance?` · ${esc(c.f.variance)}`:''}</div>${c.f.action?`<div class="sub"><b>Next step:</b> ${esc(c.f.action)}</div>`:''}`},
+  install:{label:'Install progress & timeline goal',render:c=>{
+    const f=c.f;
+    if(!f.install_started){
+      return `<div class="sec-title">Install progress &amp; timeline goal</div><div class="sub">Not in production yet — this section fills in once Foreman confirms the install date has passed.</div>`;
+    }
+    const badge=timelineBadge(f);
+    const goalRow = f.goal_assessment
+      ? `<div class="sub" style="margin-top:6px"><b>Goal check:</b> ${esc({on_track_for_goal:'✅ on track',tight_but_possible:'⚠️ tight but possible',not_doable:'🔴 not doable'}[f.goal_assessment]||f.goal_assessment)}${f.goal_note?` — ${esc(f.goal_note)}`:''}</div>`
+      : '';
+    return `<div class="sec-title">Install progress &amp; timeline goal</div>
+    <div class="sub">${badge} · install started ${esc(f.install_date||'—')}</div>
+    ${f.pm_comment?`<div class="sub" style="margin-top:6px"><b>Foreman's read:</b> ${esc(f.pm_comment)}</div>`:''}
+    <div style="display:flex;gap:6px;align-items:center;margin-top:10px">
+      <label class="hint" style="margin:0">Timeline goal</label>
+      <input id="tgInput_${esc(c.project).replace(/[^a-zA-Z0-9]/g,'_')}" placeholder="e.g. finish by 8/15" value="${esc(f.timeline_goal||'')}" style="flex:1;min-width:140px">
+      <button class="btn sm" onclick='saveTimelineGoal(${JSON.stringify(c.project)})'>Save</button>
+    </div>
+    <div class="sub" style="margin-top:4px;color:var(--text-mute)">Foreman checks this against known pace, remaining scope, and the vendor cycle on the next sweep.</div>
+    ${goalRow}`;
+  }},
   vendor:{label:'Vendor & materials status',render:c=>`<div class="sec-title">Vendor &amp; materials</div>${c.vItems.length?c.vItems.map(v=>`<div class="sub" style="margin-bottom:4px">${v.flag?'🚩 ':''}<b>${esc(v.vendor||'')}</b> — ${esc(v.item||'')} · ${esc(v.status||'')}${v.eta?` · ETA ${esc(v.eta)}`:''}${v.flag?`<br><small>${esc(v.flag)}</small>`:''}</div>`).join(''):'<div class="sub">No open vendor orders on file.</div>'}`},
+  design:{label:'Design review & scope/budget',render:c=>{
+    const f=c.f;
+    const has=f.design_review||f.scope_budget_review||f.design_packet||f.design_status;
+    if(!has) return `<div class="sec-title">Design review &amp; scope/budget</div><div class="sub">No design packet reviewed yet — Foreman reviews CAD/materials packets emailed in and posts feedback here.</div>`;
+    const st={aligned:'✅ Design, scope &amp; price aligned',issues:'⚠️ Scope/budget issues',awaiting:'⏳ Awaiting design packet'}[f.design_status]||'';
+    return `<div class="sec-title">Design review &amp; scope/budget <small style="color:var(--text-mute)">(Foreman ↔ Moola)</small></div>
+    ${st?`<div class="sub">${st}</div>`:''}
+    ${f.design_packet?`<div class="sub" style="color:var(--text-mute)">Packet on file: ${esc(f.design_packet)}</div>`:''}
+    ${f.design_review?`<div class="sub" style="margin-top:6px"><b>Design feedback:</b> ${esc(f.design_review)}</div>`:''}
+    ${f.scope_budget_review?`<div class="sub" style="margin-top:6px"><b>Budget &amp; scope:</b> ${esc(f.scope_budget_review)}</div>`:''}`;
+  }},
   gate:{label:'Production Gate',render:c=>`<div class="sec-title">Production Gate</div><div class="sub">${c.g?`${c.g.gate_status==='Pass'?'✅ Pass':'⚠️ '+esc(c.g.gate_status||'Returned')}${c.g.missing?` — missing: ${esc(c.g.missing)}`:''}${c.g.owner?` · owner ${esc(c.g.owner)}`:''}${c.g.age?` · ${esc(c.g.age)} days outstanding`:''}`:'No gate exposure on file.'}</div>`},
   ledger:{label:'Job cost ledger (line items)',render:(c,opts={})=>{
     const t=ledgerTotals(c);
@@ -3680,7 +4653,7 @@ async function openProjectDetail(project){
   const c=await projCtx(project);
   const bg=document.createElement('div');bg.className='ax-modal-bg';bg.onclick=e=>{if(e.target===bg)bg.remove();};
   bg.dataset.project=project;
-  const order=['scope','pace','margins','ledger','pricing','payments','gate','vendor'];
+  const order=['scope','pace','install','design','margins','ledger','pricing','payments','gate','vendor'];
   bg.innerHTML=`<div class="ax-modal" style="max-width:680px">
     <h3>${esc(project)} <small style="color:var(--text-mute)">(${esc(c.f.brand||c.cli.brand||'')})</small></h3>
     ${c.flags.length?c.flags.map(fl=>`<div class="ax-pill overdue" style="display:block;margin-bottom:6px;white-space:normal;text-align:left">${esc(fl.title||'')}<br><small>${esc(fl.detail||'')}</small></div>`).join(''):''}
@@ -3717,6 +4690,17 @@ async function deleteJobCost(id,project){
   if(!confirm('Delete this cost entry?'))return;
   const {error}=await sb.from('intranet_records').delete().eq('id',id);
   if(error){toast(error.message,1);return;}
+  refreshProjectDetail(project);
+}
+async function saveTimelineGoal(project){
+  const inputId='tgInput_'+String(project).replace(/[^a-zA-Z0-9]/g,'_');
+  const goal=val(inputId);
+  const row=(window._PROJ_DATA?.board||[]).find(r=>r.fields.project===project);
+  if(!row){toast('Could not find this project\'s row — try refreshing.',1);return;}
+  const fields={...row.fields, timeline_goal: goal||null};
+  const {error}=await sb.from('intranet_records').update({fields}).eq('id',row.id);
+  if(error){toast('Failed: '+error.message,1);return;}
+  toast(goal?'Timeline goal saved — Foreman checks it on the next sweep.':'Timeline goal cleared.');
   refreshProjectDetail(project);
 }
 function applyProjPreset(k){
@@ -3857,6 +4841,181 @@ function linkifyTechNodes(rows){
   });
 }
 
+/* ---------- Resources (logins, weblinks, Google Drive) ---------- */
+let RES_EDIT=null, RES_FILTER='all';
+async function addResource(){
+  const label=val('resLabel'); if(!label){toast('Name it first.',1);return;}
+  const r={label,category:val('resCategory')||'Other',brand:val('resBrand')||'Both',
+    url:val('resUrl')||null,username:val('resUser')||null,password:val('resPass')||null,notes:val('resNotes')||null,
+    created_by:user?.id||null,created_by_name:(prof&&prof.display_name)||(user&&user.email)||null};
+  const {error}=await sb.from('resources').insert(r);
+  if(error){toast('Failed: '+error.message,1);return;}
+  ['resLabel','resUrl','resUser','resPass','resNotes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  toast('Resource added.');renderResources();
+}
+function editResource(id){ RES_EDIT=id; renderResources(); }
+async function saveResource(id){
+  const fields={label:val('rl_'+id),url:val('ru_'+id)||null,username:val('rn_'+id)||null,password:val('rp_'+id)||null,
+    category:document.getElementById('rc_'+id).value,brand:document.getElementById('rb_'+id).value,notes:val('rt_'+id)||null};
+  const {error}=await sb.from('resources').update(fields).eq('id',id);
+  if(error){toast(error.message,1);return;}
+  RES_EDIT=null;toast('Saved.');renderResources();
+}
+async function deleteResource(id){
+  if(!confirm('Remove this resource?'))return;
+  const {error}=await sb.from('resources').delete().eq('id',id);
+  if(error){toast(error.message,1);return;}
+  renderResources();
+}
+async function renderResources(){
+  const root=document.getElementById('resources_root'); if(!root) return;
+  const {data,error}=await sb.from('resources').select('*').order('category',{ascending:true}).order('label',{ascending:true});
+  if(error){root.innerHTML=`<div class="empty">Resources table not reachable: ${esc(error.message)}</div>`;return;}
+  // Scope to the active workspace, same rule the rest of the app uses (see fetchRecords).
+  const brands=wsBrands();
+  const rows=(data||[]).filter(r=>!brands||!r.brand||brands.includes(r.brand));
+  const cats=['all',...new Set(rows.map(r=>r.category).filter(Boolean))];
+  document.getElementById('resFilters').innerHTML=cats.map(c=>`<button class="fbtn ${RES_FILTER===c?'active':''}" onclick="RES_FILTER='${esc(c)}';renderResources()">${c==='all'?'All':esc(c)}</button>`).join('');
+  const shown=RES_FILTER==='all'?rows:rows.filter(r=>r.category===RES_FILTER);
+  if(!shown.length){root.innerHTML='<div class="empty">Nothing here yet. Add a login, weblink, or Drive folder above.</div>';return;}
+  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr><th>Name</th><th>Category</th><th>Brand</th><th>Link</th><th>Username</th><th>Password</th><th>Notes</th><th></th></tr></thead><tbody>
+  ${shown.map(r=>{
+    if(RES_EDIT===r.id){
+      return `<tr>
+        <td><input class="f" id="rl_${r.id}" value="${esc(r.label)}"></td>
+        <td><select class="f" id="rc_${r.id}">${['Software Login','Google Drive','Weblink','Other'].map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}</select></td>
+        <td><select class="f" id="rb_${r.id}">${['Both','KTU','BTU','Earthwise'].map(b=>`<option ${b===r.brand?'selected':''}>${b}</option>`).join('')}</select></td>
+        <td><input class="f" id="ru_${r.id}" value="${esc(r.url)}"></td>
+        <td><input class="f" id="rn_${r.id}" value="${esc(r.username)}"></td>
+        <td><input class="f" id="rp_${r.id}" value="${esc(r.password)}"></td>
+        <td><input class="f" id="rt_${r.id}" value="${esc(r.notes)}"></td>
+        <td class="row-actions"><button class="btn sm" onclick="saveResource('${r.id}')">Save</button> <button class="btn sm ghost" onclick="RES_EDIT=null;renderResources()">✕</button></td></tr>`;
+    }
+    return `<tr>
+      <td><b>${esc(r.label)}</b></td>
+      <td><small style="color:var(--text-mute)">${esc(r.category||'')}</small></td>
+      <td>${brandTag(r.brand)}</td>
+      <td>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">Open ↗</a>`:'—'}</td>
+      <td>${r.username?esc(r.username):'—'}</td>
+      <td>${r.password?`<span class="pwmask" data-pw="${esc(r.password)}" onclick="togglePw(this)" style="cursor:pointer" title="Click to reveal">••••••</span>`:'—'}</td>
+      <td><small style="color:var(--text-mute)">${esc(r.notes||'')}</small></td>
+      <td class="row-actions" style="white-space:nowrap"><button class="btn sm ghost" onclick="editResource('${r.id}')">✎</button> <button class="btn sm danger" onclick="deleteResource('${r.id}')">🗑</button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+/* ---------- Library (Google Drive map — categorized + searchable) ---------- */
+let LIB_FILTER='all';
+function libIcon(t){
+  const s=(t||'').toLowerCase();
+  if(s.includes('folder')) return '📁';
+  if(s.includes('spreadsheet')||s.includes('excel')||s.includes('sheet')) return '📊';
+  if(s.includes('document')||s.includes('word')||s.includes('doc')) return '📄';
+  if(s.includes('presentation')||s.includes('slide')) return '📽️';
+  if(s.includes('pdf')) return '📕';
+  if(s.includes('image')||s.includes('photo')||s.includes('png')||s.includes('jpg')) return '🖼️';
+  if(s.includes('video')) return '🎬';
+  return '🔗';
+}
+async function renderLibrary(){
+  const root=document.getElementById('library_root'); if(!root) return;
+  const q=(val('libSearch')||'').toLowerCase();
+  const rows=await fetchRecords('library_docs');   // workspace-scoped like everything else
+  const cnt=document.getElementById('libCount');
+  if(!rows.length){
+    root.innerHTML='<div class="empty">The Librarian hasn’t mapped the Drive yet. It scans every Monday and files everything here — check back after the next run, or fire it from the agents list.</div>';
+    if(cnt) cnt.textContent=''; document.getElementById('libFilters').innerHTML=''; return;
+  }
+  // Category chips (Drive's numbered top-level folders become the categories)
+  const cats=[...new Set(rows.map(r=>r.fields.category).filter(Boolean))].sort();
+  document.getElementById('libFilters').innerHTML=
+    [['all','All']].concat(cats.map(c=>[c,c])).map(([k,l])=>
+      `<button class="fbtn ${LIB_FILTER===k?'active':''}" onclick="LIB_FILTER=${JSON.stringify(k)};renderLibrary()">${esc(l)}</button>`).join('');
+  // Filter + search
+  let show=LIB_FILTER==='all'?rows:rows.filter(r=>r.fields.category===LIB_FILTER);
+  if(q) show=show.filter(r=>JSON.stringify(r.fields).toLowerCase().includes(q));
+  if(cnt) cnt.textContent=`${show.length} item${show.length===1?'':'s'}${LIB_FILTER!=='all'?' · '+LIB_FILTER:''}`;
+  if(!show.length){ root.innerHTML='<div class="empty">No documents match — try a different search or category.</div>'; return; }
+  // Group by category, then render clean link rows
+  const groups={}; show.forEach(r=>{const c=r.fields.category||'Uncategorized';(groups[c]=groups[c]||[]).push(r);});
+  root.innerHTML=Object.keys(groups).sort().map(cat=>{
+    const items=groups[cat].sort((a,b)=>String(a.fields.title||'').localeCompare(String(b.fields.title||'')));
+    return `<div class="sec-title">${esc(cat)} <span style="color:var(--text-dim);font-weight:500">· ${items.length}</span></div>
+      <div class="doc-grid">${items.map(r=>{const f=r.fields;
+        const href=f.url||'#';
+        return `<a class="doc-link" href="${esc(href)}" target="_blank" rel="noopener">
+          <div class="ico">${libIcon(f.file_type)}</div>
+          <div class="body"><div class="t">${esc(f.title||'Untitled')}${f.mapped_to?` <small style="color:var(--accent)">→ ${esc(f.mapped_to)}</small>`:''}</div>
+          <div class="d">${esc(f.description||f.subcategory||f.drive_folder||'')}${f.updated?` · ${esc(f.updated)}`:''}</div></div>
+        </a>`;}).join('')}</div>`;
+  }).join('');
+}
+
+/* ---------- Subcontractors & Trades (editable list) ---------- */
+let TR_EDIT=null, TR_FILTER='all';
+function tradeContact(f){ // prefer structured, fall back to legacy free-text
+  const parts=[f.phone,f.email].filter(Boolean);
+  return parts.length?parts.join(' · '):(f.contact||'');
+}
+async function addTrade(){
+  const name=val('trName'); if(!name){toast('Name it first.',1);return;}
+  const phone=val('trPhone')||null, email=val('trEmail')||null;
+  const fields={name,service:val('trService')||null,phone,email,
+    contact:[phone,email].filter(Boolean).join(' · ')||null,
+    drive_url:val('trDrive')||null,notes:val('trNotes')||null,source:'intranet'};
+  const {error}=await sb.from('intranet_records').insert({section:'trades',brand:val('trBrand')||'Both',sort_order:await nextSortOrder('trades'),fields});
+  if(error){toast('Failed: '+error.message,1);return;}
+  ['trName','trService','trPhone','trEmail','trDrive','trNotes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  toast('Added.');renderTrades();
+}
+function editTrade(id){ TR_EDIT=id; renderTrades(); }
+async function saveTrade(id){
+  const phone=val('ts_phone_'+id)||null, email=val('ts_email_'+id)||null;
+  const {data:cur}=await sb.from('intranet_records').select('fields').eq('id',id).single();
+  const fields=Object.assign({},cur?.fields||{},{name:val('ts_name_'+id),service:val('ts_service_'+id)||null,
+    phone,email,contact:[phone,email].filter(Boolean).join(' · ')||null,
+    drive_url:val('ts_drive_'+id)||null,notes:val('ts_notes_'+id)||null});
+  const brand=document.getElementById('ts_brand_'+id).value;
+  const {error}=await sb.from('intranet_records').update({fields,brand}).eq('id',id);
+  if(error){toast(error.message,1);return;}
+  TR_EDIT=null;toast('Saved.');renderTrades();
+}
+async function deleteTrade(id){
+  if(!confirm('Remove this subcontractor?'))return;
+  const {error}=await sb.from('intranet_records').delete().eq('id',id);
+  if(error){toast(error.message,1);return;}
+  renderTrades();
+}
+async function renderTrades(){
+  const root=document.getElementById('trades_root'); if(!root) return;
+  const rows=await fetchRecords('trades');   // workspace-scoped
+  const trades=['all',...new Set(rows.map(r=>r.fields.service).filter(Boolean))];
+  const fEl=document.getElementById('trFilters');
+  if(fEl) fEl.innerHTML=trades.map(t=>`<button class="fbtn ${TR_FILTER===t?'active':''}" onclick="TR_FILTER=${JSON.stringify(t)};renderTrades()">${t==='all'?'All':esc(t)}</button>`).join('');
+  const shown=TR_FILTER==='all'?rows:rows.filter(r=>r.fields.service===TR_FILTER);
+  if(!shown.length){root.innerHTML='<div class="empty">No subs yet. Add one above.</div>';return;}
+  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr><th>Name / company</th><th>Trade</th><th>Contact</th><th>Files</th><th>Brand</th><th>Notes</th><th></th></tr></thead><tbody>
+  ${shown.map(r=>{const f=r.fields;
+    if(TR_EDIT===r.id){
+      return `<tr>
+        <td><input class="f" id="ts_name_${r.id}" value="${esc(f.name)}"></td>
+        <td><input class="f" id="ts_service_${r.id}" value="${esc(f.service)}"></td>
+        <td><input class="f" id="ts_phone_${r.id}" placeholder="Phone" value="${esc(f.phone)}"><input class="f" id="ts_email_${r.id}" placeholder="Email" value="${esc(f.email)}" style="margin-top:4px"></td>
+        <td><input class="f" id="ts_drive_${r.id}" placeholder="Drive link" value="${esc(f.drive_url)}"></td>
+        <td><select class="f" id="ts_brand_${r.id}">${['Both','KTU','BTU'].map(b=>`<option ${b===r.brand?'selected':''}>${b}</option>`).join('')}</select></td>
+        <td><input class="f" id="ts_notes_${r.id}" value="${esc(f.notes)}"></td>
+        <td class="row-actions" style="white-space:nowrap"><button class="btn sm" onclick="saveTrade('${r.id}')">Save</button> <button class="btn sm ghost" onclick="TR_EDIT=null;renderTrades()">✕</button></td></tr>`;
+    }
+    return `<tr>
+      <td><b>${esc(f.name)}</b></td>
+      <td>${esc(f.service)||'—'}</td>
+      <td>${esc(tradeContact(f))||'—'}</td>
+      <td>${f.drive_url?`<a href="${esc(f.drive_url)}" target="_blank" rel="noopener">📁 Open</a>`:'—'}</td>
+      <td>${brandTag(r.brand)}</td>
+      <td><small style="color:var(--text-mute)">${esc(f.notes||'')}</small></td>
+      <td class="row-actions" style="white-space:nowrap"><button class="btn sm ghost" onclick="editTrade('${r.id}')">✎</button> <button class="btn sm danger" onclick="deleteTrade('${r.id}')">🗑</button></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
 /* ---------- Tasks & follow-ups ---------- */
 async function taskAssignees(){
   const [team,profs]=await Promise.all([fetchRecords('team'),sb.from('profiles').select('email,display_name').then(r=>r.data||[])]);
@@ -3871,12 +5030,14 @@ async function renderTasks(){
   if(sel && !sel.options.length) sel.innerHTML=ppl.map(p=>`<option value="${esc(p.name)}" data-email="${esc(p.email||'')}">${esc(p.name)}</option>`).join('');
   const {data,error}=await sb.from('team_tasks').select('*').order('created_at',{ascending:false}).limit(200);
   if(error){openRoot.innerHTML=`<div class="empty">Tasks table not reachable: ${esc(error.message)}</div>`;document.getElementById('tasksDoneRoot').innerHTML='';return;}
-  const open=(data||[]).filter(t=>t.status==='open'||t.status==='in_progress');
-  const done=(data||[]).filter(t=>t.status==='done').slice(0,10);
+  const scoped=(data||[]).filter(t=>inWs(t.brand));   // workspace switcher applies here too
+  const open=scoped.filter(t=>t.status==='open'||t.status==='in_progress');
+  const done=scoped.filter(t=>t.status==='done').slice(0,10);
+  const CADENCE_LBL={daily:'Daily',weekly:'Weekly',monthly:'Monthly'};
   const row=t=>{const late=t.due_date&&t.status!=='done'&&new Date(t.due_date)<new Date();return `<tr>
-    <td><b>${esc(t.title)}</b>${t.detail?`<br><small style="color:var(--text-mute)">${esc(t.detail)}</small>`:''}</td>
+    <td><b>${esc(t.title)}</b>${t.detail?`<br><small style="color:var(--text-mute)">${esc(t.detail)}</small>`:''}${t.drive_url?` <a href="${esc(t.drive_url)}" target="_blank" rel="noopener" title="Open linked Drive file">📎</a>`:''}</td>
     <td>${esc(t.assignee)}</td><td>${esc(t.brand||'Both')}</td>
-    <td>${t.due_date?`<span class="${late?'ax-pill overdue':''}">${esc(t.due_date)}</span>`:'—'}</td>
+    <td>${t.due_date?`<span class="${late?'ax-pill overdue':''}">${esc(t.due_date)}</span>`:'—'}${t.cadence&&t.cadence!=='once'?`<br><small style="color:var(--text-mute)">↻ ${CADENCE_LBL[t.cadence]||esc(t.cadence)}</small>`:''}</td>
     <td><small style="color:var(--text-mute)">${esc(t.created_by_name||'')}</small></td>
     <td style="white-space:nowrap">${t.status!=='done'?`<button class="btn sm ghost" onclick="remindTask('${t.id}')" title="Ping ${esc(t.assignee)} again on Slack + email">🔔 Remind</button> <button class="btn sm ghost" onclick="setTaskStatus('${t.id}','done')">✓ Done</button>`:''}</td></tr>`;};
   openRoot.innerHTML=open.length?`<div style="overflow-x:auto"><table class="btable"><thead><tr><th>Task</th><th>Assignee</th><th>Brand</th><th>Due</th><th>By</th><th></th></tr></thead><tbody>${open.map(row).join('')}</tbody></table></div>`:'<div class="empty">Nothing open. Assign something above.</div>';
@@ -3886,15 +5047,37 @@ async function createTask(){
   const title=val('tkTitle');if(!title){toast('Give the task a title.',1);return;}
   const sel=document.getElementById('tkAssignee');const opt=sel.options[sel.selectedIndex];
   const t={title,detail:val('tkDetail')||null,assignee:sel.value,assignee_email:opt?opt.dataset.email||null:null,
-    due_date:val('tkDue')||null,brand:val('tkBrand')||'Both',created_by:user?.id||null,created_by_name:(prof&&prof.display_name)||(user&&user.email)||null};
+    due_date:val('tkDue')||null,brand:val('tkBrand')||'Both',cadence:val('tkCadence')||'once',drive_url:val('tkDrive')||null,
+    created_by:user?.id||null,created_by_name:(prof&&prof.display_name)||(user&&user.email)||null};
   const {error}=await sb.from('team_tasks').insert(t);
   if(error){toast('Failed: '+error.message,1);return;}
-  ['tkTitle','tkDetail','tkDue'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['tkTitle','tkDetail','tkDue','tkDrive'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   toast(`Assigned to ${t.assignee} — Slack + email ping queued.`);renderTasks();
 }
+function nextCadenceDate(dateStr,cadence){
+  const d=new Date(dateStr+'T00:00:00');
+  if(cadence==='daily') d.setDate(d.getDate()+1);
+  else if(cadence==='weekly') d.setDate(d.getDate()+7);
+  else if(cadence==='monthly') d.setMonth(d.getMonth()+1);
+  else return null;
+  return d.toISOString().slice(0,10);
+}
 async function setTaskStatus(id,status){
+  const {data:t,error:e0}=await sb.from('team_tasks').select('*').eq('id',id).single();
   const {error}=await sb.from('team_tasks').update({status,completed_at:status==='done'?new Date().toISOString():null}).eq('id',id);
-  if(error){toast(error.message,1);return;} toast('Updated.');renderTasks();
+  if(error){toast(error.message,1);return;}
+  if(status==='done' && t && t.cadence && t.cadence!=='once'){
+    // Spawn the next occurrence. The team_tasks INSERT trigger auto-enqueues the
+    // task_assigned Slack+email ping — do NOT enqueue it here or it double-sends.
+    const nextDue=nextCadenceDate(t.due_date||new Date().toISOString().slice(0,10),t.cadence);
+    const nt={title:t.title,detail:t.detail,assignee:t.assignee,assignee_email:t.assignee_email,
+      due_date:nextDue,brand:t.brand,cadence:t.cadence,drive_url:t.drive_url,status:'open',
+      created_by:t.created_by,created_by_name:t.created_by_name};
+    const {error:e1}=await sb.from('team_tasks').insert(nt);
+    if(e1){toast('Marked done, but could not schedule next: '+e1.message,1);renderTasks();return;}
+    toast(`Done — next ${t.cadence} occurrence created (due ${nextDue}).`);renderTasks();return;
+  }
+  toast('Updated.');renderTasks();
 }
 async function remindTask(id){
   const {data:t,error:e1}=await sb.from('team_tasks').select('*').eq('id',id).single();
@@ -4240,11 +5423,15 @@ function rtRefreshActive(force){
   const active=document.querySelector('.panel.active'); if(!active) return;
   const tab=active.id;
   // Custom-rendered tabs
-  if(tab==='home'){ renderRecent&&renderRecent(); renderHealth&&renderHealth(); renderDash&&renderDash(); renderFavPanel&&renderFavPanel(); }
+  if(tab==='home'){ renderRecent&&renderRecent(); renderHealth&&renderHealth(); renderDash&&renderDash(); renderFavPanel&&renderFavPanel(); window.renderCallNotes&&renderCallNotes(); }
+  if(tab==='finance'){ window.renderMoola&&renderMoola(); window.renderPayables&&renderPayables(); }
   if(tab==='directory'&&window.renderDirectory) renderDirectory();
   if(tab==='clients'&&window.renderClients) renderClients();
   if(tab==='projects'&&window.renderProjects) renderProjects();
   if(tab==='techstack'&&window.renderTechStack) renderTechStack();
+  if(tab==='resources'&&window.renderResources) renderResources();
+  if(tab==='library'&&window.renderLibrary) renderLibrary();
+  if(tab==='trades'&&window.renderTrades) renderTrades();
   if(tab==='tasks'&&window.renderTasks) renderTasks();
   if(tab==='ordering'&&window.renderBtuOrdering){ renderBtuOrdering(); }
   if(tab==='mktplan'&&window.renderMktPlan) renderMktPlan();
@@ -4265,6 +5452,9 @@ function startRealtime(){
       .on('postgres_changes',{event:'*',schema:'public',table:'team_tasks'},rtKick)
       .on('postgres_changes',{event:'*',schema:'public',table:'action_queue'},rtKick)
       .on('postgres_changes',{event:'*',schema:'public',table:'notify_queue'},rtKick)
+      .on('postgres_changes',{event:'*',schema:'public',table:'resources'},rtKick)
+      .on('postgres_changes',{event:'*',schema:'public',table:'payables'},rtKick)
+      .on('postgres_changes',{event:'*',schema:'public',table:'call_notes'},rtKick)
       .subscribe();
   }catch(e){ console.warn('realtime unavailable, falling back to polling',e); }
   // Refresh when the user returns to the tab/window
@@ -4273,6 +5463,55 @@ function startRealtime(){
   // Safety net: full revalidation every 5 minutes while visible
   setInterval(()=>{ if(!document.hidden) rtRefreshActive(true); },300000);
 }
+/* ================================================================
+   Collapsible cards, sections, and sidebar groups — state persisted
+   ================================================================ */
+const COLL_KEY='axyom_collapse_v1';
+function collState(){ try{return JSON.parse(localStorage.getItem(COLL_KEY)||'{}')}catch(_){return {}} }
+function collSave(s){ localStorage.setItem(COLL_KEY,JSON.stringify(s)) }
+function collId(el){
+  const panel=el.closest('.panel');
+  return (panel?panel.id:'x')+'::'+(el.textContent||'').trim().replace(/\s+/g,' ').slice(0,48);
+}
+function applySecTitle(t,closed){
+  t.classList.toggle('sec-closed',closed);
+  let n=t.nextElementSibling;
+  while(n && !n.classList.contains('sec-title')){ n.style.display=closed?'none':''; n=n.nextElementSibling; }
+}
+let COLL_INIT=false;
+function initCollapsibles(){
+  if(COLL_INIT) return; COLL_INIT=true;
+  const s=collState();
+  document.querySelectorAll('.card>h2').forEach(h=>{
+    const card=h.parentElement, id='card::'+collId(h);
+    if(s[id]) card.classList.add('collapsed');
+    h.addEventListener('click',e=>{
+      if(e.target.closest('a,button,input,select,textarea,.pin')) return;
+      const c=card.classList.toggle('collapsed');
+      const st=collState(); if(c) st[id]=1; else delete st[id]; collSave(st);
+    });
+  });
+  document.querySelectorAll('.card .sec-title').forEach(t=>{
+    const id='sec::'+collId(t);
+    if(s[id]) applySecTitle(t,true);
+    t.addEventListener('click',()=>{
+      const closed=!t.classList.contains('sec-closed');
+      applySecTitle(t,closed);
+      const st=collState(); if(closed) st[id]=1; else delete st[id]; collSave(st);
+    });
+  });
+  document.querySelectorAll('.nav-group').forEach(g=>{
+    const lab=g.querySelector('.nav-label'); if(!lab) return;
+    const id='nav::'+(lab.textContent||'').trim();
+    if(s[id]) g.classList.add('closed');
+    lab.addEventListener('click',()=>{
+      const c=g.classList.toggle('closed');
+      const st=collState(); if(c) st[id]=1; else delete st[id]; collSave(st);
+    });
+  });
+}
+initCollapsibles();
+
 sb.auth.onAuthStateChange((_ev,session)=>{ if(session) startRealtime(); });
 
 /* Restore session on load (supabase-js persists it in localStorage) */
