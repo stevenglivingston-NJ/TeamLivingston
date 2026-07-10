@@ -3905,7 +3905,7 @@ async function renderOrganic(){
   const show=(latest?rows.filter(r=>r.fields.scan_date===latest):rows)
     .sort((a,b)=>({urgent:0,warn:1,info:2}[a.fields.severity]??3)-({urgent:0,warn:1,info:2}[b.fields.severity]??3));
   if(!show.length){
-    el.innerHTML='<div class="ge-clear">💤 No report yet — Organic scans rankings, the local pack/GMB, competitors, keywords and backlinks. First report lands with the next scan.</div>';
+    el.innerHTML='<div class="ge-clear">💤 No report yet — Organic scans rankings, the local pack/GMB, competitors, keywords, backlinks, on-page/technical SEO, landing-page friction (Clarity), page speed, and organic social performance. First report lands with the next scan.</div>';
     return;
   }
   const ICO={urgent:'🚨',warn:'⚠️',info:'💡'};
