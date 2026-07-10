@@ -23,10 +23,15 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "▸ MCP bootstrap — server dir: $DIR"
 
 # ---- 1. Python deps (union of every requirements.txt) ----------------------
+# --ignore-installed avoids pip aborting the whole install when it tries to
+# uninstall a Debian-managed package (e.g. system PyJWT) that has no pip
+# RECORD file — without it, the install fails silently (stderr redirected
+# below) and every stdio server then fails to connect with a bare
+# "ModuleNotFoundError: No module named 'httpx'".
 echo "▸ Installing Python deps…"
-pip install --quiet --disable-pip-version-check \
+pip install --quiet --disable-pip-version-check --ignore-installed \
   "mcp[cli]>=1.2.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" \
-  2>/dev/null || echo "  (pip install had warnings — continuing)"
+  || echo "  (pip install had warnings — continuing)"
 
 # ---- helpers ---------------------------------------------------------------
 ok=(); skipped=()
