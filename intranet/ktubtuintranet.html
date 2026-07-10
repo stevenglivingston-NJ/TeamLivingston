@@ -1015,10 +1015,20 @@
           <div class="name" id="userName">KTUBTU</div>
           <div class="sub">Shared team login</div>
         </div>
+        <button class="out" onclick="openSettings()" title="Settings" aria-label="Settings" style="margin-right:6px">⚙</button>
         <button class="out" onclick="logout()">Sign out</button>
       </div>
     </div>
   </aside>
+
+  <!-- ==================== USER SETTINGS ==================== -->
+  <div class="ax-modal-bg" id="settingsModalBg" style="display:none" onclick="if(event.target===this)closeSettings()">
+    <div class="ax-modal" style="max-width:440px">
+      <h3>Settings <small style="color:var(--text-mute)" id="settingsWho"></small></h3>
+      <div id="settingsBody"></div>
+      <div style="margin-top:16px;text-align:right"><button class="btn sm ghost" onclick="closeSettings()">Close</button></div>
+    </div>
+  </div>
 
   <!-- ==================== MAIN ==================== -->
   <div class="app-main">
@@ -2561,7 +2571,45 @@ async function loadTabPermissions(role){
   if(error){ console.error('tab_permissions',error); return; }
   (data||[]).forEach(r=>{ TAB_PERM_OVERRIDES[r.tab]=r.visible; });
 }
+// --- Sensitive-financial access (owner only) ---
+// canFinance() = the logged-in profile is granted finance_access server-side
+// (enforced in Supabase RLS — this is just the matching client gate). The
+// per-device "sensitive material" toggle in Settings can additionally hide it
+// on this screen (e.g. when screen-sharing) without changing access.
+function canFinance(){ return !!(CURRENT_PROFILE && CURRENT_PROFILE.finance_access); }
+function sensitiveHidden(){ try{return localStorage.getItem('axyom_sensitive_hidden')==='1'}catch(_){return false} }
+function showSensitive(){ return canFinance() && !sensitiveHidden(); }
+function openSettings(){
+  const who=document.getElementById('settingsWho');
+  const body=document.getElementById('settingsBody');
+  const email=(CURRENT_PROFILE&&CURRENT_PROFILE.email)||'';
+  if(who) who.textContent = email?('· '+email):'';
+  let html='';
+  if(canFinance()){
+    const shown=!sensitiveHidden();
+    html = `<div class="sec-title" style="margin-bottom:8px">Sensitive material</div>
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:12px;border:1px solid var(--border);border-radius:10px">
+        <input type="checkbox" id="sensToggle" ${shown?'checked':''} onchange="setSensitiveVisible(this.checked)" style="margin-top:3px;width:16px;height:16px;flex-shrink:0">
+        <span><b>Show sensitive financial material</b><br>
+        <small style="color:var(--text-mute)">Shows/hides the <b>Financial Reporting</b> tab (Moola briefing, Accounts Payable, cash &amp; P&amp;L) on <b>this device</b>. Turn it off to hide the numbers while screen-sharing or presenting — your access doesn't change and it returns instantly when you turn it back on.</small></span>
+      </label>
+      <div class="sub" style="margin-top:10px;font-size:12px;color:var(--text-mute)">🔒 This material is restricted to your account only — other team members (even other admins) cannot see it, enforced at the database level.</div>`;
+  } else {
+    html = `<div class="sub">No sensitive-material settings for this account — financial reporting is restricted to the owner.</div>`;
+  }
+  if(body) body.innerHTML=html;
+  document.getElementById('settingsModalBg').style.display='flex';
+}
+function closeSettings(){ const m=document.getElementById('settingsModalBg'); if(m) m.style.display='none'; }
+function setSensitiveVisible(show){
+  try{ if(show) localStorage.removeItem('axyom_sensitive_hidden'); else localStorage.setItem('axyom_sensitive_hidden','1'); }catch(_){}
+  if(window.setWS) setWS(CURRENT_WS, true);   // re-applies nav; bounces off finance if now hidden
+  if(window.toast) toast(show?'Sensitive material shown.':'Sensitive material hidden on this device.');
+}
 function isTabVisible(tab){
+  // The Financial Reporting tab is owner-only AND respects the sensitive toggle,
+  // even for admins — checked before the admin blanket-allow below.
+  if(tab==='finance') return showSensitive();
   if(CURRENT_ROLE==='admin') return true;
   if(Object.prototype.hasOwnProperty.call(TAB_PERM_OVERRIDES,tab)) return TAB_PERM_OVERRIDES[tab];
   return defaultTabVisible(tab, CURRENT_ROLE, CURRENT_WS);
@@ -3964,7 +4012,7 @@ async function renderPaid(){
 
 async function renderMoola(){
   const el=document.getElementById('moola_root'); if(!el) return;
-  if(CURRENT_ROLE!=='admin'){ el.innerHTML='<div class="ge-clear">Owner only.</div>'; return; }
+  if(!canFinance()){ el.innerHTML='<div class="ge-clear">🔒 Owner only — sensitive financial reporting.</div>'; return; }
   const rows=await fetchRecords('moola_briefing');
   const dates=[...new Set(rows.map(r=>r.fields.scan_date).filter(Boolean))].sort().reverse();
   const latest=dates[0];
@@ -4041,7 +4089,7 @@ async function paySave(){
 }
 async function renderPayables(){
   const root=document.getElementById('payables_root'); if(!root) return;
-  if(CURRENT_ROLE!=='admin'){ root.innerHTML='<div class="ge-clear">Owner only.</div>'; return; }
+  if(!canFinance()){ root.innerHTML='<div class="ge-clear">🔒 Owner only — sensitive financial data.</div>'; return; }
   const {data,error}=await sb.from('payables').select('*');
   if(error){ root.innerHTML='<div class="empty">Could not load payables: '+esc(error.message)+'</div>'; return; }
   const all=data||[];
