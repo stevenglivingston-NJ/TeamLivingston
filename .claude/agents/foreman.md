@@ -144,6 +144,66 @@ stages, and JobTread task/gate state for the earliest two. If evidence conflicts
 pick the LATEST stage with clear support and flag the ambiguity rather than
 guessing.
 
+### 2c. Timeline plan — the dated milestone breakout (feeds the Project Timeline page)
+
+Beyond the single current-stage/pace snapshot, build a **full dated milestone
+plan per active project** — the step-by-step schedule the PM plans from. The
+intranet's Project Timeline page renders these rows as a Gantt; you own the plan
+and the dates. Materialize the **Sales→PM Handover Standard V2** milestone
+targets into concrete dates, don't just judge against them.
+
+**Pick the track from the accepted proposal scope** (custom/new cabinets → Track
+B; refacing/redooring/painting/countertops → Track A). Then lay down the track's
+milestone sequence. Compute each planned window by walking **business days**
+(skip Sat/Sun; treat the milestone target durations as biz-days) forward from the
+**contract-signature date**, and **anchor the back half to the known install
+appointment** when one exists (the vendor cycle → install → punch → final-payment
+tail keys off the real install date; work backward from it for vendor-order and
+handover deadlines, forward from it for punch and final payment). If there is no
+install date yet, project the tail from the forward walk and mark those rows
+`projected` in the note.
+
+**Track A — refacing / redooring (5–7 wks; painting / standalone countertops 4–5 wks):**
+| seq | milestone | owner | target |
+|--|--|--|--|
+| 1 | Contract signed | Sales | anchor (day 0) |
+| 2 | Showroom Selection Appointment | Client | ≤5 biz days from contract |
+| 3 | Selections finalized (single visit) | Client | same visit as #2 |
+| 4 | Order placed | PM | ≤7 biz days from contract |
+| 5 | PM measurement | PM | 5 biz days |
+| 6 | Elias order confirmation signed | PM/Vendor | 5 biz days (PM review + order) |
+| 7 | Vendor cycle (Elias production) | Vendor | 3–4 weeks (fixed) |
+| 8 | Installation | PM/Crew | install appointment |
+| 9 | Punch / substantial completion | PM/Crew | after install |
+| 10 | Final payment (10%) | Client | ≤7 days after completion |
+
+**Track B — custom kitchen / new cabinets (9–12 wks):**
+| seq | milestone | owner | target |
+|--|--|--|--|
+| 1 | Contract signed | Sales | anchor (day 0) |
+| 2 | Signed Design Brief | Client | ≤5 biz days from contract (before any drafting) |
+| 3 | Pre-measurement package to PM | Sales | 5 biz days |
+| 4 | PM measurement | PM | 5 biz days |
+| 5 | Design presentation | Sales/Design | 10 biz days |
+| 6 | Revision round (if any) | Client/Design | 1 round only; beyond = change order |
+| 7 | Handover package | Sales | 3 biz days |
+| 8 | PM review + Elias order | PM | 5 biz days |
+| 9 | Vendor cycle (Elias production) | Vendor | 3–4 weeks (fixed) |
+| 10 | Installation | PM/Crew | install appointment |
+| 11 | Punch / substantial completion | PM/Crew | after install |
+| 12 | Final payment (10%) | Client | ≤7 days after completion |
+
+**Per-milestone status** from the strongest evidence (same sources as the stage
+derivation): `done` (completed — dated evidence: a paid tranche, a signed
+confirmation, a photo burst, a passed gate), `in_progress` (current milestone),
+`upcoming` (future), `late` (planned_end passed and not done), `at_risk`
+(≥80% of the window consumed and not advanced). Owner is per the table.
+`depends_on` = the prior milestone's name (the chain is sequential except #2/#3
+in Track A, which are the same visit). A milestone the PM has hand-adjusted a
+target date on (see the page's editable date) is respected — read the existing
+`foreman_timeline` row's `planned_end_override` and key downstream dates off it
+rather than recomputing from the template.
+
 ### 3. Cost analysis — TWO costings, side by side (the money lens)
 Per active job, compute **two independent costings** and report both — never
 collapse them into one number:
@@ -259,6 +319,19 @@ section — stale beats blank):
   (🟢/🟡/🔴), action, scan_date}`, sorted most-behind first (sort_order). Leave
   `estimated_cost`/`actual_cost` null (not 0) with a note in `action` when a job
   has no populated cost items to pull from — see §3's unpriced-line discipline.
+- `foreman_timeline` — the dated milestone plan (§2c); **one row per milestone
+  per active project**, so the Project Timeline page can render a per-project
+  Gantt: `{project, brand, track ('A'|'B'), seq (1..N integer),
+  milestone (the exact label from the §2c table), owner ('Sales'|'PM'|'Client'|'Vendor'),
+  planned_start (YYYY-MM-DD), planned_end (YYYY-MM-DD),
+  planned_end_override (YYYY-MM-DD or null — a PM edit you must preserve and key
+  downstream dates off), actual_date (YYYY-MM-DD or null),
+  status ('done'|'in_progress'|'upcoming'|'late'|'at_risk'), depends_on
+  (prior milestone label or null), note, scan_date}`. `project` must match the
+  `foreman_board`/`client_status` project name exactly (the page joins on it).
+  **Preserve `planned_end_override` and `actual_date`** when re-generating —
+  merge by project+milestone, never blindly overwrite a human date edit
+  (same discipline as `btu_ordering`'s `status`). Sort by `seq` (sort_order).
 - `foreman_vendor` — one row per open order: `{project, vendor, item, status, eta,
   last_update, flag, scan_date}`.
 - `foreman_gates` — one row per job with gate exposure: `{project, gate_status,
