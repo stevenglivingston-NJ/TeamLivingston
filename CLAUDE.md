@@ -130,6 +130,30 @@ brief it degrades. Tekkie audits all of these daily.
 | Supabase intranet (`tguwpswcneywvscxzyef`) | ALL agents (publish target) | No agent can post its brief to the intranet |
 | Cloudflare Workers/Pages | (infra) | Dashboard + intranet hosting |
 
+## Google Drive routing (two drives — do not cross them)
+
+Two Google Drives are connected; agents may read either as needed, but they
+serve different purposes and different audiences:
+
+- **Business library — `ktubloomfieldnj@gmail.com`, the DIRECT `Google Drive`
+  connector.** Numbered top-level folders (`01 Company & HR` … `07 Vendors &
+  Products`, `KTU Resources`, `.Project Management`). This is the team library:
+  it feeds the intranet **Library** (`library_docs`) and the per-section doc
+  links. The Librarian maps its folders into the tabs.
+  - Two of its folders are owner-sensitive: **`06 Finance`** (business books/
+    reports) and **`01 Company & HR`** (comp/HR). Keep these out of the
+    team-visible surfaces — route Finance to the owner-only `docs_finance`.
+- **Owner personal drive — `stevenglivingston@gmail.com`, via the Zapier / KTU
+  MCP route (NOT the direct connector).** Holds personal financials & legal
+  (`05 Finance & Legal`, etc.). Link it ONLY into the owner-only Cash Flow /
+  Finance sections (`docs_finance`, RLS admin-only). Never publish it to any
+  team-visible tab.
+
+Rule of thumb: **business/library docs → direct `ktubloomfield` connector;
+anything personal or financial → owner-only sections**, sourced from the
+personal drive via Zapier. Financial doc links live in `docs_finance`, which is
+RLS-locked to `is_admin()`.
+
 ## Environment Requirements
 
 - Python 3.x with pip
