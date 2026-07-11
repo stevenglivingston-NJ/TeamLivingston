@@ -87,21 +87,26 @@ HTTP-transport servers (registered by bootstrap.sh, no local code):
 
 ## Setup Script (runs on new session)
 
-Point the Cloud environment's **Setup script** at the MCP bootstrap so every
-fresh session (including the scheduled agent runs — Goldeneye, Moola, Paid)
-re-registers the custom stdio MCP servers, not just this repo's clone.
+The Cloud environment's **Setup script** must provision every fresh session —
+including the scheduled agent fires (Goldeneye, Moola, Paid, Pipeline, …) —
+with (1) a repo checkout and (2) the custom MCP servers.
 
-Use this **path-robust** form (it never fails with exit 127 if the repo isn't at
-the expected path when setup runs — the old `git -C /home/user/TeamLivingston …`
-form returned an empty string and ran `bash /mcp-servers/bootstrap.sh` →
-"No such file or directory" → exit 127, which is what produced the "setup script
-failed" pings):
+**Canonical content: `mcp-servers/setup.sh`** (version-controlled). Paste that
+file's contents into the Cloud env → Setup script; if console and repo drift,
+the repo file wins — re-paste it.
 
-```bash
-for d in /home/user/TeamLivingston /workspace/TeamLivingston "$HOME/TeamLivingston"; do
-  [ -f "$d/mcp-servers/bootstrap.sh" ] && { bash "$d/mcp-servers/bootstrap.sh"; break; }
-done
-```
+Why the self-healing form: scheduled fires sometimes come up with **no repo
+checkout at all**. The older path-robust loop found no `bootstrap.sh`, exited 0
+silently, and the session ran blind (no MCP servers, no agent specs) — which
+produced stale intranet boards that looked like agent failures. `setup.sh`
+fixes this: if no checkout exists it clones the repo (`--depth 1`, default
+branch, `GIT_TERMINAL_PROMPT=0`, 180s timeout), then runs the MCP bootstrap,
+and prints a greppable `⚠ SETUP INCOMPLETE` marker if registration still
+didn't happen. It always exits 0, so setup never false-fails the session.
+
+Setup scripts can NOT enable the claude.ai connectors (Gmail, Drive, Slack,
+JobTread, Bank Connection…) — those are account-level and must be enabled for
+scheduled runs in the environment/connector settings.
 
 `bootstrap.sh` installs Python deps and registers every custom stdio server
 (closebot, companycam, serviceminder, google-ads, gmb, shipstation, amazon-sp,
