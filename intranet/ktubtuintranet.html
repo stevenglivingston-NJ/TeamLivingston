@@ -1170,7 +1170,7 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
     <section class="panel" id="directory">
       <div class="page-head">
         <h1 class="page-title">Directory</h1>
-        <p class="page-sub">Every person, vendor, sub, and rep the team touches — one searchable index, categorized. Click any card to jump to the source tab.</p>
+        <p class="page-sub">Every person the team touches — customers, team, vendors, subs &amp; trades, and reps — one searchable index, grouped by category. Click any card for details and to jump to the source.</p>
       </div>
       <div class="card">
         <div class="row" style="margin-bottom:16px;align-items:center">
@@ -3570,6 +3570,7 @@ async function renderDirectory(){
     ...reps.map(r=>({kind:'rep', name:r.fields.contact||r.fields.vendor, role:r.fields.vendor, meta:r.fields.pricing, tab:'ordering'})),
     ...contacts.filter(c=>c.type==='Subcontractor').map(c=>({kind:'sub', name:c.name, role:c.company||'Subcontractor', meta:c.phone||c.email, tab:'contacts', extra:c.brand})),
     ...contacts.filter(c=>c.type==='Vendor').map(c=>({kind:'vendor', name:c.name, role:c.company||'Vendor', meta:c.phone||c.email, tab:'contacts', extra:c.brand})),
+    ...contacts.filter(c=>(c.type||'Customer')==='Customer').map(c=>({kind:'customer', name:c.name, role:c.company||'Customer', meta:[c.phone,c.email].filter(Boolean).join(' · '), tab:'contacts', extra:c.brand})),
   ];
   const filtered = items.filter(x=>{
     if(DIR_FILTER!=='all' && x.kind!==DIR_FILTER) return false;
@@ -3577,13 +3578,13 @@ async function renderDirectory(){
     return true;
   });
   // Counts
-  const counts={team:0,vendor:0,sub:0,rep:0};
+  const counts={team:0,customer:0,vendor:0,sub:0,rep:0};
   items.forEach(x=>{if(counts[x.kind]!==undefined)counts[x.kind]++});
-  const KIND_LBL={team:'Team',vendor:'Vendor',sub:'Sub / Trade',rep:'Manufacturer Rep'};
-  const KIND_ORDER=['team','rep','vendor','sub'];
-  const AVA_BG={team:'var(--brand-btu)',rep:'#6d28d9',vendor:'var(--brand-earth)',sub:'var(--brand-ktu)'};
+  const KIND_LBL={team:'Team',customer:'Customer',vendor:'Vendor',sub:'Sub / Trade',rep:'Manufacturer Rep'};
+  const KIND_ORDER=['team','customer','rep','vendor','sub'];
+  const AVA_BG={team:'var(--brand-btu)',customer:'var(--accent)',rep:'#6d28d9',vendor:'var(--brand-earth)',sub:'var(--brand-ktu)'};
   // Filter chips
-  const chips=[['all','All ('+items.length+')'],['team','Team ('+counts.team+')'],['vendor','Vendors ('+counts.vendor+')'],['sub','Subs & Trades ('+counts.sub+')'],['rep','Reps ('+counts.rep+')']];
+  const chips=[['all','All ('+items.length+')'],['team','Team ('+counts.team+')'],['customer','Customers ('+counts.customer+')'],['vendor','Vendors ('+counts.vendor+')'],['sub','Subs & Trades ('+counts.sub+')'],['rep','Reps ('+counts.rep+')']];
   document.getElementById('dirFilters').innerHTML=chips.map(([k,lbl])=>
     `<button class="fbtn ${DIR_FILTER===k?'active':''}" onclick="DIR_FILTER='${k}';renderDirectory()">${lbl}</button>`).join('');
   document.getElementById('dirCounts').innerHTML = `<b>${filtered.length}</b> ${filtered.length===1?'entry':'entries'} shown${q?` matching "${esc(q)}"`:''}. Click a row for details.`;
