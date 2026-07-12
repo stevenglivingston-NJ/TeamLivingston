@@ -1079,6 +1079,13 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
         <div class="now" id="homeNow"></div>
       </div>
 
+      <!-- KTU & BTU snapshot — the numbers first -->
+      <div class="card" id="snapshotCard" data-scope="hs">
+        <h2>📌 KTU &amp; BTU snapshot</h2>
+        <div class="sub">Appointments scheduled from today onward, sales year-to-date vs. the same period last year, and customer count this year vs. last — per brand. Click any tile to open the detail.</div>
+        <div id="snapshot_root" class="loading">Loading…</div>
+      </div>
+
       <!-- Goldeneye — daily engagement watchdog callouts -->
       <div class="card" id="goldeneyeCard" data-scope="hs">
         <h2>🔭 Goldeneye — needs attention</h2>
@@ -1114,13 +1121,6 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
           <div class="value" id="kpiTasks">—</div>
           <div class="trend" id="kpiTasksSub">Next 7 days</div>
         </div>
-      </div>
-
-      <!-- KTU & BTU snapshot — appointments onward, sales YTD vs LY, customers TY vs LY -->
-      <div class="card" id="snapshotCard" data-scope="hs">
-        <h2>📌 KTU &amp; BTU snapshot</h2>
-        <div class="sub">Appointments scheduled from today onward, sales year-to-date vs. the same period last year, and customer count this year vs. last — per brand. Click any tile to open the detail.</div>
-        <div id="snapshot_root" class="loading">Loading…</div>
       </div>
 
       <div class="card" id="pulseCard">
@@ -1243,7 +1243,7 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
         <div id="cFilters" style="display:flex;gap:8px;margin:4px 0 10px;flex-wrap:wrap"></div>
         <input class="f" id="cSearch" placeholder="Search contacts…" oninput="renderContacts()" style="margin-bottom:8px;width:100%" />
         <div id="cCount" class="sub" style="margin-bottom:10px"></div>
-        <table><thead><tr><th>Name</th><th>Company</th><th>Phone</th><th>Email</th><th>Type</th><th>Brand</th><th></th></tr></thead>
+        <table class="btable"><thead><tr><th>Name</th><th>Company</th><th>Phone</th><th>Email</th><th>Type</th><th>Brand</th><th data-nosort></th></tr></thead>
           <tbody id="cBody"></tbody></table>
         <div class="empty" id="cEmpty">No contacts yet. Add one above.</div>
       </div>
@@ -1275,7 +1275,7 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
           </select>
           <button class="btn" onclick="addJob()">Add Job</button>
         </div>
-        <table><thead><tr><th>Job</th><th>Brand</th><th>Cost</th><th>Price</th><th>Margin</th><th>Status</th><th></th></tr></thead>
+        <table class="btable"><thead><tr><th>Job</th><th>Brand</th><th>Cost</th><th>Price</th><th>Margin</th><th>Status</th><th data-nosort></th></tr></thead>
           <tbody id="jBody"></tbody></table>
         <div class="empty" id="jEmpty">No jobs yet.</div>
       </div>
@@ -1736,6 +1736,13 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
         </div>
       </div>
       <div class="card">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px">
+          <label class="pf" style="display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px">Assignee
+            <select id="tkFilterAssignee" onchange="renderTasks()" style="font-weight:500;text-transform:none;letter-spacing:0;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><option value="">Everyone</option></select></label>
+          <label class="pf" style="display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px">Show
+            <select id="tkFilterStatus" onchange="renderTasks()" style="font-weight:500;text-transform:none;letter-spacing:0;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><option value="open">Open</option><option value="overdue">Overdue only</option><option value="all">All</option></select></label>
+          <input id="tkFilterSearch" oninput="renderTasks()" placeholder="Search tasks…" style="flex:1;min-width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)">
+        </div>
         <div class="sec-title">Open</div>
         <div id="tasksOpenRoot" class="loading">Loading…</div>
         <div class="sec-title" style="margin-top:14px">Recently completed</div>
@@ -5349,9 +5356,18 @@ async function renderTasks(){
   if(sel && !sel.options.length) sel.innerHTML=ppl.map(p=>`<option value="${esc(p.name)}" data-email="${esc(p.email||'')}">${esc(p.name)}</option>`).join('');
   const {data,error}=await sb.from('team_tasks').select('*').order('created_at',{ascending:false}).limit(200);
   if(error){openRoot.innerHTML=`<div class="empty">Tasks table not reachable: ${esc(error.message)}</div>`;document.getElementById('tasksDoneRoot').innerHTML='';return;}
-  const scoped=(data||[]).filter(t=>inWs(t.brand));   // workspace switcher applies here too
-  const open=scoped.filter(t=>t.status==='open'||t.status==='in_progress');
-  const done=scoped.filter(t=>t.status==='done').slice(0,10);
+  let scoped=(data||[]).filter(t=>inWs(t.brand));   // workspace switcher applies here too
+  // Populate assignee filter + apply filters
+  const fSel=document.getElementById('tkFilterAssignee');
+  if(fSel){ const cur=fSel.value; const names=[...new Set(scoped.map(t=>t.assignee).filter(Boolean))].sort();
+    fSel.innerHTML='<option value="">Everyone</option>'+names.map(n=>`<option${n===cur?' selected':''}>${esc(n)}</option>`).join(''); }
+  const fA=fSel?fSel.value:'', fS=(document.getElementById('tkFilterStatus')||{}).value||'open', fQ=((document.getElementById('tkFilterSearch')||{}).value||'').toLowerCase();
+  if(fA) scoped=scoped.filter(t=>t.assignee===fA);
+  if(fQ) scoped=scoped.filter(t=>JSON.stringify(t).toLowerCase().includes(fQ));
+  const isLate=t=>t.due_date&&t.status!=='done'&&new Date(t.due_date)<new Date();
+  let open=scoped.filter(t=>t.status==='open'||t.status==='in_progress');
+  if(fS==='overdue') open=open.filter(isLate);
+  const done=(fS==='all'||fS==='open')?scoped.filter(t=>t.status==='done').slice(0,10):[];
   const CADENCE_LBL={daily:'Daily',weekly:'Weekly',monthly:'Monthly'};
   window._TASKS_BY_ID = {}; scoped.forEach(t=>{ window._TASKS_BY_ID[t.id]=t; });
   const row=t=>{const late=t.due_date&&t.status!=='done'&&new Date(t.due_date)<new Date();return `<tr style="cursor:pointer" onclick="openTaskDetail('${t.id}')" title="Click for full detail">
