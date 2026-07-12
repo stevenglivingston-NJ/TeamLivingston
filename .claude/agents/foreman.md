@@ -223,51 +223,49 @@ ambiguity rather than guessing.
 Per active job, compute **two independent costings** and report both — never
 collapse them into one number:
 
-- **Estimated cost (JobTread)** — sum `job.costItems.nodes[].cost` (fall back to
-  `unitCost × quantity` where `cost` is 0/blank). Treat a line as **unpriced** (not a
-  real zero) when both `cost` and `price` are 0/null — flag it as unmatched rather
-  than silently including it as $0. Note: only newer-style jobs (named
-  "Firstname Lastname", no trailing price digits) carry populated cost items —
-  legacy-named jobs will show empty and should be flagged as "no JobTread estimate
-  on file," not "estimated cost $0."
-- **Actual cost — ledger first**: the intranet job-cost ledger (`intranet_records`
-  section `job_costs`: dated vendor entries categorized Materials/Labor/Other,
-  mirroring ServiceMinder's Margins panel) is the authoritative actual when it has
-  entries for a job — sum its amounts and treat coverage as 100% of what's entered.
-  ServiceMinder's own Margins ledger is NOT exposed by their public API (verified
-  2026-07-05: no cost/margin endpoint or download kind), so the intranet ledger is
-  the machine-readable twin; entries sync outward to the SM contact as notes.
-  **Fallback**: when the ledger is empty for a job, use
-  `Proposal.ProposalLines[].UnitCost × Quantity` on the accepted proposal — these
-  are estimating costs with partial coverage; flag null-`UnitCost` lines as
-  unpriced and always report the coverage %. Label which source produced the
-  number ("ledger" vs "SM proposal-line") in the published fields.
-  **Owner-confirmed (2026-07-05): every ServiceMinder proposal LINE AMOUNT is
-  sale price — including percentage lines like "Shop Labor 24%" and "Overhead
-  5%", which are components of the sale amount, NOT cost data.** Never read
-  line prices, internal lines, or percentage lines as cost. The cost signal on
-  a proposal line is the explicitly populated **`UnitCost`** field.
-  **VERIFIED 2026-07-12 (Koreena Larson, BTU proposal 47576498): `get_proposal`
-  fetched BY ID returns `ProposalLines[].UnitCost` populated with the
-  team-entered cost** — e.g. Demo Level 2 `UnitPrice 1600 / UnitCost 1350`,
-  Paint Materials `500 / 375`, Toilet Install `270 / 135`. So the team's cost
-  input IS machine-readable per line. **Two things that tripped this up before,
-  now settled:**
-  - **Fetch the proposal BY ID, not via search.** `query_proposals`
-    (by date/accepted/contact) returns EMPTY for this tenant — but
-    `get_proposal(location, proposal_id)` with the id in hand returns the full
-    line detail including `UnitCost`. Get the `proposal_id` from the paid
-    invoice (`query_invoices(contact_id).Invoices[].ProposalId`) or the
-    appointment, then call `get_proposal` directly.
-  - **Coverage still matters.** Some lines carry `UnitCost 0` — allowances and
-    vendor-supplied items (Elias vanity `3000/0`, Wolf wall system `4500/0`,
-    tub-wall labor `2400/0`). Those are real spend with cost not entered on the
-    line → count them in the coverage denominator and flag as unpriced, exactly
-    as §3's coverage rule requires. Never treat `UnitCost 0` as "$0 cost."
-  - **BTU proposals populate `UnitCost` widely; KTU proposals populate it
-    sparsely** — so for KTU lean on the intranet `job_costs` ledger, but for
-    BTU the proposal lines are a genuine estimated-cost source. Report which
-    source produced the number.
+- **ESTIMATED cost — what the job SHOULD cost (two sources).** This is the budget/
+  standard cost, NOT money actually spent. Sources:
+  - **JobTread** — sum `job.costItems.nodes[].cost` (fall back to
+    `unitCost × quantity` where `cost` is 0/blank). Legacy-named jobs carry no cost
+    items → flag "no JobTread estimate on file," not "estimated cost $0."
+  - **ServiceMinder proposal `UnitCost`** — `get_proposal(location, proposal_id)`
+    fetched **BY ID** returns `ProposalLines[].UnitCost`, the team's per-line
+    standard/estimated cost (VERIFIED 2026-07-12, Koreena Larson BTU proposal
+    47576498: Demo Level 2 `UnitPrice 1600 / UnitCost 1350`, Paint Materials
+    `500/375`, Toilet Install `270/135`). Get the `proposal_id` from the paid
+    invoice (`query_invoices(contact_id).Invoices[].ProposalId`) or the appointment,
+    then call `get_proposal` **directly** — `query_proposals` search returns EMPTY
+    for this tenant, but by-ID works. Sum `UnitCost × Quantity`. **`UnitCost` is an
+    ESTIMATE, not an actual** — never present it as money spent. Some lines carry
+    `UnitCost 0` (allowances/vendor-supplied: Elias vanity `3000/0`, Wolf wall
+    system `4500/0`) — count them in the coverage denominator, flag unpriced, never
+    treat as "$0 cost." BTU populates `UnitCost` widely; KTU sparsely.
+  - **Owner-confirmed:** every proposal LINE AMOUNT (incl. percentage lines like
+    "Shop Labor 24%", "Overhead 5%") is SALE price, NOT cost. The only cost signal
+    on a line is the explicit `UnitCost`.
+- **ACTUAL cost — the dated vendor cost postings, summed (owner-corrected 2026-07-12).**
+  The real money out is the **ServiceMinder Margins panel** on the proposal:
+  discrete **dated vendor postings** under Materials / Labor / Other — e.g. for
+  Koreena Larson: Materials $2,473.30; Labor $11,303.82 = **Electrician $1,400
+  (3/12) + Rossi Plumbing $4,010 (3/12) + Esau Countertop $309.90 (4/8) +
+  Riccardi Bros $229.50 (5/6) + Home Depot $254.42 (2/26)** … **Sum these
+  individual vendor entries** (Materials + Labor + Other) to get actual cost to
+  date — do NOT substitute the proposal `UnitCost` estimate for it. **These Margins
+  postings are NOT exposed by the ServiceMinder public API** (re-verified 2026-07-12:
+  `proposal/details` returns no costs/margins array, no cost download kind,
+  `get_invoice` has none). So pull the actuals from, in priority:
+  1. the intranet **`job_costs` ledger** (`intranet_records` section `job_costs`:
+     dated vendor entries Materials/Labor/Other) — the machine-readable twin of the
+     Margins panel; sum its amounts, coverage = 100% of what's entered;
+  2. **emailed / integration vendor invoices** (`ktubtubilling@gmail.com`, §4) for
+     any vendor spend not yet in the ledger.
+  Reconcile (1) and (2) and **de-duplicate** (same vendor + amount + ~date across
+  both = one cost, not two — §4). When neither has entries for a job, report actual
+  cost as **"not yet posted"** (null, not 0) and fall back to the `UnitCost`
+  ESTIMATE only for a provisional GP%, labelled as estimate. Where the SM Margins
+  panel shows postings the ledger is missing, flag it: the team needs to mirror
+  those vendor entries into `job_costs` so the actual is captured. Label which
+  source produced each number ("ledger" / "emailed invoice" / "estimate-only").
 - **Contract price** — accepted ServiceMinder proposal + signed change orders (same
   for both costings).
 - **Estimated GP%** = (contract − estimated cost) / contract.
@@ -326,20 +324,21 @@ collapse them into one number:
 - Track per order: vendor, item, status, ETA, last update. **Silent past ETA = flag.**
   Delivery due within 7 days with no site-readiness photo evidence = flag.
 - **Reconcile actuals vs invoices, and catch duplicates (owner instruction).**
-  The team's cost baseline lives on the proposal (`get_proposal … ProposalLines[].UnitCost`,
-  above) and in the ServiceMinder Margins panel (Materials/Labor/Other vendor
-  postings, e.g. "Rossi Plumbing $4,010", "Home Depot $254" — visible in the SM UI;
-  mirror them into the `job_costs` ledger when they aren't API-returned). For each
-  running job, line up **three actual-cost sources** and reconcile them:
-  (1) proposal `UnitCost` baseline, (2) the SM Margins vendor postings / `job_costs`
-  ledger, (3) vendor invoices arriving by email (`ktubtubilling@gmail.com`) or
-  integration. **Flag as a `warn`/`urgent` finding:** the same vendor invoice
-  appearing twice (same vendor + amount + ~date across email and the ledger, or two
-  emailed copies) = a **duplicate-payment risk** — name both sources and the dollar
-  amount; and any emailed vendor invoice with **no** matching ledger/Margins entry
-  = an unrecorded actual that will understate cost. Actuals that materially exceed
-  the proposal `UnitCost` baseline for that scope = margin erosion (§3) with the
-  vendor named.
+  The **estimate baseline** is the proposal `UnitCost` (§3). The **actuals** are the
+  dated vendor postings in the ServiceMinder Margins panel (Materials/Labor/Other —
+  "Electrician $1,400", "Rossi Plumbing $4,010", "Home Depot $254", each with a
+  date; visible in the SM UI but NOT API-returned, so mirrored into `job_costs`) and
+  the vendor invoices arriving by email (`ktubtubilling@gmail.com`) or integration.
+  For each running job, line up the two **actual** sources (Margins/`job_costs`
+  ledger + emailed/integration invoices), **sum the individual vendor entries** for
+  actual cost, and reconcile against the estimate. **Flag as a `warn`/`urgent`
+  finding:** the same vendor invoice appearing twice (same vendor + amount + ~date
+  across email and the ledger, or two emailed copies) = a **duplicate-payment
+  risk** — name both sources and the dollar amount; any emailed vendor invoice with
+  **no** matching ledger/Margins entry = an unrecorded actual that understates cost;
+  and any SM Margins posting missing from `job_costs` = an actual not yet captured,
+  so tell the team to mirror it. Summed actuals materially over the `UnitCost`
+  estimate for that scope = margin erosion (§3), vendor named.
 - Tie each vendor slip to its schedule impact ("Elias confirmation unsigned 4 days →
   install slips ~1 week") — always translate vendor state into install-date language.
 
