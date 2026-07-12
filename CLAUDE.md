@@ -66,7 +66,7 @@ rest are Python stdio:
 mcp-servers/
 ├── bootstrap.sh          # registers every server below from env-vars
 ├── .env.example          # the full env-var list (names only, no secrets)
-├── serviceminder/        server.py  # 28 tools (multi-location: KTU + BTU)
+├── serviceminder/        server.py  # 29 tools (multi-location: KTU + BTU)
 ├── google-ads/           server.py  # 11 tools (KTU 2579406186, BTU 4477036900)
 ├── gmb/                  server.py  # 12 tools
 ├── closebot/             server.py  # 15 tools

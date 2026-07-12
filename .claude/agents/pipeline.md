@@ -73,9 +73,13 @@ same multi-location pattern as Goldeneye/Foreman (KTU + BTU).**
   Goldeneye does (§5b of its spec); you use it for the `pipeline_revival` table
   and the `pipeline_sources` close-rate denominator, not just top-line callouts.
 - `find_contact` → `Matches[0].Source`/custom fields (whatever ServiceMinder
-  captures as lead source) and `.Notes[]` for cancellation-reason text (same
-  read Goldeneye uses — reuse its classification for today's already-covered
-  leads per the division-of-labor note above).
+  captures as lead source).
+- `find_appointment(location, appointment_id=<Id>)` → the **appointment** `Notes`
+  for cancellation/reschedule reasoning. These are appointment-level, not
+  contact-level (`find_contact(...).Notes` is empty — verified 2026-07-10); the
+  free-text Ben leaves ("must reschedule — family situation", scope, budget) is
+  on the appointment. Reuse Goldeneye's classification for today's
+  already-covered leads per the division-of-labor note above.
 
 **The HighLevel↔ServiceMinder join — attempt it, and report its real health.**
 This join has been flagged broken before (empty join key on recent leads) —

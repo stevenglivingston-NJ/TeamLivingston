@@ -249,6 +249,26 @@ def query_appointments(
 
 
 @mcp.tool()
+def find_appointment(location: str, appointment_id: int) -> dict[str, Any]:
+    """Fetch a SINGLE appointment's full detail — including its NOTES.
+
+    Why this exists (important): the bulk `query_appointments` and the org
+    appointments download do NOT return the free-text notes staff (e.g. Ben)
+    leave on an appointment — those notes live on the individual appointment
+    object, retrievable only here via the `appointments/find` endpoint. This is
+    the source of cancellation/reschedule reasoning ("family situation, must
+    reschedule", scope details, etc.). The notes are APPOINTMENT-level, not
+    contact-level: `find_contact(...).Notes` is empty for these; the text is on
+    the appointment.
+
+    Pass the AppointmentId (the `Id` column in the appointments download, or
+    `AppointmentId` from query_appointments). Returns the full appointment
+    payload; read the `Notes` field (and `UpdateNote`) for the free-text.
+    """
+    return _post("appointments/find", location, {"AppointmentId": appointment_id})
+
+
+@mcp.tool()
 def quickbook_appointment(
     location: str,
     name: str,
