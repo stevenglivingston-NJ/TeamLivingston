@@ -1250,26 +1250,6 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
     </section>
 
     <!-- ============ ITEMS ============ -->
-    <section class="panel" id="items">
-      <div class="page-head">
-        <h1 class="page-title">Items &amp; Catalog</h1>
-        <p class="page-sub">Product &amp; service catalog. Seed from <code>data/KTU_Catalog.csv</code> in Claude Code.</p>
-      </div>
-      <div class="card">
-        <div class="row">
-          <input class="f" id="iName" placeholder="Item name" />
-          <input class="f" id="iCode" placeholder="Cost code" />
-          <input class="f" id="iCost" placeholder="Unit cost" type="number" />
-          <input class="f" id="iPrice" placeholder="Unit price" type="number" />
-          <select class="f" id="iBrand"><option>KTU</option><option>BTU</option><option>Both</option></select>
-          <button class="btn" onclick="addItem()">Add</button>
-        </div>
-        <table><thead><tr><th>Item</th><th>Cost Code</th><th>Unit Cost</th><th>Unit Price</th><th>Margin</th><th>Brand</th><th></th></tr></thead>
-          <tbody id="iBody"></tbody></table>
-        <div class="empty" id="iEmpty">No items yet.</div>
-      </div>
-    </section>
-
     <!-- ============ JOBS ============ -->
     <section class="panel" id="jobs">
       <div class="page-head">
@@ -2549,7 +2529,7 @@ async function renderTabPermissions(){
    ================================================================ */
 const TAB_TITLES = {
   home:'Home', directory:'Directory', docs:'Files & Docs', techstack:'Tech Stack', mktplan:'Marketing Plan', mktspend:'Marketing Spend', syshealth:'System Health',
-  contacts:'Contacts', items:'Items', jobs:'Job Costing', commissions:'Commission Tracker', team:'Team',
+  contacts:'Contacts', jobs:'Job Costing', commissions:'Commission Tracker', team:'Team',
   vendors:'Vendors', systems:'Systems', integrations:'Integrations', franchise:'Franchise',
   pipeline:'Pipeline', appointments:'Appointments', marketing:'Marketing', onboarding:'Onboarding', ordering:'Ordering', trades:'Trades',
   clients:'Clients', tasks:'Tasks & Follow-ups', projects:'Projects',
@@ -2682,9 +2662,8 @@ let CURRENT_WS = 'all';
    out of the console that controls this.
    ================================================================ */
 const TAB_SECTIONS = [
-  {key:'ops',      label:'Operations',                 scope:'hs',    tabs:['dailyops','playbook','jobflow','projects','clients','tasks','commissions','trades','roles','jobs']},
-  {key:'people',   label:'People',                     scope:'hs',    tabs:['team','onboarding']},
-  {key:'catalog',  label:'Catalog & Jobs',              scope:'hs',    tabs:['contacts','items','jobs']},
+  {key:'ops',      label:'Operations',                 scope:'hs',    tabs:['dailyops','playbook','projects','clients','appointments','tasks','commissions','roles','jobs']},
+  {key:'people',   label:'People',                     scope:'hs',    tabs:['team','onboarding','contacts']},
   {key:'vendors',  label:'Vendors & Ordering',          scope:'hs',    tabs:['vendors','ordering']},
   {key:'growth',   label:'Growth',                      scope:'hs',    tabs:['pipeline','organic','marketing','mktplan','mktspend','reports']},
   {key:'franchise',label:'Franchise & Place',           scope:'hs',    tabs:['franchise','territories','showroom']},
@@ -2951,6 +2930,7 @@ async function saveItem(id){
   editingItemId=null; renderItems();
 }
 async function renderItems(){
+  if(!document.getElementById('iBody')) return;   // Items panel removed — no-op
   const {data,error}=await sb.from('items').select('*').order('created_at',{ascending:false});
   if(error){document.getElementById('iBody').innerHTML='';document.getElementById('iEmpty').textContent='Error loading: '+error.message;document.getElementById('iEmpty').style.display='block';return}
   const a=(data||[]).filter(i=>inWs(i.brand));   // scope to the active workspace
@@ -3606,16 +3586,17 @@ async function renderDirectory(){
   const chips=[['all','All ('+items.length+')'],['team','Team ('+counts.team+')'],['vendor','Vendors ('+counts.vendor+')'],['sub','Subs & Trades ('+counts.sub+')'],['rep','Reps ('+counts.rep+')']];
   document.getElementById('dirFilters').innerHTML=chips.map(([k,lbl])=>
     `<button class="fbtn ${DIR_FILTER===k?'active':''}" onclick="DIR_FILTER='${k}';renderDirectory()">${lbl}</button>`).join('');
-  document.getElementById('dirCounts').innerHTML = `<b>${filtered.length}</b> ${filtered.length===1?'entry':'entries'} shown${q?` matching "${esc(q)}"`:''}. Click a row to jump to the source tab.`;
+  document.getElementById('dirCounts').innerHTML = `<b>${filtered.length}</b> ${filtered.length===1?'entry':'entries'} shown${q?` matching "${esc(q)}"`:''}. Click a row for details.`;
 
   const initials = n => (n||'—').split(/[\s—·-]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
   const findPhone = s => { const m=(s||'').toString().match(/(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/); return m?m[0]:null; };
   const findEmail = s => { const m=(s||'').toString().match(/[\w.+-]+@[\w-]+\.[\w.]+/); return m?m[0]:null; };
+  items.forEach((x,i)=>x._i=i); window._DIR_ITEMS=items; window._DIR_AVA=AVA_BG; window._DIR_KIND=KIND_LBL;
 
   const row = x => {
     const blob=[x.meta,x.role,x.name].join(' ');
     const ph=findPhone(blob), em=findEmail(blob);
-    return `<div class="dir-row" onclick="go('${esc(x.tab)}')">
+    return `<div class="dir-row" style="cursor:pointer" onclick="dirRowClick(${x._i})">
       <div class="dir-ava" style="background:${AVA_BG[x.kind]||'var(--accent)'}">${esc(initials(x.name))}</div>
       <div class="dir-main">
         <div class="dir-name">${esc(x.name||'—')}</div>
@@ -3636,6 +3617,34 @@ async function renderDirectory(){
   }).join('');
 
   root.innerHTML = filtered.length ? groups : '<div class="empty">Nothing matches this filter.</div>';
+}
+// Directory row → detail modal (no ghost-navigation to nav-less panels). Offers a
+// jump only to tabs that are actually in the nav for this role.
+function dirRowClick(i){
+  const x=(window._DIR_ITEMS||[])[i]; if(!x) return;
+  const NAVABLE=['team','vendors','ordering','contacts','clients'];
+  const canNav = NAVABLE.includes(x.tab) && (typeof isTabVisible!=='function' || isTabVisible(x.tab));
+  const KIND=(window._DIR_KIND||{}), AVA=(window._DIR_AVA||{});
+  const blob=[x.meta,x.role,x.name].join(' ');
+  const ph=(blob.match(/(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/)||[])[0];
+  const em=(blob.match(/[\w.+-]+@[\w-]+\.[\w.]+/)||[])[0];
+  const ini=(x.name||'—').split(/[\s—·-]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  const bg=document.createElement('div');bg.className='ax-modal-bg';bg.onclick=e=>{if(e.target===bg)bg.remove();};
+  bg.innerHTML=`<div class="ax-modal" style="max-width:420px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <div class="dir-ava" style="background:${AVA[x.kind]||'var(--accent)'};width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">${esc(ini)}</div>
+      <div><h3 style="margin:0">${esc(x.name||'—')}</h3><div class="sub" style="margin:0">${esc(KIND[x.kind]||x.kind||'')}${x.role?' · '+esc(x.role):''}${x.extra?' · '+brandTag(x.extra):''}</div></div>
+    </div>
+    ${x.meta?`<div class="sub" style="margin-top:8px">${esc(x.meta)}</div>`:''}
+    <div style="display:flex;gap:10px;margin-top:12px">
+      ${ph?`<a class="btn sm ghost" href="tel:${esc(ph.replace(/[^\d+]/g,''))}">📞 ${esc(ph)}</a>`:''}
+      ${em?`<a class="btn sm ghost" href="mailto:${esc(em)}">✉️ Email</a>`:''}
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      ${canNav?`<button class="btn sm" onclick="this.closest('.ax-modal-bg').remove();go('${esc(x.tab)}')">Open in ${esc(TAB_TITLES[x.tab]||x.tab)} ↗</button>`:''}
+      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+    </div></div>`;
+  document.body.appendChild(bg);
 }
 
 /* ================================================================
@@ -3793,7 +3802,6 @@ function buildCmdkIndex(){
     {kind:'action', label:'New contact', cat:'Actions', run:()=>go('contacts')},
     {kind:'action', label:'New task', cat:'Actions', run:()=>go('tasks')},
     {kind:'action', label:'New resource', cat:'Actions', run:()=>go('resources')},
-    {kind:'action', label:'Add item', cat:'Actions', run:()=>go('items')},
     {kind:'action', label:'New job', cat:'Actions', run:()=>go('jobs')},
     {kind:'action', label:'Open Jatalia dashboard', cat:'Actions', run:()=>window.open('https://go.jataliamarketplace.com/','_blank')},
     {kind:'action', label:'Open Shopify admin', cat:'Actions', run:()=>window.open('https://admin.shopify.com/store/earthwise-seed','_blank')},
@@ -4334,10 +4342,7 @@ async function renderExecSummary(tab){
   }
   const brands=wsBrands();
   const rows=_EXEC_CACHE.filter(r=>r.fields.tab===tab && (!brands||!r.brand||brands.includes(r.brand)));
-  if(!rows.length){
-    slot.innerHTML=`<div class="card" style="border-left:3px solid var(--border);padding:12px 16px"><div style="font-size:13px;font-weight:700;color:var(--text-mute)">📌 Executive summary</div><div class="sub" style="margin-top:2px">Pending — the owning agent will post this section's summary on its next run.</div></div>`;
-    return;
-  }
+  if(!rows.length){ slot.innerHTML=''; return; }   // no summary → no banner (no clutter)
   const f=rows.sort((a,b)=>String(b.fields.updated||'').localeCompare(String(a.fields.updated||'')))[0].fields;
   slot.innerHTML=`<div class="card" style="border-left:3px solid var(--accent)"><div style="font-size:14px;font-weight:700;margin-bottom:4px">📌 Executive summary${f.owner?` <small style="color:var(--text-mute);font-weight:500">· ${esc(f.owner)}</small>`:''}</div><div class="sub" style="white-space:pre-wrap;color:var(--text)">${esc(f.summary||'')}</div>${f.updated?`<div class="sub" style="color:var(--text-mute);margin-top:6px">Updated ${esc(f.updated)}</div>`:''}</div>`;
 }
@@ -5056,7 +5061,7 @@ async function renderTechStack(){
     <td style="white-space:nowrap">${TECH_EDIT===r.id
       ?`<button class="btn sm" onclick="saveTechRow('${r.id}')">Save</button> <button class="btn sm ghost" onclick="TECH_EDIT=null;renderTechStack()">✕</button>`
       :`<button class="btn sm ghost" onclick="TECH_EDIT='${r.id}';renderTechStack()">✎</button> <button class="btn sm ghost" onclick="delTechRow('${r.id}')">🗑</button>`}</td></tr>`).join('')}
-  <tr>${TECH_COLS.map(c=>`<td><input id="te_new_${c.k}" placeholder="${c.label}" style="width:${c.w-14}px"></td>`).join('')}
+  <tr data-nosort>${TECH_COLS.map(c=>`<td><input id="te_new_${c.k}" placeholder="${c.label}" style="width:${c.w-14}px"></td>`).join('')}
     <td><button class="btn sm" onclick="addTechRow()">+ Add</button></td></tr>
   </tbody></table></div>
   <div class="sub" style="margin-top:6px"><b>Monthly $</b> is the real recurring charge Tekki matched to this tool in Bank Connection (public pricing only where no charge is found yet). <b>Value</b> is Tekki's 0–100 score of the tool's benefit to the business vs. its cost/priority. <b>Rec</b> is keep / cut / replace. Priority = what breaks if it goes dark. Logins live in Resources. Edit anything inline; Tekki refreshes cost, score, and rec on its daily sweep.</div>`;
@@ -5762,9 +5767,12 @@ let RT_STARTED=false, RT_DEB=null, RT_LAST_FULL=0;
 function rtRefreshActive(force){
   const active=document.querySelector('.panel.active'); if(!active) return;
   const tab=active.id;
+  _EXEC_CACHE=null; window.renderExecSummary&&renderExecSummary(tab);   // data changed → refresh the exec-summary banner
   // Custom-rendered tabs
-  if(tab==='home'){ renderRecent&&renderRecent(); renderHealth&&renderHealth(); renderDash&&renderDash(); renderFavPanel&&renderFavPanel(); window.renderCallNotes&&renderCallNotes(); }
-  if(tab==='finance'){ window.renderMoola&&renderMoola(); window.renderPayables&&renderPayables(); }
+  if(tab==='home'){ renderRecent&&renderRecent(); renderHealth&&renderHealth(); renderDash&&renderDash(); renderFavPanel&&renderFavPanel(); window.renderCallNotes&&renderCallNotes(); window.renderHomeSnapshot&&renderHomeSnapshot(); }
+  if(tab==='finance'&&window.renderFinance){ renderFinance(); }
+  if(tab==='commissions'&&window.renderCommissions) renderCommissions();
+  if(tab==='jobs'&&window.renderJobs) renderJobs();
   if(tab==='directory'&&window.renderDirectory) renderDirectory();
   if(tab==='clients'&&window.renderClients) renderClients();
   if(tab==='projects'&&window.renderProjects) renderProjects();
