@@ -104,13 +104,41 @@ passed**, the team wants a plain-English read on how it's actually going, not ju
 a phase/target table.
 
 - **Determine `install_started` + `install_date`.** Evidence, in priority order:
-  (1) a JobTread task/milestone dated in the past whose name indicates
-  install/production start ("Install Start", "Production Start", "Demo"); (2) a
-  ServiceMinder job/appointment marked started; (3) CompanyCam photo evidence of
-  demo/prep or later phases (§2's phase inference). Set `install_started = true`
-  and `install_date` = the earliest of these with real evidence — never guess a
-  date with no evidence behind it. Jobs still in Design/Selections or Production
-  Gate are `install_started = false`; skip the rest of this section for them.
+  (1) the **primary install date / install window in ServiceMinder** (the
+  scheduled install appointment or job install-window dates) and the matching
+  **JobTread install/production task dates** — these named install dates are the
+  strongest signal; use the ServiceMinder primary-install date as `install_date`
+  when set, cross-checked against JobTread's; (2) a JobTread task/milestone dated
+  in the past whose name indicates install/production start ("Install Start",
+  "Production Start", "Demo"); (3) a ServiceMinder job/appointment marked started;
+  (4) **invoice-payment progress (see below): ≥75% of the contract collected means
+  the job has physically started** even if no install task is dated; (5) CompanyCam
+  photo evidence of demo/prep or later phases (§2's phase inference). Set
+  `install_started = true` and `install_date` = the ServiceMinder primary-install
+  date when available, else the earliest other signal with real evidence — never
+  guess a date with no evidence behind it. Jobs still in Design/Selections or
+  Production Gate with <75% collected are `install_started = false`; skip the rest
+  of this section for them.
+- **Invoice-payment progress — a first-class status signal (owner rule).** Compute
+  `pay_pct = paid ÷ contract_total` from ServiceMinder invoices/payments (§3's
+  money truth). Apply the owner's rule and record it in `pay_pct` + `payment_status`:
+  - **`pay_pct ≥ 100%` → the job is COMPLETE** (`payment_status = 'complete'`,
+    `stage = 'Closed — Paid'`). Full collection is the definition of done.
+  - **`pay_pct ≥ 75%` → the job has STARTED / is in production**
+    (`payment_status = 'started'`) — KTU/BTU terms front-load payment (e.g.
+    50/40/10), so three-quarters collected means material has shipped and install
+    is underway. Treat `install_started = true`.
+  - **`pay_pct < 75%` → `payment_status = 'pre_production'`** (deposit-only /
+    selections).
+  **Triangulate, don't take payment alone.** Reconcile `payment_status` against
+  (a) the ServiceMinder job/appointment **status**, and (b) the **primary install /
+  install-window dates in ServiceMinder and JobTread**. When they agree, state the
+  stage with confidence. When they conflict — e.g. 80% collected but no install
+  date and no demo photos, or an install date passed but only a deposit collected —
+  **flag the mismatch** in `pm_comment` (and a `foreman_briefing` row if it has $ or
+  schedule impact) rather than silently trusting one source. A high `pay_pct` with
+  no field/JobTread evidence can mean a mis-posted payment or a job quietly finished
+  without its board being updated — both worth surfacing.
 - **`pm_comment`** — 2-3 plain-English sentences on how the job is actually
   tracking: current phase vs. where it should be at this many elapsed days, what
   moved it recently (a photo burst, a vendor update, a stall), and the reasoning
@@ -142,18 +170,54 @@ a phase/target table.
   This is the one field on `foreman_board` a human owns; everything else in this
   section you recompute fresh each run.
 
+### 2c. Estimated timeline from scope + the project-steps breakout (every active job)
+
+The team wants, per job, a plain read of **how long it should take and what the
+steps are** — not just a track label. Produce both:
+
+- **`est_timeline` — an estimated duration built from the actual job scope.** Start
+  from the track window (A 5–7wk / B 9–12wk) but adjust for what the scope really
+  contains: count the cost/scope drivers from the **invoice/proposal lines**
+  (`get_proposal.ProposalLines` / `query_invoices.Lines`) — demo level, tile area,
+  custom vanity/countertop allowance (Elias = fixed 3–4wk vendor cycle), wall
+  system, electrical/plumbing moves — and from **Ben's materials list** and the
+  **CAD packet** (§4b). More trade-switches and any vendor-supplied allowance line
+  push the estimate toward the top of the window; a simple reface/tub swap toward
+  the bottom. State `est_timeline` as a week range plus a one-line "why" and, when
+  `install_date` is known, an **`est_completion`** date.
+- **`project_steps` — the step-by-step breakout, in the notes.** Derive the ordered
+  production steps for THIS job from its scope + design packet + the lifecycle
+  vocabulary, and mark where it is now. Write them as a compact ordered list into
+  the board row's notes so the Projects tab can show the breakout, e.g.:
+  `Selections ✓ → CAD approved ✓ → Elias order placed ✓ → Demo ⏳(in progress) →
+  Rough plumbing/electrical → Tile & wall system → Vanity/countertop set →
+  Paint & trim → Punch → Final payment`. Every step comes from real scope
+  evidence (a line item, a materials-list entry, a CompanyCam phase) — don't invent
+  generic steps a given job doesn't include.
+- **Explicitly fold in the three field signals (owner instruction).** Ben's
+  **materials list** (the `*-Materials.xlsx` selections), the **CAD designs**
+  (`<Client>.pdf`), and the **CompanyCam** photo phase inference must all feed the
+  `stage`, `est_timeline`, `project_steps`, and `pm_comment` — a job whose CAD is
+  approved and whose photos show demo is further along than one still in selections,
+  and the steps/timeline must reflect that. If a materials list or CAD hasn't
+  arrived for a job that should have one by now, that gap is itself a step not yet
+  met — surface it (§4b `awaiting`).
+
 **Lifecycle `stage` vocabulary** — use exactly these values (in this order) for the
 `stage` field on `client_status`/`foreman_board`, so the intranet can render a clean
 sale-to-final-payment progress indicator. Never invent a different label:
 `Sold` → `Design/Selections` → `Production Gate` → `Vendor Ordering` →
 `In Production` → `Punch/Substantial Completion` → `Final Payment Pending` →
 `Closed — Paid`. Derive it from the strongest available evidence: ServiceMinder
-invoice/payment status for the payment-side stages (`Final Payment Pending` =
-substantially complete per photos/notes but `outstanding > 0`; `Closed — Paid` =
-`outstanding == 0`), CompanyCam phase inference (above) for the production-side
-stages, and JobTread task/gate state for the earliest two. If evidence conflicts,
-pick the LATEST stage with clear support and flag the ambiguity rather than
-guessing.
+invoice/payment status for the payment-side stages (apply the owner's payment rule:
+`pay_pct ≥ 100%` → `Closed — Paid`; `pay_pct ≥ 75%` → at least `In Production` /
+`Final Payment Pending` if photos/notes show substantial completion but
+`outstanding > 0`; `Final Payment Pending` = substantially complete but
+`outstanding > 0`; `Closed — Paid` = `outstanding == 0`), CompanyCam phase
+inference (above) for the production-side stages, the ServiceMinder primary-install
+/ install-window dates and JobTread task/gate state for the production and earliest
+stages. If evidence conflicts, pick the LATEST stage with clear support and flag the
+ambiguity rather than guessing.
 
 ### 3. Cost analysis — TWO costings, side by side (the money lens)
 Per active job, compute **two independent costings** and report both — never
@@ -181,10 +245,29 @@ collapse them into one number:
   **Owner-confirmed (2026-07-05): every ServiceMinder proposal LINE AMOUNT is
   sale price — including percentage lines like "Shop Labor 24%" and "Overhead
   5%", which are components of the sale amount, NOT cost data.** Never read
-  line prices, internal lines, or percentage lines as cost. The ONLY cost
-  signal on a proposal line is an explicitly populated `UnitCost` field; for
-  KTU these are rarely populated, so the intranet ledger is effectively the
-  sole actual-cost source for KTU jobs.
+  line prices, internal lines, or percentage lines as cost. The cost signal on
+  a proposal line is the explicitly populated **`UnitCost`** field.
+  **VERIFIED 2026-07-12 (Koreena Larson, BTU proposal 47576498): `get_proposal`
+  fetched BY ID returns `ProposalLines[].UnitCost` populated with the
+  team-entered cost** — e.g. Demo Level 2 `UnitPrice 1600 / UnitCost 1350`,
+  Paint Materials `500 / 375`, Toilet Install `270 / 135`. So the team's cost
+  input IS machine-readable per line. **Two things that tripped this up before,
+  now settled:**
+  - **Fetch the proposal BY ID, not via search.** `query_proposals`
+    (by date/accepted/contact) returns EMPTY for this tenant — but
+    `get_proposal(location, proposal_id)` with the id in hand returns the full
+    line detail including `UnitCost`. Get the `proposal_id` from the paid
+    invoice (`query_invoices(contact_id).Invoices[].ProposalId`) or the
+    appointment, then call `get_proposal` directly.
+  - **Coverage still matters.** Some lines carry `UnitCost 0` — allowances and
+    vendor-supplied items (Elias vanity `3000/0`, Wolf wall system `4500/0`,
+    tub-wall labor `2400/0`). Those are real spend with cost not entered on the
+    line → count them in the coverage denominator and flag as unpriced, exactly
+    as §3's coverage rule requires. Never treat `UnitCost 0` as "$0 cost."
+  - **BTU proposals populate `UnitCost` widely; KTU proposals populate it
+    sparsely** — so for KTU lean on the intranet `job_costs` ledger, but for
+    BTU the proposal lines are a genuine estimated-cost source. Report which
+    source produced the number.
 - **Contract price** — accepted ServiceMinder proposal + signed change orders (same
   for both costings).
 - **Estimated GP%** = (contract − estimated cost) / contract.
@@ -242,6 +325,21 @@ collapse them into one number:
   audit (§5) with real evidence instead of guessing.
 - Track per order: vendor, item, status, ETA, last update. **Silent past ETA = flag.**
   Delivery due within 7 days with no site-readiness photo evidence = flag.
+- **Reconcile actuals vs invoices, and catch duplicates (owner instruction).**
+  The team's cost baseline lives on the proposal (`get_proposal … ProposalLines[].UnitCost`,
+  above) and in the ServiceMinder Margins panel (Materials/Labor/Other vendor
+  postings, e.g. "Rossi Plumbing $4,010", "Home Depot $254" — visible in the SM UI;
+  mirror them into the `job_costs` ledger when they aren't API-returned). For each
+  running job, line up **three actual-cost sources** and reconcile them:
+  (1) proposal `UnitCost` baseline, (2) the SM Margins vendor postings / `job_costs`
+  ledger, (3) vendor invoices arriving by email (`ktubtubilling@gmail.com`) or
+  integration. **Flag as a `warn`/`urgent` finding:** the same vendor invoice
+  appearing twice (same vendor + amount + ~date across email and the ledger, or two
+  emailed copies) = a **duplicate-payment risk** — name both sources and the dollar
+  amount; and any emailed vendor invoice with **no** matching ledger/Margins entry
+  = an unrecorded actual that will understate cost. Actuals that materially exceed
+  the proposal `UnitCost` baseline for that scope = margin erosion (§3) with the
+  vendor named.
 - Tie each vendor slip to its schedule impact ("Elias confirmation unsigned 4 days →
   install slips ~1 week") — always translate vendor state into install-date language.
 
@@ -335,7 +433,11 @@ section — stale beats blank):
   contract_total, estimated_cost, actual_cost, estimated_cost_coverage_pct,
   actual_cost_coverage_pct, estimated_gp_pct, actual_gp_pct, price_grade
   (over_market|at_market|under_market|no_catalog — BTU only, per §3), status
-  (🟢/🟡/🔴), action, install_started, install_date, pm_comment, timeline_status
+  (🟢/🟡/🔴), action, install_started, install_date, pay_pct, payment_status
+  (pre_production|started|complete, §2b owner rule), est_timeline (§2c week range
+  from scope), est_completion (§2c, when install_date known), project_steps (§2c
+  ordered step breakout with current position — shown in the Projects notes),
+  pm_comment, timeline_status
   (within_timeline|at_risk|overrun, §2b — only for install_started jobs),
   timeline_goal (human-entered, CARRY FORWARD — see below), goal_assessment
   (on_track_for_goal|tight_but_possible|not_doable, only when timeline_goal is

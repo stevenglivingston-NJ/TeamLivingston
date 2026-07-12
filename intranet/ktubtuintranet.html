@@ -842,6 +842,12 @@
 .bjob{border:1px solid var(--border,#30363d);border-radius:12px;padding:14px;margin-bottom:14px}
 .bjob-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .upcoming{box-shadow:inset 3px 0 0 #fbbf24}
+/* Universal sortable table headers — click any column heading to sort/rank */
+table thead th{cursor:pointer;user-select:none}
+table thead th[data-nosort]{cursor:default}
+table thead th.sort-asc::after{content:" ▲";font-size:9px;opacity:.65;font-weight:400}
+table thead th.sort-desc::after{content:" ▼";font-size:9px;opacity:.65;font-weight:400}
+table thead th:hover:not([data-nosort]){color:var(--accent)}
 </style>
 </head>
 <body>
@@ -923,6 +929,7 @@
         <div class="nav-item" data-tab="playbook"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 4h11a5 5 0 010 10H4z"/><path d="M4 14v6"/></svg></span><span class="lbl">Playbook</span><span class="pin" onclick="event.stopPropagation();togglePin('playbook','Playbook')">Pin</span></div>
         <div class="nav-item" data-tab="projects"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-8h6v8"/></svg></span><span class="lbl">Projects</span><span class="pin" onclick="event.stopPropagation();togglePin('projects','Projects')">Pin</span></div>
         <div class="nav-item" data-tab="clients"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0116 0"/><path d="M17 3l4 4"/></svg></span><span class="lbl">Clients</span><span class="pin" onclick="event.stopPropagation();togglePin('clients','Clients')">Pin</span></div>
+        <div class="nav-item" data-tab="appointments"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span class="lbl">Appointments</span><span class="pin" onclick="event.stopPropagation();togglePin('appointments','Appointments')">Pin</span></div>
         <div class="nav-item" data-tab="tasks"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 11l3 3 5-6"/></svg></span><span class="lbl">Tasks</span><span class="pin" onclick="event.stopPropagation();togglePin('tasks','Tasks & Follow-ups')">Pin</span></div>
         <div class="nav-item" data-tab="trades"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M14 3l7 7-4 4-7-7z"/><path d="M3 21l7-7"/></svg></span><span class="lbl">Trades</span><span class="pin" onclick="event.stopPropagation();togglePin('trades','Trades')">Pin</span></div>
         <div class="nav-item" data-tab="roles"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5"/></svg></span><span class="lbl">Roles</span><span class="pin" onclick="event.stopPropagation();togglePin('roles','Roles')">Pin</span></div>
@@ -937,7 +944,6 @@
       <div class="nav-group" data-scope="hs">
         <div class="nav-label">Catalog &amp; Jobs</div>
         <div class="nav-item" data-tab="contacts"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 8h16M9 12h6M9 16h6"/></svg></span><span class="lbl">Contacts</span><span class="pin" onclick="event.stopPropagation();togglePin('contacts','Contacts')">Pin</span></div>
-        <div class="nav-item" data-tab="items"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/></svg></span><span class="lbl">Items / Catalog</span><span class="pin" onclick="event.stopPropagation();togglePin('items','Items')">Pin</span></div>
         <div class="nav-item" data-tab="jobs"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span><span class="lbl">Job Costing</span><span class="pin" onclick="event.stopPropagation();togglePin('jobs','Job Costing')">Pin</span></div>
       </div>
 
@@ -1067,7 +1073,7 @@
             <button class="qa" onclick="go('jobs')"><span class="ico">＋</span>New job</button>
             <button class="qa" onclick="go('resources')"><span class="ico">🔐</span>Logins &amp; links</button>
             <button class="qa" onclick="go('reports')"><span class="ico">↗</span>Open reports</button>
-            <button class="qa" onclick="go('earth-overview')"><span class="ico">🌱</span>Earthwise ops</button>
+            <button class="qa" data-wsonly="earth" onclick="go('earth-overview')"><span class="ico">🌱</span>Earthwise ops</button>
           </div>
         </div>
         <div class="now" id="homeNow"></div>
@@ -1093,11 +1099,6 @@
           <div class="value" id="kpiContacts">—</div>
           <div class="trend" id="kpiContactsSub">Shared address book</div>
         </div>
-        <div class="kpi btu" onclick="go('items')" style="cursor:pointer">
-          <div class="label">Catalog items</div>
-          <div class="value" id="kpiItems">—</div>
-          <div class="trend" id="kpiItemsSub">KTU + BTU catalog</div>
-        </div>
         <div class="kpi" onclick="go('jobs')" style="cursor:pointer">
           <div class="label">Open jobs</div>
           <div class="value" id="kpiJobs">—</div>
@@ -1113,6 +1114,13 @@
           <div class="value" id="kpiTasks">—</div>
           <div class="trend" id="kpiTasksSub">Next 7 days</div>
         </div>
+      </div>
+
+      <!-- KTU & BTU snapshot — appointments onward, sales YTD vs LY, customers TY vs LY -->
+      <div class="card" id="snapshotCard" data-scope="hs">
+        <h2>📌 KTU &amp; BTU snapshot</h2>
+        <div class="sub">Appointments scheduled from today onward, sales year-to-date vs. the same period last year, and customer count this year vs. last — per brand. Click any tile to open the detail.</div>
+        <div id="snapshot_root" class="loading">Loading…</div>
       </div>
 
       <div class="card" id="pulseCard">
@@ -1418,8 +1426,11 @@
           <div><label class="hint">Password</label><input id="resPass" placeholder="(optional)" style="width:100%"></div>
           <button class="btn sm" onclick="addResource()">+ Add</button>
         </div>
-        <div style="margin-top:8px"><input id="resNotes" placeholder="Notes (optional)" style="width:100%"></div>
-        <div class="sub" style="margin-top:6px">Anyone with intranet access can see everything here — this is a shared team vault, not per-person secrets. Don't store banking or payroll credentials; keep those in a proper password manager.</div>
+        <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px;margin-top:8px">
+          <div><label class="hint">Google Drive link (optional)</label><input id="resDrive" placeholder="https://drive.google.com/…" style="width:100%"></div>
+          <div><label class="hint">Notes</label><input id="resNotes" placeholder="Notes (optional)" style="width:100%"></div>
+        </div>
+        <div class="sub" style="margin-top:6px">Anyone with intranet access can see everything here — this is a shared team vault, not per-person secrets. Don't store banking or payroll credentials; keep those in a proper password manager. The <b>Librarian</b> auto-maps matching Drive files to the Drive link each Monday — you can override it anytime.</div>
       </div>
       <div class="card">
         <div id="resFilters" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"></div>
@@ -1646,6 +1657,49 @@
       <div class="card">
         <div id="clientFilters" style="display:flex;gap:8px;margin-bottom:12px"></div>
         <div id="clientsRoot" class="loading">Loading…</div>
+      </div>
+    </section>
+
+    <section class="panel" id="appointments">
+      <style>
+        #appointments .slicer{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px}
+        #appointments .slicer label{display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px}
+        #appointments .slicer select,#appointments .slicer input{font:inherit;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 9px}
+        #appointments .bkt{display:inline-flex;gap:2px;padding:3px;background:var(--bg);border:1px solid var(--border);border-radius:10px;margin-bottom:14px}
+        #appointments .bkt button{border:0;background:none;color:var(--text-dim);font:inherit;font-weight:600;font-size:13px;padding:6px 14px;border-radius:8px;cursor:pointer}
+        #appointments .bkt button.on{background:var(--accent);color:#fff}
+        #appointments .appt{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;background:var(--surface)}
+        #appointments .appt.overdue-action{border-left:3px solid var(--warn)}
+        #appointments .appt-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+        #appointments .appt-notes{font-size:12.5px;color:var(--text-2);background:var(--surface-inset);border-radius:8px;padding:9px 11px;margin-top:8px;white-space:pre-wrap;line-height:1.5}
+        #appointments .na-row{display:flex;gap:8px;align-items:center;margin-top:10px}
+        #appointments .na-row input{flex:1;min-width:140px;font:inherit;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 10px}
+        #appointments .seg{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 8px;border-radius:999px}
+        #appointments .seg.follow_up{background:rgba(74,222,128,.15);color:var(--success)}
+        #appointments .seg.dead{background:rgba(248,113,113,.15);color:var(--danger)}
+        #appointments .seg.unknown{background:var(--surface-inset);color:var(--text-mute)}
+      </style>
+      <div class="page-head">
+        <h1 class="page-title">📅 Appointments</h1>
+        <p class="page-sub">Every KTU + BTU consult — upcoming, past, and cancelled — with the customer, the appointment notes Ben leaves, proposal status &amp; amount, and a Next-action field to capture in your sales meetings. Cancelled ones are segmented so you know which to chase and which are dead.</p>
+      </div>
+      <div class="card">
+        <div class="slicer" id="apptSlicer">
+          <label>Business<select id="apptBrand" onchange="renderAppointments()"><option value="">All</option><option value="KTU">Kitchen Tune-Up</option><option value="BTU">Bath Tune-Up</option></select></label>
+          <label>Agent<select id="apptAgent" onchange="renderAppointments()"><option value="">All agents</option></select></label>
+          <label>From<input type="date" id="apptFrom" onchange="renderAppointments()"></label>
+          <label>To<input type="date" id="apptTo" onchange="renderAppointments()"></label>
+          <label>Proposal<select id="apptProp" onchange="renderAppointments()"><option value="">Any</option><option value="open">Open</option><option value="accepted">Accepted</option><option value="expired">Expired</option><option value="none">None</option></select></label>
+          <label style="text-transform:none;letter-spacing:0">Search<input type="text" id="apptSearch" placeholder="name / phone / notes" oninput="renderAppointments()" style="font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"></label>
+          <button class="btn sm ghost" onclick="apptClearSlicer()" style="margin-bottom:1px">Clear</button>
+        </div>
+        <div class="bkt" id="apptBuckets">
+          <button data-bkt="upcoming" class="on" onclick="apptSetBucket('upcoming')">Upcoming</button>
+          <button data-bkt="past" onclick="apptSetBucket('past')">Past</button>
+          <button data-bkt="cancelled" onclick="apptSetBucket('cancelled')">Cancelled</button>
+        </div>
+        <div id="apptSummary" style="margin-bottom:10px"></div>
+        <div id="appointments_root" class="loading">Loading…</div>
       </div>
     </section>
 
@@ -2451,7 +2505,7 @@ const TAB_TITLES = {
   home:'Home', directory:'Directory', docs:'Files & Docs', techstack:'Tech Stack', mktplan:'Marketing Plan', mktspend:'Marketing Spend', syshealth:'System Health',
   contacts:'Contacts', items:'Items', jobs:'Job Costing', team:'Team',
   vendors:'Vendors', systems:'Systems', integrations:'Integrations', franchise:'Franchise',
-  pipeline:'Pipeline', marketing:'Marketing', onboarding:'Onboarding', ordering:'Ordering', trades:'Trades',
+  pipeline:'Pipeline', appointments:'Appointments', marketing:'Marketing', onboarding:'Onboarding', ordering:'Ordering', trades:'Trades',
   clients:'Clients', tasks:'Tasks & Follow-ups', projects:'Projects',
   roles:'Roles', dailyops:'Daily Ops', playbook:'Playbook', resources:'Resources', library:'Library',
   territories:'Territories', showroom:'Showroom', reports:'Reports', adminconsole:'Admin Console', axyomfin:'Axyom Financials',
@@ -2480,11 +2534,13 @@ function go(tab,push=true){
   document.querySelector('.sidebar').classList.remove('open');
   window.scrollTo({top:0,behavior:'instant'});
   // Live-refresh Home cards when navigating back to home
-  if(tab==='home'){ renderRecent(); renderHealth(); renderFavPanel(); renderDash(); renderCallNotes(); }
+  if(tab==='home'){ renderRecent(); renderHealth(); renderFavPanel(); renderDash(); renderCallNotes(); renderHomeSnapshot(); }
   if(tab==='finance'){ renderMoola(); renderPayables(); }
   if(tab==='directory'){ renderDirectory(); }
   if(tab==='adminconsole'){ renderAdminConsole(); renderTabPermissions(); }
   if(tab==='pipeline'){ renderPipeline(); }
+  if(tab==='integrations'){ renderIntegrations(); }
+  if(tab==='appointments'){ renderAppointments(); }
   if(tab==='organic'){ switchPO(PO_VIEW); }
   if(tab==='team'){ renderOrgChart(); }
   if(tab==='team'){ renderTeamDates(); }
@@ -2499,6 +2555,40 @@ function go(tab,push=true){
   if(tab==='mktplan'){ renderMktPlan(); }
   if(tab==='mktspend'){ renderMktSpend(); }
 }
+/* ================================================================
+   Universal table sorting — click any column header to sort/rank.
+   Delegated so it survives every table re-render. A header can opt out
+   with data-nosort; totals belong in <tfoot> (never sorted). Numeric,
+   currency (%/$), and text columns are auto-detected.
+   ================================================================ */
+(function(){
+  const cellText=td=>td?((td.innerText||td.textContent||'').trim()):'';
+  const num=s=>{ const c=s.replace(/[,$%\s]/g,''); if(c===''||!/^-?\d/.test(c))return null; const n=parseFloat(c); return isFinite(n)?n:null; };
+  document.addEventListener('click',e=>{
+    const th=e.target.closest('th'); if(!th) return;
+    if(!th.closest('thead')) return;                 // header cells only
+    if(th.hasAttribute('data-nosort')) return;
+    if(!cellText(th)) return;                         // skip empty action-column headers
+    const table=th.closest('table'); const tbody=table&&table.tBodies[0]; if(!tbody) return;
+    const headRow=th.parentElement; const ths=[...headRow.children]; const idx=ths.indexOf(th);
+    if(idx<0) return;
+    const rows=[...tbody.rows].filter(r=>!r.hasAttribute('data-nosort'));
+    if(rows.length<2) return;
+    const prevCol=table.getAttribute('data-sort-col'), prevDir=table.getAttribute('data-sort-dir')||'desc';
+    const dir=(String(idx)===prevCol&&prevDir==='asc')?'desc':'asc';
+    table.setAttribute('data-sort-col',String(idx)); table.setAttribute('data-sort-dir',dir);
+    const numeric=rows.map(r=>num(cellText(r.cells[idx]))).filter(n=>n!=null).length >= Math.ceil(rows.length*0.6);
+    rows.sort((a,b)=>{
+      const av=cellText(a.cells[idx]), bv=cellText(b.cells[idx]);
+      let c; if(numeric){ const an=num(av),bn=num(bv); c=(an==null?-Infinity:an)-(bn==null?-Infinity:bn); }
+      else c=av.localeCompare(bv,undefined,{numeric:true,sensitivity:'base'});
+      return dir==='asc'?c:-c;
+    });
+    rows.forEach(r=>tbody.appendChild(r));
+    ths.forEach(h=>h.classList.remove('sort-asc','sort-desc'));
+    th.classList.add(dir==='asc'?'sort-asc':'sort-desc');
+  });
+})();
 // Back/forward: restore the tab encoded in the hash without re-pushing
 window.addEventListener('popstate',()=>{ go((location.hash||'#home').slice(1)||'home',false); });
 document.addEventListener('DOMContentLoaded',()=>{
@@ -2562,6 +2652,14 @@ function defaultTabVisible(tab, role, ws){
   if(scope==='earth') return (role==='admin' && (ws==='all'||ws==='earth')) || role==='ecommerce';
   if(scope==='admin') return role==='admin';
   return true; // shared
+}
+// Same scope rules as defaultTabVisible, but for non-nav elements (home cards).
+function scopeVisible(scope){
+  const role=CURRENT_ROLE, ws=CURRENT_WS;
+  if(scope==='hs')    return role!=='ecommerce' && ws!=='earth';
+  if(scope==='earth') return (role==='admin' && (ws==='all'||ws==='earth')) || role==='ecommerce';
+  if(scope==='admin') return role==='admin';
+  return true;
 }
 let TAB_PERM_OVERRIDES = {};
 async function loadTabPermissions(role){
@@ -2650,6 +2748,17 @@ function setWS(k){
     const items=[...g.querySelectorAll('.nav-item[data-tab]')];
     const anyVisible=items.some(it=>it.style.display!=='none');
     g.style.display = anyVisible ? '' : 'none';
+  });
+  // Elements flagged for a single workspace (e.g. the "Earthwise ops" home
+  // shortcut) show only when that exact workspace is active.
+  document.querySelectorAll('[data-wsonly]').forEach(el=>{
+    el.style.display = (CURRENT_WS===el.dataset.wsonly) ? '' : 'none';
+  });
+  // Home-panel cards carry the same scope tags as the nav — hide home-services
+  // cards on the Earthwise workspace and vice-versa so Home stays on-brand.
+  document.querySelectorAll('.panel [data-scope]').forEach(el=>{
+    if(el.classList.contains('nav-item')||el.classList.contains('nav-group')) return;
+    el.style.display = scopeVisible(el.dataset.scope) ? '' : 'none';
   });
   // Goldeneye card shows for every role — brand filtering scopes the callouts
   // (ecommerce sees only Earthwise/marketplace items, team sees only KTU/BTU).
@@ -2977,9 +3086,61 @@ function renderHealth(){
   const c={ok:0,auth:0,degraded:0,dep:0}; INTEGRATIONS.forEach(x=>c[x.status]++);
   const attention=c.auth+c.degraded+c.dep;
   box.innerHTML=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-    <div class="kpi" style="padding:12px 14px"><div class="label">Connected</div><div class="value" style="font-size:22px;color:#4ade80">${c.ok}</div></div>
-    <div class="kpi" style="padding:12px 14px"><div class="label">Needs attention</div><div class="value" style="font-size:22px;color:#fb923c">${attention}</div></div>
+    <div class="kpi" style="padding:12px 14px;cursor:pointer" onclick="goIntegrations('ok')" title="View connected integrations"><div class="label">Connected</div><div class="value" style="font-size:22px;color:#4ade80">${c.ok}</div></div>
+    <div class="kpi" style="padding:12px 14px;cursor:pointer" onclick="goIntegrations('attention')" title="View integrations needing attention"><div class="label">Needs attention</div><div class="value" style="font-size:22px;color:#fb923c">${attention}</div></div>
   </div>`;
+}
+// Jump to the Integrations tab with a specific status filter pre-applied.
+function goIntegrations(f){ intgFilter = f||'all'; go('integrations'); }
+
+// KTU & BTU snapshot: appointments onward + Sales YTD vs LY + Customers TY vs LY.
+async function renderHomeSnapshot(){
+  const root=document.getElementById('snapshot_root'); if(!root) return;
+  const brandsShown=wsBrands(); // respect the workspace switcher (KTU/BTU only)
+  const wantBrands=[{k:'KTU',cls:'ktu'},{k:'BTU',cls:'btu'}]
+    .filter(b=>!brandsShown||brandsShown.includes(b.k));
+  if(!wantBrands.length){ root.innerHTML='<div class="empty">No KTU/BTU brands in this workspace.</div>'; return; }
+  const curY=new Date().getFullYear();
+  const [apptRes,apRes]=await Promise.all([
+    sb.from('appointments').select('brand,bucket'),
+    sb.from('intranet_records').select('brand,fields').eq('section','agent_perf')
+  ]);
+  const upc={KTU:0,BTU:0};
+  (apptRes.data||[]).forEach(a=>{ if(a.bucket==='upcoming'&&upc[a.brand]!=null) upc[a.brand]++; });
+  const rows=(apRes.data||[]).map(r=>({...(r.fields||{}),brand:r.brand||(r.fields||{}).brand}))
+    .filter(f=>f&&f.month&&f.year);
+  // Sum sales (win_value) + customers for a brand/year, optionally limited to a month set.
+  function agg(brand,year,monthSet){
+    let sales=0,cust=0; const months=new Set();
+    rows.filter(r=>r.brand===brand&&Number(r.year)===year).forEach(r=>{
+      const m=Number(r.month); if(monthSet&&!monthSet.has(m)) return;
+      sales+=+r.win_value||0; cust+=+(r.customers!=null?r.customers:r.wins)||0; months.add(m);
+    });
+    return {sales,cust,months};
+  }
+  const tiles=wantBrands.map(b=>{
+    const ty=agg(b.k,curY,null);                 // this year, its active months
+    const ly=ty.months.size?agg(b.k,curY-1,ty.months):null;  // LY, same months only
+    const hasData=ty.months.size>0;
+    const tile=(label,val,lyVal,up,fmt)=>`
+      <div class="kpi" style="padding:12px 14px;cursor:pointer;display:flex;flex-direction:column" onclick="go('pipeline')" title="Open Pipeline / Agent Performance">
+        <div class="label">${label}</div>
+        <div class="value" style="font-size:20px">${val}</div>
+        ${lyVal!=null?apYoY(lyVal.cur,lyVal.ly,up):''}</div>`;
+    return `<div style="margin-bottom:16px">
+      <div class="chart-title" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="scope-tag ${b.cls}">${b.k}</span>${b.k==='KTU'?'Kitchen Tune-Up':'Bath Tune-Up'}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        <div class="kpi" style="padding:12px 14px;cursor:pointer;display:flex;flex-direction:column" onclick="go('appointments')" title="Open Appointments">
+          <div class="label">Appointments onward</div>
+          <div class="value" style="font-size:20px">${upc[b.k]||0}</div>
+          <div class="trend">Scheduled from today</div></div>
+        ${tile('Sales YTD', hasData?money(Math.round(ty.sales)):'—', (hasData&&ly)?{cur:ty.sales,ly:ly.sales}:null, true)}
+        ${tile('Customers YTD', hasData?ty.cust.toLocaleString():'—', (hasData&&ly)?{cur:ty.cust,ly:ly.cust}:null, true)}
+      </div></div>`;
+  }).join('');
+  const anyPerf=rows.length>0;
+  root.innerHTML=tiles+(anyPerf?'':'<div class="sub" style="margin-top:4px">💤 Sales &amp; customer figures land once the ServiceMinder → Agent Performance sync runs.</div>');
 }
 
 /* ================================================================
@@ -3771,6 +3932,71 @@ function ocOpenEditor(name){
   };
 }
 
+/* ================================================================
+   Appointments hub — upcoming / past / cancelled, notes, proposal,
+   editable Next-action (human-owned). Reads the appointments table;
+   slicers are independent of the workspace switcher.
+   ================================================================ */
+let APPT_BUCKET='upcoming', APPT_AGENTS_FILLED=false;
+function apptSetBucket(b){ APPT_BUCKET=b; document.querySelectorAll('#apptBuckets button').forEach(x=>x.classList.toggle('on',x.dataset.bkt===b)); renderAppointments(); }
+function apptClearSlicer(){ ['apptBrand','apptAgent','apptFrom','apptTo','apptProp','apptSearch'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';}); renderAppointments(); }
+async function saveNextAction(id){
+  const el=document.getElementById('na_'+id); if(!el) return;
+  const who=(CURRENT_PROFILE&&(CURRENT_PROFILE.display_name||CURRENT_PROFILE.email))||'';
+  const {error}=await sb.from('appointments').update({next_action:el.value.trim()||null, next_action_by:who}).eq('id',id);
+  if(error){ toast('Save failed: '+error.message,1); return; }
+  toast('Next action saved.');
+}
+async function renderAppointments(){
+  const root=document.getElementById('appointments_root'); if(!root) return;
+  const {data,error}=await sb.from('appointments').select('*');
+  if(error){ root.innerHTML='<div class="empty">Could not load appointments: '+esc(error.message)+'</div>'; return; }
+  const all=data||[];
+  if(!all.length){ root.innerHTML='<div class="ge-clear">📭 No appointments yet — Goldeneye populates this daily from ServiceMinder (customer, notes, proposal). First sync lands shortly.</div>'; document.getElementById('apptSummary').innerHTML=''; return; }
+  // Fill agent slicer once
+  const agSel=document.getElementById('apptAgent');
+  if(!APPT_AGENTS_FILLED && agSel){
+    const ags=[...new Set(all.map(r=>r.service_agent).filter(Boolean))].sort();
+    const cur=agSel.value; agSel.innerHTML='<option value="">All agents</option>'+ags.map(a=>`<option${a===cur?' selected':''}>${esc(a)}</option>`).join(''); APPT_AGENTS_FILLED=true;
+  }
+  const fB=val('apptBrand'), fA=val('apptAgent'), fFrom=val('apptFrom'), fTo=val('apptTo'), fP=val('apptProp'), q=(val('apptSearch')||'').toLowerCase();
+  let rows=all.filter(r=>r.bucket===APPT_BUCKET
+    && (!fB||r.brand===fB) && (!fA||r.service_agent===fA)
+    && (!fP|| (r.proposal_status||'none')===fP)
+    && (!fFrom|| (r.appt_at&&r.appt_at.slice(0,10)>=fFrom))
+    && (!fTo|| (r.appt_at&&r.appt_at.slice(0,10)<=fTo))
+    && (!q|| [r.customer_name,r.customer_phone,r.notes,r.service,r.next_action].filter(Boolean).join(' ').toLowerCase().includes(q)));
+  rows.sort((a,b)=>{ const x=a.appt_at||'', y=b.appt_at||''; return APPT_BUCKET==='upcoming'? x.localeCompare(y) : y.localeCompare(x); });
+  // Summary
+  const money0=n=>(n==null||n==='')?'':' · '+money(n);
+  let sum=`<b>${rows.length}</b> ${APPT_BUCKET} appointment${rows.length!==1?'s':''}`;
+  if(APPT_BUCKET==='cancelled'){
+    const seg=k=>rows.filter(r=>(r.cancel_segment||'unknown')===k).length;
+    sum+=` · <span class="seg follow_up">${seg('follow_up')} follow up</span> <span class="seg dead">${seg('dead')} dead</span> <span class="seg unknown">${seg('unknown')} unknown</span>`;
+  }
+  document.getElementById('apptSummary').innerHTML='<div class="sub">'+sum+'</div>';
+  const PST={open:'🟠 Open',accepted:'🟢 Accepted',expired:'🔴 Expired',none:''};
+  root.innerHTML = rows.length ? rows.map(r=>{
+    const when=r.appt_at?new Date(r.appt_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
+    const prop = r.proposal_status&&r.proposal_status!=='none' ? `<span class="tag">${PST[r.proposal_status]||r.proposal_status}${money0(r.proposal_amount)}</span>` : '';
+    const seg = APPT_BUCKET==='cancelled' ? `<span class="seg ${esc(r.cancel_segment||'unknown')}">${esc((r.cancel_segment||'unknown').replace('_',' '))}</span>` : '';
+    return `<div class="appt${r.next_action?'':' '}">
+      <div class="appt-top">
+        <div><b>${esc(r.customer_name||('Contact #'+(r.contact_id||'?')))}</b> ${r.brand?brandTag(r.brand):''} ${seg}
+          <div class="ge-meta" style="text-transform:none;letter-spacing:0;margin-top:2px">${esc(r.service||'')}${r.service_agent?' · '+esc(r.service_agent):''}${r.customer_phone?' · <a href="tel:'+esc(r.customer_phone)+'" style="color:var(--accent)">'+esc(r.customer_phone)+'</a>':''}</div></div>
+        <div style="text-align:right"><div style="font-weight:600;font-size:13px">${esc(when)}</div>${prop}</div>
+      </div>
+      ${r.notes?`<div class="appt-notes">📝 ${esc(r.notes)}</div>`:''}
+      <div class="na-row">
+        <span style="font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px">Next action</span>
+        <input id="na_${r.id}" value="${esc(r.next_action||'')}" placeholder="capture the follow-up / decision…">
+        <button class="btn sm" onclick="saveNextAction('${r.id}')">Save</button>
+      </div>
+      ${r.next_action_by&&r.next_action?`<div class="ge-meta" style="text-transform:none;letter-spacing:0;margin-top:4px">last set by ${esc(r.next_action_by)}</div>`:''}
+    </div>`;
+  }).join('') : '<div class="empty">No appointments match these filters.</div>';
+}
+
 async function renderPipeline(){
   const el=document.getElementById('pipeline_briefing_root'); if(!el) return;
   const rows=await fetchRecords('pipeline_briefing');
@@ -4167,7 +4393,7 @@ function renderAll(){
   renderContacts(); renderItems(); renderJobs(); renderDash();
   renderAllSections(); renderIntegrations();
   renderRecent(); renderHealth(); renderGoldeneye(); renderMoola();
-  renderCallNotes(); renderPayables();
+  renderCallNotes(); renderPayables(); renderHomeSnapshot();
 }
 
 /* ================================================================
@@ -4309,6 +4535,27 @@ function timelineBadge(f){
   const tip=[f.pm_comment,f.timeline_goal?`Goal: ${f.timeline_goal}`:'',f.goal_note].filter(Boolean).join(' — ');
   return `<span class="ax-pill ${cls}" title="${esc(tip)}">${esc(label)}</span>`;
 }
+// Foreman writes project_steps as an arrow-separated ordered list, e.g.
+// "Selections ✓ → CAD approved ✓ → Demo ⏳ → Tile → Punch". Render it as a
+// readable vertical stepper; fall back to raw text if it isn't arrow-delimited.
+function projectSteps(s){
+  if(!s) return '';
+  const parts=String(s).split(/\s*(?:→|->|›|»)\s*/).map(x=>x.trim()).filter(Boolean);
+  if(parts.length<2) return `<div class="sub" style="margin-top:8px"><b>Project steps:</b> ${esc(s)}</div>`;
+  const dotFor=t=>/✓|done|complete/i.test(t)?'#4ade80':/⏳|in progress|current|now/i.test(t)?'var(--accent)':'var(--border)';
+  return `<div class="sub" style="margin-top:8px"><b>Project steps</b></div>
+    <div style="margin-top:6px;border-left:2px solid var(--border);padding-left:12px">
+    ${parts.map(p=>`<div style="position:relative;padding:3px 0;font-size:13px">
+      <span style="position:absolute;left:-17px;top:7px;width:8px;height:8px;border-radius:50%;background:${dotFor(p)}"></span>${esc(p)}</div>`).join('')}
+    </div>`;
+}
+// Payment progress line (Foreman's 75%/100% rule → started/complete).
+function paymentLine(f){
+  if(f.pay_pct==null && !f.payment_status) return '';
+  const pctNum = f.pay_pct!=null ? Math.round(Number(f.pay_pct)*(Number(f.pay_pct)<=1?100:1)) : null;
+  const lbl={pre_production:'🟠 Pre-production',started:'🔵 Started (≥75% collected)',complete:'✅ Complete (paid in full)'}[f.payment_status]||f.payment_status||'';
+  return `<div class="sub" style="margin-top:4px"><b>Payment:</b> ${pctNum!=null?pctNum+'% collected':''}${lbl?` · ${esc(lbl)}`:''}</div>`;
+}
 const COST_CATS=['Materials','Labor','Other'];
 async function projCtx(project){
   const {board,briefing,vendor,gates,clients}=window._PROJ_DATA||{};
@@ -4331,8 +4578,8 @@ function ledgerTotals(ctx){
 }
 /* Shareable sections: each renders the same HTML for the modal and the print doc. */
 const PROJ_SECTIONS={
-  scope:{label:'Scope & stage',render:c=>`<div class="sec-title">Scope &amp; stage</div>${stageProgressBar(c.f.stage)}${c.f.scope_summary?`<div class="sub"><b>Scope:</b> ${esc(c.f.scope_summary)}</div>`:'<div class="sub">No scope summary on file.</div>'}`},
-  pace:{label:'Timeline & pace',render:c=>`<div class="sec-title">Timeline &amp; pace</div><div class="sub">${esc(c.f.status||'—')} · phase <b>${esc(c.f.phase||'—')}</b> · ${esc(c.f.days_in_phase||'—')} days in phase (target ${esc(c.f.target||'—')})${c.f.variance?` · ${esc(c.f.variance)}`:''}</div>${c.f.action?`<div class="sub"><b>Next step:</b> ${esc(c.f.action)}</div>`:''}`},
+  scope:{label:'Scope & stage',render:c=>`<div class="sec-title">Scope &amp; stage</div>${stageProgressBar(c.f.stage)}${c.f.scope_summary?`<div class="sub"><b>Scope:</b> ${esc(c.f.scope_summary)}</div>`:'<div class="sub">No scope summary on file.</div>'}${projectSteps(c.f.project_steps)}`},
+  pace:{label:'Timeline & pace',render:c=>`<div class="sec-title">Timeline &amp; pace</div><div class="sub">${esc(c.f.status||'—')} · phase <b>${esc(c.f.phase||'—')}</b> · ${esc(c.f.days_in_phase||'—')} days in phase (target ${esc(c.f.target||'—')})${c.f.variance?` · ${esc(c.f.variance)}`:''}</div>${c.f.est_timeline?`<div class="sub" style="margin-top:4px"><b>Estimated timeline:</b> ${esc(c.f.est_timeline)}${c.f.est_completion?` · est. completion ${esc(c.f.est_completion)}`:''}</div>`:''}${paymentLine(c.f)}${c.f.action?`<div class="sub"><b>Next step:</b> ${esc(c.f.action)}</div>`:''}`},
   install:{label:'Install progress & timeline goal',render:c=>{
     const f=c.f;
     if(!f.install_started){
@@ -4601,17 +4848,18 @@ let RES_EDIT=null, RES_FILTER='all';
 async function addResource(){
   const label=val('resLabel'); if(!label){toast('Name it first.',1);return;}
   const r={label,category:val('resCategory')||'Other',brand:val('resBrand')||'Both',
-    url:val('resUrl')||null,username:val('resUser')||null,password:val('resPass')||null,notes:val('resNotes')||null,
+    url:val('resUrl')||null,drive_url:val('resDrive')||null,username:val('resUser')||null,password:val('resPass')||null,notes:val('resNotes')||null,
     created_by:user?.id||null,created_by_name:(prof&&prof.display_name)||(user&&user.email)||null};
   const {error}=await sb.from('resources').insert(r);
   if(error){toast('Failed: '+error.message,1);return;}
-  ['resLabel','resUrl','resUser','resPass','resNotes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['resLabel','resUrl','resDrive','resUser','resPass','resNotes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   toast('Resource added.');renderResources();
 }
 function editResource(id){ RES_EDIT=id; renderResources(); }
 async function saveResource(id){
-  const fields={label:val('rl_'+id),url:val('ru_'+id)||null,username:val('rn_'+id)||null,password:val('rp_'+id)||null,
-    category:document.getElementById('rc_'+id).value,brand:document.getElementById('rb_'+id).value,notes:val('rt_'+id)||null};
+  const fields={label:val('rl_'+id),url:val('ru_'+id)||null,drive_url:val('rd_'+id)||null,username:val('rn_'+id)||null,password:val('rp_'+id)||null,
+    category:document.getElementById('rc_'+id).value,brand:document.getElementById('rb_'+id).value,notes:val('rt_'+id)||null,
+    updated_by:(prof&&prof.display_name)||(user&&user.email)||null};
   const {error}=await sb.from('resources').update(fields).eq('id',id);
   if(error){toast(error.message,1);return;}
   RES_EDIT=null;toast('Saved.');renderResources();
@@ -4633,7 +4881,20 @@ async function renderResources(){
   document.getElementById('resFilters').innerHTML=cats.map(c=>`<button class="fbtn ${RES_FILTER===c?'active':''}" onclick="RES_FILTER='${esc(c)}';renderResources()">${c==='all'?'All':esc(c)}</button>`).join('');
   const shown=RES_FILTER==='all'?rows:rows.filter(r=>r.category===RES_FILTER);
   if(!shown.length){root.innerHTML='<div class="empty">Nothing here yet. Add a login, weblink, or Drive folder above.</div>';return;}
-  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr><th>Name</th><th>Category</th><th>Brand</th><th>Link</th><th>Username</th><th>Password</th><th>Notes</th><th></th></tr></thead><tbody>
+  const fmtUpd=r=>{
+    const iso=r.updated_at||r.created_at; if(!iso) return '—';
+    const d=new Date(iso); if(isNaN(d)) return '—';
+    const day=d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+    const by=r.updated_by?` · ${esc(r.updated_by)}`:'';
+    return `<small style="color:var(--text-mute)" title="${esc(iso)}">${day}${by}</small>`;
+  };
+  const driveCell=r=>{
+    if(!r.drive_url) return '<small style="color:var(--text-dim)">—</small>';
+    const name=r.drive_file_name?esc(r.drive_file_name):'Drive file';
+    const synced=r.drive_synced_at?' title="auto-mapped by Librarian — editable"':'';
+    return `<a href="${esc(r.drive_url)}" target="_blank" rel="noopener"${synced}>📁 ${name}</a>`;
+  };
+  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr><th>Name</th><th>Category</th><th>Brand</th><th>Link</th><th>Drive file</th><th>Username</th><th>Password</th><th>Notes</th><th>Updated</th><th data-nosort></th></tr></thead><tbody>
   ${shown.map(r=>{
     if(RES_EDIT===r.id){
       return `<tr>
@@ -4641,9 +4902,11 @@ async function renderResources(){
         <td><select class="f" id="rc_${r.id}">${['Software Login','Google Drive','Weblink','Other'].map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}</select></td>
         <td><select class="f" id="rb_${r.id}">${['Both','KTU','BTU','Earthwise'].map(b=>`<option ${b===r.brand?'selected':''}>${b}</option>`).join('')}</select></td>
         <td><input class="f" id="ru_${r.id}" value="${esc(r.url)}"></td>
+        <td><input class="f" id="rd_${r.id}" value="${esc(r.drive_url)}" placeholder="Google Drive link"></td>
         <td><input class="f" id="rn_${r.id}" value="${esc(r.username)}"></td>
         <td><input class="f" id="rp_${r.id}" value="${esc(r.password)}"></td>
         <td><input class="f" id="rt_${r.id}" value="${esc(r.notes)}"></td>
+        <td>${fmtUpd(r)}</td>
         <td class="row-actions"><button class="btn sm" onclick="saveResource('${r.id}')">Save</button> <button class="btn sm ghost" onclick="RES_EDIT=null;renderResources()">✕</button></td></tr>`;
     }
     return `<tr>
@@ -4651,9 +4914,11 @@ async function renderResources(){
       <td><small style="color:var(--text-mute)">${esc(r.category||'')}</small></td>
       <td>${brandTag(r.brand)}</td>
       <td>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">Open ↗</a>`:'—'}</td>
+      <td>${driveCell(r)}</td>
       <td>${r.username?esc(r.username):'—'}</td>
       <td>${r.password?`<span class="pwmask" data-pw="${esc(r.password)}" onclick="togglePw(this)" style="cursor:pointer" title="Click to reveal">••••••</span>`:'—'}</td>
       <td><small style="color:var(--text-mute)">${esc(r.notes||'')}</small></td>
+      <td>${fmtUpd(r)}</td>
       <td class="row-actions" style="white-space:nowrap"><button class="btn sm ghost" onclick="editResource('${r.id}')">✎</button> <button class="btn sm danger" onclick="deleteResource('${r.id}')">🗑</button></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
@@ -4789,14 +5054,41 @@ async function renderTasks(){
   const open=scoped.filter(t=>t.status==='open'||t.status==='in_progress');
   const done=scoped.filter(t=>t.status==='done').slice(0,10);
   const CADENCE_LBL={daily:'Daily',weekly:'Weekly',monthly:'Monthly'};
-  const row=t=>{const late=t.due_date&&t.status!=='done'&&new Date(t.due_date)<new Date();return `<tr>
-    <td><b>${esc(t.title)}</b>${t.detail?`<br><small style="color:var(--text-mute)">${esc(t.detail)}</small>`:''}${t.drive_url?` <a href="${esc(t.drive_url)}" target="_blank" rel="noopener" title="Open linked Drive file">📎</a>`:''}</td>
+  window._TASKS_BY_ID = {}; scoped.forEach(t=>{ window._TASKS_BY_ID[t.id]=t; });
+  const row=t=>{const late=t.due_date&&t.status!=='done'&&new Date(t.due_date)<new Date();return `<tr style="cursor:pointer" onclick="openTaskDetail('${t.id}')" title="Click for full detail">
+    <td><b>${esc(t.title)}</b>${t.detail?`<br><small style="color:var(--text-mute)">${esc(t.detail.length>90?t.detail.slice(0,90)+'…':t.detail)}</small>`:''}${t.drive_url?` <a href="${esc(t.drive_url)}" target="_blank" rel="noopener" title="Open linked Drive file" onclick="event.stopPropagation()">📎</a>`:''}</td>
     <td>${esc(t.assignee)}</td><td>${esc(t.brand||'Both')}</td>
     <td>${t.due_date?`<span class="${late?'ax-pill overdue':''}">${esc(t.due_date)}</span>`:'—'}${t.cadence&&t.cadence!=='once'?`<br><small style="color:var(--text-mute)">↻ ${CADENCE_LBL[t.cadence]||esc(t.cadence)}</small>`:''}</td>
     <td><small style="color:var(--text-mute)">${esc(t.created_by_name||'')}</small></td>
-    <td style="white-space:nowrap">${t.status!=='done'?`<button class="btn sm ghost" onclick="remindTask('${t.id}')" title="Ping ${esc(t.assignee)} again on Slack + email">🔔 Remind</button> <button class="btn sm ghost" onclick="setTaskStatus('${t.id}','done')">✓ Done</button>`:''}</td></tr>`;};
+    <td style="white-space:nowrap">${t.status!=='done'?`<button class="btn sm ghost" onclick="event.stopPropagation();remindTask('${t.id}')" title="Ping ${esc(t.assignee)} again on Slack + email">🔔 Remind</button> <button class="btn sm ghost" onclick="event.stopPropagation();setTaskStatus('${t.id}','done')">✓ Done</button>`:''}</td></tr>`;};
   openRoot.innerHTML=open.length?`<div style="overflow-x:auto"><table class="btable"><thead><tr><th>Task</th><th>Assignee</th><th>Brand</th><th>Due</th><th>By</th><th></th></tr></thead><tbody>${open.map(row).join('')}</tbody></table></div>`:'<div class="empty">Nothing open. Assign something above.</div>';
   document.getElementById('tasksDoneRoot').innerHTML=done.length?`<div style="overflow-x:auto"><table class="btable"><tbody>${done.map(row).join('')}</tbody></table></div>`:'<div class="empty">Nothing completed yet.</div>';
+}
+function openTaskDetail(id){
+  const t=(window._TASKS_BY_ID||{})[id]; if(!t){toast('Task not found.',1);return;}
+  const late=t.due_date&&t.status!=='done'&&new Date(t.due_date)<new Date();
+  const CAD={once:'One-time',daily:'Daily',weekly:'Weekly',monthly:'Monthly'};
+  const statusPill=t.status==='done'?'✅ Done':t.status==='in_progress'?'🔵 In progress':(late?'🔴 Overdue':'🟠 Open');
+  const rowKV=(k,v)=>v?`<div style="display:flex;gap:12px;padding:7px 0;border-top:1px solid var(--border)"><div style="min-width:120px;color:var(--text-mute);font-size:13px">${esc(k)}</div><div style="flex:1;font-size:13px">${v}</div></div>`:'';
+  const bg=document.createElement('div');bg.className='ax-modal-bg';bg.onclick=e=>{if(e.target===bg)bg.remove();};
+  bg.innerHTML=`<div class="ax-modal" style="max-width:560px">
+    <h3 style="margin-bottom:4px">${esc(t.title)}</h3>
+    <div style="margin-bottom:10px"><span class="tag">${statusPill}</span></div>
+    ${t.detail?`<div style="font-size:14px;line-height:1.5;white-space:pre-wrap;margin-bottom:6px">${esc(t.detail)}</div>`:'<div class="sub">No additional detail was entered for this task.</div>'}
+    ${rowKV('Assignee',esc(t.assignee||'—'))}
+    ${rowKV('Brand',esc(t.brand||'Both'))}
+    ${rowKV('Due date',t.due_date?esc(t.due_date)+(late?' <span class="ax-pill overdue">overdue</span>':''):'—')}
+    ${rowKV('Cadence',esc(CAD[t.cadence]||t.cadence||'One-time'))}
+    ${rowKV('Assigned by',esc(t.created_by_name||'—'))}
+    ${rowKV('Created',t.created_at?esc(new Date(t.created_at).toLocaleString()):'—')}
+    ${t.completed_at?rowKV('Completed',esc(new Date(t.completed_at).toLocaleString())):''}
+    ${t.drive_url?rowKV('Linked file',`<a href="${esc(t.drive_url)}" target="_blank" rel="noopener">📎 Open in Google Drive</a>`):''}
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      ${t.status!=='done'?`<button class="btn sm ghost" onclick="remindTask('${t.id}');this.closest('.ax-modal-bg').remove()">🔔 Remind</button>
+        <button class="btn sm" onclick="setTaskStatus('${t.id}','done');this.closest('.ax-modal-bg').remove()">✓ Mark done</button>`:''}
+      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+    </div></div>`;
+  document.body.appendChild(bg);
 }
 async function createTask(){
   const title=val('tkTitle');if(!title){toast('Give the task a title.',1);return;}
@@ -5192,6 +5484,7 @@ function rtRefreshActive(force){
   if(tab==='mktplan'&&window.renderMktPlan) renderMktPlan();
   if(tab==='team'){ window.renderTeamDates&&renderTeamDates(); window.renderOrgChart&&renderOrgChart(); }
   if(tab==='pipeline'&&window.renderPipeline) renderPipeline();
+  if(tab==='appointments'&&window.renderAppointments) renderAppointments();
   if(tab==='organic'&&window.renderPO) renderPO();
   if(tab==='adminconsole'&&window.renderAdminConsole){ renderAdminConsole(); renderTabPermissions&&renderTabPermissions(); }
   // Section-driven roots (throttled full pass — covers every *_root container)
@@ -5210,6 +5503,7 @@ function startRealtime(){
       .on('postgres_changes',{event:'*',schema:'public',table:'resources'},rtKick)
       .on('postgres_changes',{event:'*',schema:'public',table:'payables'},rtKick)
       .on('postgres_changes',{event:'*',schema:'public',table:'call_notes'},rtKick)
+      .on('postgres_changes',{event:'*',schema:'public',table:'appointments'},rtKick)
       .subscribe();
   }catch(e){ console.warn('realtime unavailable, falling back to polling',e); }
   // Refresh when the user returns to the tab/window

@@ -60,6 +60,12 @@ Matching rule: normalize titles (lowercase, strip punctuation) and match on stro
 
 Every scanned file ends up in **at least one** of (A) or (B). A file linked into an existing tab (A) may ALSO get a `library_docs` row with `mapped_to` set, so the Library stays a complete index of the Drive — your call: index everything in the Library, and additionally deep-link the ones that have a natural home.
 
+**(C) Map Drive files/folders onto Resource items (the `resources` table).** The Resources tab lists the software, weblinks, and Drive folders the team uses; each row now has a dedicated **`drive_url`** field. Where a Drive folder or file clearly corresponds to a Resource row (normalize both sides — lowercase, strip punctuation — and match on strong token overlap between the Drive folder/file name and the resource `label`; e.g. Drive `KTU Resources / Contracts` → a "Contracts — Team Drive" resource), set that resource's Drive link:
+- Write to the **`resources`** table (NOT `intranet_records`), via the Supabase MCP (service role): `UPDATE public.resources SET drive_url = '<viewUrl>', drive_file_name = '<file or folder name>', drive_synced_at = now() WHERE id = '<matched id>'`.
+- **The human always wins.** Only fill/refresh `drive_url` when it is currently empty, OR when you previously set it yourself (`drive_synced_at IS NOT NULL`) and the link changed. **Never overwrite a link a human set** — a human override is any row where `drive_url` is present but `drive_synced_at IS NULL` (or `updated_by IS NOT NULL` and points at a person, not you). When in doubt, leave it alone.
+- Don't invent Resource rows — (C) only enriches existing resources with their Drive link. Files that have no matching resource still get indexed in the Library (B) as before.
+- The `updated_at` column bumps automatically on every write, so the Resources tab's "Updated" column stays truthful. Do not set `updated_by` in (C) (leave it for human edits); your fingerprint is `drive_synced_at`.
+
 ## Output — crash-safe write (Supabase)
 
 Write to project `tguwpswcneywvscxzyef`, table `intranet_records`. **RLS is enforced — write via the Supabase MCP (`mcp__Supabase__execute_sql`, service role), NOT the anon REST endpoint.**
