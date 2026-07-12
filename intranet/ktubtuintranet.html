@@ -1273,10 +1273,17 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
     <section class="panel" id="jobs">
       <div class="page-head">
         <h1 class="page-title">Job Costing</h1>
-        <p class="page-sub">Create a job, capture cost + price, watch margin. Feeds the pipeline KPI on Home.</p>
+        <p class="page-sub">The money view for every active job — contract vs. estimated vs. actual cost, labor estimate, and gross-profit margin. Foreman pulls estimated cost (JobTread + ServiceMinder proposal <code>UnitCost</code> + labor hours × rate) and actual cost (the dated vendor postings from the ServiceMinder Margins panel / job-cost ledger + emailed invoices, de-duplicated). Click a project for the full breakdown. Timeline, gate, and PM notes live in the Project Tracker.</p>
       </div>
       <div class="card">
-        <div class="row">
+        <h2>Project costing</h2>
+        <div class="sub">Live from Foreman's daily sweep. Click any project for its cost breakdown, labor estimate, and to add/adjust actual-cost ledger entries.</div>
+        <div id="jobCostingRoot" class="loading">Loading…</div>
+      </div>
+      <div class="card">
+        <h2>Quick jobs &amp; estimates</h2>
+        <div class="sub">Lightweight manual job/estimate entry — feeds the pipeline KPI on Home.</div>
+        <div class="row" style="margin-top:10px">
           <input class="f" id="jName" placeholder="Job / client name" />
           <select class="f" id="jBrand"><option>KTU</option><option>BTU</option></select>
           <input class="f" id="jCost" placeholder="Est. cost" type="number" />
@@ -2538,6 +2545,7 @@ function go(tab,push=true){
   if(tab==='directory'){ renderDirectory(); }
   if(tab==='adminconsole'){ renderAdminConsole(); renderTabPermissions(); }
   if(tab==='pipeline'){ renderPipeline(); }
+  if(tab==='jobs'){ renderJobs(); }
   if(tab==='integrations'){ renderIntegrations(); }
   if(tab==='appointments'){ renderAppointments(); }
   if(tab==='organic'){ switchPO(PO_VIEW); }
@@ -2938,7 +2946,33 @@ async function saveJob(id){
   await sb.from('jobs').update(j).eq('id',id);
   editingJobId=null; renderJobs();
 }
+// Job Costing hub — the money view per active job, from Foreman's daily sweep.
+async function renderJobCosting(){
+  const root=document.getElementById('jobCostingRoot'); if(!root) return;
+  const [board,clients]=await Promise.all([fetchRecords('foreman_board'), fetchRecords('client_status')]);
+  window._PROJ_DATA = window._PROJ_DATA || {board,clients,briefing:[],vendor:[],gates:[]};
+  window._PROJ_DATA.board=board; window._PROJ_DATA.clients=clients;
+  const byClient={}; clients.forEach(r=>{byClient[r.fields.client]=r.fields;});
+  const rows=board.filter(r=>inWs(r.fields.brand));
+  if(!rows.length){ root.innerHTML='<div class="empty">No project costing yet — Foreman seeds this daily from JobTread + ServiceMinder + the job-cost ledger.</div>'; return; }
+  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr>
+    <th>Project</th><th>Brand</th><th>Service type</th><th class="num">Contract</th><th class="num">Est. cost</th><th class="num">Actual cost</th><th class="num">Est. GP%</th><th class="num">Actual GP%</th><th data-nosort></th></tr></thead><tbody>
+    ${rows.map(r=>{const f=r.fields;const cli=byClient[f.project]||{};
+      const contract=f.contract_total||cli.contract_total;
+      return `<tr style="cursor:pointer" onclick="openCostDetail(${JSON.stringify(f.project||'')})">
+        <td><b>${esc(f.project||'—')}</b>${f.est_labor_cost!=null?`<br><small style="color:var(--text-mute)">labor est ${fmt$(f.est_labor_cost)}</small>`:''}</td>
+        <td>${esc(f.brand||'')}</td>
+        <td>${f.service_type?esc(f.service_type):'—'}</td>
+        <td class="num">${fmt$(contract)}</td>
+        <td class="num">${fmt$(f.estimated_cost)}</td>
+        <td class="num">${f.actual_cost!=null?fmt$(f.actual_cost):'<small style="color:var(--text-dim)">not posted</small>'}</td>
+        <td class="num">${pct(f.estimated_gp_pct)}${coverageNote(f.estimated_cost_coverage_pct)}</td>
+        <td class="num">${pct(f.actual_gp_pct)}${coverageNote(f.actual_cost_coverage_pct)}</td>
+        <td><button class="btn sm ghost" onclick="event.stopPropagation();openCostDetail(${JSON.stringify(f.project||'')})">Open</button></td>
+      </tr>`;}).join('')}</tbody></table></div>`;
+}
 async function renderJobs(){
+  renderJobCosting();
   const {data,error}=await sb.from('jobs').select('*').order('created_at',{ascending:false});
   if(error){document.getElementById('jBody').innerHTML='';document.getElementById('jEmpty').textContent='Error loading: '+error.message;document.getElementById('jEmpty').style.display='block';return}
   const a=(data||[]).filter(j=>inWs(j.brand));   // scope to the active workspace
@@ -4514,7 +4548,7 @@ async function renderProjects(){
   if(PROJ_FILTER==='gate') list=list.filter(r=>{const g=gateByProject[r.fields.project];return g&&g.gate_status&&g.gate_status.toLowerCase()!=='pass';});
   if(!list.length){root.innerHTML='<div class="empty">No project rows yet — Foreman seeds this daily from JobTread + ServiceMinder + CompanyCam.</div>';return;}
   root.innerHTML=`<div class="sub" style="margin-bottom:8px"><b>${list.length}</b> active project${list.length>1?'s':''}${board[0]?.fields?.scan_date?` · as of ${esc(board[0].fields.scan_date)}`:''}</div>
-  <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Project</th><th>Brand</th><th>Service type</th><th>Stage</th><th>Pace</th><th>Timeline</th><th class="num">Est. GP%</th><th class="num">Actual GP%</th><th>Gate</th><th>Vendor</th></tr></thead><tbody>
+  <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Project</th><th>Brand</th><th>Service type</th><th>Stage</th><th>Pace</th><th>Timeline</th><th>Gate</th><th>Vendor</th><th data-nosort></th></tr></thead><tbody>
   ${list.map(r=>{const f=r.fields;const g=gateByProject[f.project];const vFlags=vendorFlagByProject[f.project]||0;
     return `<tr>
     <td><a href="javascript:void(0)" onclick="openProjectDetail(${JSON.stringify(f.project||'')})"><b>${esc(f.project||'—')}</b></a>${f.scope_summary?`<br><small style="color:var(--text-mute)">${esc(String(f.scope_summary).slice(0,70))}</small>`:''}</td>
@@ -4523,10 +4557,9 @@ async function renderProjects(){
     <td>${stageBadge(f.stage)}</td>
     <td>${esc(f.status||'')} ${f.variance?`<small style="color:var(--text-mute)">${esc(f.variance)}</small>`:''}</td>
     <td>${timelineBadge(f)}</td>
-    <td class="num">${pct(f.estimated_gp_pct)}${coverageNote(f.estimated_cost_coverage_pct)}</td>
-    <td class="num">${pct(f.actual_gp_pct)}${coverageNote(f.actual_cost_coverage_pct)}</td>
     <td>${g?(g.gate_status==='Pass'?'✅':'⚠️ '+esc(g.gate_status||'')):'—'}</td>
     <td>${vFlags?`<span class="ax-pill overdue">🚚 ${vFlags}</span>`:'—'}</td>
+    <td><button class="btn sm ghost" onclick="event.stopPropagation();openCostDetail(${JSON.stringify(f.project||'')})" title="Open cost breakdown in Job Costing">🧮</button></td>
   </tr>`;}).join('')}</tbody></table></div>`;
 }
 const TIMELINE_LABEL={within_timeline:'🟢 Within timeline',at_risk:'🟡 At risk',overrun:'🔴 Overrun'};
@@ -4664,20 +4697,46 @@ async function openProjectDetail(project){
   const c=await projCtx(project);
   const bg=document.createElement('div');bg.className='ax-modal-bg';bg.onclick=e=>{if(e.target===bg)bg.remove();};
   bg.dataset.project=project;
-  const order=['scope','pace','install','design','margins','ledger','pricing','payments','gate','vendor'];
+  // Project Tracker = PM view: scope/steps, pace, install, design, gate, vendor,
+  // updates/overruns. Cost detail (margins/ledger/pricing/payments) lives in the
+  // Job Costing tab — no overlap. Clicking the name breaks out the project scope.
+  const order=['scope','pace','install','design','gate','vendor'];
   bg.innerHTML=`<div class="ax-modal" style="max-width:680px">
     <h3>${esc(project)} <small style="color:var(--text-mute)">(${esc(c.f.brand||c.cli.brand||'')})</small></h3>
     ${c.flags.length?c.flags.map(fl=>`<div class="ax-pill overdue" style="display:block;margin-bottom:6px;white-space:normal;text-align:left">${esc(fl.title||'')}<br><small>${esc(fl.detail||'')}</small></div>`).join(''):''}
     ${order.map(k=>`<div style="margin-top:12px">${PROJ_SECTIONS[k].render(c)}</div>`).join('')}
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
-      <button class="btn sm" onclick='openProjectShare(${JSON.stringify(project)})'>🖨 Share / Print / Export</button>
-      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px">
+      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove();openCostDetail(${JSON.stringify(project)})" title="Full cost breakdown lives in Job Costing">🧮 Job costing →</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn sm" onclick='openProjectShare(${JSON.stringify(project)})'>🖨 Share / Print / Export</button>
+        <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+      </div>
     </div></div>`;
   document.body.appendChild(bg);
 }
 async function refreshProjectDetail(project){
   document.querySelectorAll('.ax-modal-bg').forEach(m=>{if(m.dataset.project===project)m.remove();});
   await openProjectDetail(project);
+}
+// Job Costing detail — the money view (no PM/gate overlap): scope + margins,
+// labor estimate, the actual-cost ledger (add entries), pricing, payments.
+async function openCostDetail(project){
+  if(!window._PROJ_DATA){ await renderProjects(); }
+  const c=await projCtx(project);
+  const bg=document.createElement('div');bg.className='ax-modal-bg';bg.dataset.project=project;bg.dataset.cost='1';
+  bg.onclick=e=>{if(e.target===bg)bg.remove();};
+  const order=['scope','margins','ledger','pricing','payments'];
+  bg.innerHTML=`<div class="ax-modal" style="max-width:680px">
+    <h3>🧮 ${esc(project)} — Job Costing <small style="color:var(--text-mute)">(${esc(c.f.brand||c.cli.brand||'')})</small></h3>
+    ${order.map(k=>`<div style="margin-top:12px">${PROJ_SECTIONS[k].render(c)}</div>`).join('')}
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+    </div></div>`;
+  document.body.appendChild(bg);
+}
+function refreshCostDetail(project){
+  document.querySelectorAll('.ax-modal-bg[data-cost]').forEach(m=>{if(m.dataset.project===project)m.remove();});
+  openCostDetail(project);
 }
 async function addJobCost(project){
   const c=window._PROJ_DATA;const cli=(c?.clients||[]).find(r=>r.fields.client===project)?.fields||{};
@@ -4695,13 +4754,19 @@ async function addJobCost(project){
     payload:{summary,note:summary,sync_targets:['serviceminder','slack'],author:entered_by},
     created_by:user?.id||null,created_by_email:user?.email||null});
   toast('Entry saved — syncing to ServiceMinder as a contact note.');
+  refreshOpenDetail(project);
+}
+// Refresh whichever detail modal is open for this project (cost or PM view).
+function refreshOpenDetail(project){
+  const cost=document.querySelector('.ax-modal-bg[data-cost]');
+  if(cost && cost.dataset.project===project){ refreshCostDetail(project); return; }
   refreshProjectDetail(project);
 }
 async function deleteJobCost(id,project){
   if(!confirm('Delete this cost entry?'))return;
   const {error}=await sb.from('intranet_records').delete().eq('id',id);
   if(error){toast(error.message,1);return;}
-  refreshProjectDetail(project);
+  refreshOpenDetail(project);
 }
 async function saveTimelineGoal(project){
   const inputId='tgInput_'+String(project).replace(/[^a-zA-Z0-9]/g,'_');
