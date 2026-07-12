@@ -285,13 +285,16 @@ service role — anon REST will 401), project `tguwpswcneywvscxzyef`:
   `mcp__serviceminder__*` returns for KTU + BTU. ROI can reach invoiced revenue again,
   not just "won deal." If it 401s/drops in a given session, say so and fall back to
   HighLevel won-deals for that run.
-- 🟡 **Clarity has a HARD daily call cap — budget it.** The Data-Export API allows
-  only **~10 calls per project per day** (KTU 2708513173760009, BTU 2789761772911940).
-  A "An error occurred while fetching the data" / 429 is that quota, NOT a breakage —
-  the tokens are valid. **Optimize:** make at most 1–2 focused Clarity queries per
-  brand per run (top paid landing pages only), never loop it, and if you've already
-  spent the day's budget, note "Clarity quota spent" rather than retrying. Google Ads
-  + GMB are available directly in cloud (or via Zapier Google Ads 14 actions / GBP).
+- 🟡 **Clarity has a HARD daily call cap — budget it, and it's now SHARED with Organic.**
+  The Data-Export API allows only **~10 calls per project per day** (KTU
+  2708513173760009, BTU 2789761772911940). A "An error occurred while fetching the
+  data" / 429 is that quota, NOT a breakage — the tokens are valid. **Organic now
+  also pulls Clarity daily** (organic-traffic-filtered, for landing-page friction
+  triage) — same two projects, same shared cap, not a separate allowance.
+  **Optimize:** make at most 1–2 focused Clarity queries per brand per run (top
+  paid landing pages only), never loop it, and if you've already spent the day's
+  budget, note "Clarity quota spent" rather than retrying. Google Ads + GMB are
+  available directly in cloud (or via Zapier Google Ads 14 actions / GBP).
 - 🟡 **GA4 shares one measurement ID** across KTU/BTU — don't trust per-brand GA4
   splits until separated.
 - 🟢 **QuickBooks live again** (re-authed 2026-07-03): Intuit connector = FGUSA

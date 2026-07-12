@@ -900,6 +900,23 @@
     .content{padding:22px 18px 80px}
   }
   .mobile-menu{display:none}
+  /* Keyboard-visible focus for accessibility */
+  a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,
+  .nav-item:focus-visible,.dir-row:focus-visible,.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  /* Phone-width polish */
+  @media(max-width:560px){
+    .content{padding:18px 12px 90px}
+    .page-title{font-size:22px}
+    .card{padding:16px 14px}
+    .welcome{flex-direction:column}
+    .quick-actions{flex-wrap:wrap}
+    label.pf{width:100%}
+    label.pf select,label.pf input{width:100%}
+    .slicer{flex-direction:column;align-items:stretch}
+    .slicer > *{width:100%}
+    table.btable{font-size:12px}
+    table.btable th,table.btable td{padding:6px 7px}
+  }
 </style>
 <style>
 /* Axyom action layer */
@@ -922,6 +939,12 @@
 .bjob{border:1px solid var(--border,#30363d);border-radius:12px;padding:14px;margin-bottom:14px}
 .bjob-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:8px}
 .upcoming{box-shadow:inset 3px 0 0 #fbbf24}
+/* Universal sortable table headers — click any column heading to sort/rank */
+table thead th{cursor:pointer;user-select:none}
+table thead th[data-nosort]{cursor:default}
+table thead th.sort-asc::after{content:" ▲";font-size:9px;opacity:.65;font-weight:400}
+table thead th.sort-desc::after{content:" ▼";font-size:9px;opacity:.65;font-weight:400}
+table thead th:hover:not([data-nosort]){color:var(--accent)}
 </style>
 </head>
 <body>
@@ -1003,22 +1026,22 @@
         <div class="nav-item" data-tab="playbook"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 4h11a5 5 0 010 10H4z"/><path d="M4 14v6"/></svg></span><span class="lbl">Playbook</span><span class="pin" onclick="event.stopPropagation();togglePin('playbook','Playbook')">Pin</span></div>
         <div class="nav-item" data-tab="projects"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 21V9l9-6 9 6v12"/><path d="M9 21v-8h6v8"/></svg></span><span class="lbl">Projects</span><span class="pin" onclick="event.stopPropagation();togglePin('projects','Projects')">Pin</span></div>
         <div class="nav-item" data-tab="clients"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0116 0"/><path d="M17 3l4 4"/></svg></span><span class="lbl">Clients</span><span class="pin" onclick="event.stopPropagation();togglePin('clients','Clients')">Pin</span></div>
+        <div class="nav-item" data-tab="appointments"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span class="lbl">Appointments</span><span class="pin" onclick="event.stopPropagation();togglePin('appointments','Appointments')">Pin</span></div>
         <div class="nav-item" data-tab="tasks"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 11l3 3 5-6"/></svg></span><span class="lbl">Tasks</span><span class="pin" onclick="event.stopPropagation();togglePin('tasks','Tasks & Follow-ups')">Pin</span></div>
-        <div class="nav-item" data-tab="trades"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M14 3l7 7-4 4-7-7z"/><path d="M3 21l7-7"/></svg></span><span class="lbl">Trades</span><span class="pin" onclick="event.stopPropagation();togglePin('trades','Trades')">Pin</span></div>
-        <div class="nav-item" data-tab="roles"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5"/></svg></span><span class="lbl">Roles</span><span class="pin" onclick="event.stopPropagation();togglePin('roles','Roles')">Pin</span></div>
+        <div class="nav-item" data-tab="commissions"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></span><span class="lbl">Commissions</span><span class="pin" onclick="event.stopPropagation();togglePin('commissions','Commissions')">Pin</span></div>
+        <div class="nav-item" data-tab="jobs"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span><span class="lbl">Job Costing</span><span class="pin" onclick="event.stopPropagation();togglePin('jobs','Job Costing')">Pin</span></div>
       </div>
 
       <div class="nav-group" data-scope="hs">
         <div class="nav-label">People</div>
         <div class="nav-item" data-tab="team"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0114 0"/><circle cx="17" cy="9" r="3"/><path d="M22 20a5 5 0 00-6-5"/></svg></span><span class="lbl">Team</span><span class="pin" onclick="event.stopPropagation();togglePin('team','Team')">Pin</span></div>
+        <div class="nav-item" data-tab="roles"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5"/></svg></span><span class="lbl">Roles</span><span class="pin" onclick="event.stopPropagation();togglePin('roles','Roles')">Pin</span></div>
         <div class="nav-item" data-tab="onboarding"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M3 8h8V4M21 16h-8v4"/></svg></span><span class="lbl">Onboarding</span><span class="pin" onclick="event.stopPropagation();togglePin('onboarding','Onboarding')">Pin</span></div>
       </div>
 
       <div class="nav-group" data-scope="hs">
-        <div class="nav-label">Catalog &amp; Jobs</div>
+        <div class="nav-label">Contacts</div>
         <div class="nav-item" data-tab="contacts"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 8h16M9 12h6M9 16h6"/></svg></span><span class="lbl">Contacts</span><span class="pin" onclick="event.stopPropagation();togglePin('contacts','Contacts')">Pin</span></div>
-        <div class="nav-item" data-tab="items"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/></svg></span><span class="lbl">Items / Catalog</span><span class="pin" onclick="event.stopPropagation();togglePin('items','Items')">Pin</span></div>
-        <div class="nav-item" data-tab="jobs"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span><span class="lbl">Job Costing</span><span class="pin" onclick="event.stopPropagation();togglePin('jobs','Job Costing')">Pin</span></div>
       </div>
 
       <div class="nav-group" data-scope="hs">
@@ -1152,10 +1175,17 @@
             <button class="qa" onclick="go('jobs')"><span class="ico">＋</span>New job</button>
             <button class="qa" onclick="go('resources')"><span class="ico">🔐</span>Logins &amp; links</button>
             <button class="qa" onclick="go('reports')"><span class="ico">↗</span>Open reports</button>
-            <button class="qa" onclick="go('earth-overview')"><span class="ico">🌱</span>Earthwise ops</button>
+            <button class="qa" data-wsonly="earth" onclick="go('earth-overview')"><span class="ico">🌱</span>Earthwise ops</button>
           </div>
         </div>
         <div class="now" id="homeNow"></div>
+      </div>
+
+      <!-- KTU & BTU snapshot — the numbers first -->
+      <div class="card" id="snapshotCard" data-scope="hs">
+        <h2>📌 KTU &amp; BTU snapshot</h2>
+        <div class="sub">Appointments scheduled from today onward, sales year-to-date vs. the same period last year, and customer count this year vs. last — per brand. Click any tile to open the detail.</div>
+        <div id="snapshot_root" class="loading">Loading…</div>
       </div>
 
       <!-- Goldeneye — daily engagement watchdog callouts -->
@@ -1177,11 +1207,6 @@
           <div class="label">Contacts</div>
           <div class="value" id="kpiContacts">—</div>
           <div class="trend" id="kpiContactsSub">Shared address book</div>
-        </div>
-        <div class="kpi btu" onclick="go('items')" style="cursor:pointer">
-          <div class="label">Catalog items</div>
-          <div class="value" id="kpiItems">—</div>
-          <div class="trend" id="kpiItemsSub">KTU + BTU catalog</div>
         </div>
         <div class="kpi" onclick="go('jobs')" style="cursor:pointer">
           <div class="label">Open jobs</div>
@@ -1247,7 +1272,7 @@
     <section class="panel" id="directory">
       <div class="page-head">
         <h1 class="page-title">Directory</h1>
-        <p class="page-sub">Every person, vendor, sub, and rep the team touches — one searchable index, categorized. Click any card to jump to the source tab.</p>
+        <p class="page-sub">Every person the team touches — customers, team, vendors, subs &amp; trades, and reps — one searchable index, grouped by category. Click any card for details and to jump to the source.</p>
       </div>
       <div class="card">
         <div class="row" style="margin-bottom:16px;align-items:center">
@@ -1320,41 +1345,28 @@
         <div id="cFilters" style="display:flex;gap:8px;margin:4px 0 10px;flex-wrap:wrap"></div>
         <input class="f" id="cSearch" placeholder="Search contacts…" oninput="renderContacts()" style="margin-bottom:8px;width:100%" />
         <div id="cCount" class="sub" style="margin-bottom:10px"></div>
-        <table><thead><tr><th>Name</th><th>Company</th><th>Phone</th><th>Email</th><th>Type</th><th>Brand</th><th></th></tr></thead>
+        <table class="btable"><thead><tr><th>Name</th><th>Company</th><th>Phone</th><th>Email</th><th>Type</th><th>Brand</th><th data-nosort></th></tr></thead>
           <tbody id="cBody"></tbody></table>
         <div class="empty" id="cEmpty">No contacts yet. Add one above.</div>
       </div>
     </section>
 
     <!-- ============ ITEMS ============ -->
-    <section class="panel" id="items">
-      <div class="page-head">
-        <h1 class="page-title">Items &amp; Catalog</h1>
-        <p class="page-sub">Product &amp; service catalog. Seed from <code>data/KTU_Catalog.csv</code> in Claude Code.</p>
-      </div>
-      <div class="card">
-        <div class="row">
-          <input class="f" id="iName" placeholder="Item name" />
-          <input class="f" id="iCode" placeholder="Cost code" />
-          <input class="f" id="iCost" placeholder="Unit cost" type="number" />
-          <input class="f" id="iPrice" placeholder="Unit price" type="number" />
-          <select class="f" id="iBrand"><option>KTU</option><option>BTU</option><option>Both</option></select>
-          <button class="btn" onclick="addItem()">Add</button>
-        </div>
-        <table><thead><tr><th>Item</th><th>Cost Code</th><th>Unit Cost</th><th>Unit Price</th><th>Margin</th><th>Brand</th><th></th></tr></thead>
-          <tbody id="iBody"></tbody></table>
-        <div class="empty" id="iEmpty">No items yet.</div>
-      </div>
-    </section>
-
     <!-- ============ JOBS ============ -->
     <section class="panel" id="jobs">
       <div class="page-head">
         <h1 class="page-title">Job Costing</h1>
-        <p class="page-sub">Create a job, capture cost + price, watch margin. Feeds the pipeline KPI on Home.</p>
+        <p class="page-sub">The money view for every active job — contract vs. estimated vs. actual cost, labor estimate, and gross-profit margin. Foreman pulls estimated cost (JobTread + ServiceMinder proposal <code>UnitCost</code> + labor hours × rate) and actual cost (the dated vendor postings from the ServiceMinder Margins panel / job-cost ledger + emailed invoices, de-duplicated). Click a project for the full breakdown. Timeline, gate, and PM notes live in the Project Tracker.</p>
       </div>
       <div class="card">
-        <div class="row">
+        <h2>Project costing</h2>
+        <div class="sub">Live from Foreman's daily sweep. Click any project for its cost breakdown, labor estimate, and to add/adjust actual-cost ledger entries.</div>
+        <div id="jobCostingRoot" class="loading">Loading…</div>
+      </div>
+      <div class="card">
+        <h2>Quick jobs &amp; estimates</h2>
+        <div class="sub">Lightweight manual job/estimate entry — feeds the pipeline KPI on Home.</div>
+        <div class="row" style="margin-top:10px">
           <input class="f" id="jName" placeholder="Job / client name" />
           <select class="f" id="jBrand"><option>KTU</option><option>BTU</option></select>
           <input class="f" id="jCost" placeholder="Est. cost" type="number" />
@@ -1365,9 +1377,27 @@
           </select>
           <button class="btn" onclick="addJob()">Add Job</button>
         </div>
-        <table><thead><tr><th>Job</th><th>Brand</th><th>Cost</th><th>Price</th><th>Margin</th><th>Status</th><th></th></tr></thead>
+        <table class="btable"><thead><tr><th>Job</th><th>Brand</th><th>Cost</th><th>Price</th><th>Margin</th><th>Status</th><th data-nosort></th></tr></thead>
           <tbody id="jBody"></tbody></table>
         <div class="empty" id="jEmpty">No jobs yet.</div>
+      </div>
+    </section>
+
+    <!-- ============ COMMISSIONS ============ -->
+    <section class="panel" id="commissions">
+      <div class="page-head">
+        <h1 class="page-title">Commission Tracker</h1>
+        <p class="page-sub">Sales commissions accrue <b>50% on signing</b> and <b>50% when the job starts</b>. This shows what each agent has earned toward the next payroll, with a customer-by-customer breakdown. Moola refreshes it from ServiceMinder daily.</p>
+      </div>
+      <div class="card">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px">
+          <label class="pf" style="display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px">Agent
+            <select id="commAgent" onchange="renderCommissions()" style="font-weight:500;text-transform:none;letter-spacing:0;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><option value="">All agents</option></select></label>
+          <label class="pf" style="display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px">Business
+            <select id="commBrand" onchange="renderCommissions()" style="font-weight:500;text-transform:none;letter-spacing:0;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><option value="">All</option><option value="KTU">Kitchen Tune-Up</option><option value="BTU">Bath Tune-Up</option></select></label>
+        </div>
+        <div id="commSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px"></div>
+        <div id="commissions_root" class="loading">Loading…</div>
       </div>
     </section>
 
@@ -1427,6 +1457,12 @@
         <h2>System registry</h2>
         <div class="sub">Every tool we run — purpose, link, login, and its SOW. Edit anything inline; Tekki sweeps this table daily, keeps the diagram below in sync (and clickable), and drafts SOWs for any row missing one.</div>
         <div id="techRegRoot" class="loading" style="margin-top:10px">Loading…</div>
+      </div>
+
+      <div class="card">
+        <h2>🧭 Tekki's consolidation review</h2>
+        <div class="sub">Tekki is our chief consultant on the stack — where two tools do the same job, it scores them by function and business benefit and calls keep / cut / replace (with a better alternative when one exists). Moola separately challenges every subscription on the value it drives.</div>
+        <div id="techRecRoot" class="loading" style="margin-top:10px">Loading…</div>
       </div>
 
       <div class="card">
@@ -1503,8 +1539,11 @@
           <div><label class="hint">Password</label><input id="resPass" placeholder="(optional)" style="width:100%"></div>
           <button class="btn sm" onclick="addResource()">+ Add</button>
         </div>
-        <div style="margin-top:8px"><input id="resNotes" placeholder="Notes (optional)" style="width:100%"></div>
-        <div class="sub" style="margin-top:6px">Anyone with intranet access can see everything here — this is a shared team vault, not per-person secrets. Don't store banking or payroll credentials; keep those in a proper password manager.</div>
+        <div style="display:grid;grid-template-columns:1fr 1.4fr;gap:8px;margin-top:8px">
+          <div><label class="hint">Google Drive link (optional)</label><input id="resDrive" placeholder="https://drive.google.com/…" style="width:100%"></div>
+          <div><label class="hint">Notes</label><input id="resNotes" placeholder="Notes (optional)" style="width:100%"></div>
+        </div>
+        <div class="sub" style="margin-top:6px">Anyone with intranet access can see everything here — this is a shared team vault, not per-person secrets. Don't store banking or payroll credentials; keep those in a proper password manager. The <b>Librarian</b> auto-maps matching Drive files to the Drive link each Monday — you can override it anytime.</div>
       </div>
       <div class="card">
         <div id="resFilters" style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap"></div>
@@ -1734,6 +1773,49 @@
       </div>
     </section>
 
+    <section class="panel" id="appointments">
+      <style>
+        #appointments .slicer{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px}
+        #appointments .slicer label{display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px}
+        #appointments .slicer select,#appointments .slicer input{font:inherit;font-size:13px;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 9px}
+        #appointments .bkt{display:inline-flex;gap:2px;padding:3px;background:var(--bg);border:1px solid var(--border);border-radius:10px;margin-bottom:14px}
+        #appointments .bkt button{border:0;background:none;color:var(--text-dim);font:inherit;font-weight:600;font-size:13px;padding:6px 14px;border-radius:8px;cursor:pointer}
+        #appointments .bkt button.on{background:var(--accent);color:#fff}
+        #appointments .appt{border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;background:var(--surface)}
+        #appointments .appt.overdue-action{border-left:3px solid var(--warn)}
+        #appointments .appt-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+        #appointments .appt-notes{font-size:12.5px;color:var(--text-2);background:var(--surface-inset);border-radius:8px;padding:9px 11px;margin-top:8px;white-space:pre-wrap;line-height:1.5}
+        #appointments .na-row{display:flex;gap:8px;align-items:center;margin-top:10px}
+        #appointments .na-row input{flex:1;min-width:140px;font:inherit;font-size:13px;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 10px}
+        #appointments .seg{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 8px;border-radius:999px}
+        #appointments .seg.follow_up{background:rgba(74,222,128,.15);color:var(--success)}
+        #appointments .seg.dead{background:rgba(248,113,113,.15);color:var(--danger)}
+        #appointments .seg.unknown{background:var(--surface-inset);color:var(--text-mute)}
+      </style>
+      <div class="page-head">
+        <h1 class="page-title">📅 Appointments</h1>
+        <p class="page-sub">Every KTU + BTU consult — upcoming, past, and cancelled — with the customer, the appointment notes Ben leaves, proposal status &amp; amount, and a Next-action field to capture in your sales meetings. Cancelled ones are segmented so you know which to chase and which are dead.</p>
+      </div>
+      <div class="card">
+        <div class="slicer" id="apptSlicer">
+          <label>Business<select id="apptBrand" onchange="renderAppointments()"><option value="">All</option><option value="KTU">Kitchen Tune-Up</option><option value="BTU">Bath Tune-Up</option></select></label>
+          <label>Agent<select id="apptAgent" onchange="renderAppointments()"><option value="">All agents</option></select></label>
+          <label>From<input type="date" id="apptFrom" onchange="renderAppointments()"></label>
+          <label>To<input type="date" id="apptTo" onchange="renderAppointments()"></label>
+          <label>Proposal<select id="apptProp" onchange="renderAppointments()"><option value="">Any</option><option value="open">Open</option><option value="accepted">Accepted</option><option value="expired">Expired</option><option value="none">None</option></select></label>
+          <label style="text-transform:none;letter-spacing:0">Search<input type="text" id="apptSearch" placeholder="name / phone / notes" oninput="renderAppointments()" style="font:inherit;font-size:13px;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"></label>
+          <button class="btn sm ghost" onclick="apptClearSlicer()" style="margin-bottom:1px">Clear</button>
+        </div>
+        <div class="bkt" id="apptBuckets">
+          <button data-bkt="upcoming" class="on" onclick="apptSetBucket('upcoming')">Upcoming</button>
+          <button data-bkt="past" onclick="apptSetBucket('past')">Past</button>
+          <button data-bkt="cancelled" onclick="apptSetBucket('cancelled')">Cancelled</button>
+        </div>
+        <div id="apptSummary" style="margin-bottom:10px"></div>
+        <div id="appointments_root" class="loading">Loading…</div>
+      </div>
+    </section>
+
     <!-- ============ TASKS ============ -->
     <section class="panel" id="tasks">
       <div class="page-head">
@@ -1756,6 +1838,13 @@
         </div>
       </div>
       <div class="card">
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px">
+          <label class="pf" style="display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px">Assignee
+            <select id="tkFilterAssignee" onchange="renderTasks()" style="font-weight:500;text-transform:none;letter-spacing:0;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><option value="">Everyone</option></select></label>
+          <label class="pf" style="display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px">Show
+            <select id="tkFilterStatus" onchange="renderTasks()" style="font-weight:500;text-transform:none;letter-spacing:0;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><option value="open">Open</option><option value="overdue">Overdue only</option><option value="all">All</option></select></label>
+          <input id="tkFilterSearch" oninput="renderTasks()" placeholder="Search tasks…" style="flex:1;min-width:180px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)">
+        </div>
         <div class="sec-title">Open</div>
         <div id="tasksOpenRoot" class="loading">Loading…</div>
         <div class="sec-title" style="margin-top:14px">Recently completed</div>
@@ -2243,11 +2332,26 @@
       <div class="page-head">
         <h1 class="page-title">Financial Reporting <span class="tag" style="background:#fdf3e3;color:#8a5a06;vertical-align:middle;margin-left:8px">Owner only</span></h1>
         <p class="page-sub">Cross-entity financial command center — P&amp;L, cash flow, AP/AR, and portfolio. Visible only on the owner login.</p>
+        <div style="margin-top:10px"><label class="pf" style="display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px">Company
+          <select id="finCompany" onchange="renderFinance()" style="font-weight:500;text-transform:none;letter-spacing:0;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);min-width:220px">
+            <option value="">All companies</option><option value="KTU">KTU — First Generation USA</option><option value="BTU">BTU — Oracabessa</option><option value="Earthwise">Jatalia / Earthwise</option></select></label></div>
       </div>
       <div class="card">
         <h2>💰 Moola — your CFO's daily briefing</h2>
         <div class="sub">World-class CFO analysis, every morning: cash flow, P&amp;L pressure-testing of the Ledge packages, bills due, negotiation opportunities, and waste — trouble flagged before it arrives.</div>
         <div id="moola_root" class="loading">Loading…</div>
+      </div>
+
+      <div class="card">
+        <h2>📌 Executive summary — Moola</h2>
+        <div class="sub">The section's executive summary: key findings, recommendations, bottlenecks and warnings from the latest close — the "so what" behind the numbers, scoped to the company selected above.</div>
+        <div id="moolaReport_root" class="loading">Loading…</div>
+      </div>
+
+      <div class="card">
+        <h2>💵 Cash flow by vendor</h2>
+        <div class="sub">Money in and out grouped by vendor/payee so the true overall position is easy to read — filtered by the company selector above.</div>
+        <div id="moolaCash_root" class="loading">Loading…</div>
       </div>
 
       <div class="card" id="payablesCard">
@@ -2557,9 +2661,9 @@ async function renderTabPermissions(){
    ================================================================ */
 const TAB_TITLES = {
   home:'Home', directory:'Directory', docs:'Files & Docs', techstack:'Tech Stack', mktplan:'Marketing Plan', mktspend:'Marketing Spend', syshealth:'System Health',
-  contacts:'Contacts', items:'Items', jobs:'Job Costing', team:'Team',
+  contacts:'Contacts', jobs:'Job Costing', commissions:'Commission Tracker', team:'Team',
   vendors:'Vendors', systems:'Systems', integrations:'Integrations', franchise:'Franchise',
-  pipeline:'Pipeline', marketing:'Marketing', onboarding:'Onboarding', ordering:'Ordering', trades:'Trades',
+  pipeline:'Pipeline', appointments:'Appointments', marketing:'Marketing', onboarding:'Onboarding', ordering:'Ordering', trades:'Trades',
   clients:'Clients', tasks:'Tasks & Follow-ups', projects:'Projects', projtimeline:'Project Timeline',
   roles:'Roles', dailyops:'Daily Ops', playbook:'Playbook', resources:'Resources', library:'Library',
   territories:'Territories', showroom:'Showroom', reports:'Reports', adminconsole:'Admin Console', axyomfin:'Axyom Financials',
@@ -2589,12 +2693,17 @@ function go(tab,push=true){
   document.querySelector('.sidebar').classList.remove('open');
   window.scrollTo({top:0,behavior:'instant'});
   // Live-refresh Home cards when navigating back to home
-  if(tab==='home'){ renderRecent(); renderHealth(); renderFavPanel(); renderDash(); renderCallNotes(); }
-  if(tab==='finance'){ renderMoola(); renderPayables(); }
+  if(tab==='home'){ renderRecent(); renderHealth(); renderFavPanel(); renderDash(); renderCallNotes(); renderHomeSnapshot(); }
+  if(tab==='finance'){ renderFinance(); }
+  renderExecSummary(tab);
   if(tab==='directory'){ renderDirectory(); }
   if(tab==='adminconsole'){ renderAdminConsole(); renderTabPermissions(); }
   if(tab==='cashflow'){ renderCashflow(); }
   if(tab==='pipeline'){ renderPipeline(); }
+  if(tab==='jobs'){ renderJobs(); }
+  if(tab==='commissions'){ renderCommissions(); }
+  if(tab==='integrations'){ renderIntegrations(); }
+  if(tab==='appointments'){ renderAppointments(); }
   if(tab==='organic'){ switchPO(PO_VIEW); }
   if(tab==='team'){ renderOrgChart(); }
   if(tab==='team'){ renderTeamDates(); }
@@ -2610,6 +2719,40 @@ function go(tab,push=true){
   if(tab==='mktplan'){ renderMktPlan(); }
   if(tab==='mktspend'){ renderMktSpend(); }
 }
+/* ================================================================
+   Universal table sorting — click any column header to sort/rank.
+   Delegated so it survives every table re-render. A header can opt out
+   with data-nosort; totals belong in <tfoot> (never sorted). Numeric,
+   currency (%/$), and text columns are auto-detected.
+   ================================================================ */
+(function(){
+  const cellText=td=>td?((td.innerText||td.textContent||'').trim()):'';
+  const num=s=>{ const c=s.replace(/[,$%\s]/g,''); if(c===''||!/^-?\d/.test(c))return null; const n=parseFloat(c); return isFinite(n)?n:null; };
+  document.addEventListener('click',e=>{
+    const th=e.target.closest('th'); if(!th) return;
+    if(!th.closest('thead')) return;                 // header cells only
+    if(th.hasAttribute('data-nosort')) return;
+    if(!cellText(th)) return;                         // skip empty action-column headers
+    const table=th.closest('table'); const tbody=table&&table.tBodies[0]; if(!tbody) return;
+    const headRow=th.parentElement; const ths=[...headRow.children]; const idx=ths.indexOf(th);
+    if(idx<0) return;
+    const rows=[...tbody.rows].filter(r=>!r.hasAttribute('data-nosort'));
+    if(rows.length<2) return;
+    const prevCol=table.getAttribute('data-sort-col'), prevDir=table.getAttribute('data-sort-dir')||'desc';
+    const dir=(String(idx)===prevCol&&prevDir==='asc')?'desc':'asc';
+    table.setAttribute('data-sort-col',String(idx)); table.setAttribute('data-sort-dir',dir);
+    const numeric=rows.map(r=>num(cellText(r.cells[idx]))).filter(n=>n!=null).length >= Math.ceil(rows.length*0.6);
+    rows.sort((a,b)=>{
+      const av=cellText(a.cells[idx]), bv=cellText(b.cells[idx]);
+      let c; if(numeric){ const an=num(av),bn=num(bv); c=(an==null?-Infinity:an)-(bn==null?-Infinity:bn); }
+      else c=av.localeCompare(bv,undefined,{numeric:true,sensitivity:'base'});
+      return dir==='asc'?c:-c;
+    });
+    rows.forEach(r=>tbody.appendChild(r));
+    ths.forEach(h=>h.classList.remove('sort-asc','sort-desc'));
+    th.classList.add(dir==='asc'?'sort-asc':'sort-desc');
+  });
+})();
 // Back/forward: restore the tab encoded in the hash without re-pushing
 window.addEventListener('popstate',()=>{ go((location.hash||'#home').slice(1)||'home',false); });
 document.addEventListener('DOMContentLoaded',()=>{
@@ -2655,9 +2798,8 @@ let CURRENT_PROJECT = null; // active project for the Project Timeline detail pa
    out of the console that controls this.
    ================================================================ */
 const TAB_SECTIONS = [
-  {key:'ops',      label:'Operations',                 scope:'hs',    tabs:['dailyops','playbook','jobflow','projects','projtimeline','clients','tasks','trades','roles']},
-  {key:'people',   label:'People',                     scope:'hs',    tabs:['team','onboarding']},
-  {key:'catalog',  label:'Catalog & Jobs',              scope:'hs',    tabs:['contacts','items','jobs']},
+  {key:'ops',      label:'Operations',                 scope:'hs',    tabs:['dailyops','playbook','projects','projtimeline','clients','appointments','tasks','commissions','roles','jobs']},
+  {key:'people',   label:'People',                     scope:'hs',    tabs:['team','onboarding','contacts']},
   {key:'vendors',  label:'Vendors & Ordering',          scope:'hs',    tabs:['vendors','ordering']},
   {key:'growth',   label:'Growth',                      scope:'hs',    tabs:['pipeline','organic','marketing','mktplan','mktspend','reports']},
   {key:'franchise',label:'Franchise & Place',           scope:'hs',    tabs:['franchise','territories','showroom']},
@@ -2674,6 +2816,14 @@ function defaultTabVisible(tab, role, ws){
   if(scope==='earth') return (role==='admin' && (ws==='all'||ws==='earth')) || role==='ecommerce';
   if(scope==='admin') return role==='admin';
   return true; // shared
+}
+// Same scope rules as defaultTabVisible, but for non-nav elements (home cards).
+function scopeVisible(scope){
+  const role=CURRENT_ROLE, ws=CURRENT_WS;
+  if(scope==='hs')    return role!=='ecommerce' && ws!=='earth';
+  if(scope==='earth') return (role==='admin' && (ws==='all'||ws==='earth')) || role==='ecommerce';
+  if(scope==='admin') return role==='admin';
+  return true;
 }
 let TAB_PERM_OVERRIDES = {};
 async function loadTabPermissions(role){
@@ -2764,6 +2914,17 @@ function setWS(k){
     const anyVisible=items.some(it=>it.style.display!=='none');
     g.style.display = anyVisible ? '' : 'none';
   });
+  // Elements flagged for a single workspace (e.g. the "Earthwise ops" home
+  // shortcut) show only when that exact workspace is active.
+  document.querySelectorAll('[data-wsonly]').forEach(el=>{
+    el.style.display = (CURRENT_WS===el.dataset.wsonly) ? '' : 'none';
+  });
+  // Home-panel cards carry the same scope tags as the nav — hide home-services
+  // cards on the Earthwise workspace and vice-versa so Home stays on-brand.
+  document.querySelectorAll('.panel [data-scope]').forEach(el=>{
+    if(el.classList.contains('nav-item')||el.classList.contains('nav-group')) return;
+    el.style.display = scopeVisible(el.dataset.scope) ? '' : 'none';
+  });
   // Goldeneye card shows for every role — brand filtering scopes the callouts
   // (ecommerce sees only Earthwise/marketplace items, team sees only KTU/BTU).
   // If the active tab is no longer visible (group- or override-hidden), bounce home
@@ -2852,6 +3013,9 @@ async function renderContacts(){
   // 1) Workspace brand scope — same rule the rest of the app uses (see fetchRecords).
   const brands=wsBrands();
   let rows=(data||[]).filter(c=>!brands||!c.brand||brands.includes(c.brand));
+  // 1b) Customer contacts only — vendors/subs live in the Directory (Trades), leads
+  //     live in the pipeline. This tab is the customer address book.
+  rows=rows.filter(c=>(c.type||'Customer').toLowerCase()==='customer');
   // 2) In-tab brand chips — only shown when the workspace exposes more than one brand
   //    (e.g. the "Axyom / all" view). Selecting KTU or BTU further separates the list.
   const multi = !brands || brands.filter(b=>b!=='Both').length>1;
@@ -2906,6 +3070,7 @@ async function saveItem(id){
   editingItemId=null; renderItems();
 }
 async function renderItems(){
+  if(!document.getElementById('iBody')) return;   // Items panel removed — no-op
   const {data,error}=await sb.from('items').select('*').order('created_at',{ascending:false});
   if(error){document.getElementById('iBody').innerHTML='';document.getElementById('iEmpty').textContent='Error loading: '+error.message;document.getElementById('iEmpty').style.display='block';return}
   const a=(data||[]).filter(i=>inWs(i.brand));   // scope to the active workspace
@@ -2943,7 +3108,33 @@ async function saveJob(id){
   await sb.from('jobs').update(j).eq('id',id);
   editingJobId=null; renderJobs();
 }
+// Job Costing hub — the money view per active job, from Foreman's daily sweep.
+async function renderJobCosting(){
+  const root=document.getElementById('jobCostingRoot'); if(!root) return;
+  const [board,clients]=await Promise.all([fetchRecords('foreman_board'), fetchRecords('client_status')]);
+  window._PROJ_DATA = window._PROJ_DATA || {board,clients,briefing:[],vendor:[],gates:[]};
+  window._PROJ_DATA.board=board; window._PROJ_DATA.clients=clients;
+  const byClient={}; clients.forEach(r=>{byClient[r.fields.client]=r.fields;});
+  const rows=board.filter(r=>inWs(r.fields.brand));
+  if(!rows.length){ root.innerHTML='<div class="empty">No project costing yet — Foreman seeds this daily from JobTread + ServiceMinder + the job-cost ledger.</div>'; return; }
+  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr>
+    <th>Project</th><th>Brand</th><th>Service type</th><th class="num">Contract</th><th class="num">Est. cost</th><th class="num">Actual cost</th><th class="num">Est. GP%</th><th class="num">Actual GP%</th><th data-nosort></th></tr></thead><tbody>
+    ${rows.map(r=>{const f=r.fields;const cli=byClient[f.project]||{};
+      const contract=f.contract_total||cli.contract_total;
+      return `<tr style="cursor:pointer" onclick="openCostDetail(${JSON.stringify(f.project||'')})">
+        <td><b>${esc(f.project||'—')}</b>${f.est_labor_cost!=null?`<br><small style="color:var(--text-mute)">labor est ${fmt$(f.est_labor_cost)}</small>`:''}</td>
+        <td>${esc(f.brand||'')}</td>
+        <td>${f.service_type?esc(f.service_type):'—'}</td>
+        <td class="num">${fmt$(contract)}</td>
+        <td class="num">${fmt$(f.estimated_cost)}</td>
+        <td class="num">${f.actual_cost!=null?fmt$(f.actual_cost):'<small style="color:var(--text-dim)">not posted</small>'}</td>
+        <td class="num">${pct(f.estimated_gp_pct)}${coverageNote(f.estimated_cost_coverage_pct)}</td>
+        <td class="num">${pct(f.actual_gp_pct)}${coverageNote(f.actual_cost_coverage_pct)}</td>
+        <td><button class="btn sm ghost" onclick="event.stopPropagation();openCostDetail(${JSON.stringify(f.project||'')})">Open</button></td>
+      </tr>`;}).join('')}</tbody></table></div>`;
+}
 async function renderJobs(){
+  renderJobCosting();
   const {data,error}=await sb.from('jobs').select('*').order('created_at',{ascending:false});
   if(error){document.getElementById('jBody').innerHTML='';document.getElementById('jEmpty').textContent='Error loading: '+error.message;document.getElementById('jEmpty').style.display='block';return}
   const a=(data||[]).filter(j=>inWs(j.brand));   // scope to the active workspace
@@ -3093,9 +3284,66 @@ function renderHealth(){
   const c={ok:0,auth:0,degraded:0,dep:0}; INTEGRATIONS.forEach(x=>c[x.status]++);
   const attention=c.auth+c.degraded+c.dep;
   box.innerHTML=`<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-    <div class="kpi" style="padding:12px 14px"><div class="label">Connected</div><div class="value" style="font-size:22px;color:#4ade80">${c.ok}</div></div>
-    <div class="kpi" style="padding:12px 14px"><div class="label">Needs attention</div><div class="value" style="font-size:22px;color:#fb923c">${attention}</div></div>
+    <div class="kpi" style="padding:12px 14px;cursor:pointer" onclick="goIntegrations('ok')" title="View connected integrations"><div class="label">Connected</div><div class="value" style="font-size:22px;color:#4ade80">${c.ok}</div></div>
+    <div class="kpi" style="padding:12px 14px;cursor:pointer" onclick="goIntegrations('attention')" title="View integrations needing attention"><div class="label">Needs attention</div><div class="value" style="font-size:22px;color:#fb923c">${attention}</div></div>
   </div>`;
+}
+// Jump to the Integrations tab with a specific status filter pre-applied.
+function goIntegrations(f){ intgFilter = f||'all'; go('integrations'); }
+
+// KTU & BTU snapshot: appointments onward + Sales YTD vs LY + Customers TY vs LY.
+async function renderHomeSnapshot(){
+  const root=document.getElementById('snapshot_root'); if(!root) return;
+  const brandsShown=wsBrands(); // respect the workspace switcher (KTU/BTU only)
+  const wantBrands=[{k:'KTU',cls:'ktu'},{k:'BTU',cls:'btu'}]
+    .filter(b=>!brandsShown||brandsShown.includes(b.k));
+  if(!wantBrands.length){ root.innerHTML='<div class="empty">No KTU/BTU brands in this workspace.</div>'; return; }
+  const curY=new Date().getFullYear();
+  const [apptRes,apRes]=await Promise.all([
+    sb.from('appointments').select('brand,bucket'),
+    sb.from('intranet_records').select('brand,fields').eq('section','agent_perf')
+  ]);
+  const upc={KTU:0,BTU:0};
+  (apptRes.data||[]).forEach(a=>{ if(a.bucket==='upcoming'&&upc[a.brand]!=null) upc[a.brand]++; });
+  const rows=(apRes.data||[]).map(r=>({...(r.fields||{}),brand:r.brand||(r.fields||{}).brand}))
+    .filter(f=>f&&f.month&&f.year);
+  // Sum sales (win_value) + customers for a brand/year, optionally limited to a month set.
+  function agg(brand,year,monthSet){
+    let sales=0,cust=0; const months=new Set();
+    rows.filter(r=>r.brand===brand&&Number(r.year)===year).forEach(r=>{
+      const m=Number(r.month); if(monthSet&&!monthSet.has(m)) return;
+      sales+=+r.win_value||0; cust+=+(r.customers!=null?r.customers:r.wins)||0; months.add(m);
+    });
+    return {sales,cust,months};
+  }
+  const tiles=wantBrands.map(b=>{
+    const ty=agg(b.k,curY,null);                 // this year, its active months
+    const ly=ty.months.size?agg(b.k,curY-1,ty.months):null;  // LY, same months only
+    const hasData=ty.months.size>0;
+    const pairBar=(lv)=>{ if(!lv||!(lv.cur||lv.ly)) return '';
+      const mx=Math.max(1,lv.cur,lv.ly);
+      const bar=(v,c,lab)=>`<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-mute)"><span style="width:16px">${lab}</span><span style="flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden"><span style="display:block;height:100%;width:${Math.round(v/mx*100)}%;background:${c}"></span></span></div>`;
+      return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:3px">${bar(lv.cur,'var(--accent)','TY')}${bar(lv.ly,'var(--text-dim)','LY')}</div>`; };
+    const tile=(label,val,lyVal,up,fmt)=>`
+      <div class="kpi" style="padding:12px 14px;cursor:pointer;display:flex;flex-direction:column" onclick="go('pipeline')" title="Open Pipeline / Agent Performance">
+        <div class="label">${label}</div>
+        <div class="value" style="font-size:20px">${val}</div>
+        ${lyVal!=null?apYoY(lyVal.cur,lyVal.ly,up):''}
+        ${pairBar(lyVal)}</div>`;
+    return `<div style="margin-bottom:16px">
+      <div class="chart-title" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="scope-tag ${b.cls}">${b.k}</span>${b.k==='KTU'?'Kitchen Tune-Up':'Bath Tune-Up'}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+        <div class="kpi" style="padding:12px 14px;cursor:pointer;display:flex;flex-direction:column" onclick="go('appointments')" title="Open Appointments">
+          <div class="label">Appointments onward</div>
+          <div class="value" style="font-size:20px">${upc[b.k]||0}</div>
+          <div class="trend">Scheduled from today</div></div>
+        ${tile('Sales YTD', hasData?money(Math.round(ty.sales)):'—', (hasData&&ly)?{cur:ty.sales,ly:ly.sales}:null, true)}
+        ${tile('Customers YTD', hasData?ty.cust.toLocaleString():'—', (hasData&&ly)?{cur:ty.cust,ly:ly.cust}:null, true)}
+      </div></div>`;
+  }).join('');
+  const anyPerf=rows.length>0;
+  root.innerHTML=tiles+(anyPerf?'':'<div class="sub" style="margin-top:4px">💤 Sales &amp; customer figures land once the ServiceMinder → Agent Performance sync runs.</div>');
 }
 
 /* ================================================================
@@ -3467,6 +3715,7 @@ async function renderDirectory(){
     ...reps.map(r=>({kind:'rep', name:r.fields.contact||r.fields.vendor, role:r.fields.vendor, meta:r.fields.pricing, tab:'ordering'})),
     ...contacts.filter(c=>c.type==='Subcontractor').map(c=>({kind:'sub', name:c.name, role:c.company||'Subcontractor', meta:c.phone||c.email, tab:'contacts', extra:c.brand})),
     ...contacts.filter(c=>c.type==='Vendor').map(c=>({kind:'vendor', name:c.name, role:c.company||'Vendor', meta:c.phone||c.email, tab:'contacts', extra:c.brand})),
+    ...contacts.filter(c=>(c.type||'Customer')==='Customer').map(c=>({kind:'customer', name:c.name, role:c.company||'Customer', meta:[c.phone,c.email].filter(Boolean).join(' · '), tab:'contacts', extra:c.brand})),
   ];
   const filtered = items.filter(x=>{
     if(DIR_FILTER!=='all' && x.kind!==DIR_FILTER) return false;
@@ -3474,25 +3723,26 @@ async function renderDirectory(){
     return true;
   });
   // Counts
-  const counts={team:0,vendor:0,sub:0,rep:0};
+  const counts={team:0,customer:0,vendor:0,sub:0,rep:0};
   items.forEach(x=>{if(counts[x.kind]!==undefined)counts[x.kind]++});
-  const KIND_LBL={team:'Team',vendor:'Vendor',sub:'Sub / Trade',rep:'Manufacturer Rep'};
-  const KIND_ORDER=['team','rep','vendor','sub'];
-  const AVA_BG={team:'var(--brand-btu)',rep:'#6d28d9',vendor:'var(--brand-earth)',sub:'var(--brand-ktu)'};
+  const KIND_LBL={team:'Team',customer:'Customer',vendor:'Vendor',sub:'Sub / Trade',rep:'Manufacturer Rep'};
+  const KIND_ORDER=['team','customer','rep','vendor','sub'];
+  const AVA_BG={team:'var(--brand-btu)',customer:'var(--accent)',rep:'#6d28d9',vendor:'var(--brand-earth)',sub:'var(--brand-ktu)'};
   // Filter chips
-  const chips=[['all','All ('+items.length+')'],['team','Team ('+counts.team+')'],['vendor','Vendors ('+counts.vendor+')'],['sub','Subs & Trades ('+counts.sub+')'],['rep','Reps ('+counts.rep+')']];
+  const chips=[['all','All ('+items.length+')'],['team','Team ('+counts.team+')'],['customer','Customers ('+counts.customer+')'],['vendor','Vendors ('+counts.vendor+')'],['sub','Subs & Trades ('+counts.sub+')'],['rep','Reps ('+counts.rep+')']];
   document.getElementById('dirFilters').innerHTML=chips.map(([k,lbl])=>
     `<button class="fbtn ${DIR_FILTER===k?'active':''}" onclick="DIR_FILTER='${k}';renderDirectory()">${lbl}</button>`).join('');
-  document.getElementById('dirCounts').innerHTML = `<b>${filtered.length}</b> ${filtered.length===1?'entry':'entries'} shown${q?` matching "${esc(q)}"`:''}. Click a row to jump to the source tab.`;
+  document.getElementById('dirCounts').innerHTML = `<b>${filtered.length}</b> ${filtered.length===1?'entry':'entries'} shown${q?` matching "${esc(q)}"`:''}. Click a row for details.`;
 
   const initials = n => (n||'—').split(/[\s—·-]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
   const findPhone = s => { const m=(s||'').toString().match(/(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/); return m?m[0]:null; };
   const findEmail = s => { const m=(s||'').toString().match(/[\w.+-]+@[\w-]+\.[\w.]+/); return m?m[0]:null; };
+  items.forEach((x,i)=>x._i=i); window._DIR_ITEMS=items; window._DIR_AVA=AVA_BG; window._DIR_KIND=KIND_LBL;
 
   const row = x => {
     const blob=[x.meta,x.role,x.name].join(' ');
     const ph=findPhone(blob), em=findEmail(blob);
-    return `<div class="dir-row" onclick="go('${esc(x.tab)}')">
+    return `<div class="dir-row" style="cursor:pointer" onclick="dirRowClick(${x._i})">
       <div class="dir-ava" style="background:${AVA_BG[x.kind]||'var(--accent)'}">${esc(initials(x.name))}</div>
       <div class="dir-main">
         <div class="dir-name">${esc(x.name||'—')}</div>
@@ -3513,6 +3763,34 @@ async function renderDirectory(){
   }).join('');
 
   root.innerHTML = filtered.length ? groups : '<div class="empty">Nothing matches this filter.</div>';
+}
+// Directory row → detail modal (no ghost-navigation to nav-less panels). Offers a
+// jump only to tabs that are actually in the nav for this role.
+function dirRowClick(i){
+  const x=(window._DIR_ITEMS||[])[i]; if(!x) return;
+  const NAVABLE=['team','vendors','ordering','contacts','clients'];
+  const canNav = NAVABLE.includes(x.tab) && (typeof isTabVisible!=='function' || isTabVisible(x.tab));
+  const KIND=(window._DIR_KIND||{}), AVA=(window._DIR_AVA||{});
+  const blob=[x.meta,x.role,x.name].join(' ');
+  const ph=(blob.match(/(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/)||[])[0];
+  const em=(blob.match(/[\w.+-]+@[\w-]+\.[\w.]+/)||[])[0];
+  const ini=(x.name||'—').split(/[\s—·-]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  const bg=document.createElement('div');bg.className='ax-modal-bg';bg.onclick=e=>{if(e.target===bg)bg.remove();};
+  bg.innerHTML=`<div class="ax-modal" style="max-width:420px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <div class="dir-ava" style="background:${AVA[x.kind]||'var(--accent)'};width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">${esc(ini)}</div>
+      <div><h3 style="margin:0">${esc(x.name||'—')}</h3><div class="sub" style="margin:0">${esc(KIND[x.kind]||x.kind||'')}${x.role?' · '+esc(x.role):''}${x.extra?' · '+brandTag(x.extra):''}</div></div>
+    </div>
+    ${x.meta?`<div class="sub" style="margin-top:8px">${esc(x.meta)}</div>`:''}
+    <div style="display:flex;gap:10px;margin-top:12px">
+      ${ph?`<a class="btn sm ghost" href="tel:${esc(ph.replace(/[^\d+]/g,''))}">📞 ${esc(ph)}</a>`:''}
+      ${em?`<a class="btn sm ghost" href="mailto:${esc(em)}">✉️ Email</a>`:''}
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      ${canNav?`<button class="btn sm" onclick="this.closest('.ax-modal-bg').remove();go('${esc(x.tab)}')">Open in ${esc(TAB_TITLES[x.tab]||x.tab)} ↗</button>`:''}
+      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+    </div></div>`;
+  document.body.appendChild(bg);
 }
 
 /* ================================================================
@@ -3670,7 +3948,6 @@ function buildCmdkIndex(){
     {kind:'action', label:'New contact', cat:'Actions', run:()=>go('contacts')},
     {kind:'action', label:'New task', cat:'Actions', run:()=>go('tasks')},
     {kind:'action', label:'New resource', cat:'Actions', run:()=>go('resources')},
-    {kind:'action', label:'Add item', cat:'Actions', run:()=>go('items')},
     {kind:'action', label:'New job', cat:'Actions', run:()=>go('jobs')},
     {kind:'action', label:'Open Jatalia dashboard', cat:'Actions', run:()=>window.open('https://go.jataliamarketplace.com/','_blank')},
     {kind:'action', label:'Open Shopify admin', cat:'Actions', run:()=>window.open('https://admin.shopify.com/store/earthwise-seed','_blank')},
@@ -3885,6 +4162,71 @@ function ocOpenEditor(name){
     if(!confirm('Remove '+f.name+' from the team roster? This deletes their card everywhere.')) return;
     await sb.from('intranet_records').delete().eq('id',row.id); close(); renderOrgChart(); renderSection&&renderSection('team');
   };
+}
+
+/* ================================================================
+   Appointments hub — upcoming / past / cancelled, notes, proposal,
+   editable Next-action (human-owned). Reads the appointments table;
+   slicers are independent of the workspace switcher.
+   ================================================================ */
+let APPT_BUCKET='upcoming', APPT_AGENTS_FILLED=false;
+function apptSetBucket(b){ APPT_BUCKET=b; document.querySelectorAll('#apptBuckets button').forEach(x=>x.classList.toggle('on',x.dataset.bkt===b)); renderAppointments(); }
+function apptClearSlicer(){ ['apptBrand','apptAgent','apptFrom','apptTo','apptProp','apptSearch'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';}); renderAppointments(); }
+async function saveNextAction(id){
+  const el=document.getElementById('na_'+id); if(!el) return;
+  const who=(CURRENT_PROFILE&&(CURRENT_PROFILE.display_name||CURRENT_PROFILE.email))||'';
+  const {error}=await sb.from('appointments').update({next_action:el.value.trim()||null, next_action_by:who}).eq('id',id);
+  if(error){ toast('Save failed: '+error.message,1); return; }
+  toast('Next action saved.');
+}
+async function renderAppointments(){
+  const root=document.getElementById('appointments_root'); if(!root) return;
+  const {data,error}=await sb.from('appointments').select('*');
+  if(error){ root.innerHTML='<div class="empty">Could not load appointments: '+esc(error.message)+'</div>'; return; }
+  const all=data||[];
+  if(!all.length){ root.innerHTML='<div class="ge-clear">📭 No appointments yet — Goldeneye populates this daily from ServiceMinder (customer, notes, proposal). First sync lands shortly.</div>'; document.getElementById('apptSummary').innerHTML=''; return; }
+  // Fill agent slicer once
+  const agSel=document.getElementById('apptAgent');
+  if(!APPT_AGENTS_FILLED && agSel){
+    const ags=[...new Set(all.map(r=>r.service_agent).filter(Boolean))].sort();
+    const cur=agSel.value; agSel.innerHTML='<option value="">All agents</option>'+ags.map(a=>`<option${a===cur?' selected':''}>${esc(a)}</option>`).join(''); APPT_AGENTS_FILLED=true;
+  }
+  const fB=val('apptBrand'), fA=val('apptAgent'), fFrom=val('apptFrom'), fTo=val('apptTo'), fP=val('apptProp'), q=(val('apptSearch')||'').toLowerCase();
+  let rows=all.filter(r=>r.bucket===APPT_BUCKET
+    && (!fB||r.brand===fB) && (!fA||r.service_agent===fA)
+    && (!fP|| (r.proposal_status||'none')===fP)
+    && (!fFrom|| (r.appt_at&&r.appt_at.slice(0,10)>=fFrom))
+    && (!fTo|| (r.appt_at&&r.appt_at.slice(0,10)<=fTo))
+    && (!q|| [r.customer_name,r.customer_phone,r.notes,r.service,r.next_action].filter(Boolean).join(' ').toLowerCase().includes(q)));
+  rows.sort((a,b)=>{ const x=a.appt_at||'', y=b.appt_at||''; return APPT_BUCKET==='upcoming'? x.localeCompare(y) : y.localeCompare(x); });
+  // Summary
+  const money0=n=>(n==null||n==='')?'':' · '+money(n);
+  let sum=`<b>${rows.length}</b> ${APPT_BUCKET} appointment${rows.length!==1?'s':''}`;
+  if(APPT_BUCKET==='cancelled'){
+    const seg=k=>rows.filter(r=>(r.cancel_segment||'unknown')===k).length;
+    sum+=` · <span class="seg follow_up">${seg('follow_up')} follow up</span> <span class="seg dead">${seg('dead')} dead</span> <span class="seg unknown">${seg('unknown')} unknown</span>`;
+  }
+  document.getElementById('apptSummary').innerHTML='<div class="sub">'+sum+'</div>';
+  const PST={open:'🟠 Open',accepted:'🟢 Accepted',expired:'🔴 Expired',none:''};
+  root.innerHTML = rows.length ? rows.map(r=>{
+    const when=r.appt_at?new Date(r.appt_at).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
+    const prop = r.proposal_status&&r.proposal_status!=='none' ? `<span class="tag">${PST[r.proposal_status]||r.proposal_status}${money0(r.proposal_amount)}</span>` : '';
+    const seg = APPT_BUCKET==='cancelled' ? `<span class="seg ${esc(r.cancel_segment||'unknown')}">${esc((r.cancel_segment||'unknown').replace('_',' '))}</span>` : '';
+    return `<div class="appt${r.next_action?'':' '}">
+      <div class="appt-top">
+        <div><b>${esc(r.customer_name||('Contact #'+(r.contact_id||'?')))}</b> ${r.brand?brandTag(r.brand):''} ${seg}
+          <div class="ge-meta" style="text-transform:none;letter-spacing:0;margin-top:2px">${esc(r.service||'')}${r.service_agent?' · '+esc(r.service_agent):''}${r.customer_phone?' · <a href="tel:'+esc(r.customer_phone)+'" style="color:var(--accent)">'+esc(r.customer_phone)+'</a>':''}</div></div>
+        <div style="text-align:right"><div style="font-weight:600;font-size:13px">${esc(when)}</div>${prop}</div>
+      </div>
+      ${r.notes?`<div class="appt-notes">📝 ${esc(r.notes)}</div>`:''}
+      <div class="na-row">
+        <span style="font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px">Next action</span>
+        <input id="na_${r.id}" value="${esc(r.next_action||'')}" placeholder="capture the follow-up / decision…">
+        <button class="btn sm" onclick="saveNextAction('${r.id}')">Save</button>
+      </div>
+      ${r.next_action_by&&r.next_action?`<div class="ge-meta" style="text-transform:none;letter-spacing:0;margin-top:4px">last set by ${esc(r.next_action_by)}</div>`:''}
+    </div>`;
+  }).join('') : '<div class="empty">No appointments match these filters.</div>';
 }
 
 async function renderPipeline(){
@@ -4126,6 +4468,78 @@ async function renderPaid(){
     + `<div class="ge-meta" style="margin-top:4px">Scan: ${esc(latest||'—')} · Paid ties spend to revenue; margin questions go to Moola.</div>`;
 }
 
+// Executive summary — every section gets one, at the top, fed by the owning
+// agent (section `exec_summary`, fields {tab, summary, owner, updated}). Finance
+// uses the Moola report as its exec summary (see the Finance tab), so we skip it
+// here to avoid duplicating the ask. Home has its own welcome.
+let _EXEC_CACHE=null;
+async function renderExecSummary(tab){
+  if(tab==='finance'||tab==='home') return;
+  const panel=document.getElementById(tab); if(!panel) return;
+  let slot=panel.querySelector(':scope > .exec-summary-slot');
+  if(!slot){
+    slot=document.createElement('div'); slot.className='exec-summary-slot';
+    const head=panel.querySelector(':scope > .page-head');
+    if(head) head.after(slot); else panel.prepend(slot);
+  }
+  if(!_EXEC_CACHE){
+    const {data}=await sb.from('intranet_records').select('*').eq('section','exec_summary');
+    _EXEC_CACHE=data||[];
+  }
+  const brands=wsBrands();
+  const rows=_EXEC_CACHE.filter(r=>r.fields.tab===tab && (!brands||!r.brand||brands.includes(r.brand)));
+  if(!rows.length){ slot.innerHTML=''; return; }   // no summary → no banner (no clutter)
+  const f=rows.sort((a,b)=>String(b.fields.updated||'').localeCompare(String(a.fields.updated||'')))[0].fields;
+  slot.innerHTML=`<div class="card" style="border-left:3px solid var(--accent)"><div style="font-size:14px;font-weight:700;margin-bottom:4px">📌 Executive summary${f.owner?` <small style="color:var(--text-mute);font-weight:500">· ${esc(f.owner)}</small>`:''}</div><div class="sub" style="white-space:pre-wrap;color:var(--text)">${esc(f.summary||'')}</div>${f.updated?`<div class="sub" style="color:var(--text-mute);margin-top:6px">Updated ${esc(f.updated)}</div>`:''}</div>`;
+}
+// Finance company filter — independent of the left-nav workspace switcher, so the
+// owner can scope the whole Finance tab to one entity.
+function finCompany(){ const e=document.getElementById('finCompany'); return e?e.value:''; }
+async function finRecords(section){
+  const {data}=await sb.from('intranet_records').select('*').eq('section',section).order('sort_order',{ascending:true});
+  const comp=finCompany(); const rows=data||[];
+  return comp?rows.filter(r=>!r.brand||r.brand===comp||r.brand==='Both'):rows;
+}
+async function renderFinance(){
+  if(!canFinance()) return;
+  const comp=finCompany();
+  const pb=document.getElementById('payBrand'); if(pb && pb.value!==comp){ pb.value=comp; }
+  if(window.renderMoola) renderMoola();
+  renderMoolaReport(); renderMoolaCash();
+  if(window.renderPayables) renderPayables();
+}
+async function renderMoolaReport(){
+  const root=document.getElementById('moolaReport_root'); if(!root) return;
+  const rows=await finRecords('moola_report');
+  if(!rows.length){ root.innerHTML='<div class="empty">No Moola report yet — Moola posts findings, recommendations, bottlenecks and warnings on its daily run.</div>'; return; }
+  const KIND={warning:{icon:'⚠️',lbl:'Warnings',color:'var(--danger)',o:0},bottleneck:{icon:'⛔',lbl:'Bottlenecks',color:'#fb923c',o:1},finding:{icon:'🔎',lbl:'Key findings',color:'var(--info)',o:2},recommendation:{icon:'✅',lbl:'Recommendations',color:'#4ade80',o:3}};
+  const groups={}; rows.forEach(r=>{const k=(r.fields.kind||'finding').toLowerCase();(groups[k]=groups[k]||[]).push(r.fields);});
+  const order=Object.keys(groups).sort((a,b)=>((KIND[a]?.o??9)-(KIND[b]?.o??9)));
+  root.innerHTML=order.map(k=>{const meta=KIND[k]||{icon:'•',lbl:k,color:'var(--text)'};
+    return `<div class="sec-title" style="color:${meta.color};margin-top:12px">${meta.icon} ${esc(meta.lbl)}</div>
+      ${groups[k].map(f=>`<div style="border-left:3px solid ${meta.color};padding:5px 0 5px 12px;margin:6px 0"><b>${esc(f.title||'')}</b>${f.detail?`<div class="sub">${esc(f.detail)}</div>`:''}${f.metric?`<div class="sub" style="color:var(--text-mute)">${esc(f.metric)}</div>`:''}</div>`).join('')}`;
+  }).join('');
+}
+async function renderMoolaCash(){
+  const root=document.getElementById('moolaCash_root'); if(!root) return;
+  const rows=await finRecords('moola_cashflow');   // {vendor|payee, direction:in|out, amount, category, brand, note}
+  if(!rows.length){ root.innerHTML='<div class="empty">No cash-flow detail yet — Moola groups money in/out by vendor on its daily run.</div>'; return; }
+  const byVendor={};
+  rows.forEach(r=>{const f=r.fields;const v=f.vendor||f.payee||'—';const amt=Number(f.amount)||0;const dir=(f.direction||'out').toLowerCase();
+    const g=byVendor[v]=byVendor[v]||{vendor:v,inflow:0,outflow:0,net:0};
+    if(dir==='in'){g.inflow+=amt;g.net+=amt;}else{g.outflow+=amt;g.net-=amt;}});
+  const list=Object.values(byVendor).sort((a,b)=>Math.abs(b.net)-Math.abs(a.net));
+  const totIn=list.reduce((s,x)=>s+x.inflow,0), totOut=list.reduce((s,x)=>s+x.outflow,0);
+  const chartRows=list.slice(0,8);
+  const cmax=Math.max(1,...chartRows.map(x=>Math.abs(x.net)));
+  const chart=chartRows.length?`<div class="chart-title">Top vendors by net cash</div>`
+    +chartRows.map(x=>cbarRow(x.vendor,Math.abs(x.net),cmax,x.net>=0?'#4ade80':'var(--danger)',commMoney(x.net))).join('')
+    +`<div style="height:14px"></div>`:'';
+  root.innerHTML=chart+`<div class="sub" style="margin-bottom:8px">Net position: <b style="color:${totIn-totOut>=0?'#4ade80':'var(--danger)'}">${commMoney(totIn-totOut)}</b> · in ${commMoney(totIn)} · out ${commMoney(totOut)}</div>
+    <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Vendor / payee</th><th class="num">In</th><th class="num">Out</th><th class="num">Net</th></tr></thead><tbody>
+    ${list.map(x=>`<tr><td><b>${esc(x.vendor)}</b></td><td class="num">${x.inflow?commMoney(x.inflow):'—'}</td><td class="num">${x.outflow?commMoney(x.outflow):'—'}</td><td class="num" style="color:${x.net>=0?'#4ade80':'var(--danger)'}"><b>${commMoney(x.net)}</b></td></tr>`).join('')}
+    </tbody></table></div>`;
+}
 async function renderMoola(){
   const el=document.getElementById('moola_root'); if(!el) return;
   if(!canFinance()){ el.innerHTML='<div class="ge-clear">🔒 Owner only — sensitive financial reporting.</div>'; return; }
@@ -4283,7 +4697,7 @@ function renderAll(){
   renderContacts(); renderItems(); renderJobs(); renderDash();
   renderAllSections(); renderIntegrations();
   renderRecent(); renderHealth(); renderGoldeneye(); renderMoola();
-  renderCallNotes(); renderPayables(); renderCashflow();
+  renderCallNotes(); renderPayables(); renderHomeSnapshot(); renderCashflow();
 }
 
 /* ================================================================
@@ -4606,6 +5020,71 @@ function stageProgressBar(s){
     `<div title="${esc(st)}" style="flex:1;height:6px;border-radius:3px;background:${idx<=i?'var(--accent,#6366f1)':'var(--border,#333)'}"></div>`
   ).join('')}</div><div class="sub" style="margin-bottom:10px">${esc(s||'Stage unknown')}</div>`;
 }
+// Commission Tracker — 50% accrues on signing, 50% when the job starts.
+// Reads section `commissions` (Moola-written). Accrued-for-next-payroll = the
+// half whose trigger has fired but hasn't been paid out yet.
+const commMoney = n => '$'+(Math.round(Number(n)||0)).toLocaleString();
+function commRowParts(f){
+  const total=Number(f.commission_total)||0;
+  const sign=f.sign_amount!=null&&f.sign_amount!==''?Number(f.sign_amount):(total?total/2:0);
+  const start=f.start_amount!=null&&f.start_amount!==''?Number(f.start_amount):(total?total/2:0);
+  const signed=!!(f.sign_date||f.signed);        // signing has happened
+  const started=!!(f.start_date||f.started);      // job start has happened
+  const signPaid=f.sign_paid===true||f.sign_paid==='true';
+  const startPaid=f.start_paid===true||f.start_paid==='true';
+  const accrued=(signed&&!signPaid?sign:0)+(started&&!startPaid?start:0);
+  return {total,sign,start,signed,started,signPaid,startPaid,accrued};
+}
+async function renderCommissions(){
+  const root=document.getElementById('commissions_root'); if(!root) return;
+  const rows=await fetchRecords('commissions');   // workspace brand-scoped
+  const sel=document.getElementById('commAgent');
+  const agents=[...new Set(rows.map(r=>r.fields.agent).filter(Boolean))].sort();
+  const curA=sel.value;
+  sel.innerHTML='<option value="">All agents</option>'+agents.map(a=>`<option${a===curA?' selected':''}>${esc(a)}</option>`).join('');
+  const fAgent=sel.value, fBrand=document.getElementById('commBrand').value;
+  let items=rows.map(r=>({...commRowParts(r.fields), ...r.fields}));
+  items=items.filter(x=>(!fAgent||x.agent===fAgent)&&(!fBrand||x.brand===fBrand));
+  const payrollDate=rows.map(r=>r.fields.next_payroll_date).find(Boolean);
+  if(!items.length){
+    document.getElementById('commSummary').innerHTML='';
+    root.innerHTML='<div class="empty">No commission data yet — Moola seeds this daily from ServiceMinder accepted proposals + job starts.</div>';return;
+  }
+  const totAccrued=items.reduce((s,x)=>s+x.accrued,0);
+  const signAccrued=items.reduce((s,x)=>s+(x.signed&&!x.signPaid?x.sign:0),0);
+  const startAccrued=items.reduce((s,x)=>s+(x.started&&!x.startPaid?x.start:0),0);
+  const agentsShown=[...new Set(items.map(x=>x.agent))];
+  document.getElementById('commSummary').innerHTML=`
+    <div class="kpi" style="padding:12px 14px"><div class="label">Accrued for next payroll${payrollDate?` (${esc(payrollDate)})`:''}</div><div class="value" style="font-size:22px;color:#4ade80">${commMoney(totAccrued)}</div><div class="trend">${agentsShown.length} agent${agentsShown.length>1?'s':''} · ${items.length} deal${items.length>1?'s':''}</div></div>
+    <div class="kpi" style="padding:12px 14px"><div class="label">From signings (50%)</div><div class="value" style="font-size:22px">${commMoney(signAccrued)}</div><div class="trend">Accepted, not yet paid out</div></div>
+    <div class="kpi" style="padding:12px 14px"><div class="label">From job starts (50%)</div><div class="value" style="font-size:22px">${commMoney(startAccrued)}</div><div class="trend">Started, not yet paid out</div></div>`;
+  // Group by agent → customer rows
+  const byAgent={}; items.forEach(x=>{(byAgent[x.agent||'—']=byAgent[x.agent||'—']||[]).push(x);});
+  // Per-agent accrual bar chart (prepended into the root, which is cleared each render)
+  const agentTotals=Object.keys(byAgent).map(a=>({a,v:byAgent[a].reduce((s,x)=>s+x.accrued,0)})).sort((x,y)=>y.v-x.v);
+  const acMax=Math.max(1,...agentTotals.map(x=>x.v));
+  const commChart=agentTotals.length>1
+    ? `<div style="margin-bottom:14px"><div class="chart-title">Accrued for next payroll by agent</div>${agentTotals.map(x=>cbarRow(x.a,x.v,acMax,'#4ade80',commMoney(x.v))).join('')}</div>`
+    : '';
+  const pill=(on,paid,lbl)=>on?`<span style="font-size:11px;font-weight:700;color:${paid?'var(--text-mute)':'#4ade80'}">${paid?'✓ paid':lbl}</span>`:'<span style="font-size:11px;color:var(--text-dim)">pending</span>';
+  root.innerHTML=commChart+Object.keys(byAgent).sort().map(agent=>{
+    const list=byAgent[agent].sort((a,b)=>b.accrued-a.accrued);
+    const sub=list.reduce((s,x)=>s+x.accrued,0);
+    return `<div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+        <span>${esc(agent)}</span><span style="color:#4ade80">${commMoney(sub)} <small style="color:var(--text-mute);font-weight:500">accrued</small></span></div>
+      <div style="overflow-x:auto"><table class="btable"><thead><tr>
+        <th>Customer</th><th>Brand</th><th class="num">Contract</th><th class="num">Commission</th><th>Sign 50%</th><th>Start 50%</th><th class="num">Accrued now</th></tr></thead><tbody>
+      ${list.map(x=>`<tr>
+        <td><b>${esc(x.customer||'—')}</b></td>
+        <td>${esc(x.brand||'')}</td>
+        <td class="num">${x.contract_value?commMoney(x.contract_value):'—'}</td>
+        <td class="num">${x.total?commMoney(x.total):'—'}</td>
+        <td>${commMoney(x.sign)} · ${pill(x.signed,x.signPaid,'accrued')}${x.sign_date?`<br><small style="color:var(--text-mute)">${esc(x.sign_date)}</small>`:''}</td>
+        <td>${commMoney(x.start)} · ${pill(x.started,x.startPaid,'accrued')}${x.start_date?`<br><small style="color:var(--text-mute)">${esc(x.start_date)}</small>`:''}</td>
+        <td class="num"><b>${commMoney(x.accrued)}</b></td></tr>`).join('')}
+      </tbody></table></div>`;
+  }).join('');
+}
 async function renderProjects(){
   const root=document.getElementById('projectsRoot'); if(!root) return;
   const [board,briefing,vendor,gates,clients]=await Promise.all([
@@ -4628,20 +5107,20 @@ async function renderProjects(){
   if(PROJ_FILTER==='gate') list=list.filter(r=>{const g=gateByProject[r.fields.project];return g&&g.gate_status&&g.gate_status.toLowerCase()!=='pass';});
   if(!list.length){root.innerHTML='<div class="empty">No project rows yet — Foreman seeds this daily from JobTread + ServiceMinder + CompanyCam.</div>';return;}
   root.innerHTML=`<div class="sub" style="margin-bottom:8px"><b>${list.length}</b> active project${list.length>1?'s':''}${board[0]?.fields?.scan_date?` · as of ${esc(board[0].fields.scan_date)}`:''}</div>
-  <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Project</th><th>Brand</th><th>Stage</th><th>Pace</th><th>Timeline</th><th class="num">Est. GP%</th><th class="num">Actual GP%</th><th>Gate</th><th>Vendor</th></tr></thead><tbody>
+  <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Project</th><th>Brand</th><th>Service type</th><th>Stage</th><th>Pace</th><th>Timeline</th><th>Gate</th><th>Vendor</th><th data-nosort></th></tr></thead><tbody>
   ${list.map(r=>{const f=r.fields;const g=gateByProject[f.project];const vFlags=vendorFlagByProject[f.project]||0;
     return `<tr>
     <td><a href="javascript:void(0)" onclick="openProjectTimeline(${JSON.stringify(f.project||'')})" title="Open the project timeline breakout"><b>${esc(f.project||'—')}</b></a>
       <a href="javascript:void(0)" onclick="openProjectDetail(${JSON.stringify(f.project||'')})" title="Quick details (margins, ledger, gate)" style="margin-left:6px;font-size:11px;color:var(--text-mute)">details ▾</a>
       ${f.scope_summary?`<br><small style="color:var(--text-mute)">${esc(String(f.scope_summary).slice(0,70))}</small>`:''}</td>
     <td>${esc(f.brand||'')}</td>
+    <td>${f.service_type?esc(f.service_type):'<small style="color:var(--text-dim)">—</small>'}</td>
     <td>${stageBadge(f.stage)}</td>
     <td>${esc(f.status||'')} ${f.variance?`<small style="color:var(--text-mute)">${esc(f.variance)}</small>`:''}</td>
     <td>${timelineBadge(f)}</td>
-    <td class="num">${pct(f.estimated_gp_pct)}${coverageNote(f.estimated_cost_coverage_pct)}</td>
-    <td class="num">${pct(f.actual_gp_pct)}${coverageNote(f.actual_cost_coverage_pct)}</td>
     <td>${g?(g.gate_status==='Pass'?'✅':'⚠️ '+esc(g.gate_status||'')):'—'}</td>
     <td>${vFlags?`<span class="ax-pill overdue">🚚 ${vFlags}</span>`:'—'}</td>
+    <td><button class="btn sm ghost" onclick="event.stopPropagation();openCostDetail(${JSON.stringify(f.project||'')})" title="Open cost breakdown in Job Costing">🧮</button></td>
   </tr>`;}).join('')}</tbody></table></div>`;
 }
 const TIMELINE_LABEL={within_timeline:'🟢 Within timeline',at_risk:'🟡 At risk',overrun:'🔴 Overrun'};
@@ -4652,6 +5131,27 @@ function timelineBadge(f){
   const cls=TIMELINE_CLASS[f.timeline_status]||'proposal';
   const tip=[f.pm_comment,f.timeline_goal?`Goal: ${f.timeline_goal}`:'',f.goal_note].filter(Boolean).join(' — ');
   return `<span class="ax-pill ${cls}" title="${esc(tip)}">${esc(label)}</span>`;
+}
+// Foreman writes project_steps as an arrow-separated ordered list, e.g.
+// "Selections ✓ → CAD approved ✓ → Demo ⏳ → Tile → Punch". Render it as a
+// readable vertical stepper; fall back to raw text if it isn't arrow-delimited.
+function projectSteps(s){
+  if(!s) return '';
+  const parts=String(s).split(/\s*(?:→|->|›|»)\s*/).map(x=>x.trim()).filter(Boolean);
+  if(parts.length<2) return `<div class="sub" style="margin-top:8px"><b>Project steps:</b> ${esc(s)}</div>`;
+  const dotFor=t=>/✓|done|complete/i.test(t)?'#4ade80':/⏳|in progress|current|now/i.test(t)?'var(--accent)':'var(--border)';
+  return `<div class="sub" style="margin-top:8px"><b>Project steps</b></div>
+    <div style="margin-top:6px;border-left:2px solid var(--border);padding-left:12px">
+    ${parts.map(p=>`<div style="position:relative;padding:3px 0;font-size:13px">
+      <span style="position:absolute;left:-17px;top:7px;width:8px;height:8px;border-radius:50%;background:${dotFor(p)}"></span>${esc(p)}</div>`).join('')}
+    </div>`;
+}
+// Payment progress line (Foreman's 75%/100% rule → started/complete).
+function paymentLine(f){
+  if(f.pay_pct==null && !f.payment_status) return '';
+  const pctNum = f.pay_pct!=null ? Math.round(Number(f.pay_pct)*(Number(f.pay_pct)<=1?100:1)) : null;
+  const lbl={pre_production:'🟠 Pre-production',started:'🔵 Started (≥75% collected)',complete:'✅ Complete (paid in full)'}[f.payment_status]||f.payment_status||'';
+  return `<div class="sub" style="margin-top:4px"><b>Payment:</b> ${pctNum!=null?pctNum+'% collected':''}${lbl?` · ${esc(lbl)}`:''}</div>`;
 }
 /* ================================================================
    Project Timeline — dated milestone Gantt breakout (one project).
@@ -4809,8 +5309,8 @@ function ledgerTotals(ctx){
 }
 /* Shareable sections: each renders the same HTML for the modal and the print doc. */
 const PROJ_SECTIONS={
-  scope:{label:'Scope & stage',render:c=>`<div class="sec-title">Scope &amp; stage</div>${stageProgressBar(c.f.stage)}${c.f.scope_summary?`<div class="sub"><b>Scope:</b> ${esc(c.f.scope_summary)}</div>`:'<div class="sub">No scope summary on file.</div>'}`},
-  pace:{label:'Timeline & pace',render:c=>`<div class="sec-title">Timeline &amp; pace</div><div class="sub">${esc(c.f.status||'—')} · phase <b>${esc(c.f.phase||'—')}</b> · ${esc(c.f.days_in_phase||'—')} days in phase (target ${esc(c.f.target||'—')})${c.f.variance?` · ${esc(c.f.variance)}`:''}</div>${c.f.action?`<div class="sub"><b>Next step:</b> ${esc(c.f.action)}</div>`:''}`},
+  scope:{label:'Scope & stage',render:c=>`<div class="sec-title">Scope &amp; stage</div>${stageProgressBar(c.f.stage)}${c.f.service_type?`<div class="sub"><b>Service type:</b> ${esc(c.f.service_type)}</div>`:''}${c.f.scope_summary?`<div class="sub"><b>Scope:</b> ${esc(c.f.scope_summary)}</div>`:'<div class="sub">No scope summary on file.</div>'}${projectSteps(c.f.project_steps)}`},
+  pace:{label:'Timeline & pace',render:c=>`<div class="sec-title">Timeline &amp; pace</div><div class="sub">${esc(c.f.status||'—')} · phase <b>${esc(c.f.phase||'—')}</b> · ${esc(c.f.days_in_phase||'—')} days in phase (target ${esc(c.f.target||'—')})${c.f.variance?` · ${esc(c.f.variance)}`:''}</div>${c.f.est_timeline?`<div class="sub" style="margin-top:4px"><b>Estimated timeline:</b> ${esc(c.f.est_timeline)}${c.f.est_completion?` · est. completion ${esc(c.f.est_completion)}`:''}</div>`:''}${paymentLine(c.f)}${c.f.action?`<div class="sub"><b>Next step:</b> ${esc(c.f.action)}</div>`:''}`},
   install:{label:'Install progress & timeline goal',render:c=>{
     const f=c.f;
     if(!f.install_started){
@@ -4867,12 +5367,18 @@ const PROJ_SECTIONS={
   }},
   margins:{label:'Margins & GP%',render:c=>{
     const t=ledgerTotals(c);
+    const f=c.f;
+    const rate=f.labor_rate?fmt$(f.labor_rate):(f.brand==='BTU'?'$100':'—');
+    const laborLine=(f.est_labor_cost!=null||f.est_labor_hours!=null)
+      ? `<div class="sub" style="margin-top:6px"><b>Estimated labor:</b> ${f.est_labor_hours!=null?esc(f.est_labor_hours)+' hrs':'—'}${f.labor_rate?` × ${rate}/hr`:''}${f.est_labor_cost!=null?` = <b>${fmt$(f.est_labor_cost)}</b>`:''} <small style="color:var(--text-mute)">(rate: BTU $100 · KTU custom $100 · KTU refacing $65)</small></div>`
+      : '';
     return `<div class="sec-title">Margins &amp; GP%</div>
-    <div style="overflow-x:auto"><table class="btable"><thead><tr><th></th><th class="num">Estimated (JobTread)</th><th class="num">Actual (ledger)</th><th class="num">SM proposal-line</th></tr></thead><tbody>
-      <tr><td>Cost</td><td class="num">${fmt$(c.f.estimated_cost)}</td><td class="num">${fmt$(t.total)}</td><td class="num">${fmt$(c.f.actual_cost)}</td></tr>
-      <tr><td>GP%</td><td class="num">${pct(c.f.estimated_gp_pct)}</td><td class="num">${t.margin==null?'—':Math.round(t.margin*100)+'%'}</td><td class="num">${pct(c.f.actual_gp_pct)}${coverageNote(c.f.actual_cost_coverage_pct)}</td></tr>
+    <div style="overflow-x:auto"><table class="btable"><thead><tr><th></th><th class="num">Estimated</th><th class="num">Actual (ledger + invoices)</th></tr></thead><tbody>
+      <tr><td>Cost</td><td class="num">${fmt$(f.estimated_cost)}</td><td class="num">${fmt$(f.actual_cost!=null?f.actual_cost:t.total)}</td></tr>
+      <tr><td>GP%</td><td class="num">${pct(f.estimated_gp_pct)}${coverageNote(f.estimated_cost_coverage_pct)}</td><td class="num">${pct(f.actual_gp_pct)}${coverageNote(f.actual_cost_coverage_pct)}</td></tr>
     </tbody></table></div>
-    <div class="sub" style="margin-top:4px">Ledger = purchases entered here/SM Margins. SM proposal-line = estimating costs (coverage-limited). Estimated = JobTread pre-sale.</div>`;
+    ${laborLine}
+    <div class="sub" style="margin-top:4px">Estimated = JobTread cost items + SM proposal <code>UnitCost</code> + labor (hours × rate). Actual = summed dated vendor postings from the SM Margins panel / job-cost ledger + emailed vendor invoices (de-duplicated) — the retail proposal price is never used as cost.</div>`;
   }},
   pricing:{label:'Pricing vs catalog (sales)',render:c=>`<div class="sec-title">Pricing accuracy</div><div class="sub">Contract <b>${fmt$(c.f.contract_total||c.cli.contract_total)}</b>${c.f.price_grade?` · price grade vs catalog: <b>${esc(c.f.price_grade)}</b>`:' · price grade: n/a'} · Est. GP% at sale: <b>${pct(c.f.estimated_gp_pct)}</b></div>`},
   payments:{label:'Contract & payments',render:c=>`<div class="sec-title">Contract &amp; payments</div><div class="sub">Contract ${fmt$(c.f.contract_total||c.cli.contract_total)} · Paid ${fmt$(c.cli.paid)} · Outstanding <b>${fmt$(c.cli.outstanding)}</b>${c.cli.last_payment?` · last payment ${esc(c.cli.last_payment)}`:''}</div>`}
@@ -4886,20 +5392,46 @@ async function openProjectDetail(project){
   const c=await projCtx(project);
   const bg=document.createElement('div');bg.className='ax-modal-bg';bg.onclick=e=>{if(e.target===bg)bg.remove();};
   bg.dataset.project=project;
-  const order=['scope','pace','install','design','margins','ledger','pricing','payments','gate','vendor'];
+  // Project Tracker = PM view: scope/steps, pace, install, design, gate, vendor,
+  // updates/overruns. Cost detail (margins/ledger/pricing/payments) lives in the
+  // Job Costing tab — no overlap. Clicking the name breaks out the project scope.
+  const order=['scope','pace','install','design','gate','vendor'];
   bg.innerHTML=`<div class="ax-modal" style="max-width:680px">
     <h3>${esc(project)} <small style="color:var(--text-mute)">(${esc(c.f.brand||c.cli.brand||'')})</small></h3>
     ${c.flags.length?c.flags.map(fl=>`<div class="ax-pill overdue" style="display:block;margin-bottom:6px;white-space:normal;text-align:left">${esc(fl.title||'')}<br><small>${esc(fl.detail||'')}</small></div>`).join(''):''}
     ${order.map(k=>`<div style="margin-top:12px">${PROJ_SECTIONS[k].render(c)}</div>`).join('')}
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
-      <button class="btn sm" onclick='openProjectShare(${JSON.stringify(project)})'>🖨 Share / Print / Export</button>
-      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:14px">
+      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove();openCostDetail(${JSON.stringify(project)})" title="Full cost breakdown lives in Job Costing">🧮 Job costing →</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn sm" onclick='openProjectShare(${JSON.stringify(project)})'>🖨 Share / Print / Export</button>
+        <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+      </div>
     </div></div>`;
   document.body.appendChild(bg);
 }
 async function refreshProjectDetail(project){
   document.querySelectorAll('.ax-modal-bg').forEach(m=>{if(m.dataset.project===project)m.remove();});
   await openProjectDetail(project);
+}
+// Job Costing detail — the money view (no PM/gate overlap): scope + margins,
+// labor estimate, the actual-cost ledger (add entries), pricing, payments.
+async function openCostDetail(project){
+  if(!window._PROJ_DATA){ await renderProjects(); }
+  const c=await projCtx(project);
+  const bg=document.createElement('div');bg.className='ax-modal-bg';bg.dataset.project=project;bg.dataset.cost='1';
+  bg.onclick=e=>{if(e.target===bg)bg.remove();};
+  const order=['scope','margins','ledger','pricing','payments'];
+  bg.innerHTML=`<div class="ax-modal" style="max-width:680px">
+    <h3>🧮 ${esc(project)} — Job Costing <small style="color:var(--text-mute)">(${esc(c.f.brand||c.cli.brand||'')})</small></h3>
+    ${order.map(k=>`<div style="margin-top:12px">${PROJ_SECTIONS[k].render(c)}</div>`).join('')}
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px">
+      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+    </div></div>`;
+  document.body.appendChild(bg);
+}
+function refreshCostDetail(project){
+  document.querySelectorAll('.ax-modal-bg[data-cost]').forEach(m=>{if(m.dataset.project===project)m.remove();});
+  openCostDetail(project);
 }
 async function addJobCost(project){
   const c=window._PROJ_DATA;const cli=(c?.clients||[]).find(r=>r.fields.client===project)?.fields||{};
@@ -4917,12 +5449,29 @@ async function addJobCost(project){
     payload:{summary,note:summary,sync_targets:['serviceminder','slack'],author:entered_by},
     created_by:user?.id||null,created_by_email:user?.email||null});
   toast('Entry saved — syncing to ServiceMinder as a contact note.');
+  refreshOpenDetail(project);
+}
+// Refresh whichever detail modal is open for this project (cost or PM view).
+function refreshOpenDetail(project){
+  const cost=document.querySelector('.ax-modal-bg[data-cost]');
+  if(cost && cost.dataset.project===project){ refreshCostDetail(project); return; }
   refreshProjectDetail(project);
 }
 async function deleteJobCost(id,project){
   if(!confirm('Delete this cost entry?'))return;
   const {error}=await sb.from('intranet_records').delete().eq('id',id);
   if(error){toast(error.message,1);return;}
+  refreshOpenDetail(project);
+}
+async function saveTimelineGoal(project){
+  const inputId='tgInput_'+String(project).replace(/[^a-zA-Z0-9]/g,'_');
+  const goal=val(inputId);
+  const row=(window._PROJ_DATA?.board||[]).find(r=>r.fields.project===project);
+  if(!row){toast('Could not find this project\'s row — try refreshing.',1);return;}
+  const fields={...row.fields, timeline_goal: goal||null};
+  const {error}=await sb.from('intranet_records').update({fields}).eq('id',row.id);
+  if(error){toast('Failed: '+error.message,1);return;}
+  toast(goal?'Timeline goal saved — Foreman checks it on the next sweep.':'Timeline goal cleared.');
   refreshProjectDetail(project);
 }
 async function saveTimelineGoal(project){
@@ -4980,12 +5529,52 @@ async function printProjectDoc(project){
 }
 
 /* ---------- Tech Stack registry (Tekki's table) ---------- */
+// Compact one-page registry. Login details (username/password) live in Resources;
+// they stay in the DB (saveTechRow merges over existing) but are off the grid.
 const TECH_COLS=[
-  {k:'name',label:'System',w:130},{k:'category',label:'Category',w:110},{k:'priority',label:'Priority',w:90},
-  {k:'purpose',label:'Purpose',w:200},{k:'cost',label:'Cost',w:110},
-  {k:'url',label:'Link',w:70},{k:'username',label:'Username',w:140},{k:'password',label:'Password',w:110},
-  {k:'sow_url',label:'SOW',w:70},{k:'notes',label:'Notes',w:150}
+  {k:'name',label:'System',w:130},{k:'category',label:'Category',w:100},{k:'priority',label:'Priority',w:80},
+  {k:'purpose',label:'Purpose',w:190},{k:'monthly_cost',label:'Monthly $',w:90},
+  {k:'score',label:'Value',w:70},{k:'recommendation',label:'Rec',w:90},
+  {k:'url',label:'Link',w:56},{k:'sow_url',label:'SOW',w:56}
 ];
+const TECH_REC_STYLE={
+  keep:{bg:'rgba(74,222,128,.14)',fg:'#4ade80',lbl:'✓ Keep'},
+  cut:{bg:'rgba(248,113,113,.14)',fg:'#f87171',lbl:'✕ Cut'},
+  replace:{bg:'rgba(251,146,60,.14)',fg:'#fb923c',lbl:'⇄ Replace'}
+};
+function techScorePill(v){
+  const n=Number(v); if(!isFinite(n)||v==null||v==='') return '—';
+  const c=n>=70?'#4ade80':n>=40?'#fb923c':'#f87171';
+  return `<span style="display:inline-block;min-width:26px;text-align:center;font-weight:700;color:${c}">${Math.round(n)}</span>`;
+}
+function techRecPill(v){
+  const s=TECH_REC_STYLE[(v||'').toLowerCase()]; if(!s) return '—';
+  return `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:${s.bg};color:${s.fg}">${s.lbl}</span>`;
+}
+function techMoney(v){ const n=Number(String(v).replace(/[$,\s]/g,'')); return isFinite(n)&&v!=null&&v!==''?'$'+n.toLocaleString(undefined,{maximumFractionDigits:0}):'—'; }
+// Value-vs-cost quadrant: x = value score (0-100), y = monthly cost. Top-left
+// (high cost, low value) is the "review / cut" corner.
+function techQuadrant(rows){
+  const pts=rows.map(r=>({name:r.fields.name,score:Number(r.fields.score),cost:Number(String(r.fields.monthly_cost||'').replace(/[$,\s]/g,'')),rec:(r.fields.recommendation||'').toLowerCase()}))
+    .filter(p=>isFinite(p.score)&&isFinite(p.cost)&&(p.score>0||p.cost>0));
+  if(pts.length<3) return '';
+  const W=560,H=240,pad=34, cmax=Math.max(1,...pts.map(p=>p.cost));
+  const px=s=>pad+(Math.max(0,Math.min(100,s))/100)*(W-pad*2);
+  const py=c=>H-pad-(c/cmax)*(H-pad*2);
+  const col={keep:'#4ade80',cut:'#f87171',replace:'#fb923c'};
+  const dots=pts.map(p=>{const x=px(p.score),y=py(p.cost);const c=col[p.rec]||'var(--text-mute)';
+    const label=(p.cost>=cmax*0.45&&p.score<50)?`<text x="${x+7}" y="${y+3}" font-size="9" fill="var(--text-mute)">${esc(p.name)}</text>`:'';
+    return `<circle cx="${x}" cy="${y}" r="5" fill="${c}" fill-opacity="0.85"/>${label}`;}).join('');
+  return `<div class="chart-title">Value vs. cost — top-left is the review corner</div>
+  <div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" style="max-width:${W}px;width:100%">
+    <line x1="${pad}" y1="${py(cmax/2)}" x2="${W-pad}" y2="${py(cmax/2)}" stroke="var(--border)" stroke-dasharray="3 3"/>
+    <line x1="${px(50)}" y1="${pad}" x2="${px(50)}" y2="${H-pad}" stroke="var(--border)" stroke-dasharray="3 3"/>
+    <text x="${pad+2}" y="${pad+2}" font-size="9" fill="var(--danger)">high cost · low value</text>
+    <text x="${W-pad-2}" y="${H-pad+12}" font-size="9" fill="#4ade80" text-anchor="end">high value</text>
+    <text x="${pad-4}" y="${H-pad}" font-size="9" fill="var(--text-mute)" text-anchor="end">$0</text>
+    ${dots}
+  </svg></div><div style="height:12px"></div>`;
+}
 const TECH_PRIORITY_COLOR={critical:'var(--danger)',high:'var(--accent)',medium:'var(--info)',low:'var(--text-mute)'};
 let TECH_EDIT=null;
 function techSowCell(v,name){
@@ -4999,23 +5588,54 @@ async function renderTechStack(){
   const cell=(r,c)=>{
     const v=r.fields[c.k]||'';
     if(TECH_EDIT===r.id) return `<td><input id="te_${r.id}_${c.k}" value="${esc(v)}" style="width:${c.w-14}px"></td>`;
-    if(c.k==='url') return `<td>${v?`<a href="${esc(v)}" target="_blank" rel="noopener">Open ↗</a>`:'—'}</td>`;
+    if(c.k==='url') return `<td>${v?`<a href="${esc(v)}" target="_blank" rel="noopener" title="Open">↗</a>`:'—'}</td>`;
     if(c.k==='sow_url') return `<td>${techSowCell(v,r.fields.name)}</td>`;
-    if(c.k==='password') return `<td>${v?`<span class="pwmask" data-pw="${esc(v)}" onclick="togglePw(this)" style="cursor:pointer" title="Click to reveal">••••••</span>`:'—'}</td>`;
+    if(c.k==='monthly_cost') return `<td class="num">${techMoney(v)}</td>`;
+    if(c.k==='score') return `<td class="num">${techScorePill(v)}</td>`;
+    if(c.k==='recommendation') return `<td>${techRecPill(v)}</td>`;
     if(c.k==='priority') return `<td>${v?`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${TECH_PRIORITY_COLOR[v]||'var(--text-mute)'};flex-shrink:0"></span>${esc(v)}</span>`:'—'}</td>`;
     if(c.k==='name') return `<td><b>${esc(v)}</b></td>`;
+    if(c.k==='purpose') return `<td><small>${esc(v)||'—'}</small></td>`;
     return `<td>${esc(v)||'—'}</td>`;
   };
-  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr>${TECH_COLS.map(c=>`<th>${c.label}</th>`).join('')}<th></th></tr></thead><tbody>
+  // ---- Subscription cost totals (numeric monthly_cost, derived by Tekki) ----
+  const monthly=rows.reduce((s,r)=>{const n=Number(String(r.fields.monthly_cost||'').replace(/[$,\s]/g,''));return s+(isFinite(n)?n:0);},0);
+  const priced=rows.filter(r=>{const n=Number(String(r.fields.monthly_cost||'').replace(/[$,\s]/g,''));return isFinite(n)&&n>0;}).length;
+  const cutCount=rows.filter(r=>(r.fields.recommendation||'').toLowerCase()==='cut').length;
+  const repCount=rows.filter(r=>(r.fields.recommendation||'').toLowerCase()==='replace').length;
+  const cutSave=rows.filter(r=>['cut','replace'].includes((r.fields.recommendation||'').toLowerCase())).reduce((s,r)=>{const n=Number(String(r.fields.monthly_cost||'').replace(/[$,\s]/g,''));return s+(isFinite(n)?n:0);},0);
+  const sumBar=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px">
+    <div class="kpi" style="padding:12px 14px"><div class="label">Total monthly subscriptions</div><div class="value" style="font-size:22px">$${monthly.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div class="trend">${priced} of ${rows.length} tools priced · ~$${Math.round(monthly*12).toLocaleString()}/yr</div></div>
+    <div class="kpi" style="padding:12px 14px"><div class="label">Flagged to cut / replace</div><div class="value" style="font-size:22px">${cutCount+repCount}</div><div class="trend">${cutCount} cut · ${repCount} replace</div></div>
+    <div class="kpi" style="padding:12px 14px"><div class="label">Potential monthly savings</div><div class="value" style="font-size:22px;color:#4ade80">$${Math.round(cutSave).toLocaleString()}</div><div class="trend">If Tekki's cut/replace calls are actioned</div></div>
+  </div>`;
+  root.innerHTML=sumBar+techQuadrant(rows)+`<div style="overflow-x:auto"><table class="btable"><thead><tr>${TECH_COLS.map(c=>`<th>${c.label}</th>`).join('')}<th data-nosort></th></tr></thead><tbody>
   ${rows.map(r=>`<tr>${TECH_COLS.map(c=>cell(r,c)).join('')}
     <td style="white-space:nowrap">${TECH_EDIT===r.id
       ?`<button class="btn sm" onclick="saveTechRow('${r.id}')">Save</button> <button class="btn sm ghost" onclick="TECH_EDIT=null;renderTechStack()">✕</button>`
       :`<button class="btn sm ghost" onclick="TECH_EDIT='${r.id}';renderTechStack()">✎</button> <button class="btn sm ghost" onclick="delTechRow('${r.id}')">🗑</button>`}</td></tr>`).join('')}
-  <tr>${TECH_COLS.map(c=>`<td><input id="te_new_${c.k}" placeholder="${c.label}" style="width:${c.w-14}px"></td>`).join('')}
+  <tr data-nosort>${TECH_COLS.map(c=>`<td><input id="te_new_${c.k}" placeholder="${c.label}" style="width:${c.w-14}px"></td>`).join('')}
     <td><button class="btn sm" onclick="addTechRow()">+ Add</button></td></tr>
   </tbody></table></div>
-  <div class="sub" style="margin-top:6px">SOW column accepts a URL, or <code>sow:Title</code> to open a doc stored under Statements of Work. Cost is sourced from real card/bill spend where Tekki can confirm it, public pricing otherwise. Priority is Tekki's estimate of what breaks if a system goes dark (critical/high/medium/low) — override it inline if it's wrong. Passwords are visible to all intranet users — keep anything sensitive in a proper password manager and note it here instead; Tekki never writes this field.</div>`;
+  <div class="sub" style="margin-top:6px"><b>Monthly $</b> is the real recurring charge Tekki matched to this tool in Bank Connection (public pricing only where no charge is found yet). <b>Value</b> is Tekki's 0–100 score of the tool's benefit to the business vs. its cost/priority. <b>Rec</b> is keep / cut / replace. Priority = what breaks if it goes dark. Logins live in Resources. Edit anything inline; Tekki refreshes cost, score, and rec on its daily sweep.</div>`;
   linkifyTechNodes(rows);
+  renderTechRecs();
+}
+// Tekki's duplication / consolidation findings (section tech_recommendations).
+async function renderTechRecs(){
+  const root=document.getElementById('techRecRoot'); if(!root) return;
+  const recs=await fetchRecords('tech_recommendations');
+  if(!recs.length){ root.innerHTML='<div class="empty">No consolidation findings yet — Tekki posts duplication calls (keep/cut/replace with a value score) on its Monday deep-review sweep.</div>'; return; }
+  root.innerHTML=`<div style="display:grid;gap:10px">${recs.map(r=>{const f=r.fields;
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+        ${techRecPill(f.recommendation)} <b>${esc(f.title||f.tool||'—')}</b>
+        ${f.score!=null&&f.score!==''?`<span style="margin-left:auto">${techScorePill(f.score)}<small style="color:var(--text-mute)"> value</small></span>`:''}</div>
+      ${f.duplicates?`<div class="sub"><b>Overlaps:</b> ${esc(f.duplicates)}</div>`:''}
+      ${f.winner?`<div class="sub"><b>Recommended:</b> ${esc(f.winner)}</div>`:''}
+      ${f.rationale?`<div class="sub" style="margin-top:4px">${esc(f.rationale)}</div>`:''}
+      ${f.monthly_impact?`<div class="sub" style="color:#4ade80"><b>Est. monthly impact:</b> ${techMoney(f.monthly_impact)}</div>`:''}
+    </div>`;}).join('')}</div>`;
 }
 function togglePw(el){ el.textContent = el.textContent==='••••••' ? el.dataset.pw : '••••••'; }
 async function addTechRow(){
@@ -5079,17 +5699,18 @@ let RES_EDIT=null, RES_FILTER='all';
 async function addResource(){
   const label=val('resLabel'); if(!label){toast('Name it first.',1);return;}
   const r={label,category:val('resCategory')||'Other',brand:val('resBrand')||'Both',
-    url:val('resUrl')||null,username:val('resUser')||null,password:val('resPass')||null,notes:val('resNotes')||null,
+    url:val('resUrl')||null,drive_url:val('resDrive')||null,username:val('resUser')||null,password:val('resPass')||null,notes:val('resNotes')||null,
     created_by:user?.id||null,created_by_name:(prof&&prof.display_name)||(user&&user.email)||null};
   const {error}=await sb.from('resources').insert(r);
   if(error){toast('Failed: '+error.message,1);return;}
-  ['resLabel','resUrl','resUser','resPass','resNotes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+  ['resLabel','resUrl','resDrive','resUser','resPass','resNotes'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   toast('Resource added.');renderResources();
 }
 function editResource(id){ RES_EDIT=id; renderResources(); }
 async function saveResource(id){
-  const fields={label:val('rl_'+id),url:val('ru_'+id)||null,username:val('rn_'+id)||null,password:val('rp_'+id)||null,
-    category:document.getElementById('rc_'+id).value,brand:document.getElementById('rb_'+id).value,notes:val('rt_'+id)||null};
+  const fields={label:val('rl_'+id),url:val('ru_'+id)||null,drive_url:val('rd_'+id)||null,username:val('rn_'+id)||null,password:val('rp_'+id)||null,
+    category:document.getElementById('rc_'+id).value,brand:document.getElementById('rb_'+id).value,notes:val('rt_'+id)||null,
+    updated_by:(prof&&prof.display_name)||(user&&user.email)||null};
   const {error}=await sb.from('resources').update(fields).eq('id',id);
   if(error){toast(error.message,1);return;}
   RES_EDIT=null;toast('Saved.');renderResources();
@@ -5111,7 +5732,20 @@ async function renderResources(){
   document.getElementById('resFilters').innerHTML=cats.map(c=>`<button class="fbtn ${RES_FILTER===c?'active':''}" onclick="RES_FILTER='${esc(c)}';renderResources()">${c==='all'?'All':esc(c)}</button>`).join('');
   const shown=RES_FILTER==='all'?rows:rows.filter(r=>r.category===RES_FILTER);
   if(!shown.length){root.innerHTML='<div class="empty">Nothing here yet. Add a login, weblink, or Drive folder above.</div>';return;}
-  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr><th>Name</th><th>Category</th><th>Brand</th><th>Link</th><th>Username</th><th>Password</th><th>Notes</th><th></th></tr></thead><tbody>
+  const fmtUpd=r=>{
+    const iso=r.updated_at||r.created_at; if(!iso) return '—';
+    const d=new Date(iso); if(isNaN(d)) return '—';
+    const day=d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+    const by=r.updated_by?` · ${esc(r.updated_by)}`:'';
+    return `<small style="color:var(--text-mute)" title="${esc(iso)}">${day}${by}</small>`;
+  };
+  const driveCell=r=>{
+    if(!r.drive_url) return '<small style="color:var(--text-dim)">—</small>';
+    const name=r.drive_file_name?esc(r.drive_file_name):'Drive file';
+    const synced=r.drive_synced_at?' title="auto-mapped by Librarian — editable"':'';
+    return `<a href="${esc(r.drive_url)}" target="_blank" rel="noopener"${synced}>📁 ${name}</a>`;
+  };
+  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr><th>Name</th><th>Category</th><th>Brand</th><th>Link</th><th>Drive file</th><th>Username</th><th>Password</th><th>Notes</th><th>Updated</th><th data-nosort></th></tr></thead><tbody>
   ${shown.map(r=>{
     if(RES_EDIT===r.id){
       return `<tr>
@@ -5119,9 +5753,11 @@ async function renderResources(){
         <td><select class="f" id="rc_${r.id}">${['Software Login','Google Drive','Weblink','Other'].map(c=>`<option ${c===r.category?'selected':''}>${c}</option>`).join('')}</select></td>
         <td><select class="f" id="rb_${r.id}">${['Both','KTU','BTU','Earthwise'].map(b=>`<option ${b===r.brand?'selected':''}>${b}</option>`).join('')}</select></td>
         <td><input class="f" id="ru_${r.id}" value="${esc(r.url)}"></td>
+        <td><input class="f" id="rd_${r.id}" value="${esc(r.drive_url)}" placeholder="Google Drive link"></td>
         <td><input class="f" id="rn_${r.id}" value="${esc(r.username)}"></td>
         <td><input class="f" id="rp_${r.id}" value="${esc(r.password)}"></td>
         <td><input class="f" id="rt_${r.id}" value="${esc(r.notes)}"></td>
+        <td>${fmtUpd(r)}</td>
         <td class="row-actions"><button class="btn sm" onclick="saveResource('${r.id}')">Save</button> <button class="btn sm ghost" onclick="RES_EDIT=null;renderResources()">✕</button></td></tr>`;
     }
     return `<tr>
@@ -5129,9 +5765,11 @@ async function renderResources(){
       <td><small style="color:var(--text-mute)">${esc(r.category||'')}</small></td>
       <td>${brandTag(r.brand)}</td>
       <td>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">Open ↗</a>`:'—'}</td>
+      <td>${driveCell(r)}</td>
       <td>${r.username?esc(r.username):'—'}</td>
       <td>${r.password?`<span class="pwmask" data-pw="${esc(r.password)}" onclick="togglePw(this)" style="cursor:pointer" title="Click to reveal">••••••</span>`:'—'}</td>
       <td><small style="color:var(--text-mute)">${esc(r.notes||'')}</small></td>
+      <td>${fmtUpd(r)}</td>
       <td class="row-actions" style="white-space:nowrap"><button class="btn sm ghost" onclick="editResource('${r.id}')">✎</button> <button class="btn sm danger" onclick="deleteResource('${r.id}')">🗑</button></td></tr>`;
   }).join('')}</tbody></table></div>`;
 }
@@ -5263,18 +5901,54 @@ async function renderTasks(){
   if(sel && !sel.options.length) sel.innerHTML=ppl.map(p=>`<option value="${esc(p.name)}" data-email="${esc(p.email||'')}">${esc(p.name)}</option>`).join('');
   const {data,error}=await sb.from('team_tasks').select('*').order('created_at',{ascending:false}).limit(200);
   if(error){openRoot.innerHTML=`<div class="empty">Tasks table not reachable: ${esc(error.message)}</div>`;document.getElementById('tasksDoneRoot').innerHTML='';return;}
-  const scoped=(data||[]).filter(t=>inWs(t.brand));   // workspace switcher applies here too
-  const open=scoped.filter(t=>t.status==='open'||t.status==='in_progress');
-  const done=scoped.filter(t=>t.status==='done').slice(0,10);
+  let scoped=(data||[]).filter(t=>inWs(t.brand));   // workspace switcher applies here too
+  // Populate assignee filter + apply filters
+  const fSel=document.getElementById('tkFilterAssignee');
+  if(fSel){ const cur=fSel.value; const names=[...new Set(scoped.map(t=>t.assignee).filter(Boolean))].sort();
+    fSel.innerHTML='<option value="">Everyone</option>'+names.map(n=>`<option${n===cur?' selected':''}>${esc(n)}</option>`).join(''); }
+  const fA=fSel?fSel.value:'', fS=(document.getElementById('tkFilterStatus')||{}).value||'open', fQ=((document.getElementById('tkFilterSearch')||{}).value||'').toLowerCase();
+  if(fA) scoped=scoped.filter(t=>t.assignee===fA);
+  if(fQ) scoped=scoped.filter(t=>JSON.stringify(t).toLowerCase().includes(fQ));
+  const isLate=t=>t.due_date&&t.status!=='done'&&new Date(t.due_date)<new Date();
+  let open=scoped.filter(t=>t.status==='open'||t.status==='in_progress');
+  if(fS==='overdue') open=open.filter(isLate);
+  const done=(fS==='all'||fS==='open')?scoped.filter(t=>t.status==='done').slice(0,10):[];
   const CADENCE_LBL={daily:'Daily',weekly:'Weekly',monthly:'Monthly'};
-  const row=t=>{const late=t.due_date&&t.status!=='done'&&new Date(t.due_date)<new Date();return `<tr>
-    <td><b>${esc(t.title)}</b>${t.detail?`<br><small style="color:var(--text-mute)">${esc(t.detail)}</small>`:''}${t.drive_url?` <a href="${esc(t.drive_url)}" target="_blank" rel="noopener" title="Open linked Drive file">📎</a>`:''}</td>
+  window._TASKS_BY_ID = {}; scoped.forEach(t=>{ window._TASKS_BY_ID[t.id]=t; });
+  const row=t=>{const late=t.due_date&&t.status!=='done'&&new Date(t.due_date)<new Date();return `<tr style="cursor:pointer" onclick="openTaskDetail('${t.id}')" title="Click for full detail">
+    <td><b>${esc(t.title)}</b>${t.detail?`<br><small style="color:var(--text-mute)">${esc(t.detail.length>90?t.detail.slice(0,90)+'…':t.detail)}</small>`:''}${t.drive_url?` <a href="${esc(t.drive_url)}" target="_blank" rel="noopener" title="Open linked Drive file" onclick="event.stopPropagation()">📎</a>`:''}</td>
     <td>${esc(t.assignee)}</td><td>${esc(t.brand||'Both')}</td>
     <td>${t.due_date?`<span class="${late?'ax-pill overdue':''}">${esc(t.due_date)}</span>`:'—'}${t.cadence&&t.cadence!=='once'?`<br><small style="color:var(--text-mute)">↻ ${CADENCE_LBL[t.cadence]||esc(t.cadence)}</small>`:''}</td>
     <td><small style="color:var(--text-mute)">${esc(t.created_by_name||'')}</small></td>
-    <td style="white-space:nowrap">${t.status!=='done'?`<button class="btn sm ghost" onclick="remindTask('${t.id}')" title="Ping ${esc(t.assignee)} again on Slack + email">🔔 Remind</button> <button class="btn sm ghost" onclick="setTaskStatus('${t.id}','done')">✓ Done</button>`:''}</td></tr>`;};
+    <td style="white-space:nowrap">${t.status!=='done'?`<button class="btn sm ghost" onclick="event.stopPropagation();remindTask('${t.id}')" title="Ping ${esc(t.assignee)} again on Slack + email">🔔 Remind</button> <button class="btn sm ghost" onclick="event.stopPropagation();setTaskStatus('${t.id}','done')">✓ Done</button>`:''}</td></tr>`;};
   openRoot.innerHTML=open.length?`<div style="overflow-x:auto"><table class="btable"><thead><tr><th>Task</th><th>Assignee</th><th>Brand</th><th>Due</th><th>By</th><th></th></tr></thead><tbody>${open.map(row).join('')}</tbody></table></div>`:'<div class="empty">Nothing open. Assign something above.</div>';
   document.getElementById('tasksDoneRoot').innerHTML=done.length?`<div style="overflow-x:auto"><table class="btable"><tbody>${done.map(row).join('')}</tbody></table></div>`:'<div class="empty">Nothing completed yet.</div>';
+}
+function openTaskDetail(id){
+  const t=(window._TASKS_BY_ID||{})[id]; if(!t){toast('Task not found.',1);return;}
+  const late=t.due_date&&t.status!=='done'&&new Date(t.due_date)<new Date();
+  const CAD={once:'One-time',daily:'Daily',weekly:'Weekly',monthly:'Monthly'};
+  const statusPill=t.status==='done'?'✅ Done':t.status==='in_progress'?'🔵 In progress':(late?'🔴 Overdue':'🟠 Open');
+  const rowKV=(k,v)=>v?`<div style="display:flex;gap:12px;padding:7px 0;border-top:1px solid var(--border)"><div style="min-width:120px;color:var(--text-mute);font-size:13px">${esc(k)}</div><div style="flex:1;font-size:13px">${v}</div></div>`:'';
+  const bg=document.createElement('div');bg.className='ax-modal-bg';bg.onclick=e=>{if(e.target===bg)bg.remove();};
+  bg.innerHTML=`<div class="ax-modal" style="max-width:560px">
+    <h3 style="margin-bottom:4px">${esc(t.title)}</h3>
+    <div style="margin-bottom:10px"><span class="tag">${statusPill}</span></div>
+    ${t.detail?`<div style="font-size:14px;line-height:1.5;white-space:pre-wrap;margin-bottom:6px">${esc(t.detail)}</div>`:'<div class="sub">No additional detail was entered for this task.</div>'}
+    ${rowKV('Assignee',esc(t.assignee||'—'))}
+    ${rowKV('Brand',esc(t.brand||'Both'))}
+    ${rowKV('Due date',t.due_date?esc(t.due_date)+(late?' <span class="ax-pill overdue">overdue</span>':''):'—')}
+    ${rowKV('Cadence',esc(CAD[t.cadence]||t.cadence||'One-time'))}
+    ${rowKV('Assigned by',esc(t.created_by_name||'—'))}
+    ${rowKV('Created',t.created_at?esc(new Date(t.created_at).toLocaleString()):'—')}
+    ${t.completed_at?rowKV('Completed',esc(new Date(t.completed_at).toLocaleString())):''}
+    ${t.drive_url?rowKV('Linked file',`<a href="${esc(t.drive_url)}" target="_blank" rel="noopener">📎 Open in Google Drive</a>`):''}
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      ${t.status!=='done'?`<button class="btn sm ghost" onclick="remindTask('${t.id}');this.closest('.ax-modal-bg').remove()">🔔 Remind</button>
+        <button class="btn sm" onclick="setTaskStatus('${t.id}','done');this.closest('.ax-modal-bg').remove()">✓ Mark done</button>`:''}
+      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+    </div></div>`;
+  document.body.appendChild(bg);
 }
 async function createTask(){
   const title=val('tkTitle');if(!title){toast('Give the task a title.',1);return;}
@@ -5655,9 +6329,12 @@ let RT_STARTED=false, RT_DEB=null, RT_LAST_FULL=0;
 function rtRefreshActive(force){
   const active=document.querySelector('.panel.active'); if(!active) return;
   const tab=active.id;
+  _EXEC_CACHE=null; window.renderExecSummary&&renderExecSummary(tab);   // data changed → refresh the exec-summary banner
   // Custom-rendered tabs
-  if(tab==='home'){ renderRecent&&renderRecent(); renderHealth&&renderHealth(); renderDash&&renderDash(); renderFavPanel&&renderFavPanel(); window.renderCallNotes&&renderCallNotes(); }
-  if(tab==='finance'){ window.renderMoola&&renderMoola(); window.renderPayables&&renderPayables(); }
+  if(tab==='home'){ renderRecent&&renderRecent(); renderHealth&&renderHealth(); renderDash&&renderDash(); renderFavPanel&&renderFavPanel(); window.renderCallNotes&&renderCallNotes(); window.renderHomeSnapshot&&renderHomeSnapshot(); }
+  if(tab==='finance'&&window.renderFinance){ renderFinance(); }
+  if(tab==='commissions'&&window.renderCommissions) renderCommissions();
+  if(tab==='jobs'&&window.renderJobs) renderJobs();
   if(tab==='directory'&&window.renderDirectory) renderDirectory();
   if(tab==='clients'&&window.renderClients) renderClients();
   if(tab==='projects'&&window.renderProjects) renderProjects();
@@ -5670,6 +6347,7 @@ function rtRefreshActive(force){
   if(tab==='mktplan'&&window.renderMktPlan) renderMktPlan();
   if(tab==='team'){ window.renderTeamDates&&renderTeamDates(); window.renderOrgChart&&renderOrgChart(); }
   if(tab==='pipeline'&&window.renderPipeline) renderPipeline();
+  if(tab==='appointments'&&window.renderAppointments) renderAppointments();
   if(tab==='organic'&&window.renderPO) renderPO();
   if(tab==='adminconsole'&&window.renderAdminConsole){ renderAdminConsole(); renderTabPermissions&&renderTabPermissions(); }
   // Section-driven roots (throttled full pass — covers every *_root container)
@@ -5688,6 +6366,7 @@ function startRealtime(){
       .on('postgres_changes',{event:'*',schema:'public',table:'resources'},rtKick)
       .on('postgres_changes',{event:'*',schema:'public',table:'payables'},rtKick)
       .on('postgres_changes',{event:'*',schema:'public',table:'call_notes'},rtKick)
+      .on('postgres_changes',{event:'*',schema:'public',table:'appointments'},rtKick)
       .subscribe();
   }catch(e){ console.warn('realtime unavailable, falling back to polling',e); }
   // Refresh when the user returns to the tab/window

@@ -28,9 +28,15 @@ Connection (`mcp__Bank_Connection__*`) for cash truth.
 ## The hourly run (in this order)
 
 ### 1. Dispatch `notify_queue` — BACKSTOP ONLY
-Primary delivery is the `dispatch-notify` Supabase Edge Function (pg_cron, every
-minute, MCP-independent — email via HighLevel, Slack via webhook when configured).
-You only handle rows it hasn't delivered:
+Primary delivery is the `dispatch-notify` Supabase Edge Function, scheduled every
+minute by pg_cron (`cron.job` name `dispatch-notify`) and MCP-independent. It
+atomically claims pending rows via `claim_notify_batch()`, resolves `recipient_email`
+→ Slack DM (`users.lookupByEmail` + `chat.postMessage`, bot token; falls back to
+`SLACK_ALERTS_CHANNEL`, then a webhook), and emails via Resend when configured.
+**Activation gate:** the function stays DORMANT — it claims nothing — until
+`SLACK_BOT_TOKEN` (or `SLACK_WEBHOOK_URL`/`RESEND_API_KEY`) is set as a function
+secret. While dormant, YOU are the primary dispatcher, not the backstop. Either way,
+you only handle rows it hasn't delivered:
 ```sql
 SELECT * FROM notify_queue WHERE status='pending'
   AND created_at < now() - interval '5 minutes'
@@ -97,7 +103,10 @@ prune). For each unanswered question from a human (skip your own posts):
 - **Birthdays & anniversaries**: `SELECT fields FROM intranet_records WHERE section='team_dates'`.
   Anyone whose birthday (month/day) is today → 🎂 shout-out in #general by first name.
   Work anniversary today → 🎉 with the year count ("3 years with the team today!").
-- **Overdue tasks**: team_tasks where status='open' and due_date < today → one grouped
+- **Tasks due today → DM the assignee**: `SELECT * FROM team_tasks WHERE status IN ('open','in_progress') AND due_date = <today ET>`. For each, enqueue a `task_reminder` so the dispatcher (step 1) DMs the assignee on Slack + email:
+  `INSERT INTO notify_queue (kind, recipient_email, subject, body, source) VALUES ('task_reminder', <assignee_email>, '[Axyom Reminder] '||title||' is due today → '||assignee, coalesce(detail,'')||' (due '||due_date||')'||case when drive_url is not null then ' · file: '||drive_url else '' end||case when cadence<>'once' then ' · recurring '||cadence else '' end, 'team_tasks:'||id);`
+  Dedupe: skip if a `task_reminder` row with the same `source` was already inserted today (this daily step runs once, first-run-after-7AM-ET, so one ping per task per due date). Recurring tasks are covered automatically — each completed occurrence spawns the next with its own due_date, which lands here on that day.
+- **Overdue tasks**: team_tasks where status IN ('open','in_progress') and due_date < today → one grouped
   reminder in #intranet-alerts (assignee, task, days overdue). No DM nagging.
 - **Queue health**: if notify_queue or action_queue has rows stuck 'pending' > 24h or any
   'error', summarize them in #intranet-alerts so a human can intervene.
@@ -109,6 +118,12 @@ prune). For each unanswered question from a human (skip your own posts):
   (e.g., "Moola's briefing is 2 days stale — check the 'Moola — daily CFO briefing' trigger").
   Dedupe via `ax_state` (`stale_alerted: {section: scan_date}`) — alert once per section per
   stale date, not every sweep. A section with zero rows ever (agent not yet live) → skip.
+  NOTE: a pg_cron job (`agent-freshness-watchdog`, hourly) now also runs
+  `check_agent_freshness()`, which writes the stale set to the `system_health` section and
+  queues one `kind='system'` `notify_queue` alert per stale section per day (source
+  `freshness:<section>:<date>`). So the DB already surfaces staleness — your job here is just
+  to make sure those queued alerts get delivered (step 1) and to add colour if useful; don't
+  re-queue a `freshness:*` row that already exists.
 
 ## Guardrails
 - Idempotency first: always filter on status='pending' and mark rows before/after work —
