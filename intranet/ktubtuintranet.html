@@ -931,6 +931,7 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
         <div class="nav-item" data-tab="clients"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M4 21a8 8 0 0116 0"/><path d="M17 3l4 4"/></svg></span><span class="lbl">Clients</span><span class="pin" onclick="event.stopPropagation();togglePin('clients','Clients')">Pin</span></div>
         <div class="nav-item" data-tab="appointments"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span class="lbl">Appointments</span><span class="pin" onclick="event.stopPropagation();togglePin('appointments','Appointments')">Pin</span></div>
         <div class="nav-item" data-tab="tasks"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 11l3 3 5-6"/></svg></span><span class="lbl">Tasks</span><span class="pin" onclick="event.stopPropagation();togglePin('tasks','Tasks & Follow-ups')">Pin</span></div>
+        <div class="nav-item" data-tab="commissions"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></span><span class="lbl">Commissions</span><span class="pin" onclick="event.stopPropagation();togglePin('commissions','Commissions')">Pin</span></div>
         <div class="nav-item" data-tab="jobs"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span><span class="lbl">Job Costing</span><span class="pin" onclick="event.stopPropagation();togglePin('jobs','Job Costing')">Pin</span></div>
       </div>
 
@@ -1297,6 +1298,24 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
         <table><thead><tr><th>Job</th><th>Brand</th><th>Cost</th><th>Price</th><th>Margin</th><th>Status</th><th></th></tr></thead>
           <tbody id="jBody"></tbody></table>
         <div class="empty" id="jEmpty">No jobs yet.</div>
+      </div>
+    </section>
+
+    <!-- ============ COMMISSIONS ============ -->
+    <section class="panel" id="commissions">
+      <div class="page-head">
+        <h1 class="page-title">Commission Tracker</h1>
+        <p class="page-sub">Sales commissions accrue <b>50% on signing</b> and <b>50% when the job starts</b>. This shows what each agent has earned toward the next payroll, with a customer-by-customer breakdown. Moola refreshes it from ServiceMinder daily.</p>
+      </div>
+      <div class="card">
+        <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:14px">
+          <label class="pf" style="display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px">Agent
+            <select id="commAgent" onchange="renderCommissions()" style="font-weight:500;text-transform:none;letter-spacing:0;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><option value="">All agents</option></select></label>
+          <label class="pf" style="display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px">Business
+            <select id="commBrand" onchange="renderCommissions()" style="font-weight:500;text-transform:none;letter-spacing:0;padding:6px 9px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)"><option value="">All</option><option value="KTU">Kitchen Tune-Up</option><option value="BTU">Bath Tune-Up</option></select></label>
+        </div>
+        <div id="commSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:14px"></div>
+        <div id="commissions_root" class="loading">Loading…</div>
       </div>
     </section>
 
@@ -2224,11 +2243,26 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
       <div class="page-head">
         <h1 class="page-title">Financial Reporting <span class="tag" style="background:#fdf3e3;color:#8a5a06;vertical-align:middle;margin-left:8px">Owner only</span></h1>
         <p class="page-sub">Cross-entity financial command center — P&amp;L, cash flow, AP/AR, and portfolio. Visible only on the owner login.</p>
+        <div style="margin-top:10px"><label class="pf" style="display:inline-flex;flex-direction:column;gap:3px;font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px">Company
+          <select id="finCompany" onchange="renderFinance()" style="font-weight:500;text-transform:none;letter-spacing:0;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);min-width:220px">
+            <option value="">All companies</option><option value="KTU">KTU — First Generation USA</option><option value="BTU">BTU — Oracabessa</option><option value="Earthwise">Jatalia / Earthwise</option></select></label></div>
       </div>
       <div class="card">
         <h2>💰 Moola — your CFO's daily briefing</h2>
         <div class="sub">World-class CFO analysis, every morning: cash flow, P&amp;L pressure-testing of the Ledge packages, bills due, negotiation opportunities, and waste — trouble flagged before it arrives.</div>
         <div id="moola_root" class="loading">Loading…</div>
+      </div>
+
+      <div class="card">
+        <h2>📌 Executive summary — Moola</h2>
+        <div class="sub">The section's executive summary: key findings, recommendations, bottlenecks and warnings from the latest close — the "so what" behind the numbers, scoped to the company selected above.</div>
+        <div id="moolaReport_root" class="loading">Loading…</div>
+      </div>
+
+      <div class="card">
+        <h2>💵 Cash flow by vendor</h2>
+        <div class="sub">Money in and out grouped by vendor/payee so the true overall position is easy to read — filtered by the company selector above.</div>
+        <div id="moolaCash_root" class="loading">Loading…</div>
       </div>
 
       <div class="card" id="payablesCard">
@@ -2515,7 +2549,7 @@ async function renderTabPermissions(){
    ================================================================ */
 const TAB_TITLES = {
   home:'Home', directory:'Directory', docs:'Files & Docs', techstack:'Tech Stack', mktplan:'Marketing Plan', mktspend:'Marketing Spend', syshealth:'System Health',
-  contacts:'Contacts', items:'Items', jobs:'Job Costing', team:'Team',
+  contacts:'Contacts', items:'Items', jobs:'Job Costing', commissions:'Commission Tracker', team:'Team',
   vendors:'Vendors', systems:'Systems', integrations:'Integrations', franchise:'Franchise',
   pipeline:'Pipeline', appointments:'Appointments', marketing:'Marketing', onboarding:'Onboarding', ordering:'Ordering', trades:'Trades',
   clients:'Clients', tasks:'Tasks & Follow-ups', projects:'Projects',
@@ -2547,11 +2581,13 @@ function go(tab,push=true){
   window.scrollTo({top:0,behavior:'instant'});
   // Live-refresh Home cards when navigating back to home
   if(tab==='home'){ renderRecent(); renderHealth(); renderFavPanel(); renderDash(); renderCallNotes(); renderHomeSnapshot(); }
-  if(tab==='finance'){ renderMoola(); renderPayables(); }
+  if(tab==='finance'){ renderFinance(); }
+  renderExecSummary(tab);
   if(tab==='directory'){ renderDirectory(); }
   if(tab==='adminconsole'){ renderAdminConsole(); renderTabPermissions(); }
   if(tab==='pipeline'){ renderPipeline(); }
   if(tab==='jobs'){ renderJobs(); }
+  if(tab==='commissions'){ renderCommissions(); }
   if(tab==='integrations'){ renderIntegrations(); }
   if(tab==='appointments'){ renderAppointments(); }
   if(tab==='organic'){ switchPO(PO_VIEW); }
@@ -2646,7 +2682,7 @@ let CURRENT_WS = 'all';
    out of the console that controls this.
    ================================================================ */
 const TAB_SECTIONS = [
-  {key:'ops',      label:'Operations',                 scope:'hs',    tabs:['dailyops','playbook','jobflow','projects','clients','tasks','trades','roles']},
+  {key:'ops',      label:'Operations',                 scope:'hs',    tabs:['dailyops','playbook','jobflow','projects','clients','tasks','commissions','trades','roles','jobs']},
   {key:'people',   label:'People',                     scope:'hs',    tabs:['team','onboarding']},
   {key:'catalog',  label:'Catalog & Jobs',              scope:'hs',    tabs:['contacts','items','jobs']},
   {key:'vendors',  label:'Vendors & Ordering',          scope:'hs',    tabs:['vendors','ordering']},
@@ -4278,6 +4314,76 @@ async function renderPaid(){
     + `<div class="ge-meta" style="margin-top:4px">Scan: ${esc(latest||'—')} · Paid ties spend to revenue; margin questions go to Moola.</div>`;
 }
 
+// Executive summary — every section gets one, at the top, fed by the owning
+// agent (section `exec_summary`, fields {tab, summary, owner, updated}). Finance
+// uses the Moola report as its exec summary (see the Finance tab), so we skip it
+// here to avoid duplicating the ask. Home has its own welcome.
+let _EXEC_CACHE=null;
+async function renderExecSummary(tab){
+  if(tab==='finance'||tab==='home') return;
+  const panel=document.getElementById(tab); if(!panel) return;
+  let slot=panel.querySelector(':scope > .exec-summary-slot');
+  if(!slot){
+    slot=document.createElement('div'); slot.className='exec-summary-slot';
+    const head=panel.querySelector(':scope > .page-head');
+    if(head) head.after(slot); else panel.prepend(slot);
+  }
+  if(!_EXEC_CACHE){
+    const {data}=await sb.from('intranet_records').select('*').eq('section','exec_summary');
+    _EXEC_CACHE=data||[];
+  }
+  const brands=wsBrands();
+  const rows=_EXEC_CACHE.filter(r=>r.fields.tab===tab && (!brands||!r.brand||brands.includes(r.brand)));
+  if(!rows.length){
+    slot.innerHTML=`<div class="card" style="border-left:3px solid var(--border);padding:12px 16px"><div style="font-size:13px;font-weight:700;color:var(--text-mute)">📌 Executive summary</div><div class="sub" style="margin-top:2px">Pending — the owning agent will post this section's summary on its next run.</div></div>`;
+    return;
+  }
+  const f=rows.sort((a,b)=>String(b.fields.updated||'').localeCompare(String(a.fields.updated||'')))[0].fields;
+  slot.innerHTML=`<div class="card" style="border-left:3px solid var(--accent)"><div style="font-size:14px;font-weight:700;margin-bottom:4px">📌 Executive summary${f.owner?` <small style="color:var(--text-mute);font-weight:500">· ${esc(f.owner)}</small>`:''}</div><div class="sub" style="white-space:pre-wrap;color:var(--text)">${esc(f.summary||'')}</div>${f.updated?`<div class="sub" style="color:var(--text-mute);margin-top:6px">Updated ${esc(f.updated)}</div>`:''}</div>`;
+}
+// Finance company filter — independent of the left-nav workspace switcher, so the
+// owner can scope the whole Finance tab to one entity.
+function finCompany(){ const e=document.getElementById('finCompany'); return e?e.value:''; }
+async function finRecords(section){
+  const {data}=await sb.from('intranet_records').select('*').eq('section',section).order('sort_order',{ascending:true});
+  const comp=finCompany(); const rows=data||[];
+  return comp?rows.filter(r=>!r.brand||r.brand===comp||r.brand==='Both'):rows;
+}
+async function renderFinance(){
+  if(!canFinance()) return;
+  const comp=finCompany();
+  const pb=document.getElementById('payBrand'); if(pb && pb.value!==comp){ pb.value=comp; }
+  if(window.renderMoola) renderMoola();
+  renderMoolaReport(); renderMoolaCash();
+  if(window.renderPayables) renderPayables();
+}
+async function renderMoolaReport(){
+  const root=document.getElementById('moolaReport_root'); if(!root) return;
+  const rows=await finRecords('moola_report');
+  if(!rows.length){ root.innerHTML='<div class="empty">No Moola report yet — Moola posts findings, recommendations, bottlenecks and warnings on its daily run.</div>'; return; }
+  const KIND={warning:{icon:'⚠️',lbl:'Warnings',color:'var(--danger)',o:0},bottleneck:{icon:'⛔',lbl:'Bottlenecks',color:'#fb923c',o:1},finding:{icon:'🔎',lbl:'Key findings',color:'var(--info)',o:2},recommendation:{icon:'✅',lbl:'Recommendations',color:'#4ade80',o:3}};
+  const groups={}; rows.forEach(r=>{const k=(r.fields.kind||'finding').toLowerCase();(groups[k]=groups[k]||[]).push(r.fields);});
+  const order=Object.keys(groups).sort((a,b)=>((KIND[a]?.o??9)-(KIND[b]?.o??9)));
+  root.innerHTML=order.map(k=>{const meta=KIND[k]||{icon:'•',lbl:k,color:'var(--text)'};
+    return `<div class="sec-title" style="color:${meta.color};margin-top:12px">${meta.icon} ${esc(meta.lbl)}</div>
+      ${groups[k].map(f=>`<div style="border-left:3px solid ${meta.color};padding:5px 0 5px 12px;margin:6px 0"><b>${esc(f.title||'')}</b>${f.detail?`<div class="sub">${esc(f.detail)}</div>`:''}${f.metric?`<div class="sub" style="color:var(--text-mute)">${esc(f.metric)}</div>`:''}</div>`).join('')}`;
+  }).join('');
+}
+async function renderMoolaCash(){
+  const root=document.getElementById('moolaCash_root'); if(!root) return;
+  const rows=await finRecords('moola_cashflow');   // {vendor|payee, direction:in|out, amount, category, brand, note}
+  if(!rows.length){ root.innerHTML='<div class="empty">No cash-flow detail yet — Moola groups money in/out by vendor on its daily run.</div>'; return; }
+  const byVendor={};
+  rows.forEach(r=>{const f=r.fields;const v=f.vendor||f.payee||'—';const amt=Number(f.amount)||0;const dir=(f.direction||'out').toLowerCase();
+    const g=byVendor[v]=byVendor[v]||{vendor:v,inflow:0,outflow:0,net:0};
+    if(dir==='in'){g.inflow+=amt;g.net+=amt;}else{g.outflow+=amt;g.net-=amt;}});
+  const list=Object.values(byVendor).sort((a,b)=>Math.abs(b.net)-Math.abs(a.net));
+  const totIn=list.reduce((s,x)=>s+x.inflow,0), totOut=list.reduce((s,x)=>s+x.outflow,0);
+  root.innerHTML=`<div class="sub" style="margin-bottom:8px">Net position: <b style="color:${totIn-totOut>=0?'#4ade80':'var(--danger)'}">${commMoney(totIn-totOut)}</b> · in ${commMoney(totIn)} · out ${commMoney(totOut)}</div>
+    <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Vendor / payee</th><th class="num">In</th><th class="num">Out</th><th class="num">Net</th></tr></thead><tbody>
+    ${list.map(x=>`<tr><td><b>${esc(x.vendor)}</b></td><td class="num">${x.inflow?commMoney(x.inflow):'—'}</td><td class="num">${x.outflow?commMoney(x.outflow):'—'}</td><td class="num" style="color:${x.net>=0?'#4ade80':'var(--danger)'}"><b>${commMoney(x.net)}</b></td></tr>`).join('')}
+    </tbody></table></div>`;
+}
 async function renderMoola(){
   const el=document.getElementById('moola_root'); if(!el) return;
   if(!canFinance()){ el.innerHTML='<div class="ge-clear">🔒 Owner only — sensitive financial reporting.</div>'; return; }
@@ -4531,6 +4637,65 @@ function stageProgressBar(s){
   return `<div style="display:flex;gap:3px;margin:8px 0">${PROJ_STAGES.map((st,idx)=>
     `<div title="${esc(st)}" style="flex:1;height:6px;border-radius:3px;background:${idx<=i?'var(--accent,#6366f1)':'var(--border,#333)'}"></div>`
   ).join('')}</div><div class="sub" style="margin-bottom:10px">${esc(s||'Stage unknown')}</div>`;
+}
+// Commission Tracker — 50% accrues on signing, 50% when the job starts.
+// Reads section `commissions` (Moola-written). Accrued-for-next-payroll = the
+// half whose trigger has fired but hasn't been paid out yet.
+const commMoney = n => '$'+(Math.round(Number(n)||0)).toLocaleString();
+function commRowParts(f){
+  const total=Number(f.commission_total)||0;
+  const sign=f.sign_amount!=null&&f.sign_amount!==''?Number(f.sign_amount):(total?total/2:0);
+  const start=f.start_amount!=null&&f.start_amount!==''?Number(f.start_amount):(total?total/2:0);
+  const signed=!!(f.sign_date||f.signed);        // signing has happened
+  const started=!!(f.start_date||f.started);      // job start has happened
+  const signPaid=f.sign_paid===true||f.sign_paid==='true';
+  const startPaid=f.start_paid===true||f.start_paid==='true';
+  const accrued=(signed&&!signPaid?sign:0)+(started&&!startPaid?start:0);
+  return {total,sign,start,signed,started,signPaid,startPaid,accrued};
+}
+async function renderCommissions(){
+  const root=document.getElementById('commissions_root'); if(!root) return;
+  const rows=await fetchRecords('commissions');   // workspace brand-scoped
+  const sel=document.getElementById('commAgent');
+  const agents=[...new Set(rows.map(r=>r.fields.agent).filter(Boolean))].sort();
+  const curA=sel.value;
+  sel.innerHTML='<option value="">All agents</option>'+agents.map(a=>`<option${a===curA?' selected':''}>${esc(a)}</option>`).join('');
+  const fAgent=sel.value, fBrand=document.getElementById('commBrand').value;
+  let items=rows.map(r=>({...commRowParts(r.fields), ...r.fields}));
+  items=items.filter(x=>(!fAgent||x.agent===fAgent)&&(!fBrand||x.brand===fBrand));
+  const payrollDate=rows.map(r=>r.fields.next_payroll_date).find(Boolean);
+  if(!items.length){
+    document.getElementById('commSummary').innerHTML='';
+    root.innerHTML='<div class="empty">No commission data yet — Moola seeds this daily from ServiceMinder accepted proposals + job starts.</div>';return;
+  }
+  const totAccrued=items.reduce((s,x)=>s+x.accrued,0);
+  const signAccrued=items.reduce((s,x)=>s+(x.signed&&!x.signPaid?x.sign:0),0);
+  const startAccrued=items.reduce((s,x)=>s+(x.started&&!x.startPaid?x.start:0),0);
+  const agentsShown=[...new Set(items.map(x=>x.agent))];
+  document.getElementById('commSummary').innerHTML=`
+    <div class="kpi" style="padding:12px 14px"><div class="label">Accrued for next payroll${payrollDate?` (${esc(payrollDate)})`:''}</div><div class="value" style="font-size:22px;color:#4ade80">${commMoney(totAccrued)}</div><div class="trend">${agentsShown.length} agent${agentsShown.length>1?'s':''} · ${items.length} deal${items.length>1?'s':''}</div></div>
+    <div class="kpi" style="padding:12px 14px"><div class="label">From signings (50%)</div><div class="value" style="font-size:22px">${commMoney(signAccrued)}</div><div class="trend">Accepted, not yet paid out</div></div>
+    <div class="kpi" style="padding:12px 14px"><div class="label">From job starts (50%)</div><div class="value" style="font-size:22px">${commMoney(startAccrued)}</div><div class="trend">Started, not yet paid out</div></div>`;
+  // Group by agent → customer rows
+  const byAgent={}; items.forEach(x=>{(byAgent[x.agent||'—']=byAgent[x.agent||'—']||[]).push(x);});
+  const pill=(on,paid,lbl)=>on?`<span style="font-size:11px;font-weight:700;color:${paid?'var(--text-mute)':'#4ade80'}">${paid?'✓ paid':lbl}</span>`:'<span style="font-size:11px;color:var(--text-dim)">pending</span>';
+  root.innerHTML=Object.keys(byAgent).sort().map(agent=>{
+    const list=byAgent[agent].sort((a,b)=>b.accrued-a.accrued);
+    const sub=list.reduce((s,x)=>s+x.accrued,0);
+    return `<div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+        <span>${esc(agent)}</span><span style="color:#4ade80">${commMoney(sub)} <small style="color:var(--text-mute);font-weight:500">accrued</small></span></div>
+      <div style="overflow-x:auto"><table class="btable"><thead><tr>
+        <th>Customer</th><th>Brand</th><th class="num">Contract</th><th class="num">Commission</th><th>Sign 50%</th><th>Start 50%</th><th class="num">Accrued now</th></tr></thead><tbody>
+      ${list.map(x=>`<tr>
+        <td><b>${esc(x.customer||'—')}</b></td>
+        <td>${esc(x.brand||'')}</td>
+        <td class="num">${x.contract_value?commMoney(x.contract_value):'—'}</td>
+        <td class="num">${x.total?commMoney(x.total):'—'}</td>
+        <td>${commMoney(x.sign)} · ${pill(x.signed,x.signPaid,'accrued')}${x.sign_date?`<br><small style="color:var(--text-mute)">${esc(x.sign_date)}</small>`:''}</td>
+        <td>${commMoney(x.start)} · ${pill(x.started,x.startPaid,'accrued')}${x.start_date?`<br><small style="color:var(--text-mute)">${esc(x.start_date)}</small>`:''}</td>
+        <td class="num"><b>${commMoney(x.accrued)}</b></td></tr>`).join('')}
+      </tbody></table></div>`;
+  }).join('');
 }
 async function renderProjects(){
   const root=document.getElementById('projectsRoot'); if(!root) return;

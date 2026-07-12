@@ -518,6 +518,12 @@ section — stale beats blank):
   category, status, scan_date}`. PRESERVE the `status` field of existing rows when
   refreshing (the PM marks items ordered from the intranet) — merge by job+item,
   never blindly overwrite.
+- `exec_summary` — the **Project Tracker tab's executive summary** (the banner the
+  intranet shows at the top of every section). Write-then-prune per `scan_date`, one
+  row: `{tab:'projects', owner:'Foreman', summary (3-5 sentences: how many jobs
+  active, how many on/at-risk/overrun, the single biggest issue and the money/
+  schedule at stake, gates/vendor headline), updated:<today>, brand:'Both', scan_date}`.
+  This is the "read this first" for Projects — keep it to the few things that matter.
 Then a one-screen standup brief in chat: 🚨 must-action (max 3, each with evidence →
 exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 vendor risks ·
 ✅ gates passed/returned · going-dark list. If nothing is broken, say so in one line.

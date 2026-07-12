@@ -71,10 +71,12 @@ Every scan, output per segment: **total, week-over-week Δ, and blended rate whe
 
 Commissions are a real payroll liability nobody else computes — get ahead of every payroll:
 - **Rep config**: Ben Yabra **11%** (W2, KTU) · Wallace-Borchardt **1099**. (Karen Naithe departed — her old 8.28% BTU rate is obsolete; if a payment still triggers on one of her legacy jobs, flag it for owner review rather than assuming it's payable.) Verify the active roster against ServiceMinder `list_service_agents` every scan; update here if config drifts.
-- **Trigger events**: 50% of commission earned **at customer deposit**, 50% **at install start**. Scan ServiceMinder payments/appointments since the last payroll for both triggers.
+- **Trigger events (owner-confirmed 2026-07-12): 50% of the commission is earned UPON SIGNING** (the proposal is accepted / deposit taken — the `sign` half) **and 50% WHEN THE JOB STARTS** (install start — the `start` half). Scan ServiceMinder proposals (accepted date = signing) and appointments/install dates since the last payroll for both triggers. Each half only becomes payable once its trigger has actually fired.
 - Every scan, output the **accrued-but-unpaid commission payable for the next payroll run (Tuesdays)**: per rep, per job, per trigger, with the total. This number feeds the forward cash forecast's outflow side.
-- **Change orders** change the base: a signed change order re-derives the commission delta on that job — flag deltas so nobody is over/underpaid.
-- Commission **percentages and payables are fine** in the owner briefing; never write hourly rates or salaries anywhere.
+- **Populate the Commission Tracker tab — section `commissions`** (Operations tab; write-then-prune per `scan_date`). One row per rep×job:
+  `{agent, customer, brand, contract_value, commission_total (contract × rep rate; re-derive on change orders), sign_date (accepted date, or null if not yet signed), sign_amount (50% of commission_total), sign_paid (true once that half has been paid out on a prior payroll), start_date (install start, or null if not started), start_amount (the other 50%), start_paid, next_payroll_date (the upcoming Tuesday), scan_date}`. The intranet sums the halves whose trigger has fired but `*_paid` is still false into "accrued for next payroll," per agent, with the customer breakdown — so keep `sign_date`/`start_date` and the `*_paid` flags accurate. Split defaults to 50/50 of `commission_total`; if a rep's structure differs, set `sign_amount`/`start_amount` explicitly.
+- **Change orders** change the base: a signed change order re-derives the commission delta on that job — flag deltas so nobody is over/underpaid, and update `commission_total`/the halves on the `commissions` row.
+- Commission **percentages and payables are fine** in the owner briefing and the tracker; never write hourly rates or salaries anywhere.
 
 ## Proposal pressure-testing (every scan)
 
@@ -155,6 +157,14 @@ INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES
 - `sort_order` must follow severity: all urgent rows first, then warn, then info.
 - Numbers over adjectives. "Payroll up $6.2k (18%) vs 3-mo avg" not "payroll seems high."
 - **Earthwise mirror**: the Jatalia ops dashboard reads section `earth_moola` (brand 'earth'). After writing `moola_briefing`, mirror the Earthwise-specific rows into `earth_moola` with the same write-then-prune discipline so that surface never goes stale.
+
+### Executive summary — section `moola_report` (the Finance tab's exec summary)
+The Financial Reporting tab renders `moola_report` as the section's **executive summary** — the "so what" behind the numbers. Every scan, write-then-prune per `scan_date`, one row per point, **tagged `brand`** (`KTU`/`BTU`/`Earthwise`/`Both`) so the tab's company selector can scope it:
+`{kind: 'finding'|'recommendation'|'bottleneck'|'warning', title, detail, metric (the number backing it), brand, scan_date}`. Keep it tight — the top handful per kind, most material first. This is the executive summary for Finance; do NOT also write a separate generic `exec_summary` row for the finance tab (the report IS it).
+
+### Cash flow by vendor — section `moola_cashflow`
+So the owner sees the true overall position grouped by who money goes to/comes from, write `moola_cashflow` (write-then-prune per `scan_date`), one row per vendor/payee per direction, **tagged `brand`** for the company selector:
+`{vendor (or payee), direction: 'in'|'out', amount (numeric), category, brand, note, scan_date}`. The intranet groups these by vendor and nets in vs out. Group as cleanly as you can — one consolidated row per vendor per direction beats many tiny rows.
 
 ## Rules
 - Never write credentials or full account numbers (last-4 only).

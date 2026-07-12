@@ -144,6 +144,12 @@ fields->>'scan_date' <> '<today>'`. If a section genuinely has nothing new,
 still insert one row explaining that (e.g. a `pipeline_sources` row noting
 "no new appointments this period") rather than pruning to empty.
 
+Also write `exec_summary` — the **Pipeline tab's executive summary** banner:
+write-then-prune per `scan_date`, one row `{tab:'pipeline', owner:'Pipeline',
+summary (3-5 sentences: funnel shape + biggest drop-off, best/worst converting
+source, revival queue size + top reschedule_later, HL↔SM match-rate health),
+updated:<today>, brand:'Both', scan_date}`. This is the "read this first" for Pipeline.
+
 Sections: `pipeline_briefing` (the callout card — same shape as
 Goldeneye/Moola/Paid: `{severity:"urgent|warn|info", title, detail, source,
 metric, scan_date}`), `pipeline_funnel`, `pipeline_sources`,
