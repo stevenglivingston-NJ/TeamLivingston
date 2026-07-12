@@ -3187,11 +3187,16 @@ async function renderHomeSnapshot(){
     const ty=agg(b.k,curY,null);                 // this year, its active months
     const ly=ty.months.size?agg(b.k,curY-1,ty.months):null;  // LY, same months only
     const hasData=ty.months.size>0;
+    const pairBar=(lv)=>{ if(!lv||!(lv.cur||lv.ly)) return '';
+      const mx=Math.max(1,lv.cur,lv.ly);
+      const bar=(v,c,lab)=>`<div style="display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-mute)"><span style="width:16px">${lab}</span><span style="flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden"><span style="display:block;height:100%;width:${Math.round(v/mx*100)}%;background:${c}"></span></span></div>`;
+      return `<div style="margin-top:8px;display:flex;flex-direction:column;gap:3px">${bar(lv.cur,'var(--accent)','TY')}${bar(lv.ly,'var(--text-dim)','LY')}</div>`; };
     const tile=(label,val,lyVal,up,fmt)=>`
       <div class="kpi" style="padding:12px 14px;cursor:pointer;display:flex;flex-direction:column" onclick="go('pipeline')" title="Open Pipeline / Agent Performance">
         <div class="label">${label}</div>
         <div class="value" style="font-size:20px">${val}</div>
-        ${lyVal!=null?apYoY(lyVal.cur,lyVal.ly,up):''}</div>`;
+        ${lyVal!=null?apYoY(lyVal.cur,lyVal.ly,up):''}
+        ${pairBar(lyVal)}</div>`;
     return `<div style="margin-bottom:16px">
       <div class="chart-title" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <span class="scope-tag ${b.cls}">${b.k}</span>${b.k==='KTU'?'Kitchen Tune-Up':'Bath Tune-Up'}</div>
@@ -4392,7 +4397,12 @@ async function renderMoolaCash(){
     if(dir==='in'){g.inflow+=amt;g.net+=amt;}else{g.outflow+=amt;g.net-=amt;}});
   const list=Object.values(byVendor).sort((a,b)=>Math.abs(b.net)-Math.abs(a.net));
   const totIn=list.reduce((s,x)=>s+x.inflow,0), totOut=list.reduce((s,x)=>s+x.outflow,0);
-  root.innerHTML=`<div class="sub" style="margin-bottom:8px">Net position: <b style="color:${totIn-totOut>=0?'#4ade80':'var(--danger)'}">${commMoney(totIn-totOut)}</b> · in ${commMoney(totIn)} · out ${commMoney(totOut)}</div>
+  const chartRows=list.slice(0,8);
+  const cmax=Math.max(1,...chartRows.map(x=>Math.abs(x.net)));
+  const chart=chartRows.length?`<div class="chart-title">Top vendors by net cash</div>`
+    +chartRows.map(x=>cbarRow(x.vendor,Math.abs(x.net),cmax,x.net>=0?'#4ade80':'var(--danger)',commMoney(x.net))).join('')
+    +`<div style="height:14px"></div>`:'';
+  root.innerHTML=chart+`<div class="sub" style="margin-bottom:8px">Net position: <b style="color:${totIn-totOut>=0?'#4ade80':'var(--danger)'}">${commMoney(totIn-totOut)}</b> · in ${commMoney(totIn)} · out ${commMoney(totOut)}</div>
     <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Vendor / payee</th><th class="num">In</th><th class="num">Out</th><th class="num">Net</th></tr></thead><tbody>
     ${list.map(x=>`<tr><td><b>${esc(x.vendor)}</b></td><td class="num">${x.inflow?commMoney(x.inflow):'—'}</td><td class="num">${x.outflow?commMoney(x.outflow):'—'}</td><td class="num" style="color:${x.net>=0?'#4ade80':'var(--danger)'}"><b>${commMoney(x.net)}</b></td></tr>`).join('')}
     </tbody></table></div>`;
@@ -4691,8 +4701,14 @@ async function renderCommissions(){
     <div class="kpi" style="padding:12px 14px"><div class="label">From job starts (50%)</div><div class="value" style="font-size:22px">${commMoney(startAccrued)}</div><div class="trend">Started, not yet paid out</div></div>`;
   // Group by agent → customer rows
   const byAgent={}; items.forEach(x=>{(byAgent[x.agent||'—']=byAgent[x.agent||'—']||[]).push(x);});
+  // Per-agent accrual bar chart (prepended into the root, which is cleared each render)
+  const agentTotals=Object.keys(byAgent).map(a=>({a,v:byAgent[a].reduce((s,x)=>s+x.accrued,0)})).sort((x,y)=>y.v-x.v);
+  const acMax=Math.max(1,...agentTotals.map(x=>x.v));
+  const commChart=agentTotals.length>1
+    ? `<div style="margin-bottom:14px"><div class="chart-title">Accrued for next payroll by agent</div>${agentTotals.map(x=>cbarRow(x.a,x.v,acMax,'#4ade80',commMoney(x.v))).join('')}</div>`
+    : '';
   const pill=(on,paid,lbl)=>on?`<span style="font-size:11px;font-weight:700;color:${paid?'var(--text-mute)':'#4ade80'}">${paid?'✓ paid':lbl}</span>`:'<span style="font-size:11px;color:var(--text-dim)">pending</span>';
-  root.innerHTML=Object.keys(byAgent).sort().map(agent=>{
+  root.innerHTML=commChart+Object.keys(byAgent).sort().map(agent=>{
     const list=byAgent[agent].sort((a,b)=>b.accrued-a.accrued);
     const sub=list.reduce((s,x)=>s+x.accrued,0);
     return `<div class="sec-title" style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
@@ -5030,6 +5046,29 @@ function techRecPill(v){
   return `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:${s.bg};color:${s.fg}">${s.lbl}</span>`;
 }
 function techMoney(v){ const n=Number(String(v).replace(/[$,\s]/g,'')); return isFinite(n)&&v!=null&&v!==''?'$'+n.toLocaleString(undefined,{maximumFractionDigits:0}):'—'; }
+// Value-vs-cost quadrant: x = value score (0-100), y = monthly cost. Top-left
+// (high cost, low value) is the "review / cut" corner.
+function techQuadrant(rows){
+  const pts=rows.map(r=>({name:r.fields.name,score:Number(r.fields.score),cost:Number(String(r.fields.monthly_cost||'').replace(/[$,\s]/g,'')),rec:(r.fields.recommendation||'').toLowerCase()}))
+    .filter(p=>isFinite(p.score)&&isFinite(p.cost)&&(p.score>0||p.cost>0));
+  if(pts.length<3) return '';
+  const W=560,H=240,pad=34, cmax=Math.max(1,...pts.map(p=>p.cost));
+  const px=s=>pad+(Math.max(0,Math.min(100,s))/100)*(W-pad*2);
+  const py=c=>H-pad-(c/cmax)*(H-pad*2);
+  const col={keep:'#4ade80',cut:'#f87171',replace:'#fb923c'};
+  const dots=pts.map(p=>{const x=px(p.score),y=py(p.cost);const c=col[p.rec]||'var(--text-mute)';
+    const label=(p.cost>=cmax*0.45&&p.score<50)?`<text x="${x+7}" y="${y+3}" font-size="9" fill="var(--text-mute)">${esc(p.name)}</text>`:'';
+    return `<circle cx="${x}" cy="${y}" r="5" fill="${c}" fill-opacity="0.85"/>${label}`;}).join('');
+  return `<div class="chart-title">Value vs. cost — top-left is the review corner</div>
+  <div style="overflow-x:auto"><svg viewBox="0 0 ${W} ${H}" style="max-width:${W}px;width:100%">
+    <line x1="${pad}" y1="${py(cmax/2)}" x2="${W-pad}" y2="${py(cmax/2)}" stroke="var(--border)" stroke-dasharray="3 3"/>
+    <line x1="${px(50)}" y1="${pad}" x2="${px(50)}" y2="${H-pad}" stroke="var(--border)" stroke-dasharray="3 3"/>
+    <text x="${pad+2}" y="${pad+2}" font-size="9" fill="var(--danger)">high cost · low value</text>
+    <text x="${W-pad-2}" y="${H-pad+12}" font-size="9" fill="#4ade80" text-anchor="end">high value</text>
+    <text x="${pad-4}" y="${H-pad}" font-size="9" fill="var(--text-mute)" text-anchor="end">$0</text>
+    ${dots}
+  </svg></div><div style="height:12px"></div>`;
+}
 const TECH_PRIORITY_COLOR={critical:'var(--danger)',high:'var(--accent)',medium:'var(--info)',low:'var(--text-mute)'};
 let TECH_EDIT=null;
 function techSowCell(v,name){
@@ -5064,7 +5103,7 @@ async function renderTechStack(){
     <div class="kpi" style="padding:12px 14px"><div class="label">Flagged to cut / replace</div><div class="value" style="font-size:22px">${cutCount+repCount}</div><div class="trend">${cutCount} cut · ${repCount} replace</div></div>
     <div class="kpi" style="padding:12px 14px"><div class="label">Potential monthly savings</div><div class="value" style="font-size:22px;color:#4ade80">$${Math.round(cutSave).toLocaleString()}</div><div class="trend">If Tekki's cut/replace calls are actioned</div></div>
   </div>`;
-  root.innerHTML=sumBar+`<div style="overflow-x:auto"><table class="btable"><thead><tr>${TECH_COLS.map(c=>`<th>${c.label}</th>`).join('')}<th data-nosort></th></tr></thead><tbody>
+  root.innerHTML=sumBar+techQuadrant(rows)+`<div style="overflow-x:auto"><table class="btable"><thead><tr>${TECH_COLS.map(c=>`<th>${c.label}</th>`).join('')}<th data-nosort></th></tr></thead><tbody>
   ${rows.map(r=>`<tr>${TECH_COLS.map(c=>cell(r,c)).join('')}
     <td style="white-space:nowrap">${TECH_EDIT===r.id
       ?`<button class="btn sm" onclick="saveTechRow('${r.id}')">Save</button> <button class="btn sm ghost" onclick="TECH_EDIT=null;renderTechStack()">✕</button>`
