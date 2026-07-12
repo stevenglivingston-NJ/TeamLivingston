@@ -820,6 +820,23 @@
     .content{padding:22px 18px 80px}
   }
   .mobile-menu{display:none}
+  /* Keyboard-visible focus for accessibility */
+  a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,
+  .nav-item:focus-visible,.dir-row:focus-visible,.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+  /* Phone-width polish */
+  @media(max-width:560px){
+    .content{padding:18px 12px 90px}
+    .page-title{font-size:22px}
+    .card{padding:16px 14px}
+    .welcome{flex-direction:column}
+    .quick-actions{flex-wrap:wrap}
+    label.pf{width:100%}
+    label.pf select,label.pf input{width:100%}
+    .slicer{flex-direction:column;align-items:stretch}
+    .slicer > *{width:100%}
+    table.btable{font-size:12px}
+    table.btable th,table.btable td{padding:6px 7px}
+  }
 </style>
 <style>
 /* Axyom action layer */
@@ -3200,7 +3217,7 @@ async function renderHomeSnapshot(){
     return `<div style="margin-bottom:16px">
       <div class="chart-title" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <span class="scope-tag ${b.cls}">${b.k}</span>${b.k==='KTU'?'Kitchen Tune-Up':'Bath Tune-Up'}</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
         <div class="kpi" style="padding:12px 14px;cursor:pointer;display:flex;flex-direction:column" onclick="go('appointments')" title="Open Appointments">
           <div class="label">Appointments onward</div>
           <div class="value" style="font-size:20px">${upc[b.k]||0}</div>
