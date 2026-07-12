@@ -184,6 +184,8 @@ RLS-locked to `is_admin()`.
 | Name | Purpose |
 |------|---------|
 | ktubtuintranet | KTU/BTU internal intranet |
-| ktu-cmo-dashboard-auth | KTU CMO dashboard auth layer |
 | ktu-dashboard-auth | KTU dashboard auth layer |
 | city-replacement | City replacement service |
+| tight-cloud-8044 | **Unidentified** — Cloudflare auto-generated name (adjective-noun-4digit pattern used when a Worker is deployed without an explicit name). Created 2026-07-10, no routes bound, no custom domain, deployed outside wrangler (`last_deployed_from` empty). Looks like a stray test/experimental deployment, not a named production service. Verify with Steven and either rename + document its real purpose, or delete it if unused. |
+
+`ktu-cmo-dashboard-auth` was previously listed here but does not exist in the live account (confirmed via `cloudflare` MCP `list_workers`, 2026-07-12) — removed as stale documentation. If a KTU CMO dashboard auth layer is still needed, it was either renamed, deleted, or never actually deployed under that name.
