@@ -243,6 +243,21 @@ collapse them into one number:
   - **Owner-confirmed:** every proposal LINE AMOUNT (incl. percentage lines like
     "Shop Labor 24%", "Overhead 5%") is SALE price, NOT cost. The only cost signal
     on a line is the explicit `UnitCost`.
+  - **Estimated LABOR cost from scope (owner labor rates, 2026-07-12).** Independently
+    estimate labor cost = **estimated labor hours × the brand/track rate**:
+    - **BTU — $100/hr**
+    - **KTU custom kitchen (Track B, new cabinets) — $100/hr**
+    - **KTU refacing / redooring (Track A) — $65/hr**
+    Pick the rate from the job's **`service_type`** (below) / track: a KTU job whose
+    service is refacing/redooring uses $65; a KTU new-cabinet kitchen uses $100; all
+    BTU uses $100. Derive **labor hours** from the scope — prefer the ServiceMinder
+    `Duration` / per-line `UnitDuration` (minutes) where populated (Koreena's proposal
+    carried `Duration 480` = 8h), otherwise estimate hours from the labor scope lines
+    (demo, plumbing/electrical moves, tile setting, install labor, paint). Use this
+    labor-cost estimate to fill the LABOR portion of estimated cost — especially for
+    KTU where per-line `UnitCost` is sparse — and compare it against the **actual**
+    Margins Labor postings to flag labor overruns. Label it an estimate and show the
+    hours × rate you used.
 - **ACTUAL cost — the dated vendor cost postings, summed (owner-corrected 2026-07-12).**
   The real money out is the **ServiceMinder Margins panel** on the proposal:
   discrete **dated vendor postings** under Materials / Labor / Other — e.g. for
@@ -427,9 +442,14 @@ section — stale beats blank):
   is about a specific job, else null — lets the intranet badge the matching
   project row), scan_date}`. Never empty — if all clear, one info row saying so,
   plus one info row per blind data source.
-- `foreman_board` — one row per active job: `{project, brand, phase, days_in_phase,
+- `foreman_board` — one row per active job: `{project, brand, service_type (the
+  ServiceMinder ServiceName / proposal `ServiceName`, e.g. "Bathtub Remodel",
+  "Cabinet Refacing", "Custom Kitchen" — also drives the labor-rate pick in §3),
+  phase, days_in_phase,
   target, variance, stage (the §2 lifecycle vocabulary), scope_summary,
-  contract_total, estimated_cost, actual_cost, estimated_cost_coverage_pct,
+  contract_total, estimated_cost, actual_cost, est_labor_hours, est_labor_cost
+  (§3 labor-rate estimate: hours × $100 BTU / $100 KTU custom / $65 KTU refacing),
+  labor_rate, estimated_cost_coverage_pct,
   actual_cost_coverage_pct, estimated_gp_pct, actual_gp_pct, price_grade
   (over_market|at_market|under_market|no_catalog — BTU only, per §3), status
   (🟢/🟡/🔴), action, install_started, install_date, pay_pct, payment_status

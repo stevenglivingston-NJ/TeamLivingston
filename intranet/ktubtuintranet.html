@@ -4512,11 +4512,12 @@ async function renderProjects(){
   if(PROJ_FILTER==='gate') list=list.filter(r=>{const g=gateByProject[r.fields.project];return g&&g.gate_status&&g.gate_status.toLowerCase()!=='pass';});
   if(!list.length){root.innerHTML='<div class="empty">No project rows yet — Foreman seeds this daily from JobTread + ServiceMinder + CompanyCam.</div>';return;}
   root.innerHTML=`<div class="sub" style="margin-bottom:8px"><b>${list.length}</b> active project${list.length>1?'s':''}${board[0]?.fields?.scan_date?` · as of ${esc(board[0].fields.scan_date)}`:''}</div>
-  <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Project</th><th>Brand</th><th>Stage</th><th>Pace</th><th>Timeline</th><th class="num">Est. GP%</th><th class="num">Actual GP%</th><th>Gate</th><th>Vendor</th></tr></thead><tbody>
+  <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Project</th><th>Brand</th><th>Service type</th><th>Stage</th><th>Pace</th><th>Timeline</th><th class="num">Est. GP%</th><th class="num">Actual GP%</th><th>Gate</th><th>Vendor</th></tr></thead><tbody>
   ${list.map(r=>{const f=r.fields;const g=gateByProject[f.project];const vFlags=vendorFlagByProject[f.project]||0;
     return `<tr>
     <td><a href="javascript:void(0)" onclick="openProjectDetail(${JSON.stringify(f.project||'')})"><b>${esc(f.project||'—')}</b></a>${f.scope_summary?`<br><small style="color:var(--text-mute)">${esc(String(f.scope_summary).slice(0,70))}</small>`:''}</td>
     <td>${esc(f.brand||'')}</td>
+    <td>${f.service_type?esc(f.service_type):'<small style="color:var(--text-dim)">—</small>'}</td>
     <td>${stageBadge(f.stage)}</td>
     <td>${esc(f.status||'')} ${f.variance?`<small style="color:var(--text-mute)">${esc(f.variance)}</small>`:''}</td>
     <td>${timelineBadge(f)}</td>
@@ -4578,7 +4579,7 @@ function ledgerTotals(ctx){
 }
 /* Shareable sections: each renders the same HTML for the modal and the print doc. */
 const PROJ_SECTIONS={
-  scope:{label:'Scope & stage',render:c=>`<div class="sec-title">Scope &amp; stage</div>${stageProgressBar(c.f.stage)}${c.f.scope_summary?`<div class="sub"><b>Scope:</b> ${esc(c.f.scope_summary)}</div>`:'<div class="sub">No scope summary on file.</div>'}${projectSteps(c.f.project_steps)}`},
+  scope:{label:'Scope & stage',render:c=>`<div class="sec-title">Scope &amp; stage</div>${stageProgressBar(c.f.stage)}${c.f.service_type?`<div class="sub"><b>Service type:</b> ${esc(c.f.service_type)}</div>`:''}${c.f.scope_summary?`<div class="sub"><b>Scope:</b> ${esc(c.f.scope_summary)}</div>`:'<div class="sub">No scope summary on file.</div>'}${projectSteps(c.f.project_steps)}`},
   pace:{label:'Timeline & pace',render:c=>`<div class="sec-title">Timeline &amp; pace</div><div class="sub">${esc(c.f.status||'—')} · phase <b>${esc(c.f.phase||'—')}</b> · ${esc(c.f.days_in_phase||'—')} days in phase (target ${esc(c.f.target||'—')})${c.f.variance?` · ${esc(c.f.variance)}`:''}</div>${c.f.est_timeline?`<div class="sub" style="margin-top:4px"><b>Estimated timeline:</b> ${esc(c.f.est_timeline)}${c.f.est_completion?` · est. completion ${esc(c.f.est_completion)}`:''}</div>`:''}${paymentLine(c.f)}${c.f.action?`<div class="sub"><b>Next step:</b> ${esc(c.f.action)}</div>`:''}`},
   install:{label:'Install progress & timeline goal',render:c=>{
     const f=c.f;
@@ -4636,12 +4637,18 @@ const PROJ_SECTIONS={
   }},
   margins:{label:'Margins & GP%',render:c=>{
     const t=ledgerTotals(c);
+    const f=c.f;
+    const rate=f.labor_rate?fmt$(f.labor_rate):(f.brand==='BTU'?'$100':'—');
+    const laborLine=(f.est_labor_cost!=null||f.est_labor_hours!=null)
+      ? `<div class="sub" style="margin-top:6px"><b>Estimated labor:</b> ${f.est_labor_hours!=null?esc(f.est_labor_hours)+' hrs':'—'}${f.labor_rate?` × ${rate}/hr`:''}${f.est_labor_cost!=null?` = <b>${fmt$(f.est_labor_cost)}</b>`:''} <small style="color:var(--text-mute)">(rate: BTU $100 · KTU custom $100 · KTU refacing $65)</small></div>`
+      : '';
     return `<div class="sec-title">Margins &amp; GP%</div>
-    <div style="overflow-x:auto"><table class="btable"><thead><tr><th></th><th class="num">Estimated (JobTread)</th><th class="num">Actual (ledger)</th><th class="num">SM proposal-line</th></tr></thead><tbody>
-      <tr><td>Cost</td><td class="num">${fmt$(c.f.estimated_cost)}</td><td class="num">${fmt$(t.total)}</td><td class="num">${fmt$(c.f.actual_cost)}</td></tr>
-      <tr><td>GP%</td><td class="num">${pct(c.f.estimated_gp_pct)}</td><td class="num">${t.margin==null?'—':Math.round(t.margin*100)+'%'}</td><td class="num">${pct(c.f.actual_gp_pct)}${coverageNote(c.f.actual_cost_coverage_pct)}</td></tr>
+    <div style="overflow-x:auto"><table class="btable"><thead><tr><th></th><th class="num">Estimated</th><th class="num">Actual (ledger + invoices)</th></tr></thead><tbody>
+      <tr><td>Cost</td><td class="num">${fmt$(f.estimated_cost)}</td><td class="num">${fmt$(f.actual_cost!=null?f.actual_cost:t.total)}</td></tr>
+      <tr><td>GP%</td><td class="num">${pct(f.estimated_gp_pct)}${coverageNote(f.estimated_cost_coverage_pct)}</td><td class="num">${pct(f.actual_gp_pct)}${coverageNote(f.actual_cost_coverage_pct)}</td></tr>
     </tbody></table></div>
-    <div class="sub" style="margin-top:4px">Ledger = purchases entered here/SM Margins. SM proposal-line = estimating costs (coverage-limited). Estimated = JobTread pre-sale.</div>`;
+    ${laborLine}
+    <div class="sub" style="margin-top:4px">Estimated = JobTread cost items + SM proposal <code>UnitCost</code> + labor (hours × rate). Actual = summed dated vendor postings from the SM Margins panel / job-cost ledger + emailed vendor invoices (de-duplicated) — the retail proposal price is never used as cost.</div>`;
   }},
   pricing:{label:'Pricing vs catalog (sales)',render:c=>`<div class="sec-title">Pricing accuracy</div><div class="sub">Contract <b>${fmt$(c.f.contract_total||c.cli.contract_total)}</b>${c.f.price_grade?` · price grade vs catalog: <b>${esc(c.f.price_grade)}</b>`:' · price grade: n/a'} · Est. GP% at sale: <b>${pct(c.f.estimated_gp_pct)}</b></div>`},
   payments:{label:'Contract & payments',render:c=>`<div class="sec-title">Contract &amp; payments</div><div class="sub">Contract ${fmt$(c.f.contract_total||c.cli.contract_total)} · Paid ${fmt$(c.cli.paid)} · Outstanding <b>${fmt$(c.cli.outstanding)}</b>${c.cli.last_payment?` · last payment ${esc(c.cli.last_payment)}`:''}</div>`}
