@@ -250,14 +250,24 @@ collapse them into one number:
     - **KTU refacing / redooring (Track A) — $65/hr**
     Pick the rate from the job's **`service_type`** (below) / track: a KTU job whose
     service is refacing/redooring uses $65; a KTU new-cabinet kitchen uses $100; all
-    BTU uses $100. Derive **labor hours** from the scope — prefer the ServiceMinder
-    `Duration` / per-line `UnitDuration` (minutes) where populated (Koreena's proposal
-    carried `Duration 480` = 8h), otherwise estimate hours from the labor scope lines
-    (demo, plumbing/electrical moves, tile setting, install labor, paint). Use this
-    labor-cost estimate to fill the LABOR portion of estimated cost — especially for
-    KTU where per-line `UnitCost` is sparse — and compare it against the **actual**
-    Margins Labor postings to flag labor overruns. Label it an estimate and show the
-    hours × rate you used.
+    BTU uses $100.
+    - **Hours source (owner-clarified 2026-07-12): ServiceMinder does NOT capture
+      labor hours.** Do not treat the proposal `Duration` / `UnitDuration` as worked
+      hours — that is a scheduling/service-duration figure, not time on the job.
+      **Actual** hours will arrive from **Construction Clock** via a **report emailed
+      in** (to the billing / `firstgentalent@gmail.com` inbox, ingested the same way
+      as vendor invoices — §4). Until that email feed is live and received, **estimate
+      man-hours from the scope of work** (demo, plumbing/electrical moves, tile
+      setting, install labor, paint, wall-system install) and **label the result
+      `estimated`** — set `est_labor_hours`, `labor_rate`, `est_labor_cost` and make
+      the "estimated" caveat explicit in `pm_comment`. When the Construction Clock
+      report starts arriving, switch `est_labor_hours` → actual hours from that email
+      and drop the estimate label.
+    Use this labor-cost figure to fill the LABOR portion of estimated cost —
+    especially for KTU where per-line `UnitCost` is sparse — and compare it against
+    the **actual** Margins Labor postings to flag labor overruns. Always show the
+    hours × rate you used and whether the hours are estimated or Construction-Clock
+    actual.
 - **ACTUAL cost — the dated vendor cost postings, summed (owner-corrected 2026-07-12).**
   The real money out is the **ServiceMinder Margins panel** on the proposal:
   discrete **dated vendor postings** under Materials / Labor / Other — e.g. for
@@ -281,6 +291,21 @@ collapse them into one number:
   panel shows postings the ledger is missing, flag it: the team needs to mirror
   those vendor entries into `job_costs` so the actual is captured. Label which
   source produced each number ("ledger" / "emailed invoice" / "estimate-only").
+  **API investigation — settled 2026-07-12: ServiceMinder does NOT expose the
+  Margins cost postings through any API.** Confirmed three ways: the bulk-download
+  `costs`/`margins`/`purchaseorders` kinds return **"Kind not recognized"** (only
+  Appointments/Contacts/Deposits/Invoices/InvoiceLines/Proposals/Services/
+  CampaignBudgets/RevenueForecasts/ChannelsCampaigns exist); `proposal/details`
+  returns per-line `UnitCost` (the estimate) but no dated-vendor-posting array; and
+  `get_invoice` carries only sale lines + paid status. ServiceMinder's cost/margin
+  data surfaces only in the **UI Margins panel** and its built-in **Reports**
+  (Expenses, Appointment Details — margin with materials/labor breakdown, End of
+  Month) rendered via **DotLiquid** templates — none returned by the JSON API. **The
+  supported extraction channel is email:** schedule the ServiceMinder Expenses/Margin
+  report (or a DotLiquid-templated cost export) to the billing /
+  `firstgentalent@gmail.com` inbox and ingest it there — the exact same pattern as
+  the Construction Clock hours report and vendor invoices (§4). Until that report
+  feed is live, actuals come from the `job_costs` ledger + emailed vendor invoices.
 - **Contract price** — accepted ServiceMinder proposal + signed change orders (same
   for both costings).
 - **Estimated GP%** = (contract − estimated cost) / contract.
