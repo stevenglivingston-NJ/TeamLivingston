@@ -1359,6 +1359,12 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
       </div>
 
       <div class="card">
+        <h2>🧭 Tekki's consolidation review</h2>
+        <div class="sub">Tekki is our chief consultant on the stack — where two tools do the same job, it scores them by function and business benefit and calls keep / cut / replace (with a better alternative when one exists). Moola separately challenges every subscription on the value it drives.</div>
+        <div id="techRecRoot" class="loading" style="margin-top:10px">Loading…</div>
+      </div>
+
+      <div class="card">
         <h2>How everything connects</h2>
         <div class="sub">Three lanes: leads &amp; sales, production, and money &amp; reporting. Nodes with a registry URL are clickable ↗; details live in the Systems and Integrations tabs.</div>
 
@@ -4823,12 +4829,29 @@ async function printProjectDoc(project){
 }
 
 /* ---------- Tech Stack registry (Tekki's table) ---------- */
+// Compact one-page registry. Login details (username/password) live in Resources;
+// they stay in the DB (saveTechRow merges over existing) but are off the grid.
 const TECH_COLS=[
-  {k:'name',label:'System',w:130},{k:'category',label:'Category',w:110},{k:'priority',label:'Priority',w:90},
-  {k:'purpose',label:'Purpose',w:200},{k:'cost',label:'Cost',w:110},
-  {k:'url',label:'Link',w:70},{k:'username',label:'Username',w:140},{k:'password',label:'Password',w:110},
-  {k:'sow_url',label:'SOW',w:70},{k:'notes',label:'Notes',w:150}
+  {k:'name',label:'System',w:130},{k:'category',label:'Category',w:100},{k:'priority',label:'Priority',w:80},
+  {k:'purpose',label:'Purpose',w:190},{k:'monthly_cost',label:'Monthly $',w:90},
+  {k:'score',label:'Value',w:70},{k:'recommendation',label:'Rec',w:90},
+  {k:'url',label:'Link',w:56},{k:'sow_url',label:'SOW',w:56}
 ];
+const TECH_REC_STYLE={
+  keep:{bg:'rgba(74,222,128,.14)',fg:'#4ade80',lbl:'✓ Keep'},
+  cut:{bg:'rgba(248,113,113,.14)',fg:'#f87171',lbl:'✕ Cut'},
+  replace:{bg:'rgba(251,146,60,.14)',fg:'#fb923c',lbl:'⇄ Replace'}
+};
+function techScorePill(v){
+  const n=Number(v); if(!isFinite(n)||v==null||v==='') return '—';
+  const c=n>=70?'#4ade80':n>=40?'#fb923c':'#f87171';
+  return `<span style="display:inline-block;min-width:26px;text-align:center;font-weight:700;color:${c}">${Math.round(n)}</span>`;
+}
+function techRecPill(v){
+  const s=TECH_REC_STYLE[(v||'').toLowerCase()]; if(!s) return '—';
+  return `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700;background:${s.bg};color:${s.fg}">${s.lbl}</span>`;
+}
+function techMoney(v){ const n=Number(String(v).replace(/[$,\s]/g,'')); return isFinite(n)&&v!=null&&v!==''?'$'+n.toLocaleString(undefined,{maximumFractionDigits:0}):'—'; }
 const TECH_PRIORITY_COLOR={critical:'var(--danger)',high:'var(--accent)',medium:'var(--info)',low:'var(--text-mute)'};
 let TECH_EDIT=null;
 function techSowCell(v,name){
@@ -4842,14 +4865,28 @@ async function renderTechStack(){
   const cell=(r,c)=>{
     const v=r.fields[c.k]||'';
     if(TECH_EDIT===r.id) return `<td><input id="te_${r.id}_${c.k}" value="${esc(v)}" style="width:${c.w-14}px"></td>`;
-    if(c.k==='url') return `<td>${v?`<a href="${esc(v)}" target="_blank" rel="noopener">Open ↗</a>`:'—'}</td>`;
+    if(c.k==='url') return `<td>${v?`<a href="${esc(v)}" target="_blank" rel="noopener" title="Open">↗</a>`:'—'}</td>`;
     if(c.k==='sow_url') return `<td>${techSowCell(v,r.fields.name)}</td>`;
-    if(c.k==='password') return `<td>${v?`<span class="pwmask" data-pw="${esc(v)}" onclick="togglePw(this)" style="cursor:pointer" title="Click to reveal">••••••</span>`:'—'}</td>`;
+    if(c.k==='monthly_cost') return `<td class="num">${techMoney(v)}</td>`;
+    if(c.k==='score') return `<td class="num">${techScorePill(v)}</td>`;
+    if(c.k==='recommendation') return `<td>${techRecPill(v)}</td>`;
     if(c.k==='priority') return `<td>${v?`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${TECH_PRIORITY_COLOR[v]||'var(--text-mute)'};flex-shrink:0"></span>${esc(v)}</span>`:'—'}</td>`;
     if(c.k==='name') return `<td><b>${esc(v)}</b></td>`;
+    if(c.k==='purpose') return `<td><small>${esc(v)||'—'}</small></td>`;
     return `<td>${esc(v)||'—'}</td>`;
   };
-  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr>${TECH_COLS.map(c=>`<th>${c.label}</th>`).join('')}<th></th></tr></thead><tbody>
+  // ---- Subscription cost totals (numeric monthly_cost, derived by Tekki) ----
+  const monthly=rows.reduce((s,r)=>{const n=Number(String(r.fields.monthly_cost||'').replace(/[$,\s]/g,''));return s+(isFinite(n)?n:0);},0);
+  const priced=rows.filter(r=>{const n=Number(String(r.fields.monthly_cost||'').replace(/[$,\s]/g,''));return isFinite(n)&&n>0;}).length;
+  const cutCount=rows.filter(r=>(r.fields.recommendation||'').toLowerCase()==='cut').length;
+  const repCount=rows.filter(r=>(r.fields.recommendation||'').toLowerCase()==='replace').length;
+  const cutSave=rows.filter(r=>['cut','replace'].includes((r.fields.recommendation||'').toLowerCase())).reduce((s,r)=>{const n=Number(String(r.fields.monthly_cost||'').replace(/[$,\s]/g,''));return s+(isFinite(n)?n:0);},0);
+  const sumBar=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px">
+    <div class="kpi" style="padding:12px 14px"><div class="label">Total monthly subscriptions</div><div class="value" style="font-size:22px">$${monthly.toLocaleString(undefined,{maximumFractionDigits:0})}</div><div class="trend">${priced} of ${rows.length} tools priced · ~$${Math.round(monthly*12).toLocaleString()}/yr</div></div>
+    <div class="kpi" style="padding:12px 14px"><div class="label">Flagged to cut / replace</div><div class="value" style="font-size:22px">${cutCount+repCount}</div><div class="trend">${cutCount} cut · ${repCount} replace</div></div>
+    <div class="kpi" style="padding:12px 14px"><div class="label">Potential monthly savings</div><div class="value" style="font-size:22px;color:#4ade80">$${Math.round(cutSave).toLocaleString()}</div><div class="trend">If Tekki's cut/replace calls are actioned</div></div>
+  </div>`;
+  root.innerHTML=sumBar+`<div style="overflow-x:auto"><table class="btable"><thead><tr>${TECH_COLS.map(c=>`<th>${c.label}</th>`).join('')}<th data-nosort></th></tr></thead><tbody>
   ${rows.map(r=>`<tr>${TECH_COLS.map(c=>cell(r,c)).join('')}
     <td style="white-space:nowrap">${TECH_EDIT===r.id
       ?`<button class="btn sm" onclick="saveTechRow('${r.id}')">Save</button> <button class="btn sm ghost" onclick="TECH_EDIT=null;renderTechStack()">✕</button>`
@@ -4857,8 +4894,25 @@ async function renderTechStack(){
   <tr>${TECH_COLS.map(c=>`<td><input id="te_new_${c.k}" placeholder="${c.label}" style="width:${c.w-14}px"></td>`).join('')}
     <td><button class="btn sm" onclick="addTechRow()">+ Add</button></td></tr>
   </tbody></table></div>
-  <div class="sub" style="margin-top:6px">SOW column accepts a URL, or <code>sow:Title</code> to open a doc stored under Statements of Work. Cost is sourced from real card/bill spend where Tekki can confirm it, public pricing otherwise. Priority is Tekki's estimate of what breaks if a system goes dark (critical/high/medium/low) — override it inline if it's wrong. Passwords are visible to all intranet users — keep anything sensitive in a proper password manager and note it here instead; Tekki never writes this field.</div>`;
+  <div class="sub" style="margin-top:6px"><b>Monthly $</b> is the real recurring charge Tekki matched to this tool in Bank Connection (public pricing only where no charge is found yet). <b>Value</b> is Tekki's 0–100 score of the tool's benefit to the business vs. its cost/priority. <b>Rec</b> is keep / cut / replace. Priority = what breaks if it goes dark. Logins live in Resources. Edit anything inline; Tekki refreshes cost, score, and rec on its daily sweep.</div>`;
   linkifyTechNodes(rows);
+  renderTechRecs();
+}
+// Tekki's duplication / consolidation findings (section tech_recommendations).
+async function renderTechRecs(){
+  const root=document.getElementById('techRecRoot'); if(!root) return;
+  const recs=await fetchRecords('tech_recommendations');
+  if(!recs.length){ root.innerHTML='<div class="empty">No consolidation findings yet — Tekki posts duplication calls (keep/cut/replace with a value score) on its Monday deep-review sweep.</div>'; return; }
+  root.innerHTML=`<div style="display:grid;gap:10px">${recs.map(r=>{const f=r.fields;
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+        ${techRecPill(f.recommendation)} <b>${esc(f.title||f.tool||'—')}</b>
+        ${f.score!=null&&f.score!==''?`<span style="margin-left:auto">${techScorePill(f.score)}<small style="color:var(--text-mute)"> value</small></span>`:''}</div>
+      ${f.duplicates?`<div class="sub"><b>Overlaps:</b> ${esc(f.duplicates)}</div>`:''}
+      ${f.winner?`<div class="sub"><b>Recommended:</b> ${esc(f.winner)}</div>`:''}
+      ${f.rationale?`<div class="sub" style="margin-top:4px">${esc(f.rationale)}</div>`:''}
+      ${f.monthly_impact?`<div class="sub" style="color:#4ade80"><b>Est. monthly impact:</b> ${techMoney(f.monthly_impact)}</div>`:''}
+    </div>`;}).join('')}</div>`;
 }
 function togglePw(el){ el.textContent = el.textContent==='••••••' ? el.dataset.pw : '••••••'; }
 async function addTechRow(){
