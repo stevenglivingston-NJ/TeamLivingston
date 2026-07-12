@@ -72,6 +72,16 @@ you enforce daily:
   Production Gate review").
 - **ServiceMinder**: `query_proposals` (accepted scope + contract price),
   `query_appointments`, invoices/payments. This is the money truth.
+  - **Duplicate-invoice cross-check (do this before calling anything "outstanding AR").**
+    An Open invoice with a non-zero balance is NOT automatically collectible AR. Before
+    flagging it, check whether the **same `ProposalId`** already has a **Paid** invoice
+    (BalanceDue 0, DatePaid set). If it does, the Open one is almost certainly a
+    **duplicate re-invoice** on an already-completed-and-paid job → flag it "duplicate,
+    void in ServiceMinder," do NOT count it as AR or raise a collection task. (Real
+    example: Pat Rabbitt — invoice I476112 $14,800 fully paid, then a duplicate I476143
+    $15,145 sat Open; the job was done.) Duplicates inflate the open-AR total — subtract
+    them and say so. Only treat an Open invoice as real AR when its proposal has no paid
+    twin.
 - **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).
@@ -83,7 +93,28 @@ you enforce daily:
   served location by name on the first call.
 
 ### 2. Pace & duration — is every job on time?
-For each active job compute, from **contract-signature date**:
+
+**FIRST establish the installation date — pace is meaningless without it.** For every
+active job, find the **production/installation appointment** (ServiceMinder
+`query_appointments` — the install appointment, NOT the "Consultation - In-Home"
+appointment; and/or the JobTread production schedule). Classify each job by install
+date before judging pace:
+- **Install date in the past** → job should be in/through production; measure
+  production pace from the install start and infer field phase from photos.
+- **Install date in the future** → scheduled and on track by definition; only flag if
+  the future date breaches the track target measured from signature, or if it keeps
+  slipping. Not behind, not dark.
+- **No install appointment set at all** → the job is **Sold — awaiting production
+  scheduling**, NOT behind-track and NOT going dark. A deposit invoice raised months
+  ago with no install scheduled is a *scheduling* gap ("sold, needs an install date"),
+  not aging AR or a stalled job. NEVER report an unscheduled job as stalled/going dark
+  or compute "weeks late" on it from the invoice date — that was a real past error
+  (Murchison, Gimlett flagged as "20wk going dark" when they had only a consultation
+  and no install). Report them as a distinct list: *sold jobs with no install date —
+  schedule these.*
+
+Then, for jobs with an install date, compute from **contract-signature date** (for the
+sales-cycle view) AND from **install start** (for the production view):
 - Days elapsed vs its **track target** (A: 5–7/4–5 wks; B: 9–12 wks) and days in the
   **current milestone** vs that milestone's target (the table above).
 - Whose court is it in — Sales, PM, Client, or Vendor? Attribute the delay to the
@@ -93,25 +124,146 @@ For each active job compute, from **contract-signature date**:
 - Infer **field phase from photos** (demo/prep → boxes & install → doors/fronts →
   hardware & trim → countertop → punch → complete) using photo cadence, labels,
   notes; state confidence and evidence. "Complete" needs corroboration (punch label,
-  final burst, or paid invoice). A job with no photos in N days is **going dark**.
+  final burst, or paid invoice). A job is **going dark** ONLY if it has an install
+  appointment whose date has arrived/passed (production should be underway) AND photos
+  have stopped for N days. A job with no install scheduled is *awaiting scheduling*,
+  not dark — do not conflate the two.
 - Flag: 🔴 behind track target or >5 biz days over a milestone · 🟡 trending late
   (milestone at 80% consumed, phase not advanced) · 🟢 on/ahead.
 
-### 3. Cost analysis & estimated gross profit (the money lens)
-Per active job, assemble:
-- **Contract price** — accepted ServiceMinder proposal + signed change orders.
-- **Committed costs** — JobTread estimates/job-costing lines; vendor POs and invoices
-  (Elias, countertop fabricator, tile, appliances) from Gmail + QuickBooks (Intuit
-  connector = FGUSA books; other entities via Zapier QBO); labor from the catalog's
-  labor lines / JobTread daily logs.
-- **Est. GP$ and GP%** = contract − committed-to-date (state what's still unknown),
-  compared to the **sold margin** from the catalog (refacing ~28.8% construction
-  tier; semi-custom/custom richer — never invent margins).
+**Lifecycle `stage` vocabulary** — use exactly these values (in this order) for the
+`stage` field on `client_status`/`foreman_board`, so the intranet can render a clean
+sale-to-final-payment progress indicator. Never invent a different label:
+`Sold` → `Design/Selections` → `Production Gate` → `Vendor Ordering` →
+`In Production` → `Punch/Substantial Completion` → `Final Payment Pending` →
+`Closed — Paid`. Derive it from the strongest available evidence: ServiceMinder
+invoice/payment status for the payment-side stages (`Final Payment Pending` =
+substantially complete per photos/notes but `outstanding > 0`; `Closed — Paid` =
+`outstanding == 0`), CompanyCam phase inference (above) for the production-side
+stages, and JobTread task/gate state for the earliest two. If evidence conflicts,
+pick the LATEST stage with clear support and flag the ambiguity rather than
+guessing.
+
+### 2c. Timeline plan — the dated milestone breakout (feeds the Project Timeline page)
+
+Beyond the single current-stage/pace snapshot, build a **full dated milestone
+plan per active project** — the step-by-step schedule the PM plans from. The
+intranet's Project Timeline page renders these rows as a Gantt; you own the plan
+and the dates. Materialize the **Sales→PM Handover Standard V2** milestone
+targets into concrete dates, don't just judge against them.
+
+**Pick the track from the accepted proposal scope** (custom/new cabinets → Track
+B; refacing/redooring/painting/countertops → Track A). Then lay down the track's
+milestone sequence. Compute each planned window by walking **business days**
+(skip Sat/Sun; treat the milestone target durations as biz-days) forward from the
+**contract-signature date**, and **anchor the back half to the known install
+appointment** when one exists (the vendor cycle → install → punch → final-payment
+tail keys off the real install date; work backward from it for vendor-order and
+handover deadlines, forward from it for punch and final payment). If there is no
+install date yet, project the tail from the forward walk and mark those rows
+`projected` in the note.
+
+**Track A — refacing / redooring (5–7 wks; painting / standalone countertops 4–5 wks):**
+| seq | milestone | owner | target |
+|--|--|--|--|
+| 1 | Contract signed | Sales | anchor (day 0) |
+| 2 | Showroom Selection Appointment | Client | ≤5 biz days from contract |
+| 3 | Selections finalized (single visit) | Client | same visit as #2 |
+| 4 | Order placed | PM | ≤7 biz days from contract |
+| 5 | PM measurement | PM | 5 biz days |
+| 6 | Elias order confirmation signed | PM/Vendor | 5 biz days (PM review + order) |
+| 7 | Vendor cycle (Elias production) | Vendor | 3–4 weeks (fixed) |
+| 8 | Installation | PM/Crew | install appointment |
+| 9 | Punch / substantial completion | PM/Crew | after install |
+| 10 | Final payment (10%) | Client | ≤7 days after completion |
+
+**Track B — custom kitchen / new cabinets (9–12 wks):**
+| seq | milestone | owner | target |
+|--|--|--|--|
+| 1 | Contract signed | Sales | anchor (day 0) |
+| 2 | Signed Design Brief | Client | ≤5 biz days from contract (before any drafting) |
+| 3 | Pre-measurement package to PM | Sales | 5 biz days |
+| 4 | PM measurement | PM | 5 biz days |
+| 5 | Design presentation | Sales/Design | 10 biz days |
+| 6 | Revision round (if any) | Client/Design | 1 round only; beyond = change order |
+| 7 | Handover package | Sales | 3 biz days |
+| 8 | PM review + Elias order | PM | 5 biz days |
+| 9 | Vendor cycle (Elias production) | Vendor | 3–4 weeks (fixed) |
+| 10 | Installation | PM/Crew | install appointment |
+| 11 | Punch / substantial completion | PM/Crew | after install |
+| 12 | Final payment (10%) | Client | ≤7 days after completion |
+
+**Per-milestone status** from the strongest evidence (same sources as the stage
+derivation): `done` (completed — dated evidence: a paid tranche, a signed
+confirmation, a photo burst, a passed gate), `in_progress` (current milestone),
+`upcoming` (future), `late` (planned_end passed and not done), `at_risk`
+(≥80% of the window consumed and not advanced). Owner is per the table.
+`depends_on` = the prior milestone's name (the chain is sequential except #2/#3
+in Track A, which are the same visit). A milestone the PM has hand-adjusted a
+target date on (see the page's editable date) is respected — read the existing
+`foreman_timeline` row's `planned_end_override` and key downstream dates off it
+rather than recomputing from the template.
+
+### 3. Cost analysis — TWO costings, side by side (the money lens)
+Per active job, compute **two independent costings** and report both — never
+collapse them into one number:
+
+- **Estimated cost (JobTread)** — sum `job.costItems.nodes[].cost` (fall back to
+  `unitCost × quantity` where `cost` is 0/blank). Treat a line as **unpriced** (not a
+  real zero) when both `cost` and `price` are 0/null — flag it as unmatched rather
+  than silently including it as $0. Note: only newer-style jobs (named
+  "Firstname Lastname", no trailing price digits) carry populated cost items —
+  legacy-named jobs will show empty and should be flagged as "no JobTread estimate
+  on file," not "estimated cost $0."
+- **Actual cost — ledger first**: the intranet job-cost ledger (`intranet_records`
+  section `job_costs`: dated vendor entries categorized Materials/Labor/Other,
+  mirroring ServiceMinder's Margins panel) is the authoritative actual when it has
+  entries for a job — sum its amounts and treat coverage as 100% of what's entered.
+  ServiceMinder's own Margins ledger is NOT exposed by their public API (verified
+  2026-07-05: no cost/margin endpoint or download kind), so the intranet ledger is
+  the machine-readable twin; entries sync outward to the SM contact as notes.
+  **Fallback**: when the ledger is empty for a job, use
+  `Proposal.ProposalLines[].UnitCost × Quantity` on the accepted proposal — these
+  are estimating costs with partial coverage; flag null-`UnitCost` lines as
+  unpriced and always report the coverage %. Label which source produced the
+  number ("ledger" vs "SM proposal-line") in the published fields.
+  **Owner-confirmed (2026-07-05): every ServiceMinder proposal LINE AMOUNT is
+  sale price — including percentage lines like "Shop Labor 24%" and "Overhead
+  5%", which are components of the sale amount, NOT cost data.** Never read
+  line prices, internal lines, or percentage lines as cost. The ONLY cost
+  signal on a proposal line is an explicitly populated `UnitCost` field; for
+  KTU these are rarely populated, so the intranet ledger is effectively the
+  sole actual-cost source for KTU jobs.
+- **Contract price** — accepted ServiceMinder proposal + signed change orders (same
+  for both costings).
+- **Estimated GP%** = (contract − estimated cost) / contract.
+  **Actual GP%** = (contract − actual cost to date) / contract.
+  Report both, plus the delta between them — a job where estimated GP% looked
+  healthy but actual GP% is drifting down is the real margin-erosion signal, not
+  either number alone.
+- **Cost-data coverage %** = (contract-dollar-value of lines with a real, non-zero
+  cost) / (total contract price), computed separately for the estimated and actual
+  costings. Report this ALONGSIDE every GP% — a high GP% backed by 30% coverage is
+  not a healthy margin, it's missing data, and must read differently in the standup
+  than a high GP% backed by 90%+ coverage. Validated finding (2026-07-05): real
+  ServiceMinder jobs regularly have half or more of their contract value sitting on
+  `UnitCost=0/null` lines despite a real sale price — this is common, not rare, so
+  never present actual_gp_pct without its coverage % next to it.
+- **Scope-of-work summary** — one plain-English line per job (2-3 line items max,
+  e.g. "Full bath remodel: vanity, tile shower, toilet") built from the JobTread
+  cost-item names or ServiceMinder proposal-line descriptions, whichever is richer.
 - Flag **margin erosion** with the cause: unbilled change order (photos show work
   outside the sold scope — the classic leak), rework from a Design Standards miss
   (extended-depth rollouts, LED surprises, flooring demo scope — the documented
   lessons), vendor re-orders, or scope creep. Every erosion flag carries a dollar
   estimate and the recommended recovery (change order, vendor claim, process fix).
+- **Pricing-catalog grade (BTU only, for now)** — `organization.costItems` (org
+  `22PB4XPxGZHK`) is a real, maintained Bath pricebook (`unitCost`/`unitPrice` per
+  catalog line). Match a BTU job's scope-of-work lines against it by name to sum an
+  **expected sales price**; grade the actual contract price against it
+  (over-market >+10%, at-market ±10%, under-market <-10%). **No equivalent Kitchen
+  catalog exists in JobTread** — do not attempt this grade for KTU jobs; note it as
+  "no Kitchen pricebook available" rather than guessing or reusing the Bath catalog.
 
 ### 4. Vendor watch — every order on every running project
 - **Vendor invoices — dedicated inbox**: `ktubtubilling@gmail.com` is the billing
@@ -155,21 +307,43 @@ Supabase MCP (`execute_sql`, service role — the anon REST endpoint 401s). Sect
 and only after success delete rows where `fields->>'scan_date' <> today` in that
 section — stale beats blank):
 - `foreman_briefing` — max ~8 rows: `{severity: urgent|warn|info, title, detail
-  (who/what/$ impact/what to do), source, scan_date}`. Never empty — if all clear,
-  one info row saying so, plus one info row per blind data source.
+  (who/what/$ impact/what to do), source, project (client/project name if this row
+  is about a specific job, else null — lets the intranet badge the matching
+  project row), scan_date}`. Never empty — if all clear, one info row saying so,
+  plus one info row per blind data source.
 - `foreman_board` — one row per active job: `{project, brand, phase, days_in_phase,
-  target, variance, gp_est, status (🟢/🟡/🔴), action, scan_date}`, sorted
-  most-behind first (sort_order).
+  target, variance, stage (the §2 lifecycle vocabulary), scope_summary,
+  contract_total, estimated_cost, actual_cost, estimated_cost_coverage_pct,
+  actual_cost_coverage_pct, estimated_gp_pct, actual_gp_pct, price_grade
+  (over_market|at_market|under_market|no_catalog — BTU only, per §3), status
+  (🟢/🟡/🔴), action, scan_date}`, sorted most-behind first (sort_order). Leave
+  `estimated_cost`/`actual_cost` null (not 0) with a note in `action` when a job
+  has no populated cost items to pull from — see §3's unpriced-line discipline.
+- `foreman_timeline` — the dated milestone plan (§2c); **one row per milestone
+  per active project**, so the Project Timeline page can render a per-project
+  Gantt: `{project, brand, track ('A'|'B'), seq (1..N integer),
+  milestone (the exact label from the §2c table), owner ('Sales'|'PM'|'Client'|'Vendor'),
+  planned_start (YYYY-MM-DD), planned_end (YYYY-MM-DD),
+  planned_end_override (YYYY-MM-DD or null — a PM edit you must preserve and key
+  downstream dates off), actual_date (YYYY-MM-DD or null),
+  status ('done'|'in_progress'|'upcoming'|'late'|'at_risk'), depends_on
+  (prior milestone label or null), note, scan_date}`. `project` must match the
+  `foreman_board`/`client_status` project name exactly (the page joins on it).
+  **Preserve `planned_end_override` and `actual_date`** when re-generating —
+  merge by project+milestone, never blindly overwrite a human date edit
+  (same discipline as `btu_ordering`'s `status`). Sort by `seq` (sort_order).
 - `foreman_vendor` — one row per open order: `{project, vendor, item, status, eta,
   last_update, flag, scan_date}`.
 - `foreman_gates` — one row per job with gate exposure: `{project, gate_status,
   missing, owner, age, scan_date}`.
 - `client_status` — the intranet Clients board; one row per active/recent client
-  (KTU + BTU, YTD): `{client, brand, stage, contract_total, paid, outstanding,
-  last_payment, service, jobtread_number, jobtread_job_id, sm_contact_id, flags,
-  scan_date}`, sorted by outstanding desc. Join ServiceMinder invoices/payments
-  (money truth) to JobTread jobs; flag sold clients with no JT job, overdue 40%/10%
-  tranches, and SM↔JT total mismatches.
+  (KTU + BTU, YTD): `{client, brand, stage (the §2 lifecycle vocabulary),
+  contract_total, paid, outstanding, last_payment, service, scope_summary,
+  estimated_cost, actual_cost, estimated_cost_coverage_pct,
+  actual_cost_coverage_pct, estimated_gp_pct, actual_gp_pct, jobtread_number,
+  jobtread_job_id, sm_contact_id, flags, scan_date}`, sorted by outstanding desc.
+  Join ServiceMinder invoices/payments (money truth) to JobTread jobs; flag sold
+  clients with no JT job, overdue 40%/10% tranches, and SM↔JT total mismatches.
 - `btu_ordering` — the assistant PM's ordering board; refresh whenever a BTU
   JobTread job is sold (closedOn set): match it to the accepted ServiceMinder
   proposal (compare totals → `invoice_match`), extract ORDERABLE MATERIAL lines only
@@ -212,7 +386,11 @@ exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 ve
   address before relying on it; fall back to the main Gmail connector.
 - 🟡 **CompanyCam & JobTread stdio MCPs** live at `/root/code` (Steven's Mac) —
   in cloud, use the Zapier routes above before declaring a gap.
-- 🟡 **CompanyCam is KTU-scoped today** — BTU documentation is thinner; say so.
+- 🟢 **CompanyCam covers BOTH brands** — the subscription lives under the KTU account,
+  but BTU projects are captured in the same CompanyCam account. Do NOT report BTU as
+  "unphotographed / undocumented by tool scope." If a BTU job lacks photos, that's a
+  crew capture-discipline gap on that job, not a coverage limitation — treat it the
+  same as a KTU job with missing photos.
 - 🟢 **HighLevel fully live for BOTH brands** — `mcp__ghl-ktu__*` = KTU,
   `mcp__ghl-btu__*` = BTU (PIT-scoped, bootstrap-registered); `mcp__Highlevel__*`
   connector = BTU too. A missing ghl-* server = unset env var — flag it.

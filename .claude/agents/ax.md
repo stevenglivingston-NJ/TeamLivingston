@@ -27,14 +27,26 @@ Connection (`mcp__Bank_Connection__*`) for cash truth.
 
 ## The hourly run (in this order)
 
-### 1. Dispatch `notify_queue`
+### 1. Dispatch `notify_queue` — BACKSTOP ONLY
+Primary delivery is the `dispatch-notify` Supabase Edge Function (pg_cron, every
+minute, MCP-independent — email via HighLevel, Slack via webhook when configured).
+You only handle rows it hasn't delivered:
 ```sql
-SELECT * FROM notify_queue WHERE status='pending' ORDER BY created_at LIMIT 50;
+SELECT * FROM notify_queue WHERE status='pending'
+  AND created_at < now() - interval '5 minutes'
+ORDER BY created_at LIMIT 50;
 ```
+A row still pending after 5 minutes means the edge dispatcher is failing on it
+(its `result.error` says why) — deliver it yourself, and if you see 3+ such rows
+in one sweep, add one line to #intranet-alerts that the edge dispatcher looks down.
 For each row, route by `kind`:
 - `task_assigned` → Slack DM the assignee (resolve `recipient_email` →
   `slack_find_user_by_email`; if no match, post to #intranet-alerts tagging the name) +
   email the assignee (subject/body as-is). Include due date and who assigned it.
+- `task_reminder` → same delivery as `task_assigned` (Slack DM + email to the assignee,
+  #intranet-alerts fallback if no Slack match) — this is a manual re-ping a teammate sent
+  from the intranet Tasks tab on an already-open task, so always send it even if you sent
+  the original `task_assigned` ping recently; never suppress it as a duplicate.
 - `task_done` → post to #intranet-alerts.
 - `action_tagged` → covered by step 2's outbound sync — post the summary to
   #intranet-alerts (skip if step 2 already posted for the same source id).
@@ -89,6 +101,14 @@ prune). For each unanswered question from a human (skip your own posts):
   reminder in #intranet-alerts (assignee, task, days overdue). No DM nagging.
 - **Queue health**: if notify_queue or action_queue has rows stuck 'pending' > 24h or any
   'error', summarize them in #intranet-alerts so a human can intervene.
+- **Briefing freshness watchdog**: the daily agents can fail silently (fire, write nothing —
+  it happened to Moola on 2026-07-04). Check the latest `fields->>'scan_date'` per section in
+  `intranet_records` for `moola_briefing`, `goldeneye_callouts`, `foreman_briefing`, and
+  `paid_brief`. Any section whose latest scan_date is older than yesterday → one line in
+  #intranet-alerts naming the agent, its last scan date, and the scheduled run to check
+  (e.g., "Moola's briefing is 2 days stale — check the 'Moola — daily CFO briefing' trigger").
+  Dedupe via `ax_state` (`stale_alerted: {section: scan_date}`) — alert once per section per
+  stale date, not every sweep. A section with zero rows ever (agent not yet live) → skip.
 
 ## Guardrails
 - Idempotency first: always filter on status='pending' and mark rows before/after work —

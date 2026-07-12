@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ktubtuintranet",
+  "main": "worker.js",
+  "compatibility_date": "2026-01-01",
+
+  // Locked down: the intranet is internal (Supabase-authed), so it should only
+  // be reachable at the custom domain below — not also at a public
+  // *.workers.dev preview URL. Deploying with this config disables that
+  // preview subdomain (a prior manual deploy had left it enabled).
+  "workers_dev": false,
+  "preview_urls": false,
+
+  // Custom Domain binding (Cloudflare manages the DNS + cert). Declaring it
+  // here means `wrangler deploy` keeps this domain bound on every deploy —
+  // no manual dashboard step, and no risk of a deploy silently dropping it.
+  "routes": [
+    { "pattern": "dash.goaxyom.com", "custom_domain": true }
+  ]
+
+  // account_id intentionally omitted — wrangler reads it from the
+  // CLOUDFLARE_ACCOUNT_ID env var (see mcp-servers/.env.example), so this
+  // file has no account-specific values to keep in sync.
+}
