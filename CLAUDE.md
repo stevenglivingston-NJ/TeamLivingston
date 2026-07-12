@@ -102,8 +102,9 @@ cloudflare, clarity-*) reading API keys from **environment variables** — see
 environment's env-var config (they are secrets; never commit real values). A
 server whose keys are missing is skipped, never registered blank. The claude.ai
 connectors (Gmail, HighLevel, QuickBooks, Bank Connection, Shopify,
-monday, Slack, Zapier, Facebook) load from the account automatically and need
-no bootstrap.
+Slack, Zapier, Facebook) load from the account automatically and need
+no bootstrap. (monday.com is being retired — its boards/docs are exported to
+Google Drive and mapped by the Librarian; don't depend on the monday connector.)
 
 ### HighLevel access — two paths, and the KTU gotcha
 

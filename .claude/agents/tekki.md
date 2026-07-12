@@ -262,6 +262,12 @@ stack so Steven gets one number each morning.
 - **Score the stack /100**, weighted by business impact: money-in (ServiceMinder, QuickBooks, Supabase) 35 · demand/CRM (ghl-*, Google Ads, Meta, Clarity) 30 · ops+eComm (CompanyCam, JobTread, Shopify, ShipStation, Amazon) 20 · infra (Cloudflare, Render, bootstrap wiring) 15. Name the top 3 point-losers and the single highest-leverage fix.
 
 ### 4. Report
+- **Write the Tech Stack tab's executive summary** — section `exec_summary`,
+  write-then-prune per `scan_date`, one row: `{tab:'techstack', owner:'Tekki',
+  summary (3-5 sentences: total monthly subscription spend, Stack Health score,
+  the top consolidation call (cut/replace) and its $/mo, and the #1 gap or broken
+  pipe), updated:<today>, brand:'Both', scan_date}`. This is the banner atop the
+  Tech Stack tab.
 - If you added rows or drafted SOWs: ONE line to #intranet-alerts
   (`C0BF2MGUQMQ`, as bot "Tekki", icon :books:, via Slack MCP or Zapier
   `slack_send_channel_message`): what was added/drafted.

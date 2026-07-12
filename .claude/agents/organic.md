@@ -224,6 +224,13 @@ then only after success `DELETE ... WHERE section='organic_report' AND
 fields->>'scan_date' <> '<today>'`. Always ≥1 row (an `info` "Organic ran with X
 unavailable" row if a source was down).
 
+**Also write the tab's executive summary** — section `exec_summary`, write-then-prune
+per `scan_date`, one row: `{tab:'organic', owner:'Organic', summary (3-5 sentences:
+rankings/visibility headline, biggest friction point from the Clarity+landing-page
+triage, one competitor move, the single highest-leverage action), updated:<today>,
+brand:'Both', scan_date}`. This is the "read this first" banner at the top of the
+Paid & Organic tab.
+
 ```sql
 INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES
 ('organic_report','KTU',1,'{"severity":"urgent|warn|info","kind":"ranking|local|competitor|keyword|backlink|tech|friction|speed|social|conversion","title":"...","detail":"the finding + the specific action","metric":"e.g. #4 → #2 | 4.8★ (2 new) | KD 34, vol 320 | 41% quick-back | LCP 3.8s | ER 6.2%","source":"SEMrush organic_research | GMB search-keywords | Clarity (organic) | Ahrefs site-audit | Ahrefs/HighLevel social","scan_date":"YYYY-MM-DD"}'::jsonb);
