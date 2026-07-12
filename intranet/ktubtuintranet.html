@@ -787,6 +787,86 @@
     color:var(--text-mute);font-size:13px;background:var(--surface-inset);
   }
 
+  /* ---------- Cash Flow command center ---------- */
+  .cf-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+  .cf-kpi{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--surface)}
+  .cf-kpi .k-label{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text-mute);font-weight:600}
+  .cf-kpi .k-value{font-size:23px;font-weight:700;margin-top:6px;letter-spacing:-.4px;font-variant-numeric:tabular-nums}
+  .cf-kpi .k-sub{font-size:11.5px;color:var(--text-mute);margin-top:4px}
+  .cf-kpi.good .k-value{color:var(--success)} .cf-kpi.warn .k-value{color:var(--warn)} .cf-kpi.bad .k-value{color:var(--danger)}
+  .cf-chart-wrap{overflow-x:auto;padding:4px 0}
+  .cf-chart{min-width:640px;width:100%;height:230px;display:block}
+  .cf-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:11.5px;color:var(--text-mute)}
+  .cf-legend span{display:inline-flex;align-items:center;gap:6px}
+  .cf-swatch{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .cf-table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .cf-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-mute);font-weight:600;padding:7px 10px;border-bottom:1px solid var(--border)}
+  .cf-table td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text-2);vertical-align:top}
+  .cf-table tr:last-child td{border-bottom:none}
+  .cf-table td.num,.cf-table th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .cf-table-wrap{overflow-x:auto}
+  .cf-chip{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10.5px;font-weight:600;line-height:1.6}
+  .cf-chip.ktu{background:rgba(244,93,34,.12);color:var(--brand-ktu)}
+  .cf-chip.btu{background:rgba(27,54,93,.12);color:var(--brand-btu)}
+  .cf-chip.earth{background:rgba(23,138,76,.12);color:var(--brand-earth)}
+  .cf-chip.both{background:var(--surface-inset);color:var(--text-mute)}
+  .cf-chip.in{background:rgba(22,163,74,.12);color:var(--success)}
+  .cf-chip.out{background:rgba(220,38,38,.10);color:var(--danger)}
+  .cf-chip.known{background:rgba(68,104,177,.12);color:var(--accent)}
+  .cf-chip.projected{background:rgba(217,119,6,.12);color:var(--warn)}
+  .cf-chip.estimated{background:var(--surface-inset);color:var(--text-dim)}
+  .cf-age-cur{color:var(--success);font-weight:600}
+  .cf-age-1{color:var(--text-2);font-weight:600}
+  .cf-age-2{color:var(--warn);font-weight:600}
+  .cf-age-3{color:var(--danger);font-weight:700}
+  .cf-term-h{font-size:12px;font-weight:700;color:var(--text);margin:14px 0 6px;display:flex;justify-content:space-between}
+  .cf-term-h .t-tot{color:var(--text-mute);font-weight:600}
+  .cf-in{color:var(--success);font-weight:600} .cf-out{color:var(--danger);font-weight:600}
+  .cf-stale{background:#fdfaf3;border:1px solid var(--warn);border-left-width:4px;border-radius:10px;padding:10px 14px;font-size:12.5px;color:#7a5206;margin-bottom:16px}
+  .cf-sub2{font-size:11.5px;color:var(--text-mute);margin:-4px 0 12px}
+
+  /* ---------- Project Timeline (Gantt breakout) ---------- */
+  .pt-head{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:baseline;margin-bottom:6px}
+  .pt-head .pt-meta{font-size:12.5px;color:var(--text-2)}
+  .pt-head .pt-meta b{color:var(--text)}
+  .pt-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 4px}
+  .pt-legend{display:flex;gap:14px;flex-wrap:wrap;margin:6px 0 14px;font-size:11.5px;color:var(--text-mute)}
+  .pt-legend span{display:inline-flex;align-items:center;gap:6px}
+  .pt-dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .pt-owner-sales{background:#4468b1} .pt-owner-pm{background:#178a4c} .pt-owner-client{background:#d97706} .pt-owner-vendor{background:#8250c4}
+  .pt-gantt-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+  .pt-gantt{min-width:720px;position:relative}
+  .pt-today-full{position:absolute;top:33px;bottom:0;width:2px;background:var(--danger);z-index:4;pointer-events:none}
+  .pt-grid-head{display:flex;border-bottom:1px solid var(--border);position:relative}
+  .pt-grid-head .pt-lbl-col{flex:0 0 220px;padding:8px 12px;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-mute);font-weight:600}
+  .pt-weeks{flex:1;display:flex;position:relative}
+  .pt-week{flex:1;text-align:center;font-size:10px;color:var(--text-dim);padding:8px 0;border-left:1px solid var(--border)}
+  .pt-row{display:flex;align-items:stretch;border-bottom:1px solid var(--border)}
+  .pt-row:last-child{border-bottom:none}
+  .pt-lbl-col{flex:0 0 220px;padding:9px 12px;border-right:1px solid var(--border)}
+  .pt-mname{font-size:12.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
+  .pt-mmeta{font-size:10.5px;color:var(--text-mute);margin-top:2px}
+  .pt-track{flex:1;position:relative;min-height:38px}
+  .pt-bar{position:absolute;top:9px;height:20px;border-radius:5px;min-width:6px;display:flex;align-items:center;padding:0 6px;font-size:10px;color:#fff;white-space:nowrap;overflow:hidden}
+  .pt-bar.done{opacity:.72}
+  .pt-bar.upcoming{opacity:.5}
+  .pt-bar.late{outline:2px solid var(--danger);outline-offset:1px}
+  .pt-bar.at_risk{outline:2px solid var(--warn);outline-offset:1px}
+  .pt-bar.in_progress{box-shadow:0 0 0 2px rgba(27,54,93,.15)}
+  .pt-today{position:absolute;top:0;bottom:0;width:2px;background:var(--danger);z-index:3}
+  .pt-today-lbl{position:absolute;top:-2px;font-size:9px;color:var(--danger);font-weight:700;transform:translateX(-50%)}
+  .pt-status-chip{display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:600}
+  .pt-st-done{background:rgba(22,163,74,.12);color:var(--success)}
+  .pt-st-in_progress{background:rgba(27,54,93,.12);color:var(--brand-btu)}
+  .pt-st-upcoming{background:var(--surface-inset);color:var(--text-mute)}
+  .pt-st-late{background:rgba(220,38,38,.12);color:var(--danger)}
+  .pt-st-at_risk{background:rgba(217,119,6,.12);color:var(--warn)}
+  .pt-steptable{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+  .pt-steptable th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-mute);font-weight:600;padding:7px 10px;border-bottom:1px solid var(--border)}
+  .pt-steptable td{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--text-2);vertical-align:top}
+  .pt-steptable tr:last-child td{border-bottom:none}
+  .pt-date-input{font:inherit;font-size:12px;padding:2px 4px;border:1px solid var(--border);border-radius:5px;background:var(--surface);color:var(--text)}
+
   /* ---------- Tech stack flow map ---------- */
   .flow-lane{margin-bottom:22px}
   .flow-lane-label{
@@ -1011,6 +1091,11 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
         <div class="nav-item" data-tab="finance">
           <span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 2v20M17 6H9.5a3 3 0 000 6h5a3 3 0 010 6H6"/></svg></span>
           <span class="lbl">Financial Reporting</span>
+          <span class="nav-badge">Private</span>
+        </div>
+        <div class="nav-item" data-tab="cashflow">
+          <span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l3-4 3 3 5-7"/></svg></span>
+          <span class="lbl">Cash Flow</span>
           <span class="nav-badge">Private</span>
         </div>
         <div class="nav-item" data-tab="adminconsole">
@@ -2334,8 +2419,26 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
           <a class="doc-link" href="https://app.bill.com" target="_blank" rel="noopener"><div class="ico">🧾</div><div class="body"><div class="t">Bill.com</div><div class="d">AP + vendor invoice management</div></div></a>
           <a class="doc-link" href="https://runpayroll.adp.com" target="_blank" rel="noopener"><div class="ico">👥</div><div class="body"><div class="t">ADP Run</div><div class="d">Bi-weekly payroll · W-2 team</div></div></a>
         </div>
-        <div class="build"><b>Security note:</b> this tab is hidden for the team and Earthwise logins. Front-end gating is UX only — database-level RLS lands with the Supabase Auth rollout (01_Login_and_RLS_Model.md) to make it enforceable.</div>
+        <div class="build"><b>Security note:</b> this tab is owner-only and enforced at the database level. Row-Level Security on <code>intranet_records</code> gates every finance section (<code>moola_*</code>, <code>axyom_*</code>, <code>docs_finance</code>) on <code>has_finance_access()</code> — a profile can be granted finance access without being a full admin, and the anon key alone returns nothing. Hiding the tab (and the sensitive-data toggle) is presentation on top of a real DB grant, not the only lock.</div>
       </div>
+    </section>
+
+    <!-- ==================== CASH FLOW COMMAND CENTER (owner only) ==================== -->
+    <section class="panel" id="cashflow">
+      <div class="page-head">
+        <h1 class="page-title">Cash Flow <span class="tag" style="background:#fdf3e3;color:#8a5a06;vertical-align:middle;margin-left:8px">Owner only</span></h1>
+        <p class="page-sub">The full picture — runway, dated inflows/outflows, aged receivables, payables queue, and every bank &amp; liability balance. Refreshed each morning by Moola. Visible only on the owner login.</p>
+      </div>
+      <div id="cf_root" class="loading">Loading…</div>
+    </section>
+
+    <!-- ==================== PROJECT TIMELINE (per-project planning page) ==================== -->
+    <section class="panel" id="projtimeline">
+      <div class="page-head">
+        <h1 class="page-title">Project Timeline</h1>
+        <p class="page-sub">The dated milestone breakout for planning a project end-to-end — every step, its window, who owns it, and where we are now. Generated by Foreman from the ServiceMinder proposal, JobTread scope, and the Handover Standard track targets.</p>
+      </div>
+      <div id="pt_root" class="loading">Loading…</div>
     </section>
 
     </div></div>
@@ -2512,14 +2615,19 @@ function tpMsg(text,ok){
   const m=document.getElementById('tpMsg');
   m.style.display='block'; m.innerHTML=(ok?'✅ ':'⚠️ ')+esc(text);
 }
+function isGrantableTab(tab){
+  const s=TAB_SECTIONS.find(s=>s.tabs.includes(tab));
+  return !s || s.scope!=='admin';
+}
 function populateTabPermSelect(){
   const sel=document.getElementById('tpTab'); if(!sel || sel.options.length) return;
-  sel.innerHTML = TAB_SECTIONS.map(s=>
+  sel.innerHTML = TAB_SECTIONS.filter(s=>s.scope!=='admin').map(s=>
     `<optgroup label="${esc(s.label)}">${s.tabs.map(t=>`<option value="${esc(t)}">${esc(TAB_TITLES[t]||t)}</option>`).join('')}</optgroup>`
   ).join('');
 }
 async function tabPermSave(){
   const role=val('tpRole'), tab=val('tpTab'), visible=val('tpVisible')==='true';
+  if(!isGrantableTab(tab)){ tpMsg('That tab is owner-only and locked at the database level — it cannot be granted here.',false); return; }
   const {error}=await sb.from('tab_permissions').upsert({role,tab,visible,updated_by:CURRENT_PROFILE&&CURRENT_PROFILE.id});
   if(error){ tpMsg(error.message,false); return; }
   tpMsg(`${visible?'Showing':'Hiding'} "${TAB_TITLES[tab]||tab}" for ${ROLE_LABEL[role]}.`,true);
@@ -2556,13 +2664,13 @@ const TAB_TITLES = {
   contacts:'Contacts', jobs:'Job Costing', commissions:'Commission Tracker', team:'Team',
   vendors:'Vendors', systems:'Systems', integrations:'Integrations', franchise:'Franchise',
   pipeline:'Pipeline', appointments:'Appointments', marketing:'Marketing', onboarding:'Onboarding', ordering:'Ordering', trades:'Trades',
-  clients:'Clients', tasks:'Tasks & Follow-ups', projects:'Projects',
+  clients:'Clients', tasks:'Tasks & Follow-ups', projects:'Projects', projtimeline:'Project Timeline',
   roles:'Roles', dailyops:'Daily Ops', playbook:'Playbook', resources:'Resources', library:'Library',
   territories:'Territories', showroom:'Showroom', reports:'Reports', adminconsole:'Admin Console', axyomfin:'Axyom Financials',
   'earth-overview':'Earthwise · Overview','earth-products':'Earthwise · Products',
   'earth-orders':'Earthwise · Orders','earth-inventory':'Earthwise · Inventory',
   'earth-marketplaces':'Earthwise · Marketplace Ops','earth-vendors':'Earthwise · Vendors',
-  'earth-content':'Earthwise · Content', finance:'Financial Reporting', organic:'Paid & Organic'
+  'earth-content':'Earthwise · Content', finance:'Financial Reporting', cashflow:'Cash Flow', organic:'Paid & Organic'
 };
 function go(tab,push=true){
   if(!document.getElementById(tab)) tab='home';
@@ -2580,7 +2688,8 @@ function go(tab,push=true){
   document.getElementById('crumbs').innerHTML=
     (tab!=='home'?'<span class="crumb-link" onclick="go(\'home\')">Home</span><span class="sep">/</span>':'')+
     (isEarth?'<span>Earthwise</span><span class="sep">/</span>':'')+
-    '<span class="now">'+esc((TAB_TITLES[tab]||tab).replace(/^Earthwise · /,''))+'</span>';
+    (tab==='projtimeline'?'<span class="crumb-link" onclick="go(\'projects\')">Projects</span><span class="sep">/</span>':'')+
+    '<span class="now">'+esc(tab==='projtimeline'&&CURRENT_PROJECT?CURRENT_PROJECT+' · Timeline':(TAB_TITLES[tab]||tab).replace(/^Earthwise · /,''))+'</span>';
   document.querySelector('.sidebar').classList.remove('open');
   window.scrollTo({top:0,behavior:'instant'});
   // Live-refresh Home cards when navigating back to home
@@ -2589,6 +2698,7 @@ function go(tab,push=true){
   renderExecSummary(tab);
   if(tab==='directory'){ renderDirectory(); }
   if(tab==='adminconsole'){ renderAdminConsole(); renderTabPermissions(); }
+  if(tab==='cashflow'){ renderCashflow(); }
   if(tab==='pipeline'){ renderPipeline(); }
   if(tab==='jobs'){ renderJobs(); }
   if(tab==='commissions'){ renderCommissions(); }
@@ -2599,6 +2709,7 @@ function go(tab,push=true){
   if(tab==='team'){ renderTeamDates(); }
   if(tab==='clients'){ renderClients(); }
   if(tab==='projects'){ renderProjects(); }
+  if(tab==='projtimeline'){ renderProjectTimeline(); }
   if(tab==='techstack'){ renderTechStack(); }
   if(tab==='resources'){ renderResources(); }
   if(tab==='library'){ renderLibrary(); }
@@ -2676,6 +2787,7 @@ const ROLE_WS = {
 };
 let CURRENT_ROLE = 'homeservices';
 let CURRENT_WS = 'all';
+let CURRENT_PROJECT = null; // active project for the Project Timeline detail page
 
 /* ================================================================
    Tab permissions — per-role visibility overrides (Admin Console →
@@ -2686,14 +2798,14 @@ let CURRENT_WS = 'all';
    out of the console that controls this.
    ================================================================ */
 const TAB_SECTIONS = [
-  {key:'ops',      label:'Operations',                 scope:'hs',    tabs:['dailyops','playbook','projects','clients','appointments','tasks','commissions','roles','jobs']},
+  {key:'ops',      label:'Operations',                 scope:'hs',    tabs:['dailyops','playbook','projects','projtimeline','clients','appointments','tasks','commissions','roles','jobs']},
   {key:'people',   label:'People',                     scope:'hs',    tabs:['team','onboarding','contacts']},
   {key:'vendors',  label:'Vendors & Ordering',          scope:'hs',    tabs:['vendors','ordering']},
   {key:'growth',   label:'Growth',                      scope:'hs',    tabs:['pipeline','organic','marketing','mktplan','mktspend','reports']},
   {key:'franchise',label:'Franchise & Place',           scope:'hs',    tabs:['franchise','territories','showroom']},
   {key:'systems',  label:'Systems',                     scope:'shared',tabs:['techstack','systems','integrations']},
   {key:'earth',    label:'Earthwise / Jatalia',         scope:'earth', tabs:['earth-overview','earth-products','earth-orders','earth-inventory','earth-marketplaces','earth-vendors','earth-content']},
-  {key:'owner',    label:'Owner (Financials & Admin)',  scope:'admin', tabs:['finance','adminconsole','axyomfin','syshealth']}
+  {key:'owner',    label:'Owner (Financials & Admin)',  scope:'admin', tabs:['finance','cashflow','adminconsole','axyomfin','syshealth']}
 ];
 const TAB_TO_SCOPE = (()=>{ const m={}; TAB_SECTIONS.forEach(s=>s.tabs.forEach(t=>m[t]=s.scope)); return m; })();
 function tabSectionLabel(tab){ const s=TAB_SECTIONS.find(s=>s.tabs.includes(tab)); return s?s.label:'—'; }
@@ -2760,6 +2872,7 @@ function isTabVisible(tab){
   // The Financial Reporting tab is owner-only AND respects the sensitive toggle,
   // even for admins — checked before the admin blanket-allow below.
   if(tab==='finance') return showSensitive();
+  if(tab==='cashflow') return showSensitive();
   if(CURRENT_ROLE==='admin') return true;
   if(Object.prototype.hasOwnProperty.call(TAB_PERM_OVERRIDES,tab)) return TAB_PERM_OVERRIDES[tab];
   return defaultTabVisible(tab, CURRENT_ROLE, CURRENT_WS);
@@ -2822,6 +2935,9 @@ function setWS(k){
   window.renderTasks&&renderTasks(); window.renderTrades&&renderTrades(); window.renderResources&&renderResources();
   window.renderDash&&renderDash(); window.renderDirectory&&renderDirectory(); window.renderClients&&renderClients();
   renderRecent(); renderFavPanel();
+  // Cash Flow is entity-filtered too — refresh it live when it's the open tab
+  const cfP=document.getElementById('cashflow');
+  if(cfP&&cfP.classList.contains('active')) renderCashflow&&renderCashflow();
 }
 function wsBrands(){
   // Role is the hard boundary; workspace narrows within it.
@@ -4581,7 +4697,233 @@ function renderAll(){
   renderContacts(); renderItems(); renderJobs(); renderDash();
   renderAllSections(); renderIntegrations();
   renderRecent(); renderHealth(); renderGoldeneye(); renderMoola();
-  renderCallNotes(); renderPayables(); renderHomeSnapshot();
+  renderCallNotes(); renderPayables(); renderHomeSnapshot(); renderCashflow();
+}
+
+/* ================================================================
+   Cash Flow command center (owner only) — reads five structured
+   sections Moola publishes each morning:
+     moola_runway     one snapshot/scan: cash, burn, runway, low point
+     moola_balances   one row per bank account / liability (term-bucketed)
+     moola_ar         aged receivables, named
+     moola_ap         payables queue, named, in pay-priority order
+     moola_cashledger dated 90-day inflow/outflow events (confidence-tagged)
+   Every row is brand-tagged, so the workspace switcher filters this view
+   by entity for free (fetchRecords already applies the brand filter).
+   ================================================================ */
+function cfNum(v){ if(v==null) return 0; if(typeof v==='number') return v;
+  const n=parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; }
+function cf$(n){ const x=Math.round(cfNum(n)); return (x<0?'-$':'$')+Math.abs(x).toLocaleString(); }
+function cfLatest(rows){ const d=[...new Set(rows.map(r=>r.fields.scan_date).filter(Boolean))].sort().reverse()[0];
+  return d?rows.filter(r=>r.fields.scan_date===d):rows; }
+function cfBrandChip(b){ const k=(b||'Both').toLowerCase(); const cls=k==='ktu'?'ktu':k==='btu'?'btu':k==='earthwise'||k==='earth'?'earth':'both';
+  return `<span class="cf-chip ${cls}">${esc(b||'Both')}</span>`; }
+
+async function renderCashflow(){
+  const el=document.getElementById('cf_root'); if(!el) return;
+  if(!canFinance()){ el.innerHTML='<div class="ge-clear">🔒 Owner only — you do not have finance access.</div>'; return; }
+  el.classList.remove('loading');
+  const [balAll,arAll,apAll,ledAll,runAll]=await Promise.all(
+    ['moola_balances','moola_ar','moola_ap','moola_cashledger','moola_runway'].map(fetchRecords));
+  const bal=cfLatest(balAll), ar=cfLatest(arAll), ap=cfLatest(apAll), led=cfLatest(ledAll), run=cfLatest(runAll);
+
+  if(!bal.length && !ar.length && !ap.length && !led.length && !run.length){
+    el.innerHTML='<div class="ge-clear">💤 No cash-flow data yet — Moola publishes the runway, dated ledger, receivables, payables, and balances on her next morning run (6:30am ET). The page fills in automatically once she does.</div>';
+    return;
+  }
+
+  const today=new Date(); today.setHours(0,0,0,0);
+  const staleDate=[...new Set([...bal,...run,...led].map(r=>r.fields.scan_date).filter(Boolean))].sort().reverse()[0];
+  const staleBanner = (staleDate && staleDate < todayStr()) ?
+    `<div class="cf-stale">⏰ Latest scan is <b>${esc(staleDate)}</b>, not today — Moola's morning run may not have completed. Numbers below are from the last successful scan.</div>` : '';
+
+  el.innerHTML = staleBanner
+    + cfKpis(run, bal, ar, ap, led, today)
+    + cfChartCard(led, run, bal, today)
+    + cfLedgerCard(led, today)
+    + cfArCard(ar)
+    + cfApCard(ap)
+    + cfBalanceCard(bal);
+}
+
+function cfKpis(run, bal, ar, ap, led, today){
+  const r=run[0]?run[0].fields:{};
+  const cash = r.total_cash!=null ? cfNum(r.total_cash)
+    : bal.filter(b=>(b.fields.type||'').toLowerCase()==='cash').reduce((s,b)=>s+cfNum(b.fields.balance),0);
+  const runwayWks = r.runway_weeks!=null ? r.runway_weeks : '—';
+  const in30=led.filter(l=>cfDir(l)==='in'&&cfWithin(l.fields.date,today,30)).reduce((s,l)=>s+cfNum(l.fields.amount),0);
+  const out30=led.filter(l=>cfDir(l)==='out'&&cfWithin(l.fields.date,today,30)).reduce((s,l)=>s+cfNum(l.fields.amount),0);
+  const net30 = r.net_30!=null ? cfNum(r.net_30) : (in30-out30);
+  const arTot=ar.reduce((s,a)=>s+cfNum(a.fields.amount),0);
+  const apTot=ap.filter(a=>cfWithin(a.fields.due_date,today,30)).reduce((s,a)=>s+cfNum(a.fields.amount),0);
+  const rw = typeof runwayWks==='number'||/^\d/.test(String(runwayWks));
+  const rwCls = rw ? (cfNum(runwayWks)>=8?'good':cfNum(runwayWks)>=4?'warn':'bad') : '';
+  const lowTxt = r.low_point_balance!=null ? `${cf$(r.low_point_balance)}${r.low_point_date?' · '+esc(r.low_point_date):''}` : '—';
+  const lowCls = r.low_point_balance!=null ? (cfNum(r.low_point_balance)<0?'bad':cfNum(r.low_point_balance)<cfNum(r.weekly_burn)*4?'warn':'good') : '';
+  const K=(label,value,sub,cls)=>`<div class="cf-kpi ${cls||''}"><div class="k-label">${esc(label)}</div><div class="k-value">${value}</div><div class="k-sub">${sub||''}</div></div>`;
+  return `<div class="cf-kpis">
+    ${K('Cash on hand', cf$(cash), 'Operating accounts (excl. LOC)')}
+    ${K('Runway', rw?esc(String(runwayWks))+' wk':'—', r.weekly_burn?('Burn '+cf$(r.weekly_burn)+'/wk'):'8-wk buffer target', rwCls)}
+    ${K('Net · next 30d', (net30>=0?'+':'')+cf$(net30), 'Expected in − out', net30>=0?'good':'bad')}
+    ${K('Lowest point', r.low_point_balance!=null?cf$(r.low_point_balance):'—', r.low_point_date?('hits '+esc(r.low_point_date)):'projected trough', lowCls)}
+    ${K('AR outstanding', cf$(arTot), ar.length+' invoice'+(ar.length===1?'':'s'))}
+    ${K('AP · due 30d', cf$(apTot), ap.length+' payable'+(ap.length===1?'':'s'))}
+  </div>`;
+}
+
+function cfDir(l){ return (l.fields.direction||'').toLowerCase().startsWith('in')?'in':'out'; }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function cfParseDate(s){ if(!s) return null; const d=new Date(String(s).slice(0,10)+'T00:00:00'); return isNaN(d)?null:d; }
+function cfWithin(s,today,days){ const d=cfParseDate(s); if(!d) return false; const diff=(d-today)/86400000; return diff>=-3 && diff<=days; }
+function cfWeekIdx(s,today){ const d=cfParseDate(s); if(!d) return 0; return Math.max(0,Math.min(12,Math.floor((d-today)/604800000))); }
+
+function cfChartCard(led, run, bal, today){
+  if(!led.length){
+    return `<div class="card"><h2>13-week cash flow</h2><div class="ge-clear">No dated cash events yet — Moola builds this from install-keyed inflows and known outflows.</div></div>`;
+  }
+  const r=run[0]?run[0].fields:{};
+  const B0 = r.total_cash!=null ? cfNum(r.total_cash)
+    : bal.filter(b=>(b.fields.type||'').toLowerCase()==='cash').reduce((s,b)=>s+cfNum(b.fields.balance),0);
+  const net=Array(13).fill(0), inW=Array(13).fill(0), outW=Array(13).fill(0);
+  led.forEach(l=>{ const w=cfWeekIdx(l.fields.date,today); const a=cfNum(l.fields.amount);
+    if(cfDir(l)==='in'){ net[w]+=a; inW[w]+=a; } else { net[w]-=a; outW[w]+=a; } });
+  const run$=[]; let acc=B0; for(let w=0;w<13;w++){ acc+=net[w]; run$.push(acc); }
+  const buffer = cfNum(r.weekly_burn)*8;
+  const vals=[...run$, B0, 0]; if(buffer>0) vals.push(buffer);
+  const yMax=Math.max(...vals), yMin=Math.min(...vals);
+  const W=800,H=210, padL=6,padR=10,padT=14,padB=26, plotW=W-padL-padR, plotH=H-padT-padB;
+  const span=(yMax-yMin)||1;
+  const X=w=>padL + (w/12)*plotW;
+  const Y=v=>padT + (yMax-v)/span*plotH;
+  // running-balance area + line
+  let area=`M ${X(0)} ${Y(run$[0])}`; run$.forEach((v,w)=>{ area+=` L ${X(w)} ${Y(v)}`; });
+  const line=area;
+  area+=` L ${X(12)} ${Y(yMin)} L ${X(0)} ${Y(yMin)} Z`;
+  const zeroLine = (yMin<0&&yMax>0)?`<line x1="${padL}" y1="${Y(0)}" x2="${W-padR}" y2="${Y(0)}" stroke="var(--text-dim)" stroke-width="1" stroke-dasharray="2 3"/>`:'';
+  const bufLine = buffer>0?`<line x1="${padL}" y1="${Y(buffer)}" x2="${W-padR}" y2="${Y(buffer)}" stroke="var(--warn)" stroke-width="1.2" stroke-dasharray="5 4"/><text x="${W-padR}" y="${Y(buffer)-4}" text-anchor="end" font-size="10" fill="var(--warn)">8-wk buffer ${cf$(buffer)}</text>`:'';
+  // low point marker
+  let loIdx=0; run$.forEach((v,w)=>{ if(v<run$[loIdx]) loIdx=w; });
+  const loDot=`<circle cx="${X(loIdx)}" cy="${Y(run$[loIdx])}" r="4" fill="var(--danger)"/><text x="${X(loIdx)}" y="${Y(run$[loIdx])+ (run$[loIdx]<0?16:-9)}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--danger)">${cf$(run$[loIdx])}</text>`;
+  // week ticks (label every other week)
+  let ticks=''; for(let w=0;w<13;w+=2){ const d=new Date(today.getTime()+w*604800000);
+    const anchor = w===0?'start':w>=12?'end':'middle';
+    ticks+=`<text x="${X(w)}" y="${H-8}" text-anchor="${anchor}" font-size="9.5" fill="var(--text-dim)">${d.getMonth()+1}/${d.getDate()}</text>`; }
+  const svg=`<svg class="cf-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    ${bufLine}${zeroLine}
+    <path d="${area}" fill="rgba(68,104,177,.10)"/>
+    <path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2"/>
+    ${loDot}${ticks}
+  </svg>`;
+  return `<div class="card"><h2>13-week cash flow</h2>
+    <div class="cf-sub2">Running cash balance from ${cf$(B0)} today, projected on dated inflows/outflows. Dashed line = 8-week fixed-cost buffer; red dot = projected low point.</div>
+    <div class="cf-chart-wrap">${svg}</div>
+    <div class="cf-legend">
+      <span><span class="cf-swatch" style="background:var(--accent)"></span>Running balance</span>
+      <span><span class="cf-swatch" style="background:var(--warn)"></span>8-week buffer floor</span>
+      <span><span class="cf-swatch" style="background:var(--danger)"></span>Projected low point</span>
+    </div></div>`;
+}
+
+function cfLedgerCard(led, today){
+  if(!led.length) return '';
+  const rows=[...led].sort((a,b)=>String(a.fields.date||'').localeCompare(String(b.fields.date||'')))
+    .filter(l=>{ const d=cfParseDate(l.fields.date); return !d || (d-today)/86400000 <= 92; });
+  const body=rows.map(l=>{const f=l.fields; const dir=cfDir(l); const conf=(f.confidence||'known').toLowerCase();
+    return `<tr>
+      <td>${esc(f.date||'—')}</td>
+      <td>${cfBrandChip(f.brand||f.entity)}</td>
+      <td>${esc(f.counterparty||'—')}<div style="color:var(--text-dim);font-size:11px">${esc(f.category||'')}</div></td>
+      <td><span class="cf-chip ${conf}">${esc(f.confidence||'known')}</span></td>
+      <td class="num ${dir==='in'?'cf-in':'cf-out'}">${dir==='in'?'+':'−'}${cf$(f.amount)}</td>
+    </tr>`;}).join('');
+  return `<div class="card"><h2>Dated cash ledger — next 90 days</h2>
+    <div class="cf-sub2"><b>known</b> = invoice/bill with a set date · <b>projected</b> = install-keyed 40%/10% draw · <b>estimated</b> = historical run-rate spend.</div>
+    <div class="cf-table-wrap"><table class="cf-table">
+      <thead><tr><th>Date</th><th>Entity</th><th>Counterparty</th><th>Confidence</th><th class="num">Amount</th></tr></thead>
+      <tbody>${body}</tbody></table></div></div>`;
+}
+
+function cfArCard(ar){
+  if(!ar.length) return `<div class="card"><h2>Aged receivables</h2><div class="ge-clear">No open receivables tracked yet.</div></div>`;
+  const bucketCls=b=>{ const s=(b||'').toLowerCase(); return s.includes('60')||s.includes('31')?'cf-age-3':s.includes('15')||s.includes('30')?'cf-age-2':s.includes('1')?'cf-age-1':'cf-age-cur'; };
+  const tot=ar.reduce((s,a)=>s+cfNum(a.fields.amount),0);
+  const over30=ar.filter(a=>cfNum(a.fields.age_days)>30).reduce((s,a)=>s+cfNum(a.fields.amount),0);
+  const rows=[...ar].sort((a,b)=>cfNum(b.fields.age_days)-cfNum(a.fields.age_days)).map(a=>{const f=a.fields;
+    return `<tr>
+      <td>${esc(f.customer||'—')}${cfBrandChip(f.brand||f.entity)}</td>
+      <td>${esc(f.tranche||'—')}</td>
+      <td>${esc(f.due_date||'—')}</td>
+      <td class="${bucketCls(f.bucket)}">${esc(f.bucket||(f.age_days!=null?f.age_days+'d':'—'))}</td>
+      <td>${esc(f.action||'')}</td>
+      <td class="num">${cf$(f.amount)}</td>
+    </tr>`;}).join('');
+  return `<div class="card"><h2>Aged receivables — who owes you</h2>
+    <div class="cf-sub2">Total open <b>${cf$(tot)}</b>${over30>0?` · <span style="color:var(--danger)">${cf$(over30)} aged >30 days</span>`:''}</div>
+    <div class="cf-table-wrap"><table class="cf-table">
+      <thead><tr><th>Customer</th><th>Tranche</th><th>Due</th><th>Age</th><th>Action</th><th class="num">Amount</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></div>`;
+}
+
+function cfApCard(ap){
+  if(!ap.length) return `<div class="card"><h2>Payables queue</h2><div class="ge-clear">No payables tracked yet.</div></div>`;
+  const tot=ap.reduce((s,a)=>s+cfNum(a.fields.amount),0);
+  const rows=[...ap].sort((a,b)=>cfNum(a.fields.pay_rank||99)-cfNum(b.fields.pay_rank||99)).map(a=>{const f=a.fields;
+    return `<tr>
+      <td>${f.pay_rank?'<b>#'+esc(f.pay_rank)+'</b> ':''}${esc(f.vendor||'—')}${cfBrandChip(f.brand||f.entity)}</td>
+      <td>${esc(f.due_date||'—')}</td>
+      <td>${esc(f.terms||f.note||'')}</td>
+      <td class="num">${cf$(f.amount)}</td>
+    </tr>`;}).join('');
+  return `<div class="card"><h2>Payables queue — who you owe (pay order)</h2>
+    <div class="cf-sub2">Total queued <b>${cf$(tot)}</b> · ranked by lien/late-fee risk, then discounts worth taking, then job-critical vendors.</div>
+    <div class="cf-table-wrap"><table class="cf-table">
+      <thead><tr><th>Vendor</th><th>Pay by</th><th>Terms / note</th><th class="num">Amount</th></tr></thead>
+      <tbody>${rows}</tbody></table></div></div>`;
+}
+
+function cfBalanceCard(bal){
+  if(!bal.length) return `<div class="card"><h2>Bank &amp; liability balances</h2><div class="ge-clear">No balances published yet.</div></div>`;
+  const cash=bal.filter(b=>(b.fields.type||'').toLowerCase()==='cash');
+  const liabs=bal.filter(b=>(b.fields.type||'').toLowerCase()!=='cash');
+  const cashTot=cash.reduce((s,b)=>s+cfNum(b.fields.balance),0);
+  const cashRows=cash.map(b=>{const f=b.fields; const d=cfNum(f.wow_delta);
+    return `<tr>
+      <td>${esc(f.institution||f.account||'—')}${cfBrandChip(f.brand||f.entity)}</td>
+      <td>${esc(f.account||'')}</td>
+      <td class="num">${cf$(f.balance)}</td>
+      <td class="num" style="color:${d>0?'var(--success)':d<0?'var(--danger)':'var(--text-dim)'}">${d?(d>0?'+':'')+cf$(d):'—'}</td>
+    </tr>`;}).join('');
+  const cashTable=`<table class="cf-table">
+    <thead><tr><th>Account</th><th>Detail</th><th class="num">Balance</th><th class="num">WoW Δ</th></tr></thead>
+    <tbody>${cashRows}<tr><td colspan="2"><b>Total cash</b></td><td class="num"><b>${cf$(cashTot)}</b></td><td></td></tr></tbody></table>`;
+
+  const termOrder={short:0,medium:1,long:2};
+  const termLabel={short:'Short-term (&lt;1 yr) — cards, LOC draws, accruals',medium:'Medium-term (1–3 yr)',long:'Long-term (&gt;3 yr) — SBA / term debt'};
+  const groups={short:[],medium:[],long:[],other:[]};
+  liabs.forEach(b=>{ const t=(b.fields.term||'other').toLowerCase(); (groups[t]||groups.other).push(b); });
+  let liabTot=0, liabHtml='';
+  ['short','medium','long','other'].forEach(t=>{ const g=groups[t]; if(!g.length) return;
+    const gt=g.reduce((s,b)=>s+cfNum(b.fields.balance),0); liabTot+=gt;
+    liabHtml+=`<div class="cf-term-h"><span>${t==='other'?'Unclassified':termLabel[t]}</span><span class="t-tot">${cf$(gt)}</span></div>`;
+    liabHtml+=`<div class="cf-table-wrap"><table class="cf-table">
+      <thead><tr><th>Facility</th><th>Type</th><th class="num">Balance</th><th class="num">APR</th><th class="num">Int/mo</th><th>Next pmt</th></tr></thead>
+      <tbody>${g.sort((a,b)=>cfNum(b.fields.apr)-cfNum(a.fields.apr)).map(b=>{const f=b.fields;
+        return `<tr>
+          <td>${esc(f.institution||f.account||'—')}${cfBrandChip(f.brand||f.entity)}${f.available?`<div style="color:var(--text-dim);font-size:11px">${cf$(f.available)} available</div>`:''}</td>
+          <td>${esc(f.type||'—')}</td>
+          <td class="num">${cf$(f.balance)}</td>
+          <td class="num">${f.apr?esc(String(f.apr)):'—'}</td>
+          <td class="num">${f.monthly_interest?cf$(f.monthly_interest):'—'}</td>
+          <td>${esc(f.next_payment||'—')}${f.min_due?`<div style="color:var(--text-dim);font-size:11px">min ${cf$(f.min_due)}</div>`:''}</td>
+        </tr>`;}).join('')}</tbody></table></div>`;
+  });
+
+  return `<div class="card"><h2>Bank &amp; liability balances</h2>
+    <div class="cf-sub2">Cash = operating deposit accounts only. Lines of credit show drawn balance with available credit separately — never counted as cash.</div>
+    <div class="cf-table-wrap">${cashTable}</div>
+    <div class="cf-term-h" style="margin-top:20px;font-size:13px"><span>Liabilities by term</span><span class="t-tot">Total owed ${cf$(liabTot)}</span></div>
+    ${liabHtml}
+  </div>`;
 }
 
 /* ================================================================
@@ -4768,7 +5110,9 @@ async function renderProjects(){
   <div style="overflow-x:auto"><table class="btable"><thead><tr><th>Project</th><th>Brand</th><th>Service type</th><th>Stage</th><th>Pace</th><th>Timeline</th><th>Gate</th><th>Vendor</th><th data-nosort></th></tr></thead><tbody>
   ${list.map(r=>{const f=r.fields;const g=gateByProject[f.project];const vFlags=vendorFlagByProject[f.project]||0;
     return `<tr>
-    <td><a href="javascript:void(0)" onclick="openProjectDetail(${JSON.stringify(f.project||'')})"><b>${esc(f.project||'—')}</b></a>${f.scope_summary?`<br><small style="color:var(--text-mute)">${esc(String(f.scope_summary).slice(0,70))}</small>`:''}</td>
+    <td><a href="javascript:void(0)" onclick="openProjectTimeline(${JSON.stringify(f.project||'')})" title="Open the project timeline breakout"><b>${esc(f.project||'—')}</b></a>
+      <a href="javascript:void(0)" onclick="openProjectDetail(${JSON.stringify(f.project||'')})" title="Quick details (margins, ledger, gate)" style="margin-left:6px;font-size:11px;color:var(--text-mute)">details ▾</a>
+      ${f.scope_summary?`<br><small style="color:var(--text-mute)">${esc(String(f.scope_summary).slice(0,70))}</small>`:''}</td>
     <td>${esc(f.brand||'')}</td>
     <td>${f.service_type?esc(f.service_type):'<small style="color:var(--text-dim)">—</small>'}</td>
     <td>${stageBadge(f.stage)}</td>
@@ -4809,6 +5153,140 @@ function paymentLine(f){
   const lbl={pre_production:'🟠 Pre-production',started:'🔵 Started (≥75% collected)',complete:'✅ Complete (paid in full)'}[f.payment_status]||f.payment_status||'';
   return `<div class="sub" style="margin-top:4px"><b>Payment:</b> ${pctNum!=null?pctNum+'% collected':''}${lbl?` · ${esc(lbl)}`:''}</div>`;
 }
+/* ================================================================
+   Project Timeline — dated milestone Gantt breakout (one project).
+   Reads foreman_timeline (one row per milestone) + foreman_board for
+   header context. Foreman owns the plan + dates (§2c of foreman.md);
+   the PM can nudge a milestone's target date here (saved as
+   planned_end_override, which Foreman preserves and keys downstream
+   dates off on its next sweep).
+   ================================================================ */
+const PT_OWNER_COLOR={sales:'#4468b1',pm:'#178a4c',client:'#d97706',vendor:'#8250c4'};
+function ptOwnerColor(o){ return PT_OWNER_COLOR[String(o||'').toLowerCase()]||'#68748a'; }
+function ptOwnerClass(o){ const k=String(o||'').toLowerCase(); return ['sales','pm','client','vendor'].includes(k)?'pt-owner-'+k:''; }
+const PT_STATUS_LABEL={done:'✅ Done',in_progress:'▶ In progress',upcoming:'Upcoming',late:'🔴 Late',at_risk:'🟡 At risk'};
+function ptEffEnd(f){ return f.planned_end_override || f.planned_end || f.planned_start || null; }
+function ptTrackLabel(t){ return t==='A'?'Track A · reface/redoor':t==='B'?'Track B · custom kitchen':(t?('Track '+t):'—'); }
+
+async function openProjectTimeline(project){
+  CURRENT_PROJECT = project;
+  go('projtimeline');
+}
+
+async function renderProjectTimeline(){
+  const root=document.getElementById('pt_root'); if(!root) return;
+  root.classList.remove('loading');
+  const project=CURRENT_PROJECT;
+  if(!project){ root.innerHTML='<div class="empty">Open a project from the <a href="javascript:void(0)" onclick="go(\'projects\')">Projects</a> tab to see its timeline.</div>'; return; }
+  const [tlAll, board]=await Promise.all([fetchRecords('foreman_timeline'), fetchRecords('foreman_board')]);
+  const rows=tlAll.filter(r=>r.fields.project===project)
+    .sort((a,b)=>(cfNum(a.fields.seq)-cfNum(b.fields.seq))||((a.sort_order||0)-(b.sort_order||0)));
+  const bf=(board.find(r=>r.fields.project===project)||{}).fields||{};
+  const track=(rows[0]&&rows[0].fields.track)||bf.track||'';
+  const doneN=rows.filter(r=>r.fields.status==='done').length;
+  const actions=`<div class="pt-actions">
+    <button class="btn sm ghost" onclick="go('projects')">← All projects</button>
+    <button class="btn sm" onclick='openProjectDetail(${JSON.stringify(project)})'>📊 Full details (margins, ledger, gate)</button>
+    ${rows.length?`<button class="btn sm ghost" onclick='openProjectShare(${JSON.stringify(project)})'>🖨 Share / Print</button>`:''}
+  </div>`;
+  const header=`<div class="pt-head">
+      <h2 style="margin:0">${esc(project)}</h2>
+      <span class="pt-meta"><b>${esc(bf.brand||rows[0]?.fields.brand||'')}</b></span>
+      ${track?`<span class="pt-meta">${esc(ptTrackLabel(track))}</span>`:''}
+      ${bf.stage?`<span class="pt-meta">Stage: <b>${esc(bf.stage)}</b></span>`:''}
+      ${rows.length?`<span class="pt-meta"><b>${doneN}/${rows.length}</b> milestones done</span>`:''}
+    </div>`;
+
+  if(!rows.length){
+    root.innerHTML=header+actions+`<div class="ge-clear" style="margin-top:12px">📐 No milestone plan yet for this project — Foreman generates the dated Track A/B breakout on its next daily sweep (from the ServiceMinder proposal + JobTread scope + the Handover Standard targets). It'll appear here automatically.</div>`;
+    return;
+  }
+
+  // ---- date span (whole weeks so bars align to the week header) ----
+  const today=new Date(); today.setHours(0,0,0,0);
+  let min=null,max=null;
+  rows.forEach(r=>{ const s=cfParseDate(r.fields.planned_start), e=cfParseDate(ptEffEnd(r.fields));
+    [s,e].forEach(d=>{ if(d){ if(!min||d<min)min=d; if(!max||d>max)max=d; } }); });
+  if(!min) min=new Date(today); if(!max) max=new Date(min.getTime()+7*86400000);
+  if(today<min) min=new Date(today); if(today>max) max=new Date(today);
+  const weeks=Math.max(1,Math.ceil((max-min)/604800000));
+  const spanMs=weeks*604800000;
+  const pctOf=d=>{ const x=cfParseDate(d)||min; return Math.max(0,Math.min(100,(x-min)/spanMs*100)); };
+
+  // ---- week header ----
+  let weekCols=''; for(let i=0;i<weeks;i++){ const wd=new Date(min.getTime()+i*604800000);
+    weekCols+=`<div class="pt-week">${wd.getMonth()+1}/${wd.getDate()}</div>`; }
+  const todayLeft=(today-min)/spanMs*100;
+  const todayMark=(todayLeft>=0&&todayLeft<=100)?`<div class="pt-today" style="left:${todayLeft}%"><span class="pt-today-lbl" style="left:${todayLeft}%">today</span></div>`:'';
+
+  // ---- gantt rows ----
+  const ganttRows=rows.map(r=>{const f=r.fields;
+    const s=f.planned_start, e=ptEffEnd(f);
+    const left=pctOf(s), right=pctOf(e), width=Math.max(1.5,right-left);
+    const col=ptOwnerColor(f.owner);
+    const win=(f.planned_start||'?')+' → '+(ptEffEnd(f)||'?');
+    const tip=[f.milestone, 'Owner: '+(f.owner||'—'), win, f.planned_end_override?'(PM-adjusted target)':'', f.note].filter(Boolean).join(' · ');
+    return `<div class="pt-row">
+      <div class="pt-lbl-col">
+        <div class="pt-mname"><span class="pt-dot ${ptOwnerClass(f.owner)}" style="background:${col}"></span>${esc(f.milestone||'—')}</div>
+        <div class="pt-mmeta">${esc(f.owner||'')}${f.status?' · '+esc((PT_STATUS_LABEL[f.status]||f.status)):''}</div>
+      </div>
+      <div class="pt-track">
+        <div class="pt-bar ${esc(f.status||'upcoming')}" style="left:${left}%;width:${width}%;background:${col}" title="${esc(tip)}"></div>
+      </div>
+    </div>`;}).join('');
+
+  // full-height today line spans the chart body (offset past the 220px label column)
+  const todayFull=(todayLeft>=0&&todayLeft<=100)
+    ? `<div class="pt-today-full" style="left:calc(220px + (100% - 220px) * ${(todayLeft/100).toFixed(4)})"></div>` : '';
+  const gantt=`<div class="pt-gantt-wrap"><div class="pt-gantt">
+    <div class="pt-grid-head">
+      <div class="pt-lbl-col">Milestone</div>
+      <div class="pt-weeks">${weekCols}${todayMark}</div>
+    </div>
+    ${ganttRows}
+    ${todayFull}
+  </div></div>`;
+
+  // ---- step table (with editable target date) ----
+  const stepRows=rows.map(r=>{const f=r.fields;
+    const inputVal=f.planned_end_override||f.planned_end||'';
+    return `<tr>
+      <td><b>${esc(f.milestone||'—')}</b>${f.depends_on?`<div style="color:var(--text-dim);font-size:11px">after: ${esc(f.depends_on)}</div>`:''}</td>
+      <td><span class="pt-dot ${ptOwnerClass(f.owner)}" style="background:${ptOwnerColor(f.owner)};vertical-align:middle;margin-right:5px"></span>${esc(f.owner||'—')}</td>
+      <td>${esc(f.planned_start||'—')} → ${esc(f.planned_end||'—')}</td>
+      <td><input type="date" class="pt-date-input" value="${esc(inputVal)}" onchange='savePtDate(${JSON.stringify(project)},${JSON.stringify(f.milestone||"")},this.value)' title="Adjust the target date — Foreman keys downstream steps off it">${f.planned_end_override?'<div style="color:var(--warn);font-size:10px">PM-adjusted</div>':''}</td>
+      <td>${esc(f.actual_date||'—')}</td>
+      <td><span class="pt-status-chip pt-st-${esc(f.status||'upcoming')}">${esc(PT_STATUS_LABEL[f.status]||f.status||'—')}</span></td>
+      <td>${esc(f.note||'')}</td>
+    </tr>`;}).join('');
+  const legend=`<div class="pt-legend">
+    <span><span class="pt-dot pt-owner-sales"></span>Sales</span>
+    <span><span class="pt-dot pt-owner-pm"></span>PM</span>
+    <span><span class="pt-dot pt-owner-client"></span>Client</span>
+    <span><span class="pt-dot pt-owner-vendor"></span>Vendor</span>
+    <span style="margin-left:8px"><span class="pt-dot" style="background:var(--danger)"></span>Today</span>
+  </div>`;
+  const span=`<div class="cf-sub2">Plan window ${esc(min.getFullYear()+'-'+String(min.getMonth()+1).padStart(2,'0')+'-'+String(min.getDate()).padStart(2,'0'))} → ${esc(max.getFullYear()+'-'+String(max.getMonth()+1).padStart(2,'0')+'-'+String(max.getDate()).padStart(2,'0'))} · ${weeks} week${weeks>1?'s':''}. Adjust a target date in the table to re-plan; Foreman preserves your edit.</div>`;
+
+  root.innerHTML=header+actions+legend+gantt
+    +`<div class="card" style="margin-top:16px"><h2>Milestone steps</h2>${span}
+      <div class="cf-table-wrap"><table class="pt-steptable">
+      <thead><tr><th>Milestone</th><th>Owner</th><th>Planned window</th><th>Target date</th><th>Actual</th><th>Status</th><th>Note</th></tr></thead>
+      <tbody>${stepRows}</tbody></table></div></div>`;
+}
+
+async function savePtDate(project, milestone, value){
+  const tl=await fetchRecords('foreman_timeline');
+  const row=tl.find(r=>r.fields.project===project && r.fields.milestone===milestone);
+  if(!row){ toast('Could not find that milestone row — try refreshing.',1); return; }
+  const fields={...row.fields, planned_end_override: value||null};
+  const {error}=await sb.from('intranet_records').update({fields,updated_at:new Date().toISOString()}).eq('id',row.id);
+  if(error){ toast('Save failed: '+error.message,1); return; }
+  toast(value?'Target date updated — Foreman keys downstream steps off it next sweep.':'Override cleared.');
+  renderProjectTimeline();
+}
+
 const COST_CATS=['Materials','Labor','Other'];
 async function projCtx(project){
   const {board,briefing,vendor,gates,clients}=window._PROJ_DATA||{};
@@ -4984,6 +5462,17 @@ async function deleteJobCost(id,project){
   const {error}=await sb.from('intranet_records').delete().eq('id',id);
   if(error){toast(error.message,1);return;}
   refreshOpenDetail(project);
+}
+async function saveTimelineGoal(project){
+  const inputId='tgInput_'+String(project).replace(/[^a-zA-Z0-9]/g,'_');
+  const goal=val(inputId);
+  const row=(window._PROJ_DATA?.board||[]).find(r=>r.fields.project===project);
+  if(!row){toast('Could not find this project\'s row — try refreshing.',1);return;}
+  const fields={...row.fields, timeline_goal: goal||null};
+  const {error}=await sb.from('intranet_records').update({fields}).eq('id',row.id);
+  if(error){toast('Failed: '+error.message,1);return;}
+  toast(goal?'Timeline goal saved — Foreman checks it on the next sweep.':'Timeline goal cleared.');
+  refreshProjectDetail(project);
 }
 async function saveTimelineGoal(project){
   const inputId='tgInput_'+String(project).replace(/[^a-zA-Z0-9]/g,'_');

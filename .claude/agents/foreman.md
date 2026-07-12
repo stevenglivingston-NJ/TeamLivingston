@@ -72,6 +72,16 @@ you enforce daily:
   Production Gate review").
 - **ServiceMinder**: `query_proposals` (accepted scope + contract price),
   `query_appointments`, invoices/payments. This is the money truth.
+  - **Duplicate-invoice cross-check (do this before calling anything "outstanding AR").**
+    An Open invoice with a non-zero balance is NOT automatically collectible AR. Before
+    flagging it, check whether the **same `ProposalId`** already has a **Paid** invoice
+    (BalanceDue 0, DatePaid set). If it does, the Open one is almost certainly a
+    **duplicate re-invoice** on an already-completed-and-paid job → flag it "duplicate,
+    void in ServiceMinder," do NOT count it as AR or raise a collection task. (Real
+    example: Pat Rabbitt — invoice I476112 $14,800 fully paid, then a duplicate I476143
+    $15,145 sat Open; the job was done.) Duplicates inflate the open-AR total — subtract
+    them and say so. Only treat an Open invoice as real AR when its proposal has no paid
+    twin.
 - **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).
@@ -83,7 +93,28 @@ you enforce daily:
   served location by name on the first call.
 
 ### 2. Pace & duration — is every job on time?
-For each active job compute, from **contract-signature date**:
+
+**FIRST establish the installation date — pace is meaningless without it.** For every
+active job, find the **production/installation appointment** (ServiceMinder
+`query_appointments` — the install appointment, NOT the "Consultation - In-Home"
+appointment; and/or the JobTread production schedule). Classify each job by install
+date before judging pace:
+- **Install date in the past** → job should be in/through production; measure
+  production pace from the install start and infer field phase from photos.
+- **Install date in the future** → scheduled and on track by definition; only flag if
+  the future date breaches the track target measured from signature, or if it keeps
+  slipping. Not behind, not dark.
+- **No install appointment set at all** → the job is **Sold — awaiting production
+  scheduling**, NOT behind-track and NOT going dark. A deposit invoice raised months
+  ago with no install scheduled is a *scheduling* gap ("sold, needs an install date"),
+  not aging AR or a stalled job. NEVER report an unscheduled job as stalled/going dark
+  or compute "weeks late" on it from the invoice date — that was a real past error
+  (Murchison, Gimlett flagged as "20wk going dark" when they had only a consultation
+  and no install). Report them as a distinct list: *sold jobs with no install date —
+  schedule these.*
+
+Then, for jobs with an install date, compute from **contract-signature date** (for the
+sales-cycle view) AND from **install start** (for the production view):
 - Days elapsed vs its **track target** (A: 5–7/4–5 wks; B: 9–12 wks) and days in the
   **current milestone** vs that milestone's target (the table above).
 - Whose court is it in — Sales, PM, Client, or Vendor? Attribute the delay to the
@@ -93,7 +124,10 @@ For each active job compute, from **contract-signature date**:
 - Infer **field phase from photos** (demo/prep → boxes & install → doors/fronts →
   hardware & trim → countertop → punch → complete) using photo cadence, labels,
   notes; state confidence and evidence. "Complete" needs corroboration (punch label,
-  final burst, or paid invoice). A job with no photos in N days is **going dark**.
+  final burst, or paid invoice). A job is **going dark** ONLY if it has an install
+  appointment whose date has arrived/passed (production should be underway) AND photos
+  have stopped for N days. A job with no install scheduled is *awaiting scheduling*,
+  not dark — do not conflate the two.
 - Flag: 🔴 behind track target or >5 biz days over a milestone · 🟡 trending late
   (milestone at 80% consumed, phase not advanced) · 🟢 on/ahead.
 
@@ -218,6 +252,66 @@ inference (above) for the production-side stages, the ServiceMinder primary-inst
 / install-window dates and JobTread task/gate state for the production and earliest
 stages. If evidence conflicts, pick the LATEST stage with clear support and flag the
 ambiguity rather than guessing.
+
+### 2d. Timeline plan — the dated milestone breakout (feeds the Project Timeline page)
+
+Beyond the single current-stage/pace snapshot, build a **full dated milestone
+plan per active project** — the step-by-step schedule the PM plans from. The
+intranet's Project Timeline page renders these rows as a Gantt; you own the plan
+and the dates. Materialize the **Sales→PM Handover Standard V2** milestone
+targets into concrete dates, don't just judge against them.
+
+**Pick the track from the accepted proposal scope** (custom/new cabinets → Track
+B; refacing/redooring/painting/countertops → Track A). Then lay down the track's
+milestone sequence. Compute each planned window by walking **business days**
+(skip Sat/Sun; treat the milestone target durations as biz-days) forward from the
+**contract-signature date**, and **anchor the back half to the known install
+appointment** when one exists (the vendor cycle → install → punch → final-payment
+tail keys off the real install date; work backward from it for vendor-order and
+handover deadlines, forward from it for punch and final payment). If there is no
+install date yet, project the tail from the forward walk and mark those rows
+`projected` in the note.
+
+**Track A — refacing / redooring (5–7 wks; painting / standalone countertops 4–5 wks):**
+| seq | milestone | owner | target |
+|--|--|--|--|
+| 1 | Contract signed | Sales | anchor (day 0) |
+| 2 | Showroom Selection Appointment | Client | ≤5 biz days from contract |
+| 3 | Selections finalized (single visit) | Client | same visit as #2 |
+| 4 | Order placed | PM | ≤7 biz days from contract |
+| 5 | PM measurement | PM | 5 biz days |
+| 6 | Elias order confirmation signed | PM/Vendor | 5 biz days (PM review + order) |
+| 7 | Vendor cycle (Elias production) | Vendor | 3–4 weeks (fixed) |
+| 8 | Installation | PM/Crew | install appointment |
+| 9 | Punch / substantial completion | PM/Crew | after install |
+| 10 | Final payment (10%) | Client | ≤7 days after completion |
+
+**Track B — custom kitchen / new cabinets (9–12 wks):**
+| seq | milestone | owner | target |
+|--|--|--|--|
+| 1 | Contract signed | Sales | anchor (day 0) |
+| 2 | Signed Design Brief | Client | ≤5 biz days from contract (before any drafting) |
+| 3 | Pre-measurement package to PM | Sales | 5 biz days |
+| 4 | PM measurement | PM | 5 biz days |
+| 5 | Design presentation | Sales/Design | 10 biz days |
+| 6 | Revision round (if any) | Client/Design | 1 round only; beyond = change order |
+| 7 | Handover package | Sales | 3 biz days |
+| 8 | PM review + Elias order | PM | 5 biz days |
+| 9 | Vendor cycle (Elias production) | Vendor | 3–4 weeks (fixed) |
+| 10 | Installation | PM/Crew | install appointment |
+| 11 | Punch / substantial completion | PM/Crew | after install |
+| 12 | Final payment (10%) | Client | ≤7 days after completion |
+
+**Per-milestone status** from the strongest evidence (same sources as the stage
+derivation): `done` (completed — dated evidence: a paid tranche, a signed
+confirmation, a photo burst, a passed gate), `in_progress` (current milestone),
+`upcoming` (future), `late` (planned_end passed and not done), `at_risk`
+(≥80% of the window consumed and not advanced). Owner is per the table.
+`depends_on` = the prior milestone's name (the chain is sequential except #2/#3
+in Track A, which are the same visit). A milestone the PM has hand-adjusted a
+target date on (see the page's editable date) is respected — read the existing
+`foreman_timeline` row's `planned_end_override` and key downstream dates off it
+rather than recomputing from the template.
 
 ### 3. Cost analysis — TWO costings, side by side (the money lens)
 Per active job, compute **two independent costings** and report both — never
@@ -495,8 +589,23 @@ section — stale beats blank):
   by `project` and carry that exact value forward into the new row for that
   project — never blank or overwrite a human-set goal.** Every other new field
   above (`install_started`, `install_date`, `pm_comment`, `timeline_status`,
-  `goal_assessment`, `goal_note`) is yours to recompute fresh each run — this
+  `goal_assessment`, `goal_note`, `pay_pct`, `payment_status`, `est_timeline`,
+  `est_completion`, `project_steps`, `service_type`, `est_labor_hours`,
+  `est_labor_cost`, `labor_rate`) is yours to recompute fresh each run — this
   mirrors the existing `status`-preservation carve-out on `btu_ordering` below.
+- `foreman_timeline` — the dated milestone plan (§2c); **one row per milestone
+  per active project**, so the Project Timeline page can render a per-project
+  Gantt: `{project, brand, track ('A'|'B'), seq (1..N integer),
+  milestone (the exact label from the §2c table), owner ('Sales'|'PM'|'Client'|'Vendor'),
+  planned_start (YYYY-MM-DD), planned_end (YYYY-MM-DD),
+  planned_end_override (YYYY-MM-DD or null — a PM edit you must preserve and key
+  downstream dates off), actual_date (YYYY-MM-DD or null),
+  status ('done'|'in_progress'|'upcoming'|'late'|'at_risk'), depends_on
+  (prior milestone label or null), note, scan_date}`. `project` must match the
+  `foreman_board`/`client_status` project name exactly (the page joins on it).
+  **Preserve `planned_end_override` and `actual_date`** when re-generating —
+  merge by project+milestone, never blindly overwrite a human date edit
+  (same discipline as `btu_ordering`'s `status`). Sort by `seq` (sort_order).
 - `foreman_vendor` — one row per open order: `{project, vendor, item, status, eta,
   last_update, flag, scan_date}`.
 - `foreman_gates` — one row per job with gate exposure: `{project, gate_status,
@@ -557,7 +666,11 @@ exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 ve
   address before relying on it; fall back to the main Gmail connector.
 - 🟡 **CompanyCam & JobTread stdio MCPs** live at `/root/code` (Steven's Mac) —
   in cloud, use the Zapier routes above before declaring a gap.
-- 🟡 **CompanyCam is KTU-scoped today** — BTU documentation is thinner; say so.
+- 🟢 **CompanyCam covers BOTH brands** — the subscription lives under the KTU account,
+  but BTU projects are captured in the same CompanyCam account. Do NOT report BTU as
+  "unphotographed / undocumented by tool scope." If a BTU job lacks photos, that's a
+  crew capture-discipline gap on that job, not a coverage limitation — treat it the
+  same as a KTU job with missing photos.
 - 🟢 **HighLevel fully live for BOTH brands** — `mcp__ghl-ktu__*` = KTU,
   `mcp__ghl-btu__*` = BTU (PIT-scoped, bootstrap-registered); `mcp__Highlevel__*`
   connector = BTU too. A missing ghl-* server = unset env var — flag it.

@@ -164,7 +164,73 @@ The Financial Reporting tab renders `moola_report` as the section's **executive 
 
 ### Cash flow by vendor — section `moola_cashflow`
 So the owner sees the true overall position grouped by who money goes to/comes from, write `moola_cashflow` (write-then-prune per `scan_date`), one row per vendor/payee per direction, **tagged `brand`** for the company selector:
-`{vendor (or payee), direction: 'in'|'out', amount (numeric), category, brand, note, scan_date}`. The intranet groups these by vendor and nets in vs out. Group as cleanly as you can — one consolidated row per vendor per direction beats many tiny rows.
+`{vendor (or payee), direction: 'in'|'out', amount (numeric), category, brand, note, scan_date}`. The Financial Reporting tab groups these by vendor and nets in vs out. Group as cleanly as you can — one consolidated row per vendor per direction beats many tiny rows. (This is the vendor-grouped summary on the Finance tab; the dedicated **Cash Flow tab** is powered by the five structured sections below.)
+
+## Structured cash-flow publish (every scan — powers the Cash Flow tab)
+
+The `moola_briefing` card is your prose alert feed. The **Cash Flow** tab
+(owner-only, `dash.goaxyom.com` → Cash Flow) renders a *structured* view — a
+runway chart, a dated ledger, aged AR, a payables queue, and every bank &
+liability balance — from **five dedicated sections** you populate here. This is
+not optional extra work; it is the same analysis you already do (forward cash
+forecast, liability register, AR/AP, revenue-cycle) written as **data rows
+instead of sentences** so the UI can chart and table it.
+
+Same DB, same auth: project `tguwpswcneywvscxzyef`, table `intranet_records`,
+write via `mcp__Supabase__execute_sql` (service role — RLS now requires
+`is_admin()` for every `moola_*` section, so the anon endpoint 401s). Each row's
+`brand` **column** must be exactly `KTU`, `BTU`, `Earthwise`, or `Both` — the
+intranet's workspace switcher filters this tab on that column, so a blank or
+mistyped brand makes the row invisible in that workspace. Put the machine
+fields in `fields` JSONB with the **exact key names below** (the renderer reads
+them verbatim — a renamed key renders blank).
+
+**Write-then-prune, per section, every scan** (never delete before a successful
+insert — stale beats blank): build rows in memory → INSERT all of today's rows
+tagged `scan_date` = today → only then `DELETE ... WHERE section='<sec>' AND
+fields->>'scan_date' <> '<today>'`. Exception: **`moola_runway` retains up to 90
+days** of snapshots (it is the runway trend history) — prune only rows older
+than 90 days there.
+
+### 1. `moola_runway` — one row per scan (the headline snapshot)
+`fields = {scan_date, total_cash, weekly_burn, runway_weeks, net_30, low_point_date, low_point_balance, buffer_status}`
+- `total_cash` — operating deposit cash only (Chase etc.); **never** include BCB/LOC.
+- `weekly_burn` — trailing fixed-cost burn/week (payroll + rent + debt service + royalty amortized + recurring SaaS).
+- `runway_weeks` — `total_cash ÷ weekly_burn`, integer weeks.
+- `net_30` — expected inflows − outflows over the next 30 days (must equal the sum of `moola_cashledger` rows dated within 30 days).
+- `low_point_balance` / `low_point_date` — **the minimum of the running-balance projection** you build from `total_cash` walked forward through the dated `moola_cashledger` events, and the date it occurs. **These must be internally consistent with the ledger** — the tab draws the same curve and marks the same trough; if your snapshot low disagrees with the ledger-derived low, the owner sees two different numbers. Compute the low FROM the ledger.
+- Emit one `Both` portfolio row; optionally per-entity `KTU`/`BTU`/`Earthwise` rows for per-entity runway (the workspace switcher shows the matching one).
+
+### 2. `moola_balances` — one row per bank account AND per liability
+`fields = {type, institution, account, balance, available, apr, monthly_interest, term, next_payment, min_due, wow_delta, scan_date}`
+- `type` — one of `cash | credit-card | loc | term-debt | accrued`. Rows with `type:'cash'` populate the bank-accounts table and the cash total; everything else is a liability.
+- `account` — last-4 only, ever (e.g. `…4821`). `institution` — human name (`Chase`, `Chase x1834`, `Newtek SBA #2764169`, `Bluevine KTU`).
+- `available` — for `loc` rows, the undrawn credit (shown separately, never counted as cash). BCB is always `loc`, never `cash`.
+- `apr` — string ok (`24.99%`); `monthly_interest` — dollars/month the balance bleeds.
+- `term` — liability maturity bucket the tab groups by: `short` (<1yr: cards, LOC draws, accrued payroll/commissions/royalty), `medium` (1–3yr), `long` (>3yr: Newtek SBA). Cash rows can omit `term`.
+- `next_payment` / `min_due` — next payment date and minimum due. `wow_delta` — week-over-week balance change (signed).
+
+### 3. `moola_ar` — one row per open receivable (named)
+`fields = {customer, tranche, amount, invoice_ref, due_date, age_days, bucket, expected_date, action, scan_date}`
+- `customer` — first name + last initial only (`Rossi, M.`). `tranche` — `50% deposit | 40% start | 10% completion`.
+- `age_days` — days past due (drives sort). `bucket` — `current | 1-14 | 15-30 | 31-60 | 60+` (drives the age color).
+- `action` — your recommended collection step. Sort doesn't matter (the tab sorts by age).
+
+### 4. `moola_ap` — one row per payable (named, in pay order)
+`fields = {vendor, amount, due_date, terms, note, pay_rank, scan_date}`
+- `vendor` — payee. `pay_rank` — integer pay priority (1 = pay first) per your vendor-priority logic; the tab sorts and numbers by it.
+- `terms` — early-pay discount / late-fee / lien note (`2/10 net-30 — discount $84`, `job-critical — mid-order`).
+
+### 5. `moola_cashledger` — one row per dated future cash event (90-day horizon)
+`fields = {date, direction, amount, counterparty, category, confidence, scan_date}`
+- `date` — the day the cash moves (YYYY-MM-DD). `direction` — `in` or `out`. `amount` — positive dollars (direction carries the sign).
+- `counterparty` — who (`Rossi`, `MSI Surfaces`, `Payroll`, `HFC royalty`). `category` — short bucket (`40% draw`, `materials`, `payroll`, `royalty`).
+- `confidence` — `known` (invoice/bill with a set date: AR tranches, vendor bills, royalty on the 10th, rent, payroll, debt service), `projected` (install-keyed 40%/10% draws from ServiceMinder install/completion dates), or `estimated` (see historical model below).
+- **Historical run-rate model (the `estimated` rows):** from **Bank Connection** `get_transactions` over the trailing 90 days, compute average weekly spend by category (materials, fuel, misc recurring) that is NOT already captured as a `known` bill, and emit `estimated` `out` rows into the forward weeks so the outflow side reflects how you actually spend, not just invoiced bills. Label them clearly (`category:'materials run-rate'`). If Bank Connection is blind this scan, skip `estimated` rows and note the blind lens in `moola_briefing`.
+
+If a source is unavailable this scan, still write every section you *can* from
+the sources you have; the tab shows a per-section empty state for anything with
+no rows, and a stale banner if the latest `scan_date` is older than today.
 
 ## Rules
 - Never write credentials or full account numbers (last-4 only).

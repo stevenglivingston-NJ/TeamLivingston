@@ -87,13 +87,26 @@ HTTP-transport servers (registered by bootstrap.sh, no local code):
 
 ## Setup Script (runs on new session)
 
-Point the Cloud environment's **Setup script** at the MCP bootstrap so every
-fresh session (including the scheduled agent runs — Goldeneye, Moola, Paid)
-re-registers the custom stdio MCP servers, not just this repo's clone:
+The Cloud environment's **Setup script** must provision every fresh session —
+including the scheduled agent fires (Goldeneye, Moola, Paid, Pipeline, …) —
+with (1) a repo checkout and (2) the custom MCP servers.
 
-```bash
-bash "$(git -C /home/user/TeamLivingston rev-parse --show-toplevel)/mcp-servers/bootstrap.sh"
-```
+**Canonical content: `mcp-servers/setup.sh`** (version-controlled). Paste that
+file's contents into the Cloud env → Setup script; if console and repo drift,
+the repo file wins — re-paste it.
+
+Why the self-healing form: scheduled fires sometimes come up with **no repo
+checkout at all**. The older path-robust loop found no `bootstrap.sh`, exited 0
+silently, and the session ran blind (no MCP servers, no agent specs) — which
+produced stale intranet boards that looked like agent failures. `setup.sh`
+fixes this: if no checkout exists it clones the repo (`--depth 1`, default
+branch, `GIT_TERMINAL_PROMPT=0`, 180s timeout), then runs the MCP bootstrap,
+and prints a greppable `⚠ SETUP INCOMPLETE` marker if registration still
+didn't happen. It always exits 0, so setup never false-fails the session.
+
+Setup scripts can NOT enable the claude.ai connectors (Gmail, Drive, Slack,
+JobTread, Bank Connection…) — those are account-level and must be enabled for
+scheduled runs in the environment/connector settings.
 
 `bootstrap.sh` installs Python deps and registers every custom stdio server
 (closebot, companycam, serviceminder, google-ads, gmb, shipstation, amazon-sp,
@@ -176,6 +189,30 @@ brief it degrades. Tekkie audits all of these daily.
 | Shopify / ShipStation / Amazon SP | Cellar (fulfillment), Harvest (demand) | Orders, inventory, FBA, ad ROAS |
 | Supabase intranet (`tguwpswcneywvscxzyef`) | ALL agents (publish target) | No agent can post its brief to the intranet |
 | Cloudflare Workers/Pages | (infra) | Dashboard + intranet hosting |
+
+## Google Drive routing (two drives — do not cross them)
+
+Two Google Drives are connected; agents may read either as needed, but they
+serve different purposes and different audiences:
+
+- **Business library — `ktubloomfieldnj@gmail.com`, the DIRECT `Google Drive`
+  connector.** Numbered top-level folders (`01 Company & HR` … `07 Vendors &
+  Products`, `KTU Resources`, `.Project Management`). This is the team library:
+  it feeds the intranet **Library** (`library_docs`) and the per-section doc
+  links. The Librarian maps its folders into the tabs.
+  - Two of its folders are owner-sensitive: **`06 Finance`** (business books/
+    reports) and **`01 Company & HR`** (comp/HR). Keep these out of the
+    team-visible surfaces — route Finance to the owner-only `docs_finance`.
+- **Owner personal drive — `stevenglivingston@gmail.com`, via the Zapier / KTU
+  MCP route (NOT the direct connector).** Holds personal financials & legal
+  (`05 Finance & Legal`, etc.). Link it ONLY into the owner-only Cash Flow /
+  Finance sections (`docs_finance`, RLS admin-only). Never publish it to any
+  team-visible tab.
+
+Rule of thumb: **business/library docs → direct `ktubloomfield` connector;
+anything personal or financial → owner-only sections**, sourced from the
+personal drive via Zapier. Financial doc links live in `docs_finance`, which is
+RLS-locked to `is_admin()`.
 
 ## Environment Requirements
 
