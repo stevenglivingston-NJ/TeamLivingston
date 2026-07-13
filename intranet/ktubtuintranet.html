@@ -1272,11 +1272,13 @@ table thead th:hover:not([data-nosort]){color:var(--accent)}
     <section class="panel" id="directory">
       <div class="page-head">
         <h1 class="page-title">Directory</h1>
-        <p class="page-sub">Every person the team touches — customers, team, vendors, subs &amp; trades, and reps — one searchable index, grouped by category. Click any card for details and to jump to the source.</p>
+        <p class="page-sub">Every person the team touches — customers, team, vendors, subs &amp; trades, and reps — one searchable, sortable table with name, phone, email, company and brand. Click any column header to sort, any row to view or edit its contact details, or ＋ Add contact.</p>
       </div>
       <div class="card">
-        <div class="row" style="margin-bottom:16px;align-items:center">
-          <input class="f" id="dirSearch" placeholder="Search by name, role, company, service…" oninput="renderDirectory()" style="flex:1;min-width:280px" />
+        <div class="row" style="margin-bottom:16px;align-items:center;gap:8px">
+          <input class="f" id="dirSearch" placeholder="Search by name, role, company, phone, email…" oninput="renderDirectory()" style="flex:1;min-width:240px" />
+          <button class="btn sm" onclick="openAddDirContact()">＋ Add contact</button>
+          <button class="btn sm ghost" onclick="dirExportCSV()" title="Download the current view as CSV">⭳ CSV</button>
         </div>
         <div class="intg-controls" id="dirFilters"></div>
         <div id="dirCounts" class="build" style="margin-bottom:14px"></div>
@@ -3700,6 +3702,10 @@ async function renderAllSections(){
    Categorized, searchable, click-through to source
    ================================================================ */
 let DIR_FILTER = 'all';
+// Pull a phone / email out of a free-text blob (legacy `contact` fields).
+const dirFindPhone = s => { const m=(s||'').toString().match(/(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/); return m?m[0]:''; };
+const dirFindEmail = s => { const m=(s||'').toString().match(/[\w.+-]+@[\w-]+\.[\w.]+/); return m?m[0]:''; };
+const DIR_KIND_LBL={team:'Team',customer:'Customer',vendor:'Vendor',sub:'Sub / Trade',rep:'Manufacturer Rep'};
 async function renderDirectory(){
   const root=document.getElementById('dirRoot'); if(!root) return;
   const q=(val('dirSearch')||'').toLowerCase();
@@ -3708,89 +3714,148 @@ async function renderDirectory(){
     fetchRecords('ordering_reps'), sb.from('contacts').select('*').limit(500).then(r=>r.data||[])
   ]);
   const contacts=contactsRaw.filter(c=>inWs(c.brand));   // fetchRecords sections already scope; contacts must too
+  // Each item carries STRUCTURED phone/email/company (falling back to a regex scrape
+  // of legacy free-text `contact` blobs), plus its source so the detail modal can
+  // write edits back to the right table.
+  const recItem=(r,kind,tab,{name,company,role,phoneF,emailF,blob,brand})=>{
+    const f=r.fields||{};
+    return {kind,tab,rid:r.id,src:'rec',section:r.section,
+      name:name, company:company||'', role:role||'',
+      phone:(f[phoneF]||f.phone||dirFindPhone(blob)||'').toString().trim(),
+      email:(f[emailF]||f.email||dirFindEmail(blob)||'').toString().trim(),
+      brand:brand||f.brand||''};
+  };
+  const cItem=(c,kind)=>({kind,tab:'contacts',rid:c.id,src:'contact',
+    name:c.name,company:c.company||'',role:c.company||DIR_KIND_LBL[kind]||'',
+    phone:(c.phone||'').trim(),email:(c.email||'').trim(),brand:c.brand||''});
   const items = [
-    ...team.map(r=>({kind:'team', name:r.fields.name, role:r.fields.role, meta:r.fields.strengths, tab:'team', extra:r.fields.business})),
-    ...vendors.map(r=>({kind:'vendor', name:r.fields.vendor, role:r.fields.category, meta:r.fields.relationship, tab:'vendors'})),
-    ...trades.map(r=>({kind:'sub', name:r.fields.name, role:r.fields.service, meta:r.fields.contact, tab:'trades'})),
-    ...reps.map(r=>({kind:'rep', name:r.fields.contact||r.fields.vendor, role:r.fields.vendor, meta:r.fields.pricing, tab:'ordering'})),
-    ...contacts.filter(c=>c.type==='Subcontractor').map(c=>({kind:'sub', name:c.name, role:c.company||'Subcontractor', meta:c.phone||c.email, tab:'contacts', extra:c.brand})),
-    ...contacts.filter(c=>c.type==='Vendor').map(c=>({kind:'vendor', name:c.name, role:c.company||'Vendor', meta:c.phone||c.email, tab:'contacts', extra:c.brand})),
-    ...contacts.filter(c=>(c.type||'Customer')==='Customer').map(c=>({kind:'customer', name:c.name, role:c.company||'Customer', meta:[c.phone,c.email].filter(Boolean).join(' · '), tab:'contacts', extra:c.brand})),
+    ...team.map(r=>recItem(r,'team','team',{name:r.fields.name,company:r.fields.business,role:r.fields.role,blob:[r.fields.contact,r.fields.strengths].join(' ')})),
+    ...vendors.map(r=>recItem(r,'vendor','vendors',{name:r.fields.vendor,company:r.fields.vendor,role:r.fields.category,blob:[r.fields.contact,r.fields.relationship].join(' ')})),
+    ...trades.map(r=>recItem(r,'sub','trades',{name:r.fields.name,role:r.fields.service,blob:r.fields.contact})),
+    ...reps.map(r=>recItem(r,'rep','ordering',{name:r.fields.contact||r.fields.vendor,company:r.fields.vendor,role:r.fields.vendor,blob:[r.fields.contact,r.fields.pricing].join(' ')})),
+    ...contacts.filter(c=>c.type==='Subcontractor').map(c=>cItem(c,'sub')),
+    ...contacts.filter(c=>c.type==='Vendor').map(c=>cItem(c,'vendor')),
+    ...contacts.filter(c=>(c.type||'Customer')==='Customer').map(c=>cItem(c,'customer')),
   ];
   const filtered = items.filter(x=>{
     if(DIR_FILTER!=='all' && x.kind!==DIR_FILTER) return false;
     if(q && !JSON.stringify(x).toLowerCase().includes(q)) return false;
     return true;
-  });
-  // Counts
+  }).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
   const counts={team:0,customer:0,vendor:0,sub:0,rep:0};
   items.forEach(x=>{if(counts[x.kind]!==undefined)counts[x.kind]++});
-  const KIND_LBL={team:'Team',customer:'Customer',vendor:'Vendor',sub:'Sub / Trade',rep:'Manufacturer Rep'};
   const KIND_ORDER=['team','customer','rep','vendor','sub'];
-  const AVA_BG={team:'var(--brand-btu)',customer:'var(--accent)',rep:'#6d28d9',vendor:'var(--brand-earth)',sub:'var(--brand-ktu)'};
-  // Filter chips
   const chips=[['all','All ('+items.length+')'],['team','Team ('+counts.team+')'],['customer','Customers ('+counts.customer+')'],['vendor','Vendors ('+counts.vendor+')'],['sub','Subs & Trades ('+counts.sub+')'],['rep','Reps ('+counts.rep+')']];
   document.getElementById('dirFilters').innerHTML=chips.map(([k,lbl])=>
     `<button class="fbtn ${DIR_FILTER===k?'active':''}" onclick="DIR_FILTER='${k}';renderDirectory()">${lbl}</button>`).join('');
-  document.getElementById('dirCounts').innerHTML = `<b>${filtered.length}</b> ${filtered.length===1?'entry':'entries'} shown${q?` matching "${esc(q)}"`:''}. Click a row for details.`;
+  const noContact=filtered.filter(x=>!x.phone&&!x.email).length;
+  document.getElementById('dirCounts').innerHTML = `<b>${filtered.length}</b> ${filtered.length===1?'entry':'entries'}${q?` matching "${esc(q)}"`:''}. Click a header to sort, a row to view/edit.${noContact?` · <span style="color:var(--text-mute)">${noContact} missing phone/email</span>`:''}`;
+  items.forEach((x,i)=>x._i=i); window._DIR_ITEMS=items;
 
-  const initials = n => (n||'—').split(/[\s—·-]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
-  const findPhone = s => { const m=(s||'').toString().match(/(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/); return m?m[0]:null; };
-  const findEmail = s => { const m=(s||'').toString().match(/[\w.+-]+@[\w-]+\.[\w.]+/); return m?m[0]:null; };
-  items.forEach((x,i)=>x._i=i); window._DIR_ITEMS=items; window._DIR_AVA=AVA_BG; window._DIR_KIND=KIND_LBL;
-
-  const row = x => {
-    const blob=[x.meta,x.role,x.name].join(' ');
-    const ph=findPhone(blob), em=findEmail(blob);
-    return `<div class="dir-row" style="cursor:pointer" onclick="dirRowClick(${x._i})">
-      <div class="dir-ava" style="background:${AVA_BG[x.kind]||'var(--accent)'}">${esc(initials(x.name))}</div>
-      <div class="dir-main">
-        <div class="dir-name">${esc(x.name||'—')}</div>
-        <div class="dir-sub">${esc(x.role||'')}${x.meta?' · '+esc((x.meta||'').toString().slice(0,90)):''}</div>
-      </div>
-      <div class="dir-contact" onclick="event.stopPropagation()">
-        ${ph?`<a href="tel:${esc(ph.replace(/[^\d+]/g,''))}">📞 ${esc(ph)}</a>`:''}
-        ${em?`<a href="mailto:${esc(em)}">✉️ Email</a>`:''}
-      </div>
-      <div class="dir-tags">${x.extra?brandTag(x.extra):''}</div>
-    </div>`;
-  };
-
-  const groups = KIND_ORDER.filter(k=>filtered.some(x=>x.kind===k)).map(k=>{
-    const rows=filtered.filter(x=>x.kind===k).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-    return `<div class="dir-group-head"><span>${KIND_LBL[k]}s</span><span class="cnt">${rows.length}</span></div>
-      <div class="dir-list">${rows.map(row).join('')}</div>`;
-  }).join('');
-
-  root.innerHTML = filtered.length ? groups : '<div class="empty">Nothing matches this filter.</div>';
+  if(!filtered.length){ root.innerHTML='<div class="empty">Nothing matches this filter.</div>'; return; }
+  const row = x => `<tr style="cursor:pointer" onclick="dirRowClick(${x._i})">
+    <td><b>${esc(x.name||'—')}</b></td>
+    <td><span class="scope-tag">${esc(DIR_KIND_LBL[x.kind]||x.kind)}</span></td>
+    <td>${esc(x.company||x.role||'')}</td>
+    <td onclick="event.stopPropagation()">${x.phone?`<a href="tel:${esc(x.phone.replace(/[^\d+]/g,''))}">${esc(x.phone)}</a>`:'<span style="color:var(--text-dim)">—</span>'}</td>
+    <td onclick="event.stopPropagation()">${x.email?`<a href="mailto:${esc(x.email)}">${esc(x.email)}</a>`:'<span style="color:var(--text-dim)">—</span>'}</td>
+    <td>${x.brand?brandTag(x.brand):''}</td>
+    <td class="row-actions"><button class="btn sm ghost" onclick="event.stopPropagation();dirRowClick(${x._i})" title="View / edit">✎</button></td></tr>`;
+  root.innerHTML=`<div style="overflow-x:auto"><table class="btable"><thead><tr>
+    <th>Name</th><th>Category</th><th>Company / Role</th><th>Phone</th><th>Email</th><th>Brand</th><th data-nosort></th></tr></thead>
+    <tbody>${filtered.map(row).join('')}</tbody></table></div>`;
 }
-// Directory row → detail modal (no ghost-navigation to nav-less panels). Offers a
-// jump only to tabs that are actually in the nav for this role.
+// Directory row → view/edit modal. Phone/email/company are editable and saved
+// back to the source record (intranet_records section fields, or the contacts row).
 function dirRowClick(i){
   const x=(window._DIR_ITEMS||[])[i]; if(!x) return;
   const NAVABLE=['team','vendors','ordering','contacts','clients'];
   const canNav = NAVABLE.includes(x.tab) && (typeof isTabVisible!=='function' || isTabVisible(x.tab));
-  const KIND=(window._DIR_KIND||{}), AVA=(window._DIR_AVA||{});
-  const blob=[x.meta,x.role,x.name].join(' ');
-  const ph=(blob.match(/(\+?1[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/)||[])[0];
-  const em=(blob.match(/[\w.+-]+@[\w-]+\.[\w.]+/)||[])[0];
   const ini=(x.name||'—').split(/[\s—·-]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  const AVA={team:'var(--brand-btu)',customer:'var(--accent)',rep:'#6d28d9',vendor:'var(--brand-earth)',sub:'var(--brand-ktu)'};
   const bg=document.createElement('div');bg.className='ax-modal-bg';bg.onclick=e=>{if(e.target===bg)bg.remove();};
-  bg.innerHTML=`<div class="ax-modal" style="max-width:420px">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+  const fld=(lbl,id,v)=>`<label class="hint" style="display:block;margin-top:8px">${lbl}<input class="f" id="${id}" value="${esc(v||'')}" style="width:100%;margin-top:2px"></label>`;
+  bg.innerHTML=`<div class="ax-modal" style="max-width:440px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
       <div class="dir-ava" style="background:${AVA[x.kind]||'var(--accent)'};width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">${esc(ini)}</div>
-      <div><h3 style="margin:0">${esc(x.name||'—')}</h3><div class="sub" style="margin:0">${esc(KIND[x.kind]||x.kind||'')}${x.role?' · '+esc(x.role):''}${x.extra?' · '+brandTag(x.extra):''}</div></div>
+      <div><h3 style="margin:0">${esc(x.name||'—')}</h3><div class="sub" style="margin:0">${esc(DIR_KIND_LBL[x.kind]||x.kind||'')}${x.brand?' · '+brandTag(x.brand):''}</div></div>
     </div>
-    ${x.meta?`<div class="sub" style="margin-top:8px">${esc(x.meta)}</div>`:''}
-    <div style="display:flex;gap:10px;margin-top:12px">
-      ${ph?`<a class="btn sm ghost" href="tel:${esc(ph.replace(/[^\d+]/g,''))}">📞 ${esc(ph)}</a>`:''}
-      ${em?`<a class="btn sm ghost" href="mailto:${esc(em)}">✉️ Email</a>`:''}
+    ${fld('Company / role','di_company',x.company||x.role)}
+    ${fld('Phone','di_phone',x.phone)}
+    ${fld('Email','di_email',x.email)}
+    <div style="display:flex;gap:8px;margin-top:10px">
+      ${x.phone?`<a class="btn sm ghost" href="tel:${esc(x.phone.replace(/[^\d+]/g,''))}">📞 Call</a>`:''}
+      ${x.email?`<a class="btn sm ghost" href="mailto:${esc(x.email)}">✉️ Email</a>`:''}
     </div>
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
-      ${canNav?`<button class="btn sm" onclick="this.closest('.ax-modal-bg').remove();go('${esc(x.tab)}')">Open in ${esc(TAB_TITLES[x.tab]||x.tab)} ↗</button>`:''}
-      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:16px">
+      <button class="btn sm" onclick="saveDirContact(${i})">Save</button>
+      <div style="display:flex;gap:8px">
+        ${canNav?`<button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove();go('${esc(x.tab)}')">Open source ↗</button>`:''}
+        <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Close</button>
+      </div>
     </div></div>`;
   document.body.appendChild(bg);
+}
+async function saveDirContact(i){
+  const x=(window._DIR_ITEMS||[])[i]; if(!x) return;
+  const phone=val('di_phone')||null, email=val('di_email')||null, company=val('di_company')||null;
+  let error;
+  if(x.src==='contact'){
+    ({error}=await sb.from('contacts').update({phone,email,company}).eq('id',x.rid));
+  } else {
+    // intranet_records section — merge phone/email/company into fields (+ a company-ish field per section)
+    const {data:cur}=await sb.from('intranet_records').select('fields').eq('id',x.rid).single();
+    const f=Object.assign({},cur?.fields||{},{phone,email});
+    if(company){ if(x.kind==='team') f.business=company; else if(x.kind==='vendor'||x.kind==='rep') f.vendor=f.vendor||company; }
+    ({error}=await sb.from('intranet_records').update({fields:f,updated_at:new Date().toISOString()}).eq('id',x.rid));
+  }
+  if(error){toast('Save failed: '+error.message,1);return;}
+  toast('Saved.'); document.querySelectorAll('.ax-modal-bg').forEach(m=>m.remove()); renderDirectory();
+}
+// Add a contact straight from the Directory (writes to the contacts table).
+function openAddDirContact(){
+  const bg=document.createElement('div');bg.className='ax-modal-bg';bg.onclick=e=>{if(e.target===bg)bg.remove();};
+  const fld=(lbl,id,ph)=>`<label class="hint" style="display:block;margin-top:8px">${lbl}<input class="f" id="${id}" placeholder="${ph||''}" style="width:100%;margin-top:2px"></label>`;
+  bg.innerHTML=`<div class="ax-modal" style="max-width:440px">
+    <h3 style="margin-top:0">Add contact</h3>
+    ${fld('Name','ac_name','Full name')}
+    ${fld('Company','ac_company','(optional)')}
+    ${fld('Phone','ac_phone','')}
+    ${fld('Email','ac_email','')}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+      <label class="hint">Type<select class="f" id="ac_type" style="width:100%;margin-top:2px"><option>Customer</option><option>Vendor</option><option>Subcontractor</option><option>Lead</option></select></label>
+      <label class="hint">Brand<select class="f" id="ac_brand" style="width:100%;margin-top:2px"><option>Both</option><option>KTU</option><option>BTU</option><option>Earthwise</option></select></label>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn sm" onclick="addDirContact()">Add</button>
+      <button class="btn sm ghost" onclick="this.closest('.ax-modal-bg').remove()">Cancel</button>
+    </div></div>`;
+  document.body.appendChild(bg);
+}
+async function addDirContact(){
+  const name=val('ac_name'); if(!name){toast('Name is required.',1);return;}
+  const r={name,company:val('ac_company')||null,phone:val('ac_phone')||null,email:val('ac_email')||null,
+    type:val('ac_type')||'Customer',brand:val('ac_brand')||'Both',
+    created_by:user?.id||null,created_by_name:(prof&&prof.display_name)||(user&&user.email)||null};
+  const {error}=await sb.from('contacts').insert(r);
+  if(error){toast('Add failed: '+error.message,1);return;}
+  toast('Contact added.'); document.querySelectorAll('.ax-modal-bg').forEach(m=>m.remove()); renderDirectory();
+}
+// Export the current Directory view to CSV.
+function dirExportCSV(){
+  const rows=(window._DIR_ITEMS||[]).filter(x=>{
+    const q=(val('dirSearch')||'').toLowerCase();
+    if(DIR_FILTER!=='all' && x.kind!==DIR_FILTER) return false;
+    if(q && !JSON.stringify(x).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const esc2=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  const head=['Name','Category','Company/Role','Phone','Email','Brand'];
+  const body=rows.map(x=>[x.name,DIR_KIND_LBL[x.kind]||x.kind,x.company||x.role,x.phone,x.email,x.brand].map(esc2).join(','));
+  const csv=[head.map(esc2).join(','),...body].join('\r\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='directory.csv'; document.body.appendChild(a); a.click(); a.remove();
 }
 
 /* ================================================================
