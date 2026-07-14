@@ -97,6 +97,29 @@ Score the stack (5 pts/green pipe, 2.5 pts/yellow, 0/red, out of the 9 pipes
 Then end the run in chat with: Stack Health score, critical findings count,
 top 3 blockers (or "all green").
 
+## Known breakages / preconditions (verified 2026-07-14 — re-verify each run)
+
+- 🔴 **Custom stdio MCP servers unregistered on scheduled/triggered runs.**
+  Root cause confirmed 2026-07-14: the Cloud-environment **Setup script**
+  (which runs `mcp-servers/bootstrap.sh`) does NOT execute on
+  scheduled/`remote_trigger` sessions — only interactive ones. Verified in
+  this container: `claude mcp list` → "No MCP servers configured" and project
+  `.claude.json` shows `mcpServers: {}`, with NO bootstrap.sh trace in
+  `/var/log` or `journalctl` for the day — despite all env vars present
+  (`GOOGLE_ADS_*` ×4 + `LOGIN_CUSTOMER_ID`, `GMB_*` ×3, etc.), `python3`
+  working, and `bootstrap.sh` sitting at the expected path. So every custom
+  stdio server (google-ads, gmb, closebot, companycam, serviceminder-stdio,
+  shipstation, amazon-sp, cloudflare-stdio, clarity-export) AND the
+  `ghl-ktu`/`ghl-btu` HTTP servers are absent on scheduled Tekki/Goldeneye/
+  Moola/Paid runs. They appear to work only because native claude.ai
+  connectors happen to cover ServiceMinder / JobTread / Cloudflare /
+  HighLevel-BTU. **Google Ads + LSA and ghl-ktu have no native fallback** —
+  that's the sole reason they show red, not a credentials or environment-type
+  problem. Do NOT re-chase the "no connectivity path / missing key" theory.
+  Fix is upstream: get the Setup script (bootstrap.sh) to run on triggered
+  fires. Confirm the gating by running `claude mcp list` in a fresh
+  interactive session — if the servers appear there, it's entrypoint-gated.
+
 ## Guardrails
 
 - Read-only everywhere except `tekky_status`.
