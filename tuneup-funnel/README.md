@@ -90,10 +90,12 @@ KTU Google Drive → **Vendors & Products → Tune up**
 (folder `1VGPeREqORA88gvFx6JPdrlr8H7cGUkdC`, owner `ktubloomfieldnj@gmail.com`, access verified):
 https://drive.google.com/drive/folders/1VGPeREqORA88gvFx6JPdrlr8H7cGUkdC
 
-Contains: the Kitchen Tune-Up **tune-up manual** (`2270522450_tune-up-manual.pdf` — process,
-level determination, pricing flow), before/after job photos (calibration set for the P2
-vision classifier), and process screenshots. P2 must derive its level rubric from the
-manual and calibrate against these photos + the level actually charged per job.
+Contains: the Kitchen Tune-Up manuals and process PDFs (level determination, pricing flow,
+checklists, client prep), before/after job photos (calibration set for the P2 vision
+classifier), and gallery composites. The damage-level rubric and process rules have been
+distilled into **`docs/levels-and-process.md`** — the P2 classifier and the price-reveal
+copy must be built from that rubric, calibrated against the folder's photos + the level
+actually charged per job.
 
 ## Develop / test
 
