@@ -1,0 +1,32 @@
+# KTU Instant Tune-Up Funnel — Cloudflare Worker
+# Resource IDs below are placeholders; create the resources (see README) and fill them in.
+
+name = "ktu-tuneup"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+
+# ServiceMinder pricing sync — every 15 minutes (build spec)
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+SM_SERVICE_ID = "30382" # Tune-Up Residential
+
+[[kv_namespaces]]
+binding = "PRICING_KV"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ktu-tuneup"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Customer photos (used from Phase 2/3; binding reserved now so the schema is settled)
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "ktu-tuneup-photos"
+
+# Secrets (set with `wrangler secret put`, never in this file):
+#   SERVICEMINDER_API_KEY            — Phase 1 (pricing sync)
+#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, ANTHROPIC_API_KEY,
+#   HIGHLEVEL_WEBHOOK_URL, META_CAPI_TOKEN, META_PIXEL_ID — later phases

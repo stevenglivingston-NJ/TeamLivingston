@@ -1,0 +1,18 @@
+{
+  "name": "ktu-tuneup-funnel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260714.1",
+    "typescript": "^5.5.0",
+    "vitest": "^3.0.0",
+    "wrangler": "^4.0.0"
+  }
+}
