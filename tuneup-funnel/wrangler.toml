@@ -28,5 +28,6 @@ bucket_name = "ktu-tuneup-photos"
 
 # Secrets (set with `wrangler secret put`, never in this file):
 #   SERVICEMINDER_API_KEY            — Phase 1 (pricing sync)
-#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, ANTHROPIC_API_KEY,
+#   ANTHROPIC_API_KEY                — Phase 2 (vision classifier)
+#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
 #   HIGHLEVEL_WEBHOOK_URL, META_CAPI_TOKEN, META_PIXEL_ID — later phases

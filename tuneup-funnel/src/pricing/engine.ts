@@ -5,8 +5,9 @@
  * Effective Base = SM base + SM uplift          (uplift never shown as a line)
  * Subtotal       = Effective Base + level rate × openings [+ white-wash premium]
  * Quote          = max(Subtotal, $2,000 floor)  → cents, half-up
- * SDD discount   = min(10% of Quote, $2,500)    → cents, half-up; valid 24h
- * Deposit        = 50% of (Quote − discount)    → cents, half-up
+ * Deposit        = 50% of Quote                 → cents, half-up
+ *
+ * (The Same Day Discount was removed 2026-07-18 per owner — no promo pricing.)
  */
 
 import { QUOTE_RULES } from "../config";
@@ -18,8 +19,6 @@ export interface QuoteInput {
   level: LevelBucket;
   /** AI-detected pickled/white-washed finish → premium auto-added. */
   whiteWash: boolean;
-  /** SDD promo code applied. */
-  sdd: boolean;
 }
 
 export type QuoteResult =
@@ -31,10 +30,7 @@ export type QuoteResult =
       floorApplied: boolean;
       /** Premium included in the quote, cents; null when not applied. */
       whiteWashCents: number | null;
-      sddDiscountCents: number;
-      /** Quote − SDD discount, cents. */
-      totalCents: number;
-      /** 50% of total, cents. */
+      /** 50% of the quote, cents. */
       depositCents: number;
     }
   | {
@@ -64,26 +60,13 @@ export function computeQuote(input: QuoteInput, rates: RateTable): QuoteResult {
   const subtotalCents = milliToCents(subtotalMilli);
   const floorApplied = subtotalCents < QUOTE_RULES.floorCents;
   const quoteCents = floorApplied ? QUOTE_RULES.floorCents : subtotalCents;
-
-  const sddDiscountCents = input.sdd
-    ? Math.min(mulDivHalfUp(quoteCents, QUOTE_RULES.sddPercent, 100), QUOTE_RULES.sddCapCents)
-    : 0;
-
-  const totalCents = quoteCents - sddDiscountCents;
-  const depositCents = mulDivHalfUp(totalCents, QUOTE_RULES.depositPercent, 100);
+  const depositCents = mulDivHalfUp(quoteCents, QUOTE_RULES.depositPercent, 100);
 
   return {
     quotable: true,
     quoteCents,
     floorApplied,
     whiteWashCents: input.whiteWash ? milliToCents(whiteWashMilli) : null,
-    sddDiscountCents,
-    totalCents,
     depositCents,
   };
-}
-
-/** SDD expiry: 24 hours from the moment the price was revealed. */
-export function sddDeadline(quotedAt: Date): Date {
-  return new Date(quotedAt.getTime() + QUOTE_RULES.sddValidHours * 3_600_000);
 }

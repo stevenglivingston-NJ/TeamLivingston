@@ -9,8 +9,8 @@ doc); this README covers what is implemented so far.
 | Phase | Scope | Status |
 |-------|-------|--------|
 | P0 | SM API verification, brand extraction, Stripe setup, agreement draft, calibration set | SM services/rates verified readable ✅; rest pending |
-| **P1** | **Pricing engine + SM cron sync + $2k floor + SDD, unit-tested to the penny** | **This scaffold** |
-| P2 | Vision classifier (level buckets, white-wash detect, opening cross-check) | Not started |
+| **P1** | **Pricing engine + SM cron sync + $2k floor, unit-tested to the penny** (SDD dropped per owner 2026-07-18) | **Done** |
+| **P2** | **Vision classifier (level buckets, white-wash detect, opening cross-check)** | **Built — needs calibration run** |
 | P3 | Frontend funnel (React SPA, in-app camera, call-back) | Not started |
 | P4 | SM calendar + Stripe checkout + webhook booking chain | Not started |
 | P5 | HighLevel + Meta Pixel/CAPI + GA4 | Not started |
@@ -28,8 +28,38 @@ Cloudflare Worker (src/index.ts)
     └── POST /api/quote/preview   — pricing engine dry-run (P3 wires the real funnel)
 
 D1 (db/migrations/0001_init.sql): quote_sessions, leads, funnel_events (audit), rate_snapshots
-R2: customer photo bucket binding reserved (used from P2/P3)
+R2: customer photo bucket (photos land here in P3; /api/vision/classify reads them)
 ```
+
+## Vision classifier (Phase 2)
+
+`src/vision/` — cabinet-condition analysis via the Anthropic API (Claude vision,
+`claude-opus-4-8`, structured JSON output):
+
+- **Rubric-driven prompt** (`prompt.ts`) built from `docs/levels-and-process.md` — the KTU
+  1–5 damage system, 10%/30% thresholds, water zones, nicotine escalation, white-wash
+  detection, Level-5 "not a candidate" signals. Rubric changes go in the doc first.
+- **Output**: level bucket (`L1_2`/`L3`/`L4`), confidence, white-wash flag + confidence,
+  estimated opening count, Level-5 flag, plain-English condition notes, review flags.
+- **Routing rules** (`classifier.ts` → `decide()`, pure/unit-tested): confidence < 0.7,
+  Level-5 signals, uncertain white-wash, or any API failure → **human review** ("quote
+  finalized within 2 hours") — never a guessed price. AI-vs-customer opening count
+  differing by > 2 is flagged but stays quotable.
+- **Endpoint**: `POST /api/vision/classify` `{ photoKeys: string[], openings?: number }` —
+  reads photos from R2, returns the routing outcome.
+
+### Calibration (owner/Ben action needed before launch)
+
+Per the build spec, calibrate against 15–25 past jobs (photos + level actually charged):
+
+```bash
+cp calibration/manifest.example.json calibration/manifest.json
+# download BEFORE photos from KTU Drive → Vendors & Products → Tune up
+# into calibration/photos/<job>/ and label each job's charged level
+ANTHROPIC_API_KEY=sk-... npm run calibrate   # prints accuracy + confusion matrix
+```
+
+P6's blind AI-vs-Ben check on 10 kitchens uses the same harness.
 
 ## Pricing rules implemented
 
@@ -40,9 +70,11 @@ All amounts are integer math — rates in **milli-dollars** (1/1000 USD, exact f
 Effective Base = SM base + SM uplift            (uplift merged, never shown as a line)
 Subtotal       = Effective Base + level rate × openings [+ white-wash premium]
 Quote          = max(Subtotal, $2,000 floor)    → rounded to cents
-SDD discount   = min(10% of Quote, $2,500)      → rounded to cents; valid 24h from quote
-Deposit        = 50% of (Quote − discount)      → rounded to cents
+Deposit        = 50% of Quote                   → rounded to cents
 ```
+
+> The Same Day Discount (SDD) was **removed 2026-07-18 per owner** — the funnel has no
+> promo pricing. SM's "Tune Up Discount" part (199161) is ignored.
 
 - No sales tax (NJ capital improvement).
 - Rates are **never hardcoded** — the engine consumes a `RateTable` built from live
@@ -80,9 +112,10 @@ so either SM needs updating or the spec numbers are stale — Steven to confirm:
    just the uplift ($619.35 vs spec's ~$639.65 combined).
 3. **Level rates are per *unit* at $25.75–$31.93** vs spec's ~$96.49–$136.07 *per opening*.
    If an "opening" bills as multiple SM units, the funnel needs that multiplier defined.
-4. **SM's own discount note says "TUSDD for $250 Same Day Discount"** (part 199161) vs the
-   spec's SDD = 10% capped at $2,500 for 24h. Engine implements the spec; reconcile.
-5. `L1_2` merged-bucket rate policy (currently `max(L1, L2)`) needs owner sign-off.
+4. `L1_2` merged-bucket rate policy (currently `max(L1, L2)`) needs owner sign-off.
+
+(A fourth gap — SM's "TUSDD $250 Same Day Discount" note vs the spec's 10% SDD — was
+resolved 2026-07-18: the owner dropped the SDD entirely.)
 
 ## Reference material (Google Drive)
 

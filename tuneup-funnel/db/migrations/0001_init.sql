@@ -17,8 +17,6 @@ CREATE TABLE IF NOT EXISTS quote_sessions (
   white_wash INTEGER,                 -- 0/1
   quote_cents INTEGER,
   floor_applied INTEGER,              -- 0/1
-  sdd_applied INTEGER,                -- 0/1
-  sdd_deadline TEXT,
   deposit_cents INTEGER,
   status TEXT NOT NULL DEFAULT 'open'
   -- open | human_review | booked | abandoned | out_of_area

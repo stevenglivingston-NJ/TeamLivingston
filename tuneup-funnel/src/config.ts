@@ -31,12 +31,19 @@ export const SM_PRICING = {
 export const QUOTE_RULES = {
   /** $2,000 project minimum. */
   floorCents: 200_000,
-  /** SDD promo: 10% off, capped at $2,500, valid 24h from quote. */
-  sddPercent: 10,
-  sddCapCents: 250_000,
-  sddValidHours: 24,
-  /** Deposit is 50% of the post-discount quote. */
+  /** Deposit is 50% of the quote. */
   depositPercent: 50,
+} as const;
+
+export const VISION = {
+  /** Vision-capable model for cabinet condition analysis. */
+  model: "claude-opus-4-8",
+  /** Below this classifier confidence, skip price reveal → human pricing. */
+  minConfidence: 0.7,
+  /** AI-estimated openings differing from customer count by more than this → flag. */
+  openingMismatchThreshold: 2,
+  /** 4 required + 4 optional photo slots. */
+  maxPhotos: 8,
 } as const;
 
 export const KV_KEYS = {
