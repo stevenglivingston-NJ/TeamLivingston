@@ -1,0 +1,36 @@
+# KTU Instant Tune-Up Funnel — Cloudflare Worker
+# KV + D1 created 2026-07-18 (real IDs below). R2 pending: enable R2 in the
+# Cloudflare dashboard, then `wrangler r2 bucket create ktu-tuneup-photos`.
+
+name = "ktu-tuneup"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+
+# ServiceMinder pricing sync — every 15 minutes (build spec)
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+SM_SERVICE_ID = "30382" # Tune-Up Residential
+META_PIXEL_ID = "109034988941656" # KTU Bloomfield NJ (domain verified)
+
+[[kv_namespaces]]
+binding = "PRICING_KV"
+id = "eac228b23726485389a6236be9f72e0a"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ktu-tuneup"
+database_id = "e8697721-207d-42d5-8014-c8240b690ee4"
+
+# Customer photos. R2 must be enabled in the dashboard before this bucket exists;
+# once created, uncomment to bind it. (Photos are used from Phase 2/3.)
+# [[r2_buckets]]
+# binding = "PHOTOS"
+# bucket_name = "ktu-tuneup-photos"
+
+# Secrets (set with `wrangler secret put`, never in this file):
+#   SERVICEMINDER_API_KEY            — Phase 1 (pricing sync)
+#   ANTHROPIC_API_KEY                — Phase 2 (vision classifier)
+#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+#   HIGHLEVEL_WEBHOOK_URL, META_CAPI_TOKEN — later phases

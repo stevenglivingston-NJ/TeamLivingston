@@ -120,6 +120,12 @@ no bootstrap.
 | KTU | Kitchen Tune-Up | 1285 Broad St, Suite 2, Bloomfield NJ 07003 |
 | BTU | Bath Tune-Up | 1285 Broad Street, Unit 2, Bloomfield NJ 07003 |
 
+## Active Builds
+
+| Project | Path | Purpose |
+|---------|------|---------|
+| KTU Instant Tune-Up Funnel | `tuneup-funnel/` | Instant-quote + booking funnel for `ktubloomfield.com/tuneup` (Cloudflare Workers + D1/KV/R2). Phase 1 (pricing engine + ServiceMinder 15-min sync) scaffolded — see `tuneup-funnel/README.md` for status, SM part mapping, and open SM config gaps. |
+
 ## Dashboards
 
 | Group | Purpose | URL |

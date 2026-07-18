@@ -1,0 +1,25 @@
+{
+  "_readme": [
+    "Calibration set for the Phase 2 vision classifier (build spec: 15-25 past jobs).",
+    "Copy to manifest.json, download the job photos from the KTU Drive folder",
+    "(Vendors & Products > Tune up) into calibration/photos/<job>/, and fill in the",
+    "level ACTUALLY CHARGED for each job (L1_2, L3, or L4 — SM merges levels 1 and 2).",
+    "Use BEFORE photos only. Then run: npm run calibrate"
+  ],
+  "jobs": [
+    {
+      "job": "2021-06 Kuhns/Reynolds",
+      "levelCharged": "L1_2",
+      "whiteWash": false,
+      "declaredOpenings": null,
+      "photos": ["photos/kuhns-reynolds/before1.jpg"]
+    },
+    {
+      "job": "2025-06 Morrison/Hoggatt",
+      "levelCharged": "L3",
+      "whiteWash": false,
+      "declaredOpenings": null,
+      "photos": ["photos/morrison-hoggatt/before.jpg"]
+    }
+  ]
+}
