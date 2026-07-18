@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS quote_sessions (
   openings INTEGER,
   cabinet_material TEXT,
   cabinet_age TEXT,
+  smoking_in_home TEXT,               -- yes | no | unsure (raises damage level)
+  polish_products TEXT,               -- yes | no | unsure (masking products)
   level TEXT,                         -- L1_2 | L3 | L4 (AI-assigned)
   ai_confidence REAL,
   white_wash INTEGER,                 -- 0/1

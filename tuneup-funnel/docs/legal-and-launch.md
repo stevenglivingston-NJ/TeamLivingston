@@ -33,21 +33,13 @@ Supersedes the build spec's draft tiered refunds. The policy the agreement state
 Owner marked the agreement **signed off** (2026-07-18). Keep this doc as the record. Any
 material change to the agreement text or the refund/rescission language should be re-reviewed.
 
-## NJ HIC registration number — ⚠️ conflict, owner to resolve
+## NJ HIC registration number — confirmed
 
-The contract must carry the HIC registration number for First Generation USA LLC. A record
-is on file in Monday.com ("Essential documents" board), but there are **two conflicting
-numbers** and they must be reconciled before either goes into a customer-facing contract:
+**KTU / First Generation USA LLC HIC #: `13VH10775400`** (owner-confirmed 2026-07-18;
+services run under KTU). This is the number the checkout agreement carries.
 
-- `13VH10775400` — on the item whose attached PDF is named `First Generation LLC.pdf`
-  (exp. 3/31/2027). Most likely the correct KTU / First Generation number.
-- `13VH13781500` — appears on both a "First Gen" item **and** the BTU/Oracabessa item, which
-  is internally inconsistent (one HIC ↔ one legal entity).
-
-**Action:** open the source PDFs on the Monday.com "Essential documents" board and confirm
-which number NJ actually issued to First Generation USA LLC, then put the confirmed number
-in the agreement template. Do **not** hardcode a number here until resolved — a wrong HIC on
-a signed NJ home-improvement contract is a compliance problem.
+(A second number, `13VH13781500`, exists on other Monday.com items and is **not** KTU's —
+likely the BTU/Oracabessa entity. Not used here.)
 
 > The Monday.com record also stores a state-portal login. Those credentials are deliberately
 > **not** recorded in this repo — keep them in Monday.com only.
@@ -59,7 +51,7 @@ a signed NJ home-improvement contract is a compliance problem.
 | Attorney sign-off on agreement | ✅ owner-confirmed 2026-07-18 |
 | Refund tiers / rescission | ✅ defined above |
 | SM proposal text (agreement source) | ⬜ **needed from owner** |
-| NJ HIC number | ⚠️ on file, conflict to resolve |
+| NJ HIC number | ✅ `13VH10775400` (KTU / First Generation USA LLC) |
 | Calibration photos labeled + ingested | ⬜ owner/Ben (see calibration/) |
 | Meta Pixel ID | ✅ `109034988941656` |
 | HighLevel notification recipients | ⬜ **needed from owner** (who gets booking/callback alerts) |

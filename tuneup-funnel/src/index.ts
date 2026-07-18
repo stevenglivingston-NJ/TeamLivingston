@@ -9,11 +9,18 @@ import { loadRateTable } from "./pricing/store";
 import { syncPricing } from "./sync/pricingSync";
 import { classifyPhotos, decide } from "./vision/classifier";
 import type { PhotoInput } from "./vision/types";
+import {
+  createCallback,
+  createLead,
+  createSession,
+  patchSession,
+  uploadPhoto,
+} from "./http/funnel";
 
 export interface Env {
   PRICING_KV: KVNamespace;
   DB: D1Database;
-  PHOTOS: R2Bucket;
+  PHOTOS?: R2Bucket; // optional until R2 is enabled in the Cloudflare dashboard
   SERVICEMINDER_API_KEY: string;
   ANTHROPIC_API_KEY: string;
 }
@@ -34,6 +41,35 @@ export default {
 
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    // ---- Funnel session / lead / callback / photo (Phase 3) ----
+    if (request.method === "POST" && url.pathname === "/api/session") {
+      return createSession(env);
+    }
+    const sessionMatch = url.pathname.match(/^\/api\/session\/([\w-]+)$/);
+    if (request.method === "POST" && sessionMatch) {
+      const body = await safeJson(request);
+      if (body === null) return json({ error: "invalid JSON body" }, 400);
+      return patchSession(env, sessionMatch[1], body as Record<string, unknown>);
+    }
+    if (request.method === "POST" && url.pathname === "/api/lead") {
+      const body = await safeJson(request);
+      if (body === null) return json({ error: "invalid JSON body" }, 400);
+      return createLead(env, body as Record<string, string>);
+    }
+    if (request.method === "POST" && url.pathname === "/api/callback") {
+      const body = await safeJson(request);
+      if (body === null) return json({ error: "invalid JSON body" }, 400);
+      return createCallback(env, body as Record<string, string>);
+    }
+    if (request.method === "POST" && url.pathname === "/api/photo") {
+      return uploadPhoto(
+        env,
+        url.searchParams.get("session") ?? "",
+        url.searchParams.get("slot") ?? "",
+        request,
+      );
+    }
 
     if (request.method === "GET" && url.pathname === "/api/health") {
       const rates = await loadRateTable(env.PRICING_KV);
@@ -91,6 +127,11 @@ export default {
       }
       const declaredOpenings = typeof body.openings === "number" ? body.openings : null;
 
+      if (!env.PHOTOS) {
+        // R2 not enabled yet → cannot read photos → route to human pricing.
+        return json(decide(null, declaredOpenings), 503);
+      }
+
       const photos: PhotoInput[] = [];
       for (const key of keys) {
         const object = await env.PHOTOS.get(key);
@@ -126,6 +167,14 @@ function bytesToBase64(buffer: ArrayBuffer): string {
     binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
   }
   return btoa(binary);
+}
+
+async function safeJson(request: Request): Promise<unknown | null> {
+  try {
+    return await request.json();
+  } catch {
+    return null;
+  }
 }
 
 function json(data: unknown, status = 200): Response {

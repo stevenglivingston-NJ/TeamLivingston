@@ -113,10 +113,12 @@ quotes now price instantly (no longer routed to human review on that ground).
 
 ### Remaining SM note (owner confirm)
 
-- **Effective base = uplift only ($390.35).** Service `BasePrice` still reads $0 via the
-  API. The spec envisioned base ~$250 + uplift ~$389.65 ≈ $639.65. If a separate ~$250
-  base is intended, set `BasePrice` on service 30382 (the cron picks it up in 15 min);
-  otherwise the uplift serves as the base and quotes run ~$250 lower before the $2k floor.
+- **Base price $275 — owner set 2026-07-18, but NOT yet visible via the API.** Service
+  30382 `BasePrice` still reads $0, and part 181088 "Tune-Up Services" reads $0. The engine
+  reads live, so once $275 lands on the Tune-Up Residential service `BasePrice` field the
+  cron picks it up within 15 min (effective base becomes $275 + $390.35 = $665.35). **Please
+  confirm the $275 saved on service 30382's BasePrice** — if it was entered on a proposal
+  template instead, the funnel won't see it.
 - The proposal-template screenshot showed cents-level values ($96.485, $389.65, $618.50)
   slightly different from the service-part values the cron reads ($96.00, $390.35, $620.00).
   The engine uses the **service parts** (source of truth per spec) — reconcile if the
@@ -137,7 +139,37 @@ distilled into **`docs/levels-and-process.md`** — the P2 classifier and the pr
 copy must be built from that rubric, calibrated against the folder's photos + the level
 actually charged per job.
 
-## Develop / test
+## Customer funnel (Phase 3)
+
+`web/` — the mobile-first React SPA (Vite) served at `ktubloomfield.com/tuneup`. Stage-gated
+with a progress bar; every gate writes to D1 through the Worker.
+
+| Gate | What it does |
+|------|--------------|
+| Landing | KTU theme, 4× 2026 HFC awards, real before/after gallery (`web/public/gallery/`), click-to-call, dual CTA |
+| ZIP | Service-area check; out-of-area → capture-and-exit |
+| Kitchen details | Opening counter, material/age chips, **+ smoking & polish-product questions** (sales-training signals photos can't see) |
+| Photos | Guided in-app camera — 4 required + 4 optional slots, `capture="environment"` opens the device camera; desktop upload fallback; stall >90s auto-offers a call-back |
+| Contact | Name/phone/email required before price; lead fires to backend (HighLevel push in P5) |
+| Price reveal | Uploads photos → `/api/vision/classify` → `/api/quote/preview` → firm price + 50% deposit + firm-price copy. Low-confidence / L5 / white-wash-uncertain / any failure → "finalized within 2 hours" human-review screen (never a guessed price) |
+| Schedule | Hand-off placeholder — P4 wires SM "Tune-Up Residential" slots + agreement + Stripe |
+
+Persistent "Prefer to talk? Request a call" bar on every gate; header click-to-call
+`(973) 521-1182`. Offline-tolerant: network failures never block the customer.
+
+Worker endpoints backing it (`src/http/funnel.ts`): `POST /api/session`,
+`POST /api/session/:id` (allowlisted column patch), `/api/lead`, `/api/callback`,
+`/api/photo` (R2 — 503 until R2 is enabled).
+
+```bash
+cd web && npm install && npm run dev      # SPA on :5173, proxies /api to :8787
+npm run build                             # → web/dist/ (Cloudflare Pages)
+```
+
+Deploy the SPA to Cloudflare Pages (same host family as the buyer portal); `web/public/_headers`
+carries the noindex + security headers. The Worker (API) deploys separately per below.
+
+## Develop / test (Worker / pricing / vision)
 
 ```bash
 cd tuneup-funnel
