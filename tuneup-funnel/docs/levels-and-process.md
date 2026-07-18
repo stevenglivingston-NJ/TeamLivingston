@@ -38,6 +38,37 @@ The funnel/AI classifier outputs three priced buckets plus two routed outcomes:
 | Level 5 signals | Non-repairable / DIY damage | **No quote.** Human review → offer core services (refacing/redooring) — still a lead |
 | Low confidence | — | No quote; "finalized within 2 hours" human-pricing route |
 
+## Sales-evaluation rules (from "Tune Up Sales Training — Evaluation of projects")
+
+Source: sales-training PDF supplied by owner 2026-07-18 (Bruce Morgan, updated 1/2/2023 —
+suggest filing in the Drive Tune up folder alongside the manuals).
+
+- **Pricing dimensions**: Maintenance/Basic/Standard pricing is based on kitchen size
+  (**openings AND exposed end panels**), degree of damage, **wood species**, and **stain
+  color** — not openings alone. The classifier reports species/stain/end panels for the
+  team; whether they feed automated pricing is an owner decision (see README gaps).
+- **DIY repairs are a Level 4/5 signal.** Non-original finish — sheen glossy/flat vs the
+  factory finish or vs the door backs, visible brush strokes, touch-up products sealed
+  over damage — is *not* a Basic/Standard candidate.
+- **Masking products** (scratch cover, Old English, Liquid Gold) can hide moderate-to-heavy
+  damage and push the true rating higher — uniform oily luster on worn kitchens → rate
+  conservative and flag.
+- **Wet Test** (in-person only): a damp cloth over a scratch/dry area — damage that
+  temporarily disappears is unsealed and repairable; damage that stays visible has been
+  DIY-sealed and is hard to repair. Photos can't run it, but **dry woodgrain zones**
+  (end panels, doors below the sink, above a coffee maker/rice cooker) should be flagged
+  for the in-person check.
+- **Nicotine tell**: yellowish/brown residue regardless of stain color; wipes off yellow
+  onto a cleaning cloth. Smoking in the home ⇒ Level 4 territory.
+- **Homeowner questions worth asking in the funnel** (kitchen-details gate, P3): "Has
+  anyone smoked in the home?" and "Have any touch-up or polish products (Old English,
+  scratch cover) been used on the cabinets?" — both cheaply resolve what photos can hide.
+- **Level-5 pivot script**: tell the homeowner the damage is beyond the Tune-Up process and
+  give them permission to consider refacing/new cabinets — this is the human-review
+  follow-up call's framing for `notACandidate` results.
+- Sell at the ability of the team's Tune-Up Artist; salesperson reviews photos with the
+  artist — mirrors the funnel's human-review lane.
+
 ### Visual signals for the Phase 2 classifier (from the manual/process docs)
 
 - **Thresholds**: damage >10% of a section ⇒ beyond Basic (→ L3); damage >30% ⇒ L4.

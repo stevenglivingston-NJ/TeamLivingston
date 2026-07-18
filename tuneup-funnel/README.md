@@ -47,6 +47,11 @@ R2: customer photo bucket (photos land here in P3; /api/vision/classify reads th
   differing by > 2 is flagged but stays quotable.
 - **Endpoint**: `POST /api/vision/classify` `{ photoKeys: string[], openings?: number }` —
   reads photos from R2, returns the routing outcome.
+- Also reports **wood species, stain color, and exposed end-panel count** — per the sales
+  training doc these affect real pricing; today they inform the team only (see gaps).
+- **P3 note**: the kitchen-details gate should ask "has anyone smoked in the home?" and
+  "have polish/touch-up products (Old English, scratch cover) been used?" — photos can't
+  always see either, and both change the level (docs/levels-and-process.md).
 
 ### Calibration (owner/Ben action needed before launch)
 

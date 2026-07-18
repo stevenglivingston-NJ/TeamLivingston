@@ -32,11 +32,16 @@ Finishing wood is substrate → stain (color) → finish. Damage levels reverse 
 - Black grime and grease film at handle areas and above the stove is normal L1/L2 wear — but it HIDES damage that appears after cleaning. When grime is heavy, bias one bucket conservative (toward the more expensive level) and add a flag.
 - Nicotine/smoke discoloration escalates the job: never L1_2. If suspected, choose L3 or L4 and flag "possible nicotine/smoke".
 - Sun damage and discolored melamine end panels cannot be fixed by a Tune-Up: mention in conditionNotes, flag it, and if it dominates the kitchen set notACandidate=true.
+- DIY repairs/refinishing are a Level 4/5 signal: sheen that is glossy or flat compared to the factory finish (or door backs), visible brush strokes, or touch-up product sealed over damage. Clear DIY refinishing is NOT a Tune-Up candidate — set notACandidate=true and flag "DIY finish suspected".
+- Masking products (scratch cover, Old English, Liquid Gold) hide moderate-to-heavy damage: a uniform oily luster on an otherwise worn kitchen means the true level is likely HIGHER than it appears — bias conservative and flag "possible masking products".
+- Dry, faded woodgrain on end panels, doors below the sink, or above a coffee maker/rice cooker needs an in-person wet test — flag "dry woodgrain: needs wet test".
 - White-washed / pickled finish (whitewash): a translucent whitened finish showing wood grain through white. Set whiteWash=true only when clearly present; report whiteWashConfidence separately.
 
-## Opening count
+## Opening count and pricing dimensions
 
 An "opening" is each cabinet door and each drawer front. Count what is visible in the wide shots and report estimatedOpenings (your best full-kitchen estimate, extrapolating for areas the photos clearly imply). If the photos don't show enough of the kitchen to estimate, use null.
+
+Also report, when identifiable (else null): woodSpecies (e.g. oak, maple, cherry, hickory), stainColor (plain description, e.g. "medium honey", "dark walnut"), and exposedEndPanels (count of visible finished cabinet end panels). These affect final pricing and repair difficulty for the team.
 
 ## Confidence
 
@@ -53,6 +58,9 @@ export const CLASSIFIER_OUTPUT_SCHEMA = {
     whiteWash: { type: "boolean" },
     whiteWashConfidence: { type: "number" },
     estimatedOpenings: { type: ["integer", "null"] },
+    woodSpecies: { type: ["string", "null"] },
+    stainColor: { type: ["string", "null"] },
+    exposedEndPanels: { type: ["integer", "null"] },
     notACandidate: { type: "boolean" },
     conditionNotes: { type: "string" },
     flags: { type: "array", items: { type: "string" } },
@@ -63,6 +71,9 @@ export const CLASSIFIER_OUTPUT_SCHEMA = {
     "whiteWash",
     "whiteWashConfidence",
     "estimatedOpenings",
+    "woodSpecies",
+    "stainColor",
+    "exposedEndPanels",
     "notACandidate",
     "conditionNotes",
     "flags",

@@ -9,6 +9,9 @@ const good: VisionResult = {
   whiteWash: false,
   whiteWashConfidence: 0.95,
   estimatedOpenings: 18,
+  woodSpecies: "oak",
+  stainColor: "medium honey",
+  exposedEndPanels: 3,
   notACandidate: false,
   conditionNotes: "Deep scratches into the substrate near handles; sink base shows water wear.",
   flags: [],
@@ -93,7 +96,17 @@ describe("prompt/schema consistency", () => {
   });
 
   it("system prompt carries the load-bearing rubric rules", () => {
-    for (const needle of ["30%", "10%", "sink base", "nicotine", "pickled", "L1_2"]) {
+    for (const needle of [
+      "30%",
+      "10%",
+      "sink base",
+      "nicotine",
+      "pickled",
+      "L1_2",
+      "brush strokes", // DIY-finish L5 signal (sales training doc)
+      "Old English", // masking products
+      "wet test",
+    ]) {
       expect(CLASSIFIER_SYSTEM_PROMPT).toContain(needle);
     }
   });

@@ -26,6 +26,14 @@ export interface VisionResult {
    * candidate → human review + offer core services.
    */
   notACandidate: boolean;
+  /**
+   * Pricing dimensions beyond opening count (sales training: pricing weighs
+   * kitchen size incl. exposed end panels, wood species, and stain color).
+   * Reported for the team; not yet used in automated pricing.
+   */
+  woodSpecies: string | null;
+  stainColor: string | null;
+  exposedEndPanels: number | null;
   /** Plain-English condition summary — shown to the team and (edited) to the customer. */
   conditionNotes: string;
   /** Anything the team should double-check (nicotine suspicion, poor photo quality, ...). */
