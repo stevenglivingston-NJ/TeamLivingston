@@ -14,38 +14,38 @@
           "IsActive": true
         },
         {
-          "Id": 199138,
-          "Name": "Tune-Up Level 1",
-          "UnitPrice": 25.75,
-          "IsActive": true
-        },
-        {
-          "Id": 1557033,
-          "Name": "Tune-Up Level 2",
-          "UnitPrice": 27.81,
-          "IsActive": true
-        },
-        {
           "Id": 199139,
           "Name": "Tune-Up Level 3",
-          "UnitPrice": 29.87,
+          "UnitPrice": 112.0,
           "IsActive": true
         },
         {
           "Id": 199140,
           "Name": "Tune-Up Level 4",
-          "UnitPrice": 31.93,
+          "UnitPrice": 136.0,
           "IsActive": true
         },
         {
           "Id": 199137,
           "Name": "Tune-Up Uplift",
-          "UnitPrice": 619.35,
+          "UnitPrice": 390.35,
+          "IsActive": true
+        },
+        {
+          "Id": 1557033,
+          "Name": "White Wash Premium",
+          "UnitPrice": 620.0,
+          "IsActive": true
+        },
+        {
+          "Id": 199138,
+          "Name": "Tune-Up Level 1 & 2",
+          "UnitPrice": 96.0,
           "IsActive": true
         }
       ]
     }
   ],
   "ResultCode": 0,
-  "Message": "Trimmed live snapshot from ServiceMinder services/all (KTU), captured 2026-07-17. Only Tune-Up pricing parts retained."
+  "Message": "Trimmed live snapshot from ServiceMinder services/all (KTU), captured 2026-07-18 after the owner rebuilt the Tune-Up template. Only Tune-Up pricing parts retained."
 }

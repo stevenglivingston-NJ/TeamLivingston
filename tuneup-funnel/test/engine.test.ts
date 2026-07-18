@@ -13,7 +13,7 @@
 import { describe, expect, it } from "vitest";
 import { computeQuote } from "../src/pricing/engine";
 import { buildRateTable, type RateTable, type SmServicesPayload } from "../src/pricing/rateTable";
-import liveSnapshot from "./fixtures/sm-services-live-2026-07-17.json";
+import liveSnapshot from "./fixtures/sm-services-live-2026-07-18.json";
 
 const specRates: RateTable = {
   fetchedAt: "2026-07-17T12:00:00.000Z",
@@ -57,21 +57,32 @@ describe("spec rates — floor and deposit to the penny", () => {
   });
 });
 
-describe("live SM rates (2026-07-17 snapshot)", () => {
-  const live = buildRateTable(liveSnapshot as SmServicesPayload, new Date("2026-07-17T12:00:00Z"));
+describe("live SM rates (2026-07-18 snapshot — rebuilt template)", () => {
+  // Effective base = $0 + $390.35 uplift. L1_2 $96, L3 $112, L4 $136, white-wash $620.
+  const live = buildRateTable(liveSnapshot as SmServicesPayload, new Date("2026-07-18T12:00:00Z"));
 
-  it("10 openings L1_2 is under the floor today: $2,000 firm", () => {
-    // 0 + 619.35 + 27.81×10 = $897.45 → floor
+  it("10 openings L1_2 is under the floor: $2,000 firm, deposit $1,000", () => {
+    // 390.35 + 96×10 = $1,350.35 → floor
     const r = ok(computeQuote({ openings: 10, level: "L1_2", whiteWash: false }, live));
     expect(r.floorApplied).toBe(true);
     expect(r.quoteCents).toBe(200_000);
     expect(r.depositCents).toBe(100_000);
   });
 
-  it("white-wash quotes are NOT quotable until the SM part exists", () => {
-    const r = computeQuote({ openings: 10, level: "L1_2", whiteWash: true }, live);
-    expect(r.quotable).toBe(false);
-    if (!r.quotable) expect(r.reasons.join(" ")).toContain("White Wash Premium");
+  it("22 openings L1_2 clears the floor: $2,502.35, deposit $1,251.18", () => {
+    // 390.35 + 96×22 = $2,502.35; deposit 125,117.5¢ → half-up
+    const r = ok(computeQuote({ openings: 22, level: "L1_2", whiteWash: false }, live));
+    expect(r.floorApplied).toBe(false);
+    expect(r.quoteCents).toBe(250_235);
+    expect(r.depositCents).toBe(125_118);
+  });
+
+  it("15 openings L4 + white-wash now prices instantly: $3,050.35, deposit $1,525.18", () => {
+    // 390.35 + 136×15 + 620 = $3,050.35; deposit 152,517.5¢ → half-up
+    const r = ok(computeQuote({ openings: 15, level: "L4", whiteWash: true }, live));
+    expect(r.quoteCents).toBe(305_035);
+    expect(r.whiteWashCents).toBe(62_000);
+    expect(r.depositCents).toBe(152_518);
   });
 });
 

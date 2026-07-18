@@ -3,8 +3,8 @@
  *
  * Rates themselves are NEVER hardcoded here — they are pulled live from
  * ServiceMinder by the cron sync. This file only says WHERE in SM each rate
- * lives (service/part IDs, live-verified 2026-07-17) and the fixed business
- * rules from the build spec ($2k floor, SDD, deposit).
+ * lives (service/part IDs, live-verified 2026-07-18) and the fixed business
+ * rules from the build spec ($2k floor, deposit).
  */
 
 export const SM_API_BASE = "https://serviceminder.io/api";
@@ -15,16 +15,20 @@ export const SM_PRICING = {
   partIds: {
     /** "Tune-Up Uplift" — merged into the displayed base, never a customer-visible line. */
     uplift: 199137,
-    level1: 199138,
-    level2: 1557033,
+    /**
+     * "Tune-Up Level 1 & 2" — SM now carries a single merged part for the L1_2
+     * bucket (the owner rebuilt the Tune-Up template 2026-07-18 with per-opening
+     * pricing). No more max(L1, L2) — the merged part is authoritative.
+     */
+    level12: 199138,
     level3: 199139,
     level4: 199140,
     /**
-     * "White Wash Premium" does not exist in SM yet (gap found during Phase 1
-     * scaffold — see README). Set the part ID here once the owner creates it;
-     * until then white-wash-flagged quotes are non-quotable → human review.
+     * "White Wash Premium" — created 2026-07-18. NOTE: SM reused part ID 1557033
+     * (formerly "Tune-Up Level 2") for this, so the mapping changed with the
+     * template rebuild. Verify by name, not just ID, if SM is re-templated again.
      */
-    whiteWashPremium: null as number | null,
+    whiteWashPremium: 1557033 as number | null,
   },
 } as const;
 

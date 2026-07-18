@@ -86,41 +86,43 @@ Deposit        = 50% of Quote                   → rounded to cents
   ServiceMinder data (`src/pricing/rateTable.ts`), synced every 15 min by the cron.
 - An incomplete rate table (missing/zero rates) makes the affected quote **non-quotable**:
   the funnel must route to human pricing ("quote within 2 hours"), never guess.
-- AI level buckets are `L1_2`, `L3`, `L4` (SM merges levels 1 and 2). SM currently prices
-  Level 1 and Level 2 separately; the merged `L1_2` rate defaults to the **higher** of the
-  two (conservative) — confirm with owner (open item below).
+- AI level buckets are `L1_2`, `L3`, `L4` (SM merges levels 1 and 2). SM now carries a
+  single merged "Tune-Up Level 1 & 2" part, so each bucket maps to exactly one SM part.
 
-## ServiceMinder mapping (live-verified 2026-07-17)
+## ServiceMinder mapping (live-verified 2026-07-18, after template rebuild)
 
 Rates live as **parts** on service `30382 Tune-Up Residential`
 (`POST https://serviceminder.io/api/services/all` with `IncludeParts: true`).
-Mapping is by part ID in `src/config.ts`:
+Mapping is by part ID in `src/config.ts`. The owner rebuilt the Tune-Up template
+2026-07-18 with **per-opening pricing** and added the White Wash Premium part —
+this closed the earlier pricing gaps. **Part IDs were repurposed in the rebuild**
+(old "Level 2" `1557033` is now White Wash Premium), so verify by name if SM is
+re-templated again:
 
-| Role | SM part | ID | Live value 2026-07-17 |
+| Role | SM part | ID | Live value 2026-07-18 |
 |------|---------|----|--------------------|
-| Uplift (merged into base) | Tune-Up Uplift | 199137 | $619.35 |
-| Level 1 | Tune-Up Level 1 | 199138 | $25.75 / unit |
-| Level 2 | Tune-Up Level 2 | 1557033 | $27.81 / unit |
-| Level 3 | Tune-Up Level 3 | 199139 | $29.87 / unit |
-| Level 4 | Tune-Up Level 4 | 199140 | $31.93 / unit |
-| Base | service `BasePrice` | — | **$0.00 (see gaps)** |
-| White-wash premium | — | **missing** | not in SM yet |
+| Uplift (effective base) | Tune-Up Uplift | 199137 | $390.35 |
+| L1_2 (merged) | Tune-Up Level 1 & 2 | 199138 | **$96.00 / opening** |
+| L3 | Tune-Up Level 3 | 199139 | **$112.00 / opening** |
+| L4 | Tune-Up Level 4 | 199140 | **$136.00 / opening** |
+| White-wash premium | White Wash Premium | 1557033 | $620.00 |
+| Base | service `BasePrice` | — | $0.00 (see note) |
 
-### ⚠️ SM configuration gaps found during scaffold (owner action needed)
+Rates are read live; the values above are just the current snapshot. White-wash
+quotes now price instantly (no longer routed to human review on that ground).
 
-Live SM values disagree with the build-spec approximations. SM is the source of truth,
-so either SM needs updating or the spec numbers are stale — Steven to confirm:
+### Remaining SM note (owner confirm)
 
-1. **No "White Wash Premium" part exists in SM** (spec: ~$618.50 flat). Until it's added
-   (and its ID put in `src/config.ts`), white-wash-flagged quotes route to human pricing.
-2. **Tune-Up Residential `BasePrice` is $0** (spec: base ~$250). Effective base today is
-   just the uplift ($619.35 vs spec's ~$639.65 combined).
-3. **Level rates are per *unit* at $25.75–$31.93** vs spec's ~$96.49–$136.07 *per opening*.
-   If an "opening" bills as multiple SM units, the funnel needs that multiplier defined.
-4. `L1_2` merged-bucket rate policy (currently `max(L1, L2)`) needs owner sign-off.
-
-(A fourth gap — SM's "TUSDD $250 Same Day Discount" note vs the spec's 10% SDD — was
-resolved 2026-07-18: the owner dropped the SDD entirely.)
+- **Effective base = uplift only ($390.35).** Service `BasePrice` still reads $0 via the
+  API. The spec envisioned base ~$250 + uplift ~$389.65 ≈ $639.65. If a separate ~$250
+  base is intended, set `BasePrice` on service 30382 (the cron picks it up in 15 min);
+  otherwise the uplift serves as the base and quotes run ~$250 lower before the $2k floor.
+- The proposal-template screenshot showed cents-level values ($96.485, $389.65, $618.50)
+  slightly different from the service-part values the cron reads ($96.00, $390.35, $620.00).
+  The engine uses the **service parts** (source of truth per spec) — reconcile if the
+  template's cents values are the intended ones.
+- `end panels / wood species / stain color` (from the sales-training doc) are reported by
+  the classifier but not yet in automated pricing — owner decision whether they should be.
 
 ## Reference material (Google Drive)
 
@@ -145,22 +147,38 @@ npm run typecheck
 npm run dev         # wrangler dev (needs .dev.vars, see .dev.vars.example)
 ```
 
-Deploy (once Cloudflare resources exist — IDs in wrangler.toml are placeholders):
+### Cloudflare resources
+
+Created 2026-07-18 (real IDs in `wrangler.toml`):
+- **D1** `ktu-tuneup` — `e8697721-207d-42d5-8014-c8240b690ee4` (schema applied)
+- **KV** `ktu-tuneup-pricing` — `eac228b23726485389a6236be9f72e0a`
+- **R2** `ktu-tuneup-photos` — **pending**: enable R2 in the Cloudflare dashboard
+  (billing gate), then `wrangler r2 bucket create ktu-tuneup-photos` and uncomment the
+  `[[r2_buckets]]` block. Photos aren't needed until the P3 funnel + P2 classify go live.
 
 ```bash
-wrangler d1 create ktu-tuneup && wrangler kv namespace create PRICING_KV
-wrangler r2 bucket create ktu-tuneup-photos
-wrangler d1 migrations apply ktu-tuneup --remote
-wrangler secret put SERVICEMINDER_API_KEY   # + others per build spec as later phases land
+wrangler d1 migrations apply ktu-tuneup --remote   # or already applied via API
+wrangler secret put SERVICEMINDER_API_KEY
+wrangler secret put ANTHROPIC_API_KEY
 wrangler deploy
 ```
 
-Secrets (Wrangler): `SERVICEMINDER_API_KEY` (Phase 1); later phases add `STRIPE_SECRET_KEY`,
-`STRIPE_WEBHOOK_SECRET`, `ANTHROPIC_API_KEY`, `HIGHLEVEL_WEBHOOK_URL`, `META_CAPI_TOKEN`,
-`META_PIXEL_ID`. Never commit real values.
+Secrets (Wrangler): `SERVICEMINDER_API_KEY` (P1), `ANTHROPIC_API_KEY` (P2); later phases
+add `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `HIGHLEVEL_WEBHOOK_URL`, `META_CAPI_TOKEN`.
+`META_PIXEL_ID` is a non-secret var (already set in `wrangler.toml`). Never commit secrets.
+
+## Integration reference (for later phases)
+
+| System | Detail |
+|--------|--------|
+| Meta Pixel ID | `109034988941656` (KTU Bloomfield NJ; domain verified) — in `wrangler.toml` |
+| HighLevel calendar | **"Tune-up"** — Phase 4 books here |
+| ServiceMinder calendar | **"Tune-Up Residential"** — SM-side booking target |
+| NJ HIC # | See `docs/legal-and-launch.md` — a number is on file but a conflict needs owner resolution before it goes in the contract |
 
 ## Do-not-launch checklist (from build spec)
 
-Attorney sign-off on agreement + rescission/SDD interplay · final refund tiers · SM proposal
-text · calibration photos ingested · Pixel ID + HighLevel recipients · **plus the SM
-configuration gaps above**.
+Tracked in **`docs/legal-and-launch.md`**. Status: attorney sign-off ✅ (owner-confirmed),
+refund/rescission policy ✅ (defined), Meta Pixel ✅, SM pricing ✅. Still open: SM proposal
+text (agreement source), NJ HIC number conflict, calibration photos labeled, R2 enabled,
+HighLevel notification recipient list, gallery photo selection.

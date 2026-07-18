@@ -3,7 +3,7 @@ import { KV_KEYS } from "../src/config";
 import type { KvLike } from "../src/pricing/store";
 import { loadRateTable } from "../src/pricing/store";
 import { syncPricing } from "../src/sync/pricingSync";
-import liveSnapshot from "./fixtures/sm-services-live-2026-07-17.json";
+import liveSnapshot from "./fixtures/sm-services-live-2026-07-18.json";
 
 const NOW = () => new Date("2026-07-17T12:00:00Z");
 const ENV = { SERVICEMINDER_API_KEY: "test-key" };
@@ -31,7 +31,7 @@ describe("syncPricing", () => {
     const kv = memoryKv();
     const result = await syncPricing({ env: ENV, kv, now: NOW, fetchImpl: fetchReturning(liveSnapshot) });
     expect(result.ok).toBe(true);
-    expect(result.table?.upliftMilli).toBe(619_350);
+    expect(result.table?.upliftMilli).toBe(390_350);
     expect(kv.data.has(KV_KEYS.current)).toBe(true);
     expect(kv.data.has(KV_KEYS.lastGood)).toBe(true);
   });

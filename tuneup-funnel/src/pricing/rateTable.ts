@@ -1,9 +1,8 @@
 /**
  * Builds the pricing RateTable from a ServiceMinder /services/all payload
  * (IncludeParts: true). The AI classifier outputs three buckets — L1_2, L3, L4
- * (SM merges levels 1 and 2). SM currently prices Level 1 and Level 2 as
- * separate parts, so L1_2 uses the higher of the two (conservative) until the
- * owner confirms the merged-rate policy.
+ * (SM merges levels 1 and 2). SM carries a single merged "Tune-Up Level 1 & 2"
+ * part for the L1_2 bucket, so each bucket maps to exactly one SM part.
  */
 
 import { SM_PRICING } from "../config";
@@ -75,8 +74,7 @@ export function buildRateTable(payload: SmServicesPayload, now: Date): RateTable
 
   const baseMilli = dollarsToMilli(service.BasePrice ?? 0);
   const upliftMilli = partMilli(SM_PRICING.partIds.uplift, "uplift");
-  const level1 = partMilli(SM_PRICING.partIds.level1, "level1");
-  const level2 = partMilli(SM_PRICING.partIds.level2, "level2");
+  const level12 = partMilli(SM_PRICING.partIds.level12, "level12");
   const level3 = partMilli(SM_PRICING.partIds.level3, "level3");
   const level4 = partMilli(SM_PRICING.partIds.level4, "level4");
 
@@ -85,11 +83,11 @@ export function buildRateTable(payload: SmServicesPayload, now: Date): RateTable
       ? null
       : partMilli(SM_PRICING.partIds.whiteWashPremium, "whiteWashPremium");
   if (SM_PRICING.partIds.whiteWashPremium === null) {
-    missing.push("whiteWashPremium: no SM part exists yet (owner to create)");
+    missing.push("whiteWashPremium: no SM part configured");
   }
 
   const levelRatesMilli: Record<LevelBucket, number> = {
-    L1_2: Math.max(level1, level2),
+    L1_2: level12,
     L3: level3,
     L4: level4,
   };
