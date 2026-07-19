@@ -24,9 +24,19 @@ echo "▸ MCP bootstrap — server dir: $DIR"
 
 # ---- 1. Python deps (union of every requirements.txt) ----------------------
 echo "▸ Installing Python deps…"
+# Base crypto stack FIRST. The container ships a debian-managed PyJWT that pip
+# cannot uninstall (no RECORD file), and a `cryptography` whose Rust bindings
+# panic because `cffi` is absent. Left alone, the main resolve below aborts
+# mid-transaction on the PyJWT upgrade — which previously left httpx/mcp
+# uninstalled and every Python stdio server "Failed to connect". Installing
+# clean wheels with --ignore-installed shadows the system copies and makes the
+# main install succeed. Idempotent: pip no-ops when they're already current.
+pip install --quiet --disable-pip-version-check --ignore-installed \
+  cffi cryptography PyJWT >/dev/null 2>&1 || echo "  (crypto base install had warnings)"
+
 pip install --quiet --disable-pip-version-check \
   "mcp[cli]>=1.2.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" \
-  2>/dev/null || echo "  (pip install had warnings — continuing)"
+  || echo "  (pip install had warnings — continuing)"
 
 # ---- helpers ---------------------------------------------------------------
 ok=(); skipped=()
