@@ -55,27 +55,30 @@ Work brand-by-brand (KTU, BTU), then roll up. Compare **yesterday** and
   Always `list_enabled_zapier_actions` first for exact action keys.
 
 ### 2. Landing-page & session experience (the "issues we may not be aware of")
-- **Microsoft Clarity** (KTU project 2708513173760009, BTU project per its live
-  token's JWT `sub` claim is `2946011922316527` — note this does NOT match the
-  `2789761772911940` figure once documented here; that number appears stale/wrong
-  and should not be trusted until reconciled directly in the Clarity dashboard):
-  daily check of dead clicks, rage clicks, excessive scrolling, quick-backs, JS
-  errors, and session recordings on the top paid landing pages. A rising rage-click
-  or quick-back rate on a page receiving paid traffic is a **must-action** — you are
-  paying for every one of those broken sessions.
-- ⚠️ **Known open issue (as of 2026-07-19): `clarity-ktu-export` and
-  `clarity-btu-export` are both connected and authenticated with distinct,
-  correctly-decoded per-project tokens (confirmed via `ps aux` showing two
-  separate OS processes, and JWT `sub` claims differing) — yet identical queries
-  against both return byte-identical data, all showing `bathtuneupbloomfield.com`
-  URLs. Root cause not yet isolated (source-side token mix-up in the Clarity
-  dashboard vs. a bug in `@microsoft/clarity-mcp-server` v2.0.1 not respecting
-  per-process token scoping — both are plausible, neither confirmed). **Before
-  reporting any KTU Clarity finding, sanity-check that the returned URLs actually
-  belong to a KTU domain, not `bathtuneupbloomfield.com`.** If they match BTU's
-  domain again, do not report KTU landing-page data as real — flag it as broken
-  instrumentation (🚨 Must Action, tracking-integrity category) instead of silently
-  presenting BTU's data as KTU's.**
+- **Microsoft Clarity** (KTU project `2708513173760009`, BTU project
+  `2946011922316527` — confirmed 2026-07-19 by decoding each token's JWT `sub`
+  claim; a previously-documented BTU figure of `2789761772911940` here was
+  stale/wrong and has been corrected): daily check of dead clicks, rage clicks,
+  excessive scrolling, quick-backs, JS errors, and traffic on the top paid
+  landing pages. A rising rage-click or quick-back rate on a page receiving
+  paid traffic is a **must-action** — you are paying for every one of those
+  broken sessions.
+- **Use `mcp__clarity__query_insights(location, num_of_days, dimension1)`**,
+  NOT the retired `clarity-ktu-export`/`clarity-btu-export` npm-based servers.
+  Those had a confirmed bug (fixed 2026-07-19): `@microsoft/clarity-mcp-server`
+  silently ignored the per-process `CLARITY_API_TOKEN` and returned one
+  project's data regardless of which token a given process held — two
+  separately-registered, correctly-tokened processes both returned BTU's data.
+  Root cause isolated by calling the raw Data-Export API directly with each
+  token and getting genuinely different, correctly-scoped results — the tokens
+  were never the problem, the npm wrapper was. Replaced with
+  `mcp-servers/clarity/server.py`, a direct REST wrapper (single `clarity`
+  server, `location: "KTU"|"BTU"` argument, mirrors the `serviceminder`/`gmb`
+  dual-brand pattern) that calls the same verified-working endpoint with no
+  intermediate package. If `mcp__clarity__*` is ever absent, the env var
+  (`CLARITY_KTU_TOKEN`/`CLARITY_BTU_TOKEN`) is unset — say so, don't silently
+  skip the brand. As a standing sanity check, still verify returned URLs
+  actually belong to the requested brand's domain before reporting a finding.
 - Tie Clarity findings to the specific campaigns/ad groups sending traffic to that
   page, and quantify the wasted spend ("$X/day lands on a page with Y% quick-backs").
 - **Tracking-integrity check (every run — ported from CMO; its #1 finding was a
@@ -279,13 +282,16 @@ service role — anon REST will 401), project `tguwpswcneywvscxzyef`:
   `mcp__serviceminder__*` returns for KTU + BTU. ROI can reach invoiced revenue again,
   not just "won deal." If it 401s/drops in a given session, say so and fall back to
   HighLevel won-deals for that run.
-- 🟡 **Clarity has a HARD daily call cap — budget it.** The Data-Export API allows
-  only **~10 calls per project per day** (KTU 2708513173760009, BTU 2789761772911940).
-  A "An error occurred while fetching the data" / 429 is that quota, NOT a breakage —
-  the tokens are valid. **Optimize:** make at most 1–2 focused Clarity queries per
-  brand per run (top paid landing pages only), never loop it, and if you've already
-  spent the day's budget, note "Clarity quota spent" rather than retrying. Google Ads
-  + GMB are available directly in cloud (or via Zapier Google Ads 14 actions / GBP).
+- 🟢 **Clarity fixed (2026-07-19)** — use `mcp__clarity__query_insights`
+  (server `clarity`, not the retired `clarity-ktu-export`/`clarity-btu-export`).
+  See §2 for the full story. **Still has a HARD daily call cap — budget it.**
+  The Data-Export API allows only **~10 calls per project per day** (KTU
+  2708513173760009, BTU 2946011922316527). A 429 is that quota, NOT a
+  breakage — the tokens are valid. **Optimize:** make at most 1–2 focused
+  Clarity queries per brand per run (top paid landing pages only), never loop
+  it, and if you've already spent the day's budget, note "Clarity quota
+  spent" rather than retrying. Google Ads + GMB are available directly in
+  cloud (or via Zapier Google Ads 14 actions / GBP).
 - 🟡 **GA4 shares one measurement ID** across KTU/BTU — don't trust per-brand GA4
   splits until separated.
 - 🟢 **QuickBooks live again** (re-authed 2026-07-03): Intuit connector = FGUSA

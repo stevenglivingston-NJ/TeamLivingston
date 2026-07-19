@@ -97,14 +97,21 @@ if require CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; then
   reg cloudflare "{\"command\":\"python3\",\"args\":[\"$DIR/cloudflare/server.py\"],\"env\":{\"CLOUDFLARE_API_TOKEN\":\"$CLOUDFLARE_API_TOKEN\",\"CLOUDFLARE_ACCOUNT_ID\":\"$CLOUDFLARE_ACCOUNT_ID\"}}"
 else skipped+=("cloudflare (CLOUDFLARE_API_TOKEN/ACCOUNT_ID)"); fi
 
-# ---- 5. Optional Clarity Data-Export (npm) --------------------------------
-# Rate-limited ~10 calls/project/day — agents call sparingly.
-if require CLARITY_KTU_TOKEN; then
-  reg clarity-ktu-export "{\"command\":\"npx\",\"args\":[\"-y\",\"@microsoft/clarity-mcp-server\"],\"env\":{\"CLARITY_API_TOKEN\":\"$CLARITY_KTU_TOKEN\"}}"
-else skipped+=("clarity-ktu-export (CLARITY_KTU_TOKEN)"); fi
-if require CLARITY_BTU_TOKEN; then
-  reg clarity-btu-export "{\"command\":\"npx\",\"args\":[\"-y\",\"@microsoft/clarity-mcp-server\"],\"env\":{\"CLARITY_API_TOKEN\":\"$CLARITY_BTU_TOKEN\"}}"
-else skipped+=("clarity-btu-export (CLARITY_BTU_TOKEN)"); fi
+# ---- 5. Clarity Data-Export (direct REST wrapper) -------------------------
+# Rate-limited ~10 calls/project/day per brand — agents call sparingly.
+# NOTE: replaced the npm package (@microsoft/clarity-mcp-server) 2026-07-19 —
+# confirmed via raw API test that it silently ignores the per-process
+# CLARITY_API_TOKEN and returns one project's data regardless of which token
+# a given process was started with (two separate registrations both resolved
+# to BTU's project, even with distinct correctly-scoped tokens). This wrapper
+# (mcp-servers/clarity/server.py) calls the Data-Export REST API directly
+# with no intermediate package, and — like serviceminder/gmb — is ONE server
+# holding both brands' keys with a location switch at call time, so the
+# split-registration failure mode can't recur. Verified: KTU/BTU tokens now
+# return genuinely distinct, correctly-scoped data.
+if require CLARITY_KTU_TOKEN CLARITY_BTU_TOKEN; then
+  reg clarity "{\"command\":\"python3\",\"args\":[\"$DIR/clarity/server.py\"],\"env\":{\"CLARITY_KTU_TOKEN\":\"$CLARITY_KTU_TOKEN\",\"CLARITY_BTU_TOKEN\":\"$CLARITY_BTU_TOKEN\"}}"
+else skipped+=("clarity (CLARITY_KTU_TOKEN/CLARITY_BTU_TOKEN)"); fi
 
 # ---- summary --------------------------------------------------------------
 echo ""
