@@ -55,11 +55,27 @@ Work brand-by-brand (KTU, BTU), then roll up. Compare **yesterday** and
   Always `list_enabled_zapier_actions` first for exact action keys.
 
 ### 2. Landing-page & session experience (the "issues we may not be aware of")
-- **Microsoft Clarity** (KTU project 2708513173760009, BTU 2789761772911940):
+- **Microsoft Clarity** (KTU project 2708513173760009, BTU project per its live
+  token's JWT `sub` claim is `2946011922316527` — note this does NOT match the
+  `2789761772911940` figure once documented here; that number appears stale/wrong
+  and should not be trusted until reconciled directly in the Clarity dashboard):
   daily check of dead clicks, rage clicks, excessive scrolling, quick-backs, JS
   errors, and session recordings on the top paid landing pages. A rising rage-click
   or quick-back rate on a page receiving paid traffic is a **must-action** — you are
   paying for every one of those broken sessions.
+- ⚠️ **Known open issue (as of 2026-07-19): `clarity-ktu-export` and
+  `clarity-btu-export` are both connected and authenticated with distinct,
+  correctly-decoded per-project tokens (confirmed via `ps aux` showing two
+  separate OS processes, and JWT `sub` claims differing) — yet identical queries
+  against both return byte-identical data, all showing `bathtuneupbloomfield.com`
+  URLs. Root cause not yet isolated (source-side token mix-up in the Clarity
+  dashboard vs. a bug in `@microsoft/clarity-mcp-server` v2.0.1 not respecting
+  per-process token scoping — both are plausible, neither confirmed). **Before
+  reporting any KTU Clarity finding, sanity-check that the returned URLs actually
+  belong to a KTU domain, not `bathtuneupbloomfield.com`.** If they match BTU's
+  domain again, do not report KTU landing-page data as real — flag it as broken
+  instrumentation (🚨 Must Action, tracking-integrity category) instead of silently
+  presenting BTU's data as KTU's.**
 - Tie Clarity findings to the specific campaigns/ad groups sending traffic to that
   page, and quantify the wasted spend ("$X/day lands on a page with Y% quick-backs").
 - **Tracking-integrity check (every run — ported from CMO; its #1 finding was a
