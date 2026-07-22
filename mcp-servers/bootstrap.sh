@@ -6,9 +6,16 @@
 # daily agent triggers — Goldeneye, Moola, Paid — spawn) have the direct MCP
 # connections, not just the account's claude.ai connectors.
 #
-# Run this from the environment SETUP SCRIPT (Cloud env → Setup script):
-#     bash "$(git -C /home/user/TeamLivingston rev-parse --show-toplevel)/mcp-servers/bootstrap.sh"
-# or, if the repo lives elsewhere, just point at this file directly.
+# Run this from the environment SETUP SCRIPT (Cloud env → Setup script). Use the
+# PATH-ROBUST form below — it never exits 127 if the repo isn't at the expected
+# path yet (the old `git -C /home/user/TeamLivingston …` form returned empty and
+# tried `bash /mcp-servers/bootstrap.sh` → "No such file or directory" → exit 127):
+#
+#   for d in /home/user/TeamLivingston /workspace/TeamLivingston "$HOME/TeamLivingston"; do
+#     [ -f "$d/mcp-servers/bootstrap.sh" ] && { bash "$d/mcp-servers/bootstrap.sh"; break; }
+#   done
+#
+# (Falls through quietly if none exist yet — a later session re-runs setup.)
 #
 # SECRETS: this script reads all API keys from ENVIRONMENT VARIABLES. No key is
 # ever stored in the repo. Set the vars in the Cloud environment's env-var
@@ -23,10 +30,17 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "▸ MCP bootstrap — server dir: $DIR"
 
 # ---- 1. Python deps (union of every requirements.txt) ----------------------
+# NOTE: `--ignore-installed PyJWT` is required because the base image ships a
+# Debian-packaged PyJWT with no RECORD file, so pip cannot uninstall it to
+# satisfy google-ads' pin ("Cannot uninstall PyJWT … RECORD file not found").
+# Without this the whole pip install aborts and the google-ads / gmb stdio
+# servers start with missing deps and fail to register (connector flapping).
+# `--break-system-packages` tolerates PEP-668 externally-managed environments.
 echo "▸ Installing Python deps…"
-pip install --quiet --disable-pip-version-check \
-  "mcp[cli]>=1.2.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" \
-  2>/dev/null || echo "  (pip install had warnings — continuing)"
+PIP_DEPS=( "mcp[cli]>=1.2.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" )
+pip install --quiet --disable-pip-version-check --ignore-installed PyJWT "${PIP_DEPS[@]}" 2>/dev/null \
+  || pip install --quiet --disable-pip-version-check --break-system-packages --ignore-installed PyJWT "${PIP_DEPS[@]}" 2>/dev/null \
+  || echo "  (pip install had warnings — continuing; stdio servers may lack deps)"
 
 # ---- helpers ---------------------------------------------------------------
 ok=(); skipped=()
@@ -105,6 +119,31 @@ else skipped+=("clarity-ktu-export (CLARITY_KTU_TOKEN)"); fi
 if require CLARITY_BTU_TOKEN; then
   reg clarity-btu-export "{\"command\":\"npx\",\"args\":[\"-y\",\"@microsoft/clarity-mcp-server\"],\"env\":{\"CLARITY_API_TOKEN\":\"$CLARITY_BTU_TOKEN\"}}"
 else skipped+=("clarity-btu-export (CLARITY_BTU_TOKEN)"); fi
+
+# ---- 6. Render-hosted Clarity Data-Export (HTTP transport, static bearer) --
+# The ktubtu-mcp-clarity Render service wraps Clarity's Data-Export API for BOTH
+# projects (KTU + BTU) with the landing-page-experience / traffic-by-channel
+# tools the paid agent uses. claude.ai connectors CANNOT register it (they force
+# an OAuth sign-in; the service uses a static bearer token), so Cloud sessions
+# reach it directly here — same static-header pattern as the ghl-* servers.
+# Token = the service's auto-generated MCP_AUTH_TOKEN (Render → ktubtu-mcp-clarity
+# → Environment). Free instance cold-starts ~50s after idle; agents budget calls.
+if require CLARITY_MCP_AUTH_TOKEN; then
+  reg clarity "{\"type\":\"http\",\"url\":\"https://ktubtu-mcp-clarity.onrender.com/mcp\",\"headers\":{\"Authorization\":\"Bearer $CLARITY_MCP_AUTH_TOKEN\"}}"
+else skipped+=("clarity (CLARITY_MCP_AUTH_TOKEN)"); fi
+
+# ---- 6b. Render-hosted Google Ads + LSA (HTTP transport, static bearer) ----
+# The ktubtu-mcp-google-ads Render service wraps the Google Ads API — search
+# campaigns / keywords / geo AND Local Services Ads (LSA) — for KTU (2579406186)
+# and BTU (4477036900). The Google OAuth creds live in Render's env, so Cloud
+# sessions (the paid agent) reach it here with just the service's static bearer,
+# no Google creds in Cloud env. claude.ai connectors can't register it (OAuth-
+# only), same as clarity/ghl. Registers under the name `google-ads`; if the stdio
+# google-ads block above is ALSO configured (GOOGLE_ADS_* set) this HTTP one runs
+# later and wins. Token = the service's MCP_AUTH_TOKEN (Render → service → Env).
+if require GOOGLEADS_MCP_AUTH_TOKEN; then
+  reg google-ads "{\"type\":\"http\",\"url\":\"https://ktubtu-mcp-google-ads.onrender.com/mcp\",\"headers\":{\"Authorization\":\"Bearer $GOOGLEADS_MCP_AUTH_TOKEN\"}}"
+else skipped+=("google-ads HTTP (GOOGLEADS_MCP_AUTH_TOKEN)"); fi
 
 # ---- summary --------------------------------------------------------------
 echo ""

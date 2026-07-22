@@ -99,6 +99,11 @@ that section where `fields->>'scan_date' <> today` — stale beats blank):
 - `cellar_briefing` — max ~8 rows `{severity: urgent|warn|info, title, detail
   (what/how urgent/what to do), source, scan_date}`. Never empty; if all clear, one
   info row plus one info row per blind source. → Earthwise Overview.
+- `exec_summary` — the **Earthwise Overview tab's executive summary** banner:
+  write-then-prune per `scan_date`, one row `{tab:'earth-overview', owner:'Cellar',
+  summary (3-5 sentences: fulfillment/inventory headline — stockout & overstock
+  risks, at-risk orders, seller-health/SLA status, top action), updated:<today>,
+  brand:'Earthwise', scan_date}`.
 - `cellar_inventory` — one row per SKU at risk: `{sku, on_hand, days_cover, status
   (🔴/🟡/🟢), reorder_qty, note, scan_date}`. → Inventory & Demand tab.
 - `cellar_orders` — one row per at-risk order / open PO / buyer message:

@@ -56,68 +56,60 @@ async function sendEmail(
   body: string,
 ): Promise<void> {
   const auth = { Authorization: `Bearer ${c.ghl_pit}`, "Content-Type": "application/json" };
-  const timeout = new AbortController();
-  const timer = setTimeout(() => timeout.abort(), 10000);
-
-  try {
-    const up = await fetch("https://services.leadconnectorhq.com/contacts/upsert", {
-      method: "POST",
-      headers: { ...auth, Version: "2021-07-28" },
-      body: JSON.stringify({ locationId: c.ghl_location_id, email: to }),
-      signal: timeout.signal,
-    });
-    const upj = await up.json();
-    const contactId = upj?.contact?.id;
-    if (!contactId) {
-      throw new Error("GHL contact upsert failed: " + JSON.stringify(upj).slice(0, 200));
-    }
-
-    const msg = await fetch("https://services.leadconnectorhq.com/conversations/messages", {
-      method: "POST",
-      headers: { ...auth, Version: "2021-04-15" },
-      body: JSON.stringify({
-        type: "Email",
-        contactId,
-        subject,
-        html: `<div style="font-family:sans-serif;white-space:pre-wrap">${escapeHtml(body)}</div>`,
-        emailFrom: c.email_from || undefined,
-      }),
-      signal: timeout.signal,
-    });
-    if (!msg.ok) {
-      throw new Error("GHL email send failed: " + (await msg.text()).slice(0, 200));
-    }
-  } finally {
-    clearTimeout(timer);
+  const up = await fetch("https://services.leadconnectorhq.com/contacts/upsert", {
+    method: "POST",
+    headers: { ...auth, Version: "2021-07-28" },
+    body: JSON.stringify({ locationId: c.ghl_location_id, email: to }),
+  });
+  const upj = await up.json();
+  const contactId = upj?.contact?.id;
+  if (!contactId) {
+    throw new Error("GHL contact upsert failed: " + JSON.stringify(upj).slice(0, 200));
+  }
+  const msg = await fetch("https://services.leadconnectorhq.com/conversations/messages", {
+    method: "POST",
+    headers: { ...auth, Version: "2021-04-15" },
+    body: JSON.stringify({
+      type: "Email",
+      contactId,
+      subject,
+      html: `<div style="font-family:sans-serif;white-space:pre-wrap">${escapeHtml(body)}</div>`,
+      emailFrom: c.email_from || undefined,
+    }),
+  });
+  if (!msg.ok) {
+    throw new Error("GHL email send failed: " + (await msg.text()).slice(0, 200));
   }
 }
 
 async function sendSlack(c: Record<string, string>, text: string): Promise<boolean> {
   if (!c.slack_webhook_url) return false;
-  const timeout = new AbortController();
-  const timer = setTimeout(() => timeout.abort(), 5000);
-  try {
-    const r = await fetch(c.slack_webhook_url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-      signal: timeout.signal,
-    });
-    if (!r.ok) throw new Error("Slack webhook failed: HTTP " + r.status);
-    return true;
-  } finally {
-    clearTimeout(timer);
-  }
+  const r = await fetch(c.slack_webhook_url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
+  if (!r.ok) throw new Error("Slack webhook failed: HTTP " + r.status);
+  return true;
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
   const c = await loadConfig();
+  // Auth: shared secret in dispatch_config, sent by the pg_cron job as x-cron-secret.
+  if (!c.cron_secret || req.headers.get("x-cron-secret") !== c.cron_secret) {
+    return new Response("forbidden", { status: 403 });
+  }
+  // Dormant until a delivery channel is configured — claim nothing so Ax's hourly
+  // run stays the primary dispatcher and no row is prematurely marked error.
+  if (!c.ghl_pit && !c.slack_webhook_url) {
+    return Response.json({ skipped: "no delivery channel configured", note: "set ghl_pit (email) and/or slack_webhook_url in dispatch_config" });
+  }
   const { data: rows, error } = await sb
     .from("notify_queue")
-    .select("id, recipient_email, subject, body, result")
+    .select("*")
     .eq("status", "pending")
     .order("created_at")
-    .limit(50);
+    .limit(25);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   const results: unknown[] = [];
@@ -126,19 +118,13 @@ Deno.serve(async () => {
     try {
       const to = r.recipient_email || c.default_recipient || "stevenglivingston@gmail.com";
       const slackText = `🔔 *${r.subject || "Axyom notification"}*\n${r.body || ""}`;
-
-      const [, slackResult] = await Promise.allSettled([
-        sendEmail(c, to, r.subject || "Axyom notification", r.body || ""),
-        sendSlack(c, slackText),
-      ]);
-
-      via.push(`email:${to}`);
-      if (slackResult?.status === "fulfilled" && slackResult.value) {
-        via.push("slack-webhook");
-      } else if (slackResult?.status === "rejected") {
-        via.push("slack-error");
+      try {
+        if (await sendSlack(c, slackText)) via.push("slack-webhook");
+      } catch (_e) {
+        via.push("slack-error"); // Slack failure never blocks email delivery
       }
-
+      await sendEmail(c, to, r.subject || "Axyom notification", r.body || "");
+      via.push(`email:${to}`);
       // status guard avoids double-marking if a sweep raced us
       await sb.from("notify_queue")
         .update({

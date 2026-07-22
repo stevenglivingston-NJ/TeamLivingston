@@ -1,0 +1,13 @@
+{
+  "name": "axyom-intranet",
+  "private": true,
+  "description": "Axyom Intranet (ktubtuintranet Cloudflare Worker) — see DEPLOY.md",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
