@@ -27,14 +27,32 @@ Connection (`mcp__Bank_Connection__*`) for cash truth.
 
 ## The hourly run (in this order)
 
-### 1. Dispatch `notify_queue`
+### 1. Dispatch `notify_queue` — BACKSTOP ONLY
+Primary delivery is the `dispatch-notify` Supabase Edge Function, scheduled every
+minute by pg_cron (`cron.job` name `dispatch-notify`) and MCP-independent. It
+atomically claims pending rows via `claim_notify_batch()`, resolves `recipient_email`
+→ Slack DM (`users.lookupByEmail` + `chat.postMessage`, bot token; falls back to
+`SLACK_ALERTS_CHANNEL`, then a webhook), and emails via Resend when configured.
+**Activation gate:** the function stays DORMANT — it claims nothing — until
+`SLACK_BOT_TOKEN` (or `SLACK_WEBHOOK_URL`/`RESEND_API_KEY`) is set as a function
+secret. While dormant, YOU are the primary dispatcher, not the backstop. Either way,
+you only handle rows it hasn't delivered:
 ```sql
-SELECT * FROM notify_queue WHERE status='pending' ORDER BY created_at LIMIT 50;
+SELECT * FROM notify_queue WHERE status='pending'
+  AND created_at < now() - interval '5 minutes'
+ORDER BY created_at LIMIT 50;
 ```
+A row still pending after 5 minutes means the edge dispatcher is failing on it
+(its `result.error` says why) — deliver it yourself, and if you see 3+ such rows
+in one sweep, add one line to #intranet-alerts that the edge dispatcher looks down.
 For each row, route by `kind`:
 - `task_assigned` → Slack DM the assignee (resolve `recipient_email` →
   `slack_find_user_by_email`; if no match, post to #intranet-alerts tagging the name) +
   email the assignee (subject/body as-is). Include due date and who assigned it.
+- `task_reminder` → same delivery as `task_assigned` (Slack DM + email to the assignee,
+  #intranet-alerts fallback if no Slack match) — this is a manual re-ping a teammate sent
+  from the intranet Tasks tab on an already-open task, so always send it even if you sent
+  the original `task_assigned` ping recently; never suppress it as a duplicate.
 - `task_done` → post to #intranet-alerts.
 - `action_tagged` → covered by step 2's outbound sync — post the summary to
   #intranet-alerts (skip if step 2 already posted for the same source id).
@@ -85,10 +103,27 @@ prune). For each unanswered question from a human (skip your own posts):
 - **Birthdays & anniversaries**: `SELECT fields FROM intranet_records WHERE section='team_dates'`.
   Anyone whose birthday (month/day) is today → 🎂 shout-out in #general by first name.
   Work anniversary today → 🎉 with the year count ("3 years with the team today!").
-- **Overdue tasks**: team_tasks where status='open' and due_date < today → one grouped
+- **Tasks due today → DM the assignee**: `SELECT * FROM team_tasks WHERE status IN ('open','in_progress') AND due_date = <today ET>`. For each, enqueue a `task_reminder` so the dispatcher (step 1) DMs the assignee on Slack + email:
+  `INSERT INTO notify_queue (kind, recipient_email, subject, body, source) VALUES ('task_reminder', <assignee_email>, '[Axyom Reminder] '||title||' is due today → '||assignee, coalesce(detail,'')||' (due '||due_date||')'||case when drive_url is not null then ' · file: '||drive_url else '' end||case when cadence<>'once' then ' · recurring '||cadence else '' end, 'team_tasks:'||id);`
+  Dedupe: skip if a `task_reminder` row with the same `source` was already inserted today (this daily step runs once, first-run-after-7AM-ET, so one ping per task per due date). Recurring tasks are covered automatically — each completed occurrence spawns the next with its own due_date, which lands here on that day.
+- **Overdue tasks**: team_tasks where status IN ('open','in_progress') and due_date < today → one grouped
   reminder in #intranet-alerts (assignee, task, days overdue). No DM nagging.
 - **Queue health**: if notify_queue or action_queue has rows stuck 'pending' > 24h or any
   'error', summarize them in #intranet-alerts so a human can intervene.
+- **Briefing freshness watchdog**: the daily agents can fail silently (fire, write nothing —
+  it happened to Moola on 2026-07-04). Check the latest `fields->>'scan_date'` per section in
+  `intranet_records` for `moola_briefing`, `goldeneye_callouts`, `foreman_briefing`, and
+  `paid_brief`. Any section whose latest scan_date is older than yesterday → one line in
+  #intranet-alerts naming the agent, its last scan date, and the scheduled run to check
+  (e.g., "Moola's briefing is 2 days stale — check the 'Moola — daily CFO briefing' trigger").
+  Dedupe via `ax_state` (`stale_alerted: {section: scan_date}`) — alert once per section per
+  stale date, not every sweep. A section with zero rows ever (agent not yet live) → skip.
+  NOTE: a pg_cron job (`agent-freshness-watchdog`, hourly) now also runs
+  `check_agent_freshness()`, which writes the stale set to the `system_health` section and
+  queues one `kind='system'` `notify_queue` alert per stale section per day (source
+  `freshness:<section>:<date>`). So the DB already surfaces staleness — your job here is just
+  to make sure those queued alerts get delivered (step 1) and to add colour if useful; don't
+  re-queue a `freshness:*` row that already exists.
 
 ## Guardrails
 - Idempotency first: always filter on status='pending' and mark rows before/after work —
