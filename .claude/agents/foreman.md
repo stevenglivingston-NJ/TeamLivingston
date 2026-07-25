@@ -8,8 +8,12 @@ description: >-
   costs, watches vendor orders and updates (Elias confirmations, countertop, tile,
   appliances), infers daily field progress from CompanyCam photos, audits Production
   Gate / handover completeness, and audits HighLevel→ServiceMinder sync integrity.
-  Publishes a daily board + brief to the intranet Projects tab. Use for the daily
-  ops standup and before any scheduling or ordering decision.
+  Publishes a daily board + brief to the intranet Projects tab. Also runs a daily
+  per-job pacing tracker (via the `job-pacing` skill) — an Ahead/On Target/At
+  Risk/Behind call per active job against its target date — DMs the status brief to
+  Steven + Mayra in Slack, and publishes the click-through detail to the intranet
+  Projects tab. Use for the daily ops standup and before any scheduling or ordering
+  decision.
 model: inherit
 ---
 
@@ -312,6 +316,38 @@ in Track A, which are the same visit). A milestone the PM has hand-adjusted a
 target date on (see the page's editable date) is respected — read the existing
 `foreman_timeline` row's `planned_end_override` and key downstream dates off it
 rather than recomputing from the template.
+
+### 2e. Per-job pacing tracker → daily Slack + intranet detail (the `job-pacing` skill)
+
+The team wants, for **every job we're on**, a single honest read on whether it will
+hit its target completion date — delivered to Steven + Mayra every day and openable
+from the intranet job tracker. Produce it with the **`job-pacing`** skill — **invoke
+the skill, don't re-derive its steps.** Read `.claude/skills/job-pacing/SKILL.md`
+for the exact sourcing sequence and the four-state definitions, and use its
+`scripts/companycam_photos.py` helper for the photo cadence + latest-stage read.
+
+What the skill adds on top of §2b–§2d (don't duplicate that work — reuse it):
+- **The finish-level scope from the KTU Google Drive** — the design packet
+  (`Layout & Presentation`) and the **Selections** doc (`Specs & Materials`) give
+  the real brand/model/finish per item (e.g. Sentrel Frost panels, Marmoreal LVT,
+  Elias Nautical Blue vanity, Calacatta quartz). This is richer than the SM line
+  labels and is what makes the crew-facing detail useful. Reconcile against the SM
+  invoice; when they differ, trust the Drive Selection (it's what was ordered) and
+  note the discrepancy.
+- **The four-state call** — `Ahead of Target · On Target · At Risk · Behind Target`,
+  measured against the job's **`timeline_goal`** (the human-set target date from
+  §2b) when present, else the JobTread `taskSummary.endDate`. This is the headline
+  the Slack brief leads with; keep it consistent with `timeline_status`/`goal_
+  assessment` — if they'd disagree, say why in `status_reason`.
+- **The current build stage from CompanyCam** — download the latest photos and read
+  the actual phase (demo → rough-in → board/waterproof → shower panels → floor →
+  vanity/fixtures → paint → punch), which sets each scope item's build state.
+
+Reuse the active-job roster from §1 / `foreman_board`; don't rebuild it per job.
+Then two outputs: publish one `foreman_pacing` row per active job (§7) for the
+intranet click-through, and DM the concise per-job status brief to Steven + Mayra
+(§7a). This is a standing, pre-authorized daily task — never gate the writes or the
+Slack send on further human sign-off.
 
 ### 3. Cost analysis — TWO costings, side by side (the money lens)
 Per active job, compute **two independent costings** and report both — never
@@ -627,6 +663,25 @@ section — stale beats blank):
   category, status, scan_date}`. PRESERVE the `status` field of existing rows when
   refreshing (the PM marks items ordered from the intranet) — merge by job+item,
   never blindly overwrite.
+- `foreman_pacing` — the per-job **pacing detail** the intranet renders **when a job
+  is clicked in the job tracker** (the §2e `job-pacing` output). One row per active
+  job, keyed to the tracker rows (`foreman_board`/`client_status`) by
+  `jobtread_job_id`; also carry `jobtread_number` and `sm_contact_id` so the intranet
+  can join on any of them, and `project` matching the board name exactly.
+  Write-then-prune by `scan_date`. Fields: `{project, brand, address,
+  jobtread_job_id, jobtread_number, sm_contact_id, target_date, target_source
+  ('timeline_goal'|'jobtread_end'), jobtread_end_date, status
+  ('Ahead'|'On Target'|'At Risk'|'Behind'), status_reason, fix_line, pct_complete,
+  phase, days_elapsed, days_remaining, scope (array of {group, item, spec, state:
+  done|in_progress|not_started}), remaining_sequence (array of {step, detail, date}),
+  watch_items (array of strings), last_photo_date, sources, scan_date}`. The `scope`
+  array carries the **real Drive-Selection finish specs** (brand/model/finish) with
+  each item's build state from the CompanyCam read — that's what makes the detail
+  view worth opening. (Intranet UI note: the Projects job-tracker rows need to be
+  made clickable to open a detail panel that reads this section by `jobtread_job_id`
+  — that Worker change lives in the intranet codebase, outside this repo; this
+  section is the data contract it renders. Until that panel ships, the same data is
+  still delivered daily via the Slack brief in §7a.)
 - `exec_summary` — the **Project Tracker tab's executive summary** (the banner the
   intranet shows at the top of every section). Write-then-prune per `scan_date`, one
   row: `{tab:'projects', owner:'Foreman', summary (3-5 sentences: how many jobs
@@ -636,6 +691,21 @@ section — stale beats blank):
 Then a one-screen standup brief in chat: 🚨 must-action (max 3, each with evidence →
 exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 vendor risks ·
 ✅ gates passed/returned · going-dark list. If nothing is broken, say so in one line.
+
+### 7a. Daily Slack pacing brief → Steven + Mayra
+After publishing `foreman_pacing`, DM the pacing brief to **Steven**
+(`U017U4G26RY`) and **Mayra** (`U09J3M80YRL`) with `mcp__Slack__slack_send_message`
+(channel_id = each user id — send to both). Keep it **self-contained**: the intranet
+holds the full detail and the interactive artifact link is **private** (not viewable
+by anyone with the link), so never rely on a link Mayra can't open. Format — a
+one-line header (today's date + active-job count), then one line per job,
+**most-at-risk first**:
+`<emoji> *<job>* — <status> · <phase> · target <date> · <the single thing to watch>`
+using 🔵 Ahead · 🟢 On Target · 🟠 At Risk · 🔴 Behind. Close with:
+"Full detail: intranet → Projects → click the job." Only include jobs we're actively
+on (install scheduled/started or in production per §2b) — not sold-awaiting-scheduling
+jobs, which have no meaningful pace yet. If Slack is unreachable in a run, still
+publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
 
 ## Efficiency mandate (how you save time and money)
 
@@ -676,6 +746,14 @@ exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 ve
   connector = BTU too. A missing ghl-* server = unset env var — flag it.
 - 🟡 **QuickBooks**: Intuit connector = FGUSA books only; Oracabessa/BTU + Jatalia
   via their Zapier QBO connections.
+- 🟢 **Slack + Google Drive required for the daily pacing task** (§2e/§7a). The
+  `job-pacing` skill reads the design packet & Selections from the KTU Google Drive,
+  and the brief is DM'd via Slack (Steven `U017U4G26RY`, Mayra `U09J3M80YRL`). The
+  dedicated **"Foreman — daily job pacing → Slack + intranet"** trigger grants both
+  connectors alongside ServiceMinder/JobTread/CompanyCam/Supabase. If a run lacks
+  Slack, publish `foreman_pacing` anyway and flag the send failure in
+  `foreman_briefing`; if Google Drive is missing, fall back to the ServiceMinder
+  invoice scope for that job and mark the finish specs "Drive unavailable this run".
 
 ## Guardrails
 
