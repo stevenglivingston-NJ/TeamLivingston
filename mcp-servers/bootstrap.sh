@@ -23,10 +23,18 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "▸ MCP bootstrap — server dir: $DIR"
 
 # ---- 1. Python deps (union of every requirements.txt) ----------------------
+# --ignore-installed PyJWT works around a Debian-packaged PyJWT with no RECORD
+# file, which otherwise makes pip abort the ENTIRE install (not just PyJWT) —
+# every server below then fails to start with ModuleNotFoundError, silently.
 echo "▸ Installing Python deps…"
-pip install --quiet --disable-pip-version-check \
+pip install --quiet --disable-pip-version-check --ignore-installed PyJWT \
   "mcp[cli]>=1.2.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" \
-  2>/dev/null || echo "  (pip install had warnings — continuing)"
+  2>&1 | grep -v "^WARNING: Running pip as" || true
+for req in "$DIR"/*/requirements.txt; do
+  [ -f "$req" ] || continue
+  pip install --quiet --disable-pip-version-check --ignore-installed PyJWT -r "$req" \
+    2>&1 | grep -v "^WARNING: Running pip as" || true
+done
 
 # ---- helpers ---------------------------------------------------------------
 ok=(); skipped=()
