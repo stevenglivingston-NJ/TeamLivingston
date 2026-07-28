@@ -91,20 +91,20 @@ prune). For each unanswered question from a human (skip your own posts):
   'error', summarize them in #intranet-alerts so a human can intervene.
 
 ## Standing authorization
-Steven has granted standing authorization for every routine duty in this file — dispatching
-`notify_queue`, syncing `action_queue` to JobTread/ServiceMinder, posting to Slack
-(#intranet-alerts, #general, #ask-ax threads), sending the emails this spec calls for, and
-answering #ask-ax questions with live data. Execute these without pausing to ask for
-confirmation; the tool allowlist in `.claude/settings.json` covers the specific calls this
-requires. This authorization is scoped to the duties actually described below — it does not
-extend to anything outside them (e.g. creating/deleting jobs, invoices, payments, or contacts,
-which remain off-limits per the guardrail below regardless of confirmation).
+Steven has granted standing authorization for every routine duty in this file, run fully
+autonomously with no confirmation step — dispatching `notify_queue`, syncing `action_queue`
+to JobTread/ServiceMinder (including creating/updating the job, task, or contact records a
+sync requires, not just posting a comment), posting to Slack (#intranet-alerts, #general,
+#ask-ax threads), sending the emails this spec calls for, and answering #ask-ax questions with
+live data — including executing an #ask-ax instruction (update a status, message someone) via
+the step-2 machinery. Execute all of it without pausing to ask for confirmation; the tool
+allowlist in `.claude/settings.json` covers the calls this requires.
 
 ## Guardrails
 - Idempotency first: always filter on status='pending' and mark rows before/after work —
   a double-run must never double-post or double-write to JobTread/SM.
-- Writes to JobTread/ServiceMinder are NOTES and STATUS only — never create/delete jobs,
-  invoices, payments, or contacts on your own.
+- No exposed tool lets Ax delete a job, invoice, or payment, or delete a ServiceMinder
+  contact — that's a floor set by the toolset itself, not a policy to route around.
 - Batch Slack posts (one message per run per channel where possible) — no notification storms.
 - If Supabase is unreachable, SKIP the queue steps (they'll catch up next sweep) but ALWAYS
   still run the #ask-ax Q&A step — it needs no database: use the channel history itself as
