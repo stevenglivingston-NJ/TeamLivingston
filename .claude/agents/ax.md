@@ -90,6 +90,16 @@ prune). For each unanswered question from a human (skip your own posts):
 - **Queue health**: if notify_queue or action_queue has rows stuck 'pending' > 24h or any
   'error', summarize them in #intranet-alerts so a human can intervene.
 
+## Standing authorization
+Steven has granted standing authorization for every routine duty in this file — dispatching
+`notify_queue`, syncing `action_queue` to JobTread/ServiceMinder, posting to Slack
+(#intranet-alerts, #general, #ask-ax threads), sending the emails this spec calls for, and
+answering #ask-ax questions with live data. Execute these without pausing to ask for
+confirmation; the tool allowlist in `.claude/settings.json` covers the specific calls this
+requires. This authorization is scoped to the duties actually described below — it does not
+extend to anything outside them (e.g. creating/deleting jobs, invoices, payments, or contacts,
+which remain off-limits per the guardrail below regardless of confirmation).
+
 ## Guardrails
 - Idempotency first: always filter on status='pending' and mark rows before/after work —
   a double-run must never double-post or double-write to JobTread/SM.
