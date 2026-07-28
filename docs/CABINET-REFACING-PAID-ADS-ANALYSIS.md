@@ -23,6 +23,16 @@ The root cause is measurable, not a guess: **Quality Score 2/10 on `kitchen cabi
 
 **What wins these auctions:** a concrete speed promise (3-5 days), an explicit guarantee, financing, and review-count trust. **What attacks you:** Premier's "refacing is overpriced — paint instead" angle aimed straight at your price range.
 
+### 2b. Local NJ competitor deep-dive (added 2026-07-28)
+
+| Competitor | Paid activity | Positioning & claims |
+|---|---|---|
+| **Kitchen Magic** (Nazareth PA, serves all NJ) | **No active Google Ads** (Semrush) and **no active Meta ads** (Ad Library) — competing on organic + 40-year brand | "In as little as a week" · "No Interest, No Payments, No Money Down" · A+ BBB · **4.7 Google / 4.6 Angi / 4.7 Houzz shown on-page** · "We ONLY do kitchens" · Made in USA |
+| **N-Hance of Northern New Jersey** (serves Montclair/Essex) | Ranks organically for "cabinet refacing Montclair NJ"; corporate + other franchises run Meta ads, no Northern-NJ Meta ads active | Hybrid refinishing + new doors; attacks "adhesive-backed refacing" quality; "Lightspeed UV curing"; "money left over for countertops"; call/text (973) 252-9663 |
+| **Magnolia Home Remodeling** (Essex County) | General kitchen/bath remodeler in the same SERPs | Family-owned, 30+ years — full-remodel competitor, not refacing-specialized |
+
+Implications: (1) the local refacing SERP auctions are winnable — the big NJ brand isn't buying clicks right now; (2) Kitchen Magic sets the trust bar with three visible review ratings — the rebuilt page must show the Google rating + count; (3) N-Hance and Premier both attack refacing from below (refinish/paint is cheaper) — the comparison-table section is the direct counter; (4) organic "cabinet refacing Montclair NJ"-style town pages are how N-Hance and Kitchen Magic get free clicks in your towns — worth paid town-level RSA variants and, later, organic town pages.
+
 ## 3. Keyword economics (Semrush US)
 
 | Keyword | Vol/mo | CPC | Intent | KD |
