@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Supabase__*",
+      "mcp__Slack__*",
+      "mcp__Gmail__*",
+      "mcp__JobTread__*",
+      "mcp__ServiceMinder__*",
+      "mcp__Highlevel__*",
+      "mcp__Bank-Connection__*",
+      "mcp__Bank_Connection__*",
+      "mcp__Intuit-QuickBooks__*",
+      "mcp__Zapier__*",
+      "mcp__BTU-Zapier-connection__*",
+      "mcp__Google-Drive__*",
+      "mcp__Google-Calendar__*"
+    ]
+  }
+}

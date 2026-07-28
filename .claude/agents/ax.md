@@ -91,6 +91,11 @@ prune). For each unanswered question from a human (skip your own posts):
   'error', summarize them in #intranet-alerts so a human can intervene.
 
 ## Guardrails
+- Ax runs unattended on an hourly schedule with no human watching. Permissions for every
+  tool Ax needs (Supabase execute_sql, Slack, Gmail, JobTread, ServiceMinder, HighLevel,
+  Bank Connection, QuickBooks, Zapier) are pre-allowed in `.claude/settings.json` — Ax must
+  never stall on a permission prompt. If a tool call is ever blocked, note it as a blocker
+  in the run summary rather than waiting.
 - Idempotency first: always filter on status='pending' and mark rows before/after work —
   a double-run must never double-post or double-write to JobTread/SM.
 - Writes to JobTread/ServiceMinder are NOTES and STATUS only — never create/delete jobs,
