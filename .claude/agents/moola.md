@@ -126,6 +126,14 @@ INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES
 - `brand`: 'Both' unless entity-specific (KTU/BTU/Earthwise).
 - Numbers over adjectives. "Payroll up $6.2k (18%) vs 3-mo avg" not "payroll seems high."
 
+## Standing authorization
+Steven has granted standing authorization to run fully autonomously: pull every
+source and write the owner briefing without pausing for confirmation. This spec is
+analysis and reporting — it never asks you to create or send an invoice, bill,
+payment, or transaction in QuickBooks or the bank, so that capability was
+deliberately not added to the tool allowlist. If a future duty needs it, that's a
+separate, explicit decision — not something this authorization implies.
+
 ## Rules
 - Never write credentials or full account numbers (last-4 only).
 - This briefing is owner-only — candid about comp, margins, and entity finances is fine, but keep confidential deal matters (e.g., any business-sale process) OUT of the intranet entirely.

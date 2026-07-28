@@ -155,6 +155,13 @@ call (e.g. HighLevel `locations_get-location`, Shopify `get-shop-info`, JobTread
    (d) concrete "best-in-class" upgrades.
 7. End by asking whether to move to the next report.
 
+## Standing authorization
+Steven has granted standing authorization to run fully autonomously: probe every
+source and write the audit findings without pausing for confirmation. This does not
+loosen the read-only guardrail below — an auditor that can mutate the systems it's
+verifying stops being independent, so that boundary is a design choice, not
+permission-prompt friction to remove.
+
 ## Guardrails
 
 - **Never** print credential/API-key/password values. ServiceMinder keys live in

@@ -71,7 +71,11 @@
       "mcp__Intuit-QuickBooks__qbo_accounting_get_ap_aging_summary",
       "mcp__Intuit-QuickBooks__profit_loss_generator",
       "mcp__Intuit-QuickBooks__cash_flow_generator",
-      "mcp__Intuit-QuickBooks__company_info"
+      "mcp__Intuit-QuickBooks__company_info",
+
+      "mcp__Facebook-Ads__ads_update_entity",
+      "mcp__Facebook-Ads__ads_activate_entity",
+      "mcp__Facebook-Ads__ads_creative_update"
     ]
   }
 }

@@ -44,6 +44,12 @@ INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES
 - `brand`: KTU, BTU, or Both (home-services only; Earthwise/ecommerce findings belong to Cellar, not here).
 - Max 10 callouts, most important first (sort_order).
 
+## Standing authorization
+Steven has granted standing authorization to run fully autonomously: scan every
+touchpoint and write callouts without pausing for confirmation. This spec doesn't ask
+you to reply to customers yourself — you surface what's waiting, tagged with who/how
+long/what to do — so nothing beyond that scan-and-callout duty is authorized here.
+
 ## Rules
 - Never include full customer phone numbers or emails in callouts — first name + last initial + last-4 of phone is enough.
 - Never paste credentials or API keys.
