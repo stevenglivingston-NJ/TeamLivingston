@@ -1,0 +1,86 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Supabase__execute_sql",
+
+      "mcp__Slack__slack_search_channels",
+      "mcp__Slack__slack_search_users",
+      "mcp__Slack__slack_read_channel",
+      "mcp__Slack__slack_read_thread",
+      "mcp__Slack__slack_read_canvas",
+      "mcp__Slack__slack_read_user_profile",
+      "mcp__Slack__slack_search_public",
+      "mcp__Slack__slack_search_public_and_private",
+      "mcp__Slack__slack_send_message",
+      "mcp__Slack__slack_update_canvas",
+      "mcp__Slack__slack_create_canvas",
+
+      "mcp__Gmail__search_threads",
+      "mcp__Gmail__get_thread",
+      "mcp__Gmail__get_message",
+      "mcp__Gmail__list_drafts",
+      "mcp__Gmail__create_draft",
+      "mcp__Gmail__update_draft",
+      "mcp__Gmail__list_labels",
+      "mcp__Gmail__label_message",
+      "mcp__Gmail__label_thread",
+      "mcp__Gmail__unlabel_message",
+      "mcp__Gmail__unlabel_thread",
+
+      "mcp__Zapier__gmail_send_email",
+      "mcp__Zapier__gmail_reply_to_email",
+      "mcp__Zapier__slack_send_channel_message",
+      "mcp__Zapier__slack_send_direct_message",
+      "mcp__Zapier__slack_find_user_by_email",
+      "mcp__BTU-Zapier-connection__gmail_send_email",
+      "mcp__BTU-Zapier-connection__gmail_reply_to_email",
+      "mcp__BTU-Zapier-connection__slack_send_channel_message",
+      "mcp__BTU-Zapier-connection__slack_send_direct_message",
+      "mcp__BTU-Zapier-connection__slack_find_user_by_email",
+
+      "mcp__JobTread__query",
+
+      "mcp__ServiceMinder__add_contact_note",
+      "mcp__ServiceMinder__add_or_update_contact",
+      "mcp__ServiceMinder__add_contact_tags",
+      "mcp__ServiceMinder__find_contact",
+      "mcp__ServiceMinder__query_invoices",
+      "mcp__ServiceMinder__query_payments",
+      "mcp__ServiceMinder__query_proposals",
+      "mcp__ServiceMinder__query_appointments",
+      "mcp__ServiceMinder__get_invoice",
+      "mcp__ServiceMinder__get_proposal",
+
+      "mcp__Highlevel__contacts_get-contact",
+      "mcp__Highlevel__contacts_get-contacts",
+      "mcp__Highlevel__conversations_get-messages",
+      "mcp__Highlevel__conversations_search-conversation",
+      "mcp__Highlevel__calendars_get-appointment-notes",
+      "mcp__Highlevel__calendars_get-calendar-events",
+      "mcp__Highlevel__opportunities_get-opportunity",
+      "mcp__Highlevel__opportunities_search-opportunity",
+      "mcp__Highlevel__opportunities_get-pipelines",
+      "mcp__Highlevel__locations_get-location",
+      "mcp__Highlevel__payments_list-transactions",
+      "mcp__Highlevel__payments_get-order-by-id",
+
+      "mcp__Intuit-QuickBooks__profit_loss_generator",
+      "mcp__Intuit-QuickBooks__profit_loss_quickbooks_account",
+      "mcp__Intuit-QuickBooks__cash_flow_generator",
+      "mcp__Intuit-QuickBooks__cash_flow_quickbooks_account",
+      "mcp__Intuit-QuickBooks__company_info",
+      "mcp__Intuit-QuickBooks__qbo_accounting_get_ar_aging_summary",
+      "mcp__Intuit-QuickBooks__qbo_accounting_get_ap_aging_summary",
+      "mcp__Intuit-QuickBooks__qbo_accounting_get_balance_sheet",
+      "mcp__Intuit-QuickBooks__qbo_sales_get_invoices",
+
+      "mcp__Bank-Connection__get_accounts",
+      "mcp__Bank-Connection__get_transactions",
+      "mcp__Bank-Connection__get_balance_history",
+      "mcp__Bank-Connection__get_budget_flow_summary",
+      "mcp__Bank-Connection__get_findings",
+
+      "Read"
+    ]
+  }
+}
