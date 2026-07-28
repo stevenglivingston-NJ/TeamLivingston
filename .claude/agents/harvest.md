@@ -113,6 +113,11 @@ delete rows in that section where `fields->>'scan_date' <> today` — stale beat
   Overview.
 - `harvest_ads` — one row per channel/campaign: `{channel, campaign, spend, sales,
   acos, tacos, roas, verdict, scan_date}`. → Marketplace Ops tab.
+- `exec_summary` — the **Products & Listings tab's executive summary** banner:
+  write-then-prune per `scan_date`, one row `{tab:'earth-products', owner:'Harvest',
+  summary (3-5 sentences: demand/traffic & conversion headline, ACOS/TACOS/ROAS
+  read, Buy Box/listing health, the single highest-leverage spend or listing move),
+  updated:<today>, brand:'Earthwise', scan_date}`.
 - `harvest_listings` — one row per hero SKU with an issue: `{sku, asin, buybox_pct,
   issue, price_note, action, scan_date}`. → Products & Listings tab.
 Then a one-screen brief in chat:

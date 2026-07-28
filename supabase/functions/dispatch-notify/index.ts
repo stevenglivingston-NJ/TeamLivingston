@@ -25,6 +25,7 @@
 //   email_from         From header, e.g. "Axyom <tlivingston@kitchentuneup.com>"
 //   default_recipient  Fallback when a row has no recipient_email
 //   slack_webhook_url  Optional Slack incoming webhook
+//   cron_secret        Shared secret the pg_cron job sends as x-cron-secret
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const sb = createClient(
@@ -110,8 +111,17 @@ async function sendSlack(c: Record<string, string>, text: string): Promise<boole
   }
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
   const c = await loadConfig();
+  // Auth: shared secret in dispatch_config, sent by the pg_cron job as x-cron-secret.
+  if (!c.cron_secret || req.headers.get("x-cron-secret") !== c.cron_secret) {
+    return new Response("forbidden", { status: 403 });
+  }
+  // Dormant until a delivery channel is configured — claim nothing so Ax's hourly
+  // run stays the primary dispatcher and no row is prematurely marked error.
+  if (!c.ghl_pit && !c.slack_webhook_url) {
+    return Response.json({ skipped: "no delivery channel configured", note: "set ghl_pit (email) and/or slack_webhook_url in dispatch_config" });
+  }
   const { data: rows, error } = await sb
     .from("notify_queue")
     .select("id, recipient_email, subject, body, result")
@@ -127,17 +137,20 @@ Deno.serve(async () => {
       const to = r.recipient_email || c.default_recipient || "stevenglivingston@gmail.com";
       const slackText = `🔔 *${r.subject || "Axyom notification"}*\n${r.body || ""}`;
 
-      const [, slackResult] = await Promise.allSettled([
+      // Both channels dispatch concurrently. Slack failure never blocks email,
+      // but an email failure must still surface so the row retries below.
+      const [emailResult, slackResult] = await Promise.allSettled([
         sendEmail(c, to, r.subject || "Axyom notification", r.body || ""),
         sendSlack(c, slackText),
       ]);
 
-      via.push(`email:${to}`);
-      if (slackResult?.status === "fulfilled" && slackResult.value) {
+      if (slackResult.status === "fulfilled" && slackResult.value) {
         via.push("slack-webhook");
-      } else if (slackResult?.status === "rejected") {
+      } else if (slackResult.status === "rejected") {
         via.push("slack-error");
       }
+      if (emailResult.status === "rejected") throw emailResult.reason;
+      via.push(`email:${to}`);
 
       // status guard avoids double-marking if a sweep raced us
       await sb.from("notify_queue")

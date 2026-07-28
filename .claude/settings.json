@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "for d in /home/user/TeamLivingston /workspace/TeamLivingston \"$HOME/TeamLivingston\"; do [ -f \"$d/mcp-servers/bootstrap.sh\" ] && { bash \"$d/mcp-servers/bootstrap.sh\"; break; }; done; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
