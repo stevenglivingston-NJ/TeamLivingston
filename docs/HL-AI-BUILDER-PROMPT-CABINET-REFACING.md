@@ -64,7 +64,7 @@ Headline: "Love Your Kitchen Again — In About a Week." Repeat the lead form fr
 
 FOOTER: logo, (973) 521-1182, address "1285 Broad St., Suite 2, Bloomfield NJ 07003", Facebook and Instagram (@ktubloomfieldnj), service-area town list, privacy policy link, and the franchise disclosure: "First Generation USA LLC DBA Kitchen Tune-Up Bloomfield is a Locally Owned Franchise of Kitchen Tune-Up | Franchise ID: 688".
 
-SEO/META: Page title "Cabinet Refacing Essex County NJ | Done in About a Week | Kitchen Tune-Up Bloomfield". Meta description "5.0★ rated kitchen cabinet refacing in Bloomfield & Essex County NJ. New doors, fronts & hardware in about a week — up to 50% less than replacement. 0% financing. Free in-home estimate." H1 = the hero headline. Compress all images for fast mobile load and set descriptive alt text on every photo (e.g. "white shaker cabinet refacing Montclair NJ before and after").
+SEO/META: Page title "Kitchen Cabinet Refacing in Bloomfield & Essex County NJ" (56 characters — do not lengthen it past 60 or Google truncates it). Meta description "5.0★ rated kitchen cabinet refacing in Bloomfield & Essex County NJ. New doors, fronts & hardware in about a week — up to 50% less than replacement. 0% financing. Free in-home estimate." H1 = the hero headline. Compress all images for fast mobile load and set descriptive alt text on every photo (e.g. "white shaker cabinet refacing Montclair NJ before and after").
 ```
 
 **Why the prompt is built this way (evidence → element):**
