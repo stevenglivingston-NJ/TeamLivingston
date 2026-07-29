@@ -1,11 +1,18 @@
 # HighLevel AI Builder Prompt — KTU Cabinet Refacing Landing Page
 
+**v3 (2026-07-28):** brand style block added — colors and typography extracted from the live Kitchen Tune-Up corporate stylesheet (`kitchentuneup.com/dist/sites/ktu/css/styles.css`) so the paid landing page matches franchise branding.
+
 **v2 (2026-07-28):** 5.0★ Google rating incorporated; tracking number (973) 521-1182 confirmed from the live `/reface` page (header/footer number — the mid-page (973) 521-8442 is removed to unify call tracking); proven elements from `ktubloomfield.com/reface` preserved verbatim (financing banner wording, "We bring the showroom to you. No Pressure.", "Our Kitchen Tune-Up Family, Serving Yours", neighborhood gallery heading, Sharon N. testimonial, Franchise ID 688 disclosure). Footer ZIP corrected 07028 → 07003 to match the Google Business Profile.
 
 Copy everything inside the fenced block below into the HighLevel AI page builder for the KTU location (`nHLCxHPidnhV1NFzRtZZ`).
 
 ```
-Build a single mobile-first landing page for Google Ads traffic for Kitchen Tune-Up Bloomfield, a locally owned kitchen remodeling franchise at 1285 Broad Street, Suite 2, Bloomfield NJ 07003. The page sells KITCHEN CABINET REFACING to homeowners in Essex County, NJ. Use warm, premium-but-approachable styling with lots of white space, real kitchen photography, and high-contrast CTA buttons. Use ONE phone number everywhere on the page: (973) 521-1182 — never show any other number. Every section CTA scrolls to the hero form. Add a sticky mobile footer bar with two buttons: "Call (973) 521-1182" (click-to-call) and "Free Estimate" (scrolls to form).
+Build a single mobile-first landing page for Google Ads traffic for Kitchen Tune-Up Bloomfield, a locally owned kitchen remodeling franchise at 1285 Broad Street, Suite 2, Bloomfield NJ 07003. The page sells KITCHEN CABINET REFACING to homeowners in Essex County, NJ. Use ONE phone number everywhere on the page: (973) 521-1182 — never show any other number. Every section CTA scrolls to the hero form. Add a sticky mobile footer bar with two buttons: "Call (973) 521-1182" (click-to-call) and "Free Estimate" (scrolls to form).
+
+BRAND STYLE — match kitchentuneup.com exactly:
+Colors: primary action orange #F8981D (primary buttons, icons, active states, underlines, step numbers); deep orange #DE4E12 (form submit button background and all button hover states — button hover inverts to white background with #DE4E12 text and border); charcoal #3A3A3A for headings and #292929 for high-contrast text; warm taupe #736C64 for body copy (never pure black or cool gray); warm greige #EDEBEA for alternating section backgrounds; white #FFFFFF for primary backgrounds; navy #283F5D with #4F5C7E as a secondary/accent pairing used sparingly (secondary buttons, comparison-table header row). Do NOT introduce blues, greens, or teals outside that navy pair.
+Typography: headings in "Source Serif Pro", serif (H1, H2, section headings, price figures); all body copy, buttons, form labels, navigation and captions in "Nunito Sans", sans-serif with bold (700) for buttons and emphasis. Load both from Google Fonts.
+Look and feel: warm, premium-but-approachable, generous white space, large real kitchen photography, rounded buttons with a soft drop shadow (0 3px 6px rgba(0,0,0,0.16)), 2–3px solid borders on buttons, and a comfortable 2em line-height on paragraph text. Alternate white and #EDEBEA section backgrounds down the page for rhythm.
 
 SECTION 1 — HERO (form above the fold):
 Headline: "Cabinet Refacing in Essex County — A Brand-New Kitchen in About a Week"
