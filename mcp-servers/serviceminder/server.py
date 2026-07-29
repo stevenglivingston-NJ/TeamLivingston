@@ -38,6 +38,24 @@ LOCATION_ENV_VARS: dict[str, str] = {
     "BTU": "SM_KEY_BTU",
 }
 
+# The Org-Level Download API requires a UserId (the export runs "as" a user).
+# Default it per location from env so headless/agent runs don't have to look one
+# up; callers can still override by passing user_id to start_download().
+LOCATION_USERID_ENV_VARS: dict[str, str] = {
+    "KTU": "SM_USERID_KTU",
+    "BTU": "SM_USERID_BTU",
+}
+
+
+def _get_userid(location: str) -> int | None:
+    """Resolve a location's default download UserId from env, or None if unset."""
+    env_var = LOCATION_USERID_ENV_VARS.get(location.upper().strip())
+    val = os.environ.get(env_var) if env_var else None
+    try:
+        return int(val) if val else None
+    except (TypeError, ValueError):
+        return None
+
 
 def _get_key(location: str) -> str:
     """Resolve a location alias to its API key. Raises ValueError if missing."""
@@ -228,6 +246,26 @@ def query_appointments(
     if service_agent_id is not None:
         payload["ServiceAgentId"] = service_agent_id
     return _post("appointments/query", location, payload)
+
+
+@mcp.tool()
+def find_appointment(location: str, appointment_id: int) -> dict[str, Any]:
+    """Fetch a SINGLE appointment's full detail — including its NOTES.
+
+    Why this exists (important): the bulk `query_appointments` and the org
+    appointments download do NOT return the free-text notes staff (e.g. Ben)
+    leave on an appointment — those notes live on the individual appointment
+    object, retrievable only here via the `appointments/find` endpoint. This is
+    the source of cancellation/reschedule reasoning ("family situation, must
+    reschedule", scope details, etc.). The notes are APPOINTMENT-level, not
+    contact-level: `find_contact(...).Notes` is empty for these; the text is on
+    the appointment.
+
+    Pass the AppointmentId (the `Id` column in the appointments download, or
+    `AppointmentId` from query_appointments). Returns the full appointment
+    payload; read the `Notes` field (and `UpdateNote`) for the free-text.
+    """
+    return _post("appointments/find", location, {"AppointmentId": appointment_id})
 
 
 @mcp.tool()
@@ -476,15 +514,23 @@ def start_download(
     date_through: str | None = None,
     updated_from: str | None = None,
     updated_through: str | None = None,
+    user_id: int | None = None,
     extra_settings: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Start a bulk data download. Returns a DownloadId for polling.
 
     kind: typically one of "appointments", "contacts", "invoices", "invoicelines",
           "proposals", "deposits", "payments", "services", "campaignbudgets".
-    extra_settings: per-kind options (e.g. {"Appointments": {"Scheduled": true, "Completed": true}}).
+    user_id: REQUIRED by the API. Defaults to SM_USERID_<LOC> from env if unset;
+          pass explicitly (any active Owner/Org-Admin UserId from list_users) to override.
+    extra_settings: per-kind options. For appointments, the status flags live under an
+          "Appointments" object — cancelled rows are OMITTED unless you opt in, e.g.
+          {"Appointments": {"Scheduled": true, "Completed": true, "Canceled": true}}.
+          NOTE: this appointments dataset does NOT include the free-text Notes column;
+          fetch the cancellation reason from the contact via find_contact(id_search=ContactId)
+          -> Notes[] (the activity log), then classify it.
 
-    Use poll_download() to wait for completion, then fetch_download() to retrieve.
+    Use poll_download() to wait for completion, then get_download() to retrieve.
     """
     payload: dict[str, Any] = {"Kind": kind}
     if date_from:
@@ -495,6 +541,9 @@ def start_download(
         payload["UpdatedFrom"] = updated_from
     if updated_through:
         payload["UpdatedThrough"] = updated_through
+    uid = user_id if user_id is not None else _get_userid(location)
+    if uid is not None:
+        payload["UserId"] = uid
     if extra_settings:
         payload.update(extra_settings)
     return _post("download/startdownload", location, payload)
