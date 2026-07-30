@@ -72,7 +72,7 @@ SEO/META: Page title "Kitchen Cabinet Refacing in Bloomfield & Essex County NJ" 
 - Home Depot wins auctions on "3-5 Days" + "Guaranteed" → concrete "about a week" claim everywhere + written-warranty promise block.
 - Premier Cabinet Painting and N-Hance attack with "don't reface — refinish/paint is cheaper" → Section 5 comparison table owns that objection instead of losing the click.
 - Kitchen Magic displays 4.7 Google / 4.6 Angi / 4.7 Houzz on-page → Section 8 leads with the 5.0★ Google badge (a rating they can't beat).
-- `cabinet refinishing near me` = 12.1k searches/mo landing with no message match → painting/redooring options in the form dropdown, comparison table, and FAQ Q4.
+- Painting/refinishing searchers land here with no message match → painting/redooring options in the form dropdown, comparison table, and FAQ Q4. (Sizing note: `cabinet refinishing near me` is 12.1k/mo *nationally* but only ~10/mo in Essex County; the term that actually carries local volume is **`cabinet painting` at 70/mo** — the largest single term in the local set. The page element is unchanged and better justified; use "painting" language over "refinishing." See §3b of the analysis doc.)
 - Cost-intent queries are cheap ($3.23–$3.77 CPC) → price transparency kept and expanded in hero + FAQ Q1.
 - Current page's "4 Step Process" heading has no content → Section 6 spells out all four steps.
 - Two phone numbers on the live page split call tracking → (973) 521-1182 only, everywhere.

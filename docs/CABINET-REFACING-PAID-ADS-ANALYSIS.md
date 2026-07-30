@@ -1,7 +1,7 @@
 # KTU Cabinet Refacing — Paid Ads Competitive Analysis & Landing Page Optimization
 
 **Date:** 2026-07-28 · **Scope:** Paid search (Google Ads) for Kitchen Tune-Up Bloomfield (acct 2579406186)
-**Data sources:** Google Ads API (last 90 days, 2026-04-29 → 2026-07-27), Semrush US database, live landing page fetch of `ktubloomfield.com/kitchen-cabinet-refacing`
+**Data sources:** Google Ads API (last 90 days, 2026-04-29 → 2026-07-27), Semrush US database, Google Keyword Planner (geo-scoped, added 2026-07-30), live landing page fetch of `ktubloomfield.com/kitchen-cabinet-refacing`
 
 ---
 
@@ -9,7 +9,7 @@
 
 The refacing campaign (`009-S-Cabinet Refacing`) spent **≈$2,645 over 90 days for 4 conversions (~$661/lead)**, and every one of those conversions came from a single broad-match keyword (`reface cabinets near me`, $408/lead). Every phrase/exact refacing keyword converted at **zero**.
 
-The root cause is measurable, not a guess: **Quality Score 2/10 on `kitchen cabinet refacing near me`** (the highest-volume high-intent term in the market, 5,400 searches/mo) with **landing page experience rated BELOW AVERAGE** by Google. The market CPC for that term is **$7.68** (Semrush); the account is paying **$22–$66+ effective CPC** on refacing clicks — a 3–8× Quality Score penalty. Fixing the landing page is the single highest-leverage paid-ads move available.
+The root cause is measurable, not a guess: **Quality Score 2/10 on `kitchen cabinet refacing near me`** (the highest-intent refacing term available — 5,400/mo nationally, but only ~10/mo in Essex County; see §3b) with **landing page experience rated BELOW AVERAGE** by Google. The market CPC for that term is **$7.68** (Semrush); the account is paying **$22–$66+ effective CPC** on refacing clicks — a 3–8× Quality Score penalty. Fixing the landing page is the single highest-leverage paid-ads move available.
 
 ## 2. Competitor paid landscape ("cabinet refacing" auctions, US)
 
@@ -48,6 +48,38 @@ Implications: (1) the local refacing SERP auctions are winnable — the big NJ b
 | cabinet door replacement | 8,100 | $1.54 | informational | 43 |
 
 Notable: **`cabinet refinishing near me` is 12.1k/mo** — bigger than any refacing term — and KTU sells cabinet painting/redooring, but the current page never message-matches those searchers. Cost-intent terms are cheap ($3.23–3.77) and the current page already publishes a price range — an underused advantage.
+
+> ⚠️ **Every volume in the table above is US-national.** It is the right lens for reading competitor ad copy and relative intent, and the wrong lens for sizing this campaign's opportunity. See §3b for the Essex County numbers — they are ~2 orders of magnitude smaller and they change recommendations 3 and 4.
+
+### 3b. The same keywords, scoped to the actual service area (Keyword Planner, 2026-07-30)
+
+National volume told us what to *say*. It cannot tell us how much demand exists in Bloomfield. Pulling the identical terms through Keyword Planner with `geoTargetConstants` set to Essex County, then New Jersey, then comparing to the Semrush US figures:
+
+| Keyword | Essex County /mo | New Jersey /mo | US (Semrush) /mo | Essex vs US |
+|---|---|---|---|---|
+| cabinet refacing | **30** | 480 | 14,800 | 1 : 493 |
+| cabinet refacing near me | **20** | 260 | 8,100 | 1 : 405 |
+| kitchen cabinet refacing near me | **10** | 90 | 5,400 | 1 : 540 |
+| cabinet refinishing near me | **10** | 140 | 12,100 | 1 : 1,210 |
+| cabinet refacing cost | **10** | 210 | 2,400 | 1 : 240 |
+| cabinet door replacement | **40** | — | 8,100 | 1 : 203 |
+| refacing kitchen cabinets | **10** | 110 | — | — |
+| kitchen refacing | **10** | 70 | — | — |
+| **cabinet painting** | **70** | 880 | *not in §3* | — |
+| painting / repainting kitchen cabinets | **40** ea | 590 ea | *not in §3* | — |
+| cabinetry near me | **50** | 880 | *not in §3* | — |
+
+**Aggregate addressable demand in Essex County:** roughly **110 searches/mo** across the entire refacing-intent cluster (refacing + kitchen refacing + refacing cost, all variants), rising to **~240/mo** if you include the door-replacement/redooring cluster that KTU also serves.
+
+Set that against §4: the campaign bought **98 clicks in 90 days ≈ 33 clicks/mo**. KTU is not under-harvesting a large local pool — it is already touching a meaningful share of a genuinely small one. The refacing ceiling in this county is low, and that is a fact about the market, not a campaign defect.
+
+**Where the local volume actually is:** `cabinet painting` at **70/mo** is the single largest term in the entire set — 7× `cabinet refinishing near me` locally — and its top-of-page bid range is **$0.39–$3.20**, against **$4.00–$100.00** for `cabinet refacing`. That is the cheapest real demand available to this account by a wide margin.
+
+**Caveats, stated plainly:**
+- Keyword Planner buckets low-volume terms to the nearest 10. At this scale a single row's "10 vs 20" is noise; the aggregate and the order-of-magnitude gap are the reliable signals.
+- Planner geo-scopes by *searcher* location, so out-of-county searchers typing "cabinet refacing bloomfield nj" and the long tail of town-modified variants are undercounted. Treat 110/mo as a floor.
+- If KTU's true service radius extends past Essex County, the New Jersey column is the upper bound — still 30–60× below the national figures.
+- Planner and Semrush use different methodologies. The comparison worth trusting here is Essex-vs-US *within Planner*, not Planner-vs-Semrush precision.
 
 ## 4. KTU account performance (90 days, campaign 009-S-Cabinet Refacing)
 
@@ -91,10 +123,11 @@ Google itself rates this page "below average" on the keywords that matter. What'
 
 1. **Rebuild the landing page** with the HighLevel AI builder prompt below (fixes QS "landing page experience" + conversion rate at once).
 2. **Negative keywords now:** competitor brand names above, `gel stain`, `countertop`, `diy`, `danbury`, `ct`, Spanish design queries; prune the junk keywords out of the Broad ad group.
-3. **Rebalance budget** toward phrase/exact `cabinet refacing near me` + `kitchen cabinet refacing near me` once the new page lifts QS — that's where the 13.5k monthly transactional searches are.
-4. **Add a refinishing/painting ad group** pointed at the new page's paint-vs-reface section (12.1k/mo at $6.94 with almost no franchise competition).
+3. **Rebalance budget** toward phrase/exact `cabinet refacing near me` + `kitchen cabinet refacing near me` once the new page lifts QS — these are the right *terms* to own, but size the expectation locally: together they are **~30 searches/mo in Essex County**, not the 13.5k the US table implies (§3b). The move is defensive — stop the broad keyword leaking budget into junk queries — not a growth lever. **Do not raise the campaign budget expecting volume that isn't in this county.**
+4. **Add a painting ad group** pointed at the new page's paint-vs-reface section. Revised justification: `cabinet refinishing near me` is only **10/mo locally** (not 12.1k), but **`cabinet painting` is 70/mo — the largest single term in the local set — at $0.39–$3.20 top-of-page vs $4.00–$100 for `cabinet refacing`** (§3b). Lead with `cabinet painting` / `painting kitchen cabinets` / `repainting kitchen cabinets` (~150/mo combined), not the refinishing terms. This is the cheapest incremental volume available, and it doubles as the counter to Premier's "paint instead" attack.
 5. **Tighten RSA copy to mirror the winning patterns:** speed number ("in about a week"), guarantee, financing, review count, local ("Essex County / Bloomfield").
 6. **Import real revenue values** for refacing conversions (as already done for remodel) so ROAS is truthful.
+7. **Re-set the expectation for this campaign, and decide its budget on that basis.** With ~110 refacing searches/mo in the county (~240 including redooring) and a $15k–$45k ticket, this is a low-volume/high-value campaign — a handful of leads a month is the realistic ceiling, not a scaling opportunity. Fixing QS and the page raises the *conversion rate* on that fixed pool and cuts the $27 average CPC; it will not multiply lead count. If the campaign needs to grow beyond that ceiling, growth has to come from widening the geo (the NJ column in §3b is 8–16× Essex), from the cheaper painting/redooring clusters, or from organic town pages — not from more budget against the same refacing terms. Worth confirming the campaign's current geo radius against KTU's actual service area before any budget decision.
 
 *(Per operating rules: recommendations only — campaign changes need human approval.)*
 
