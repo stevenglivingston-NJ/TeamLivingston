@@ -110,14 +110,23 @@ async function sendSlack(c: Record<string, string>, text: string): Promise<boole
   }
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
   const c = await loadConfig();
+  // Auth: shared secret in dispatch_config, sent by the pg_cron job as x-cron-secret.
+  if (!c.cron_secret || req.headers.get("x-cron-secret") !== c.cron_secret) {
+    return new Response("forbidden", { status: 403 });
+  }
+  // Dormant until a delivery channel is configured — claim nothing so Ax's hourly
+  // run stays the primary dispatcher and no row is prematurely marked error.
+  if (!c.ghl_pit && !c.slack_webhook_url) {
+    return Response.json({ skipped: "no delivery channel configured", note: "set ghl_pit (email) and/or slack_webhook_url in dispatch_config" });
+  }
   const { data: rows, error } = await sb
     .from("notify_queue")
-    .select("id, recipient_email, subject, body, result")
+    .select("*")
     .eq("status", "pending")
     .order("created_at")
-    .limit(50);
+    .limit(25);
   if (error) return Response.json({ error: error.message }, { status: 500 });
 
   const results: unknown[] = [];
