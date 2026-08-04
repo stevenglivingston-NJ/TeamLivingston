@@ -36,8 +36,13 @@ echo "▸ MCP bootstrap — server dir: $DIR"
 # Without this the whole pip install aborts and the google-ads / gmb stdio
 # servers start with missing deps and fail to register (connector flapping).
 # `--break-system-packages` tolerates PEP-668 externally-managed environments.
+# `mcp[cli]<2.0.0`: mcp 2.0.0 (released 2026-08) dropped the `mcp.server.fastmcp`
+# module every server.py here imports (`from mcp.server.fastmcp import FastMCP`),
+# so an unpinned `>=1.2.0` silently resolves to 2.0.0 and every stdio server
+# (serviceminder, companycam, gmb, cloudflare, google-ads) fails to connect with
+# "Connection closed" — found 2026-08-04 when it took down Foreman's whole run.
 echo "▸ Installing Python deps…"
-PIP_DEPS=( "mcp[cli]>=1.2.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" )
+PIP_DEPS=( "mcp[cli]==1.29.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" )
 pip install --quiet --disable-pip-version-check --ignore-installed PyJWT "${PIP_DEPS[@]}" 2>/dev/null \
   || pip install --quiet --disable-pip-version-check --break-system-packages --ignore-installed PyJWT "${PIP_DEPS[@]}" 2>/dev/null \
   || echo "  (pip install had warnings — continuing; stdio servers may lack deps)"
