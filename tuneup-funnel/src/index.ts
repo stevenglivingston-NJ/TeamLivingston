@@ -16,6 +16,7 @@ import {
   patchSession,
   uploadPhoto,
 } from "./http/funnel";
+import { confirmBooking, getSlots, recordAgreement, startDeposit } from "./http/booking";
 
 export interface Env {
   PRICING_KV: KVNamespace;
@@ -23,6 +24,8 @@ export interface Env {
   PHOTOS?: R2Bucket; // optional until R2 is enabled in the Cloudflare dashboard
   SERVICEMINDER_API_KEY: string;
   ANTHROPIC_API_KEY: string;
+  HIGHLEVEL_PAYMENT_URL?: string;
+  HIGHLEVEL_API_KEY?: string;
 }
 
 const LEVELS: readonly LevelBucket[] = ["L1_2", "L3", "L4"];
@@ -69,6 +72,30 @@ export default {
         url.searchParams.get("slot") ?? "",
         request,
       );
+    }
+
+    // ---- Scheduling / agreement / deposit / booking (Phase 4) ----
+    if (request.method === "GET" && url.pathname === "/api/slots") {
+      return getSlots(
+        env,
+        url.searchParams.get("date") ?? "",
+        Number(url.searchParams.get("openings") ?? "20"),
+      );
+    }
+    if (request.method === "POST" && url.pathname === "/api/agreement") {
+      const body = await safeJson(request);
+      if (body === null) return json({ error: "invalid JSON body" }, 400);
+      return recordAgreement(env, body as Record<string, string>);
+    }
+    if (request.method === "POST" && url.pathname === "/api/checkout") {
+      const body = await safeJson(request);
+      if (body === null) return json({ error: "invalid JSON body" }, 400);
+      return startDeposit(env, body as Record<string, unknown>);
+    }
+    if (request.method === "POST" && url.pathname === "/api/booking/confirm") {
+      const body = await safeJson(request);
+      if (body === null) return json({ error: "invalid JSON body" }, 400);
+      return confirmBooking(env, body as Record<string, unknown>);
     }
 
     if (request.method === "GET" && url.pathname === "/api/health") {

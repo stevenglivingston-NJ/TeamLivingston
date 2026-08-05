@@ -12,8 +12,8 @@ doc); this README covers what is implemented so far.
 | **P1** | **Pricing engine + SM cron sync + $2k floor, unit-tested to the penny** (SDD dropped per owner 2026-07-18) | **Done** |
 | **P2** | **Vision classifier (level buckets, white-wash detect, opening cross-check)** | **Built — needs calibration run** |
 | P3 | Frontend funnel (React SPA, in-app camera, call-back) | Not started |
-| P4 | SM calendar + Stripe checkout + webhook booking chain | Not started |
-| P5 | HighLevel + Meta Pixel/CAPI + GA4 | Not started |
+| **P4** | **SM calendar slots + service agreement + HighLevel deposit + booking chain** | **Built — needs SM calendar availability + HL payment config** |
+| P5 | HighLevel lead/booking fan-out + Meta Pixel/CAPI + GA4 | Not started |
 | P6–P7 | QA, soft launch | Not started |
 
 ## Architecture (Phase 1 slice)
@@ -152,7 +152,10 @@ with a progress bar; every gate writes to D1 through the Worker.
 | Photos | Guided in-app camera — 4 required + 4 optional slots, `capture="environment"` opens the device camera; desktop upload fallback; stall >90s auto-offers a call-back |
 | Contact | Name/phone/email required before price; lead fires to backend (HighLevel push in P5) |
 | Price reveal | Uploads photos → `/api/vision/classify` → `/api/quote/preview` → firm price + 50% deposit + firm-price copy. Low-confidence / L5 / white-wash-uncertain / any failure → "finalized within 2 hours" human-review screen (never a guessed price) |
-| Schedule | Hand-off placeholder — P4 wires SM "Tune-Up Residential" slots + agreement + Stripe |
+| Schedule (P4) | Service address + live SM slots (`/api/slots`, Tune-Up Residential calendar); graceful "we'll confirm your time" when no slots are configured yet |
+| Agreement (P4) | Scrollable service agreement (NJ HIC #13VH10775400, 3-day rescission, refund, firm-price) with scroll-gated e-consent; recorded server-side |
+| Deposit (P4) | 50% deposit via **HighLevel payments**; on confirmed payment the booking chain books the SM appointment. Fallback books + team-invoices until HL payment config is set |
+| Confirmation (P4) | Booked date, deposit/balance, "invoice from ServiceMinder", rescission reminder |
 
 Persistent "Prefer to talk? Request a call" bar on every gate; header click-to-call
 `(973) 521-1182`. Offline-tolerant: network failures never block the customer.

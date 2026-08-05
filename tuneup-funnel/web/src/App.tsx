@@ -11,9 +11,23 @@ import { KitchenDetails } from "./stages/KitchenDetails";
 import { PhotoCapture } from "./stages/PhotoCapture";
 import { ContactGate } from "./stages/ContactGate";
 import { PriceReveal } from "./stages/PriceReveal";
-import { SchedulePlaceholder } from "./stages/SchedulePlaceholder";
+import { Schedule } from "./stages/Schedule";
+import { Agreement } from "./stages/Agreement";
+import { Deposit } from "./stages/Deposit";
+import { Confirmation } from "./stages/Confirmation";
 
-const STAGES: Stage[] = ["landing", "zip", "details", "photos", "contact", "price", "schedule"];
+const STAGES: Stage[] = [
+  "landing",
+  "zip",
+  "details",
+  "photos",
+  "contact",
+  "price",
+  "schedule",
+  "agreement",
+  "deposit",
+  "confirmation",
+];
 
 const initialState: FunnelState = {
   sessionId: null,
@@ -27,6 +41,8 @@ const initialState: FunnelState = {
   polishProductsUsed: "",
   photos: PHOTO_SLOTS.map((s) => ({ ...s })),
   contact: { name: "", phone: "", email: "" },
+  address: { address1: "", city: "", state: "NJ", zip: "" },
+  selectedSlot: null,
   quote: null,
 };
 
@@ -79,9 +95,12 @@ export function App() {
         {state.stage === "photos" && <PhotoCapture state={state} dispatch={dispatch} onNext={() => goto("contact")} onStall={() => setCallbackOpen(true)} />}
         {state.stage === "contact" && <ContactGate state={state} dispatch={dispatch} onNext={() => goto("price")} />}
         {state.stage === "price" && <PriceReveal state={state} dispatch={dispatch} onNext={() => goto("schedule")} onCallback={() => setCallbackOpen(true)} />}
-        {state.stage === "schedule" && <SchedulePlaceholder />}
+        {state.stage === "schedule" && <Schedule state={state} dispatch={dispatch} onNext={() => goto("agreement")} onCallback={() => setCallbackOpen(true)} />}
+        {state.stage === "agreement" && <Agreement state={state} dispatch={dispatch} onNext={() => goto("deposit")} />}
+        {state.stage === "deposit" && <Deposit state={state} dispatch={dispatch} onNext={() => goto("confirmation")} />}
+        {state.stage === "confirmation" && <Confirmation state={state} />}
       </main>
-      {state.stage !== "landing" && (
+      {state.stage !== "landing" && state.stage !== "confirmation" && (
         <CallbackBar
           state={state}
           open={callbackOpen}

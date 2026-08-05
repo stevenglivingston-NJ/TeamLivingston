@@ -5,7 +5,10 @@ export type Stage =
   | "photos"
   | "contact"
   | "price"
-  | "schedule";
+  | "schedule"
+  | "agreement"
+  | "deposit"
+  | "confirmation";
 
 export type LevelBucket = "L1_2" | "L3" | "L4";
 
@@ -32,6 +35,10 @@ export interface FunnelState {
   polishProductsUsed: "yes" | "no" | "unsure" | "";
   photos: PhotoSlot[];
   contact: { name: string; phone: string; email: string };
+  /** Service address, collected before booking (SM needs it to book). */
+  address: { address1: string; city: string; state: string; zip: string };
+  /** Chosen appointment slot (ISO start), once picked. */
+  selectedSlot: string | null;
   /** Price-reveal result once computed. */
   quote: QuoteReveal | null;
 }

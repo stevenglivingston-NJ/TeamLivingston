@@ -9,9 +9,25 @@ The checkout service agreement **is** the customer contract (the ServiceMinder p
 is created internally but not sent). It must mirror the SM proposal text and include the
 NJ Home Improvement Contractor requirements.
 
-**Still needed from owner:** the **SM proposal text** — the source the agreement mirrors.
-Until it's supplied, `src/` has no agreement template; Phase 4 checkout can't render the
-contract. This is the last hard content blocker for launch.
+**Built (Phase 4, DRAFT):** `web/src/agreement.ts` holds the agreement the SPA renders at the
+Agreement gate, with the fixed NJ HIC elements in place — registration **#13VH10775400**,
+firm-price terms, start/completion via the appointment, the **3-day right of rescission**, and
+the refund policy. E-consent is recorded server-side (`funnel_events` "agreement_signed" +
+`AGREEMENT_VERSION`).
+
+**Still needed from owner:** the **SM proposal text** — the Scope of Work section is a marked
+placeholder (`pending: true`) until it's supplied; the agreement mirrors it. Do not launch until
+that text is in and the attorney re-confirms the assembled document. This is the last hard
+content blocker.
+
+## Payments — HighLevel (owner decision 2026-07-18)
+
+Deposits use the **HighLevel payment integration**, not Stripe. Phase 4 `/api/checkout` creates
+the 50% deposit payment; on confirmed payment the HL webhook calls `/api/booking/confirm`, which
+books the SM appointment. Until the HL payment config (`HIGHLEVEL_PAYMENT_URL`, `HIGHLEVEL_API_KEY`)
+is set, the funnel uses a graceful fallback: it books the appointment and the team sends the HL
+deposit invoice. **Needed from owner:** the HighLevel payment-integration details to wire the live
+deposit link + webhook.
 
 ## Refund & rescission policy (owner-decided 2026-07-18)
 
@@ -50,8 +66,10 @@ likely the BTU/Oracabessa entity. Not used here.)
 |------|--------|
 | Attorney sign-off on agreement | ✅ owner-confirmed 2026-07-18 |
 | Refund tiers / rescission | ✅ defined above |
-| SM proposal text (agreement source) | ⬜ **needed from owner** |
+| SM proposal text (agreement source) | ⬜ **needed from owner** (Scope of Work placeholder) |
 | NJ HIC number | ✅ `13VH10775400` (KTU / First Generation USA LLC) |
+| Deposit payments | ✅ HighLevel (Phase 4 built; fallback active until HL payment config set) |
+| SM Tune-Up calendar availability | ⬜ assign agents/hours so slot search returns times |
 | Calibration photos labeled + ingested | ⬜ owner/Ben (see calibration/) |
 | Meta Pixel ID | ✅ `109034988941656` |
 | HighLevel notification recipients | ⬜ **needed from owner** (who gets booking/callback alerts) |

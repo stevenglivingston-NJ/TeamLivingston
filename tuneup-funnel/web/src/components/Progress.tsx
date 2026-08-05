@@ -8,6 +8,9 @@ const LABELS: Record<Stage, string> = {
   contact: "Your info",
   price: "Your price",
   schedule: "Schedule",
+  agreement: "Agreement",
+  deposit: "Deposit",
+  confirmation: "Done",
 };
 
 export function Progress({

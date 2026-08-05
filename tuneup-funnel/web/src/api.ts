@@ -94,6 +94,39 @@ export async function classifyPhotos(
   return post("/api/vision/classify", { photoKeys, openings });
 }
 
+export interface SlotsResult {
+  durationMinutes: number;
+  available: boolean;
+  slots: Array<{ start: string; agentId?: number }>;
+}
+
+export async function fetchSlots(date: string, openings: number): Promise<SlotsResult> {
+  const res = await fetch(
+    `/api/slots?date=${encodeURIComponent(date)}&openings=${openings}`,
+  );
+  if (!res.ok) throw new Error(`/api/slots → HTTP ${res.status}`);
+  return (await res.json()) as SlotsResult;
+}
+
+export async function recordAgreement(
+  sessionId: string,
+  name: string,
+): Promise<void> {
+  await post("/api/agreement", { sessionId, name, agreedAt: new Date().toISOString() });
+}
+
+export async function startDeposit(payload: {
+  sessionId: string;
+  depositCents: number;
+  slotStart: string;
+}): Promise<{ mode: string; paymentUrl?: string }> {
+  return post("/api/checkout", payload);
+}
+
+export async function confirmBooking(payload: Record<string, unknown>): Promise<{ ok: boolean }> {
+  return post("/api/booking/confirm", payload);
+}
+
 export function formatUsd(cents: number): string {
   return `$${(cents / 100).toLocaleString("en-US", {
     minimumFractionDigits: 0,
