@@ -72,8 +72,8 @@ likely the BTU/Oracabessa entity. Not used here.)
 | SM Tune-Up calendar availability | ⬜ assign agents/hours so slot search returns times |
 | Calibration photos labeled + ingested | ⬜ owner/Ben (see calibration/) |
 | Meta Pixel ID | ✅ `109034988941656` |
-| HighLevel notification recipients | ⬜ **needed from owner** (who gets booking/callback alerts) |
-| SM pricing configured | ✅ template rebuilt 2026-07-18 (one base-price note in README) |
+| Booking/callback notification recipient | ✅ **Sonya (office)** — P5 routes booking + callback alerts to the office/Sonya via HighLevel |
+| SM pricing configured | ✅ live per-door: L1_2 $96 / L3 $112 / L4 $136 / uplift $390.35 / white-wash $620. ⬜ base still $0 — set $275 on SM service 30382 BasePrice |
 | Cloudflare D1 + KV | ✅ created 2026-07-18 |
 | Cloudflare R2 | ⬜ enable R2 in dashboard, then create bucket |
 | Landing gallery photos + award names | ⬜ owner to select best before/after pairs |
