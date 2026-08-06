@@ -75,7 +75,7 @@ likely the BTU/Oracabessa entity. Not used here.)
 | Booking/callback notification recipient | ✅ **Sonya (office)** — P5 routes booking + callback alerts to the office/Sonya via HighLevel |
 | SM pricing configured | ✅ live per-door: L1_2 $96 / L3 $112 / L4 $136 / uplift $390.35 / white-wash $620. ⬜ base still $0 — set $275 on SM service 30382 BasePrice |
 | Cloudflare D1 + KV | ✅ created 2026-07-18 |
-| Cloudflare R2 | ⬜ enable R2 in dashboard, then create bucket |
+| Cloudflare R2 | ✅ bucket `ktu-tuneup-photos` created 2026-08-06; PHOTOS binding live in wrangler.toml |
 | Landing gallery photos + award names | ⬜ owner to select best before/after pairs |
 | Stripe account (First Generation USA LLC) | ⬜ needed for Phase 4 |
 | Click-to-call number | (973) 521-1182 per build spec — confirm |

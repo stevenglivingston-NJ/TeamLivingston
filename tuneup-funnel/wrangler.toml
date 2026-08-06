@@ -1,6 +1,6 @@
 # KTU Instant Tune-Up Funnel — Cloudflare Worker
-# KV + D1 created 2026-07-18 (real IDs below). R2 pending: enable R2 in the
-# Cloudflare dashboard, then `wrangler r2 bucket create ktu-tuneup-photos`.
+# KV + D1 created 2026-07-18, R2 bucket ktu-tuneup-photos created 2026-08-06
+# (real IDs / bindings below).
 
 name = "ktu-tuneup"
 main = "src/index.ts"
@@ -23,11 +23,10 @@ binding = "DB"
 database_name = "ktu-tuneup"
 database_id = "e8697721-207d-42d5-8014-c8240b690ee4"
 
-# Customer photos. R2 must be enabled in the dashboard before this bucket exists;
-# once created, uncomment to bind it. (Photos are used from Phase 2/3.)
-# [[r2_buckets]]
-# binding = "PHOTOS"
-# bucket_name = "ktu-tuneup-photos"
+# Customer photos (R2 bucket created 2026-08-06). Photos are used from Phase 2/3.
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "ktu-tuneup-photos"
 
 # Secrets (set with `wrangler secret put`, never in this file):
 #   SERVICEMINDER_API_KEY            — Phase 1 (pricing sync)
