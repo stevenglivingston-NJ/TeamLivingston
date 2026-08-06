@@ -13,9 +13,16 @@
 # looked like agent failures. This version self-heals: if no checkout exists,
 # it clones the repo (depth 1, **main** branch explicitly), then runs the MCP
 # bootstrap. If a checkout already exists (persistent/snapshotted environment),
-# it fast-forwards that checkout to origin/main before running bootstrap — so a
-# stale on-disk clone can never serve outdated settings (e.g. an old
-# .claude/settings.json permission mode) to a scheduled agent run.
+# it HARD-RESETS that checkout to origin/main before running bootstrap — so a
+# stale on-disk clone can never serve outdated agent specs or settings (e.g. an
+# agent .md still calling mcp__Supabase__execute_sql, or an old
+# .claude/settings.json permission mode) to a scheduled agent run. The reset is
+# forceful (discards any on-disk drift) precisely so nothing stale survives.
+#
+# RE-PASTE REQUIRED: the Cloud console's Setup-script field runs a COPY of this
+# file. Editing this file does nothing until it is re-pasted into
+# Cloud env → Setup script. A stale console copy is the #1 reason merged fixes
+# never reach scheduled fires.
 #
 # IMPORTANT — pin to "main", never "the default branch": this repo's GitHub
 # default-branch setting has drifted to a feature branch before (an admin-only
@@ -55,7 +62,8 @@ if [ -n "$REPO" ]; then
   (
     cd "$REPO" \
       && GIT_TERMINAL_PROMPT=0 timeout 60 git fetch --depth 1 origin "$MAIN_BRANCH" 2>&1 \
-      && git checkout -B "$MAIN_BRANCH" "origin/$MAIN_BRANCH" 2>&1
+      && git checkout -B "$MAIN_BRANCH" "origin/$MAIN_BRANCH" 2>&1 \
+      && git reset --hard "origin/$MAIN_BRANCH" 2>&1
   ) || echo "⚠ setup: sync to origin/$MAIN_BRANCH failed — continuing with checkout as-is (check network policy / git credentials)"
 fi
 
