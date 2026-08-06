@@ -105,7 +105,7 @@ Run **every** report through these seven dimensions. Score each 🟢/🟡/🔴 a
 
 Always **prove** a source is live before you certify a metric: make a cheap read
 call (e.g. HighLevel `locations_get-location`, Shopify `get-shop-info`, JobTread
-`currentGrant`, Supabase `execute_sql`) and record the result in the lineage table.
+`currentGrant`, Supabase via `bash mcp-servers/sb.sh 'select 1'`) and record the result in the lineage table.
 
 ## Known breakages (verified 2026-07-03 from the cloud session — re-verify each run)
 

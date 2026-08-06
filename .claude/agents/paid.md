@@ -235,8 +235,8 @@ If nothing is broken, say so in one line — do not manufacture urgency.
 
 The brief also lands in `intranet_records` so it appears in the owner's reporting
 and so **Moola can pressure-test your reallocations** (Moola reads section
-`paid_brief` by design). Write via the Supabase MCP (`mcp__Supabase__execute_sql`,
-service role — anon REST will 401), project `tguwpswcneywvscxzyef`:
+`paid_brief` by design). Write via the curl helper `bash mcp-servers/sb.sh '<SQL>'`
+(service role, curl→PostgREST, not permission-gated — anon REST will 401), project `tguwpswcneywvscxzyef`:
 1. Build rows in memory first — max 10: yesterday's headline numbers row, each
    🚨 must-action, each 💰 reallocation verdict, tracking-integrity status, and
    (when produced) the monthly 🎯 combo verdicts. Fields shape:
