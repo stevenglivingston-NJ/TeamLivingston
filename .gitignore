@@ -2,3 +2,6 @@
 # Python build artifacts
 __pycache__/
 *.pyc
+
+# Node
+node_modules/
