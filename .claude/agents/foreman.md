@@ -591,7 +591,16 @@ Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`, via 
 curl helper `bash mcp-servers/sb.sh '<SQL>'` (service role, curl→PostgREST — NOT
 permission-gated, so a scheduled run never stalls on an Execute-SQL prompt;
 `mcp__Supabase__execute_sql` also works interactively but prompts under Auto mode; the
-anon REST endpoint 401s). Sections
+anon REST endpoint 401s).
+
+> **Brand column discipline:** every row's top-level `brand` column must be a PLAIN
+> string (`KTU`, `BTU`, `Both`) — never a JSON-quoted value. When copying brand out of a
+> JSON object use `->>` (text), never `->` (jsonb, which yields `"KTU"` *with quotes* and
+> silently breaks the intranet's `brand==='KTU'` filter, so `foreman_board`,
+> `foreman_timeline`, and `client_status` render blank). A DB trigger
+> (`normalize_intranet_brand`) now strips wrapping quotes as a safety net — but write it clean.
+
+Sections
 (all rows carry `scan_date` = today; **write-then-prune**: insert today's rows first,
 and only after success delete rows where `fields->>'scan_date' <> today` in that
 section — stale beats blank):

@@ -37,7 +37,7 @@ echo "▸ MCP bootstrap — server dir: $DIR"
 # servers start with missing deps and fail to register (connector flapping).
 # `--break-system-packages` tolerates PEP-668 externally-managed environments.
 echo "▸ Installing Python deps…"
-PIP_DEPS=( "mcp[cli]>=1.2.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" )
+PIP_DEPS=( "mcp[cli]>=1.2.0,<2.0.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" )
 pip install --quiet --disable-pip-version-check --ignore-installed PyJWT "${PIP_DEPS[@]}" 2>/dev/null \
   || pip install --quiet --disable-pip-version-check --break-system-packages --ignore-installed PyJWT "${PIP_DEPS[@]}" 2>/dev/null \
   || echo "  (pip install had warnings — continuing; stdio servers may lack deps)"
@@ -70,11 +70,11 @@ if require COMPANYCAM_TOKEN; then
 else skipped+=("companycam (COMPANYCAM_TOKEN)"); fi
 
 if require SM_KEY_KTU SM_KEY_BTU; then
-  reg serviceminder "{\"command\":\"python3\",\"args\":[\"$DIR/serviceminder/server.py\"],\"env\":{\"SM_KEY_KTU\":\"$SM_KEY_KTU\",\"SM_KEY_BTU\":\"$SM_KEY_BTU\"}}"
+  reg serviceminder "{\"command\":\"python3\",\"args\":[\"$DIR/serviceminder/server.py\"],\"env\":{\"SM_KEY_KTU\":\"$SM_KEY_KTU\",\"SM_KEY_BTU\":\"$SM_KEY_BTU\",\"SM_USERID_KTU\":\"${SM_USERID_KTU:-}\",\"SM_USERID_BTU\":\"${SM_USERID_BTU:-}\"}}"
 else skipped+=("serviceminder (SM_KEY_KTU/SM_KEY_BTU)"); fi
 
 if require GOOGLE_ADS_DEVELOPER_TOKEN GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET GOOGLE_ADS_REFRESH_TOKEN; then
-  reg google-ads "{\"command\":\"python3\",\"args\":[\"$DIR/google-ads/server.py\"],\"env\":{\"GOOGLE_ADS_DEVELOPER_TOKEN\":\"$GOOGLE_ADS_DEVELOPER_TOKEN\",\"GOOGLE_ADS_CLIENT_ID\":\"$GOOGLE_ADS_CLIENT_ID\",\"GOOGLE_ADS_CLIENT_SECRET\":\"$GOOGLE_ADS_CLIENT_SECRET\",\"GOOGLE_ADS_REFRESH_TOKEN\":\"$GOOGLE_ADS_REFRESH_TOKEN\"}}"
+  reg google-ads "{\"command\":\"python3\",\"args\":[\"$DIR/google-ads/server.py\"],\"env\":{\"GOOGLE_ADS_DEVELOPER_TOKEN\":\"$GOOGLE_ADS_DEVELOPER_TOKEN\",\"GOOGLE_ADS_CLIENT_ID\":\"$GOOGLE_ADS_CLIENT_ID\",\"GOOGLE_ADS_CLIENT_SECRET\":\"$GOOGLE_ADS_CLIENT_SECRET\",\"GOOGLE_ADS_REFRESH_TOKEN\":\"$GOOGLE_ADS_REFRESH_TOKEN\",\"GOOGLE_ADS_LOGIN_CUSTOMER_ID\":\"${GOOGLE_ADS_LOGIN_CUSTOMER_ID:-}\"}}"
 else skipped+=("google-ads (GOOGLE_ADS_* x4)"); fi
 
 if require GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET GOOGLE_ADS_REFRESH_TOKEN GMB_ACCOUNT_ID GMB_LOCATION_KTU GMB_LOCATION_BTU; then
@@ -98,11 +98,11 @@ else skipped+=("amazon-sp (AMAZON_SP_* x3)"); fi
 # Kitchen Tune-Up, BTU PIT returns Bath Tune-Up.
 
 if require GHL_PIT_KTU; then
-  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"$GHL_PIT_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
+  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
 else skipped+=("ghl-ktu (GHL_PIT_KTU)"); fi
 
 if require GHL_PIT_BTU; then
-  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"$GHL_PIT_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
+  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
 else skipped+=("ghl-btu (GHL_PIT_BTU)"); fi
 
 # ---- 4. Shared ------------------------------------------------------------
