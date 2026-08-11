@@ -37,7 +37,7 @@ echo "▸ MCP bootstrap — server dir: $DIR"
 # servers start with missing deps and fail to register (connector flapping).
 # `--break-system-packages` tolerates PEP-668 externally-managed environments.
 echo "▸ Installing Python deps…"
-PIP_DEPS=( "mcp[cli]>=1.2.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" )
+PIP_DEPS=( "mcp[cli]>=1.2.0,<2.0.0" "httpx>=0.27.0" "google-ads>=25.0.0" "google-auth>=2.0.0" )
 pip install --quiet --disable-pip-version-check --ignore-installed PyJWT "${PIP_DEPS[@]}" 2>/dev/null \
   || pip install --quiet --disable-pip-version-check --break-system-packages --ignore-installed PyJWT "${PIP_DEPS[@]}" 2>/dev/null \
   || echo "  (pip install had warnings — continuing; stdio servers may lack deps)"
@@ -96,13 +96,16 @@ else skipped+=("amazon-sp (AMAZON_SP_* x3)"); fi
 # header. Location IDs are public identifiers; the PITs are SECRETS (env vars,
 # full value including the "pit-" prefix). Verified 2026-07-03: KTU PIT returns
 # Kitchen Tune-Up, BTU PIT returns Bath Tune-Up.
+# NOTE: the Authorization header MUST carry the "Bearer " prefix (LeadConnector
+# rejects a raw PIT with 401 invalid_token) — confirmed 2026-08-11 (Tekki) by
+# registering diagnostic copies with the prefix; both PITs connected instantly.
 
 if require GHL_PIT_KTU; then
-  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"$GHL_PIT_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
+  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
 else skipped+=("ghl-ktu (GHL_PIT_KTU)"); fi
 
 if require GHL_PIT_BTU; then
-  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"$GHL_PIT_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
+  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
 else skipped+=("ghl-btu (GHL_PIT_BTU)"); fi
 
 # ---- 4. Shared ------------------------------------------------------------
