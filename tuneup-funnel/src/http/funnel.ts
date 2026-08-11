@@ -1,14 +1,20 @@
 /**
  * Funnel session/lead/callback/photo endpoints backing the Phase 3 SPA. Every
  * gate writes to D1 (build spec: every gate writes to D1) via these handlers.
- * HighLevel fan-out and the Meta CAPI purchase event land in Phase 5; for now
- * leads/callbacks are persisted and flagged for that push.
+ * Phase 5: leads and callbacks also fan out to HighLevel (tagged for the HL
+ * notification workflow) and fire Meta/GA4 lead conversions — deferred via
+ * ctx.waitUntil so the customer's response never waits on third parties.
  */
 
-export interface FunnelEnv {
+import { fanoutLead, type ClientContext, type FanoutEnv } from "../tracking/fanout";
+
+export interface FunnelEnv extends FanoutEnv {
   DB: D1Database;
   PHOTOS?: R2Bucket;
 }
+
+/** ctx.waitUntil passed down from the Worker entry. */
+export type Defer = (promise: Promise<unknown>) => void;
 
 /** Columns a client may patch on quote_sessions — a strict allowlist (no SQL injection). */
 const SESSION_COLUMNS = new Set([
@@ -91,7 +97,9 @@ export async function patchSession(env: FunnelEnv, id: string, body: Record<stri
 
 export async function createLead(
   env: FunnelEnv,
-  body: { sessionId?: string; name?: string; phone?: string; email?: string },
+  body: { sessionId?: string; name?: string; phone?: string; email?: string; zip?: string },
+  client: ClientContext,
+  defer: Defer,
 ): Promise<Response> {
   if (!body.sessionId || !body.name || !body.phone || !body.email) {
     return jsonResponse({ error: "sessionId, name, phone, email required" }, 400);
@@ -103,13 +111,25 @@ export async function createLead(
     .bind(id, body.sessionId, new Date().toISOString(), body.name, body.phone, body.email)
     .run();
   await logEvent(env.DB, body.sessionId, "lead_captured", { name: body.name });
-  // TODO(P5): fire to HighLevel immediately on submit.
+  defer(
+    fanoutLead(env, {
+      sessionId: body.sessionId,
+      name: body.name,
+      phone: body.phone,
+      email: body.email,
+      zip: body.zip,
+      callback: false,
+      client,
+    }),
+  );
   return jsonResponse({ ok: true, id });
 }
 
 export async function createCallback(
   env: FunnelEnv,
   body: { sessionId?: string | null; name?: string; phone?: string; bestTime?: string },
+  client: ClientContext,
+  defer: Defer,
 ): Promise<Response> {
   if (!body.name || !body.phone) return jsonResponse({ error: "name and phone required" }, 400);
   const id = crypto.randomUUID();
@@ -119,7 +139,16 @@ export async function createCallback(
     .bind(id, body.sessionId ?? null, new Date().toISOString(), body.name, body.phone)
     .run();
   await logEvent(env.DB, body.sessionId ?? null, "callback_requested", { bestTime: body.bestTime ?? null });
-  // TODO(P5): notify team + tag `tuneup-callback` in HighLevel; instrument as a conversion.
+  defer(
+    fanoutLead(env, {
+      sessionId: body.sessionId ?? null,
+      name: body.name,
+      phone: body.phone,
+      callback: true,
+      bestTime: body.bestTime ?? null,
+      client,
+    }),
+  );
   return jsonResponse({ ok: true, id });
 }
 

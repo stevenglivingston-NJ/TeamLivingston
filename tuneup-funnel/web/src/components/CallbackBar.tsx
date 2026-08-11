@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PHONE_DISPLAY, PHONE_TEL } from "../content";
 import { requestCallback } from "../api";
+import { trackGa, trackMeta, trackingContext } from "../tracking";
 import type { FunnelState } from "../types";
 
 /**
@@ -42,8 +43,11 @@ function CallbackModal({ state, onClose }: { state: FunnelState; onClose: () => 
 
   const submit = async () => {
     setBusy(true);
+    const tracking = trackingContext();
+    trackMeta("Lead", tracking.eventId, { content_name: "tuneup-callback" });
+    trackGa("generate_lead", { lead_type: "callback" });
     try {
-      await requestCallback({ sessionId: state.sessionId, name, phone, bestTime });
+      await requestCallback({ sessionId: state.sessionId, name, phone, bestTime }, tracking);
     } catch {
       /* still show success — team also gets the partial session */
     }

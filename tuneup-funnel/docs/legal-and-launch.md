@@ -72,7 +72,9 @@ likely the BTU/Oracabessa entity. Not used here.)
 | SM Tune-Up calendar availability | ⬜ assign agents/hours so slot search returns times |
 | Calibration photos labeled + ingested | ⬜ owner/Ben (see calibration/) |
 | Meta Pixel ID | ✅ `109034988941656` |
-| Booking/callback notification recipient | ✅ **Sonya (office)** — P5 routes booking + callback alerts to the office/Sonya via HighLevel |
+| Booking/callback notification recipient | ✅ **Sonya (office)** — P5 Worker fan-out built (tags `tuneup-lead/callback/booked`); ⬜ owner builds the HL notification workflows (AI-builder prompt in `docs/highlevel-phase5.md`) |
+| Meta CAPI token + GA4 property | ⬜ owner: CAPI token, GA4 `G-` id + MP secret (steps in `docs/highlevel-phase5.md`); Worker no-ops until set |
+| HL custom fields for Tune-Up | ⬜ owner: create the 9 `tuneup_*` contact custom fields (list in `docs/highlevel-phase5.md`) |
 | SM pricing configured | ✅ live per-door: L1_2 $96 / L3 $112 / L4 $136 / uplift $390.35 / white-wash $620. ⬜ base still $0 — set $275 on SM service 30382 BasePrice |
 | Cloudflare D1 + KV | ✅ created 2026-07-18 |
 | Cloudflare R2 | ✅ bucket `ktu-tuneup-photos` created 2026-08-06; PHOTOS binding live in wrangler.toml |

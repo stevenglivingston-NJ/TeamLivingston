@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Action } from "../App";
 import type { FunnelState } from "../types";
 import { confirmBooking, formatUsd, startDeposit } from "../api";
+import { trackGa, trackMeta, trackingContext } from "../tracking";
 
 /**
  * 50% deposit via the HighLevel payment integration. When HighLevel payments
@@ -28,11 +29,18 @@ export function Deposit({
     setBusy(true);
     setError(null);
     try {
-      const res = await startDeposit({
-        sessionId: state.sessionId,
-        depositCents: deposit,
-        slotStart: state.selectedSlot,
-      });
+      // Checkout started: pixel + CAPI share this eventId (dedup pair).
+      const checkoutTracking = trackingContext();
+      trackMeta("InitiateCheckout", checkoutTracking.eventId, { value: deposit / 100, currency: "USD" });
+      trackGa("begin_checkout", { value: deposit / 100, currency: "USD" });
+      const res = await startDeposit(
+        {
+          sessionId: state.sessionId,
+          depositCents: deposit,
+          slotStart: state.selectedSlot,
+        },
+        checkoutTracking,
+      );
 
       if (res.mode === "highlevel" && res.paymentUrl) {
         // Real payment: hand off to HighLevel; HL webhook books the appointment.
@@ -41,7 +49,16 @@ export function Deposit({
       }
 
       // Fallback (HL payments not yet wired): still book the appointment and
-      // let the team collect the deposit via a HighLevel invoice.
+      // let the team collect the deposit via a HighLevel invoice. The Purchase
+      // pixel + CAPI event share one eventId; on the HL-redirect path only the
+      // server-side event fires (the webhook confirms without this page).
+      const purchaseTracking = trackingContext();
+      trackMeta("Purchase", purchaseTracking.eventId, { value: deposit / 100, currency: "USD" });
+      trackGa("purchase", {
+        value: deposit / 100,
+        currency: "USD",
+        transaction_id: state.sessionId,
+      });
       await confirmBooking({
         sessionId: state.sessionId,
         name: state.contact.name,
@@ -53,7 +70,11 @@ export function Deposit({
         zip: state.address.zip || state.zip,
         scheduledStart: state.selectedSlot,
         openings: state.openings,
+        quoteCents: total,
+        depositCents: deposit,
+        level: state.quote?.level,
         notes: `Online Tune-Up booking. Quote ${formatUsd(total)}, deposit ${formatUsd(deposit)}.`,
+        ...purchaseTracking,
       }).catch(() => {});
       dispatch({ type: "patch", patch: {} });
       onNext();

@@ -17,15 +17,23 @@ import {
   uploadPhoto,
 } from "./http/funnel";
 import { confirmBooking, getSlots, recordAgreement, startDeposit } from "./http/booking";
+import { clientContextFrom } from "./tracking/fanout";
 
 export interface Env {
   PRICING_KV: KVNamespace;
   DB: D1Database;
-  PHOTOS?: R2Bucket; // optional until R2 is enabled in the Cloudflare dashboard
+  PHOTOS?: R2Bucket;
   SERVICEMINDER_API_KEY: string;
   ANTHROPIC_API_KEY: string;
   HIGHLEVEL_PAYMENT_URL?: string;
+  /** KTU Private Integration Token — payments (P4) + contact upsert (P5). */
   HIGHLEVEL_API_KEY?: string;
+  // ---- Phase 5 fan-out (all optional; unset → recorded no-op) ----
+  HIGHLEVEL_LOCATION_ID?: string; // wrangler.toml var
+  META_PIXEL_ID?: string; // wrangler.toml var
+  META_CAPI_TOKEN?: string; // secret
+  GA4_MEASUREMENT_ID?: string; // wrangler.toml var (G-XXXXXXX)
+  GA4_API_SECRET?: string; // secret
 }
 
 const LEVELS: readonly LevelBucket[] = ["L1_2", "L3", "L4"];
@@ -42,8 +50,10 @@ export default {
     );
   },
 
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    // Phase 5 fan-out runs after the response is sent (never blocks the customer).
+    const defer = (p: Promise<unknown>) => ctx.waitUntil(p);
 
     // ---- Funnel session / lead / callback / photo (Phase 3) ----
     if (request.method === "POST" && url.pathname === "/api/session") {
@@ -58,12 +68,14 @@ export default {
     if (request.method === "POST" && url.pathname === "/api/lead") {
       const body = await safeJson(request);
       if (body === null) return json({ error: "invalid JSON body" }, 400);
-      return createLead(env, body as Record<string, string>);
+      const record = body as Record<string, string>;
+      return createLead(env, record, clientContextFrom(request, record), defer);
     }
     if (request.method === "POST" && url.pathname === "/api/callback") {
       const body = await safeJson(request);
       if (body === null) return json({ error: "invalid JSON body" }, 400);
-      return createCallback(env, body as Record<string, string>);
+      const record = body as Record<string, string>;
+      return createCallback(env, record, clientContextFrom(request, record), defer);
     }
     if (request.method === "POST" && url.pathname === "/api/photo") {
       return uploadPhoto(
@@ -90,12 +102,14 @@ export default {
     if (request.method === "POST" && url.pathname === "/api/checkout") {
       const body = await safeJson(request);
       if (body === null) return json({ error: "invalid JSON body" }, 400);
-      return startDeposit(env, body as Record<string, unknown>);
+      const record = body as Record<string, unknown>;
+      return startDeposit(env, record, clientContextFrom(request, record), defer);
     }
     if (request.method === "POST" && url.pathname === "/api/booking/confirm") {
       const body = await safeJson(request);
       if (body === null) return json({ error: "invalid JSON body" }, 400);
-      return confirmBooking(env, body as Record<string, unknown>);
+      const record = body as Record<string, unknown>;
+      return confirmBooking(env, record, clientContextFrom(request, record), defer);
     }
 
     if (request.method === "GET" && url.pathname === "/api/health") {

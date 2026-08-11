@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Action } from "../App";
 import type { FunnelState } from "../types";
 import { submitLead, saveProgress } from "../api";
+import { trackGa, trackMeta, trackingContext } from "../tracking";
 
 /**
  * Name / phone / email are REQUIRED before the price reveal. The lead fires to
@@ -34,8 +35,12 @@ export function ContactGate({
     setBusy(true);
     const contact = { name: name.trim(), phone, email };
     dispatch({ type: "patch", patch: { contact } });
+    // One eventId shared by the browser pixel and the server CAPI event (dedup).
+    const tracking = trackingContext();
+    trackMeta("Lead", tracking.eventId, { content_name: "tuneup-lead" });
+    trackGa("generate_lead", { lead_type: "lead" });
     if (state.sessionId) {
-      submitLead(state.sessionId, contact).catch(() => {});
+      submitLead(state.sessionId, { ...contact, zip: state.zip }, tracking).catch(() => {});
       saveProgress(state.sessionId, { stage: "contact" }).catch(() => {});
     }
     setBusy(false);

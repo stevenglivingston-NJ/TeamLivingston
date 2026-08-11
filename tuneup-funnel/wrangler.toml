@@ -13,6 +13,8 @@ crons = ["*/15 * * * *"]
 [vars]
 SM_SERVICE_ID = "30382" # Tune-Up Residential
 META_PIXEL_ID = "109034988941656" # KTU Bloomfield NJ (domain verified)
+HIGHLEVEL_LOCATION_ID = "nHLCxHPidnhV1NFzRtZZ" # KTU location (P5 contact fan-out)
+# GA4_MEASUREMENT_ID = "G-XXXXXXXXXX" # uncomment once the GA4 property exists
 
 [[kv_namespaces]]
 binding = "PRICING_KV"
@@ -29,7 +31,9 @@ binding = "PHOTOS"
 bucket_name = "ktu-tuneup-photos"
 
 # Secrets (set with `wrangler secret put`, never in this file):
-#   SERVICEMINDER_API_KEY            — Phase 1 (pricing sync)
-#   ANTHROPIC_API_KEY                — Phase 2 (vision classifier)
-#   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
-#   HIGHLEVEL_WEBHOOK_URL, META_CAPI_TOKEN — later phases
+#   SERVICEMINDER_API_KEY — Phase 1 (pricing sync)
+#   ANTHROPIC_API_KEY     — Phase 2 (vision classifier)
+#   HIGHLEVEL_API_KEY     — P4 payments + P5 contact upsert (KTU Private Integration Token)
+#   HIGHLEVEL_PAYMENT_URL — P4 deposit link config (owner provides)
+#   META_CAPI_TOKEN       — P5 Meta Conversions API access token
+#   GA4_API_SECRET        — P5 GA4 Measurement Protocol secret

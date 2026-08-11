@@ -12,8 +12,15 @@
 import type { SmEnv } from "../sm/client";
 import { bookAppointment, fetchSlots, jobDurationMinutes, type Slot } from "../sm/schedule";
 import { AGREEMENT_VERSION } from "../agreement";
+import {
+  fanoutBooking,
+  fanoutCheckout,
+  type ClientContext,
+  type FanoutEnv,
+} from "../tracking/fanout";
+import type { Defer } from "./funnel";
 
-export interface BookingEnv extends SmEnv {
+export interface BookingEnv extends SmEnv, FanoutEnv {
   DB: D1Database;
   /** HighLevel payment-integration config (owner provides). When unset, the
    *  funnel falls back to "the team will send your deposit invoice". */
@@ -82,6 +89,8 @@ export async function recordAgreement(
 export async function startDeposit(
   env: BookingEnv,
   body: { sessionId?: string; depositCents?: number; slotStart?: string },
+  client: ClientContext,
+  defer: Defer,
 ): Promise<Response> {
   if (!body.sessionId || typeof body.depositCents !== "number" || !body.slotStart) {
     return jsonResponse({ error: "sessionId, depositCents, slotStart required" }, 400);
@@ -90,6 +99,7 @@ export async function startDeposit(
     depositCents: body.depositCents,
     slotStart: body.slotStart,
   });
+  defer(fanoutCheckout(env, { sessionId: body.sessionId, depositCents: body.depositCents, client }));
 
   if (!env.HIGHLEVEL_PAYMENT_URL || !env.HIGHLEVEL_API_KEY) {
     // Not yet wired — the team will send the HighLevel deposit invoice.
@@ -122,7 +132,12 @@ export async function confirmBooking(
     scheduledStart?: string;
     openings?: number;
     notes?: string;
+    quoteCents?: number;
+    depositCents?: number;
+    level?: string;
   },
+  client: ClientContext,
+  defer: Defer,
 ): Promise<Response> {
   const required = ["sessionId", "name", "phone", "email", "scheduledStart"] as const;
   for (const k of required) {
@@ -149,7 +164,28 @@ export async function confirmBooking(
       appointmentId: result.appointmentId,
       contactId: result.contactId,
     });
-    // TODO(P5): push to HighLevel (team fan-out) + fire Meta CAPI purchase event.
+    // Phase 5: HighLevel tuneup-booked (HL workflow notifies Sonya/office)
+    // + Meta CAPI Purchase + GA4 purchase — deferred, never blocks the booking.
+    defer(
+      fanoutBooking(env, {
+        sessionId: body.sessionId!,
+        name: body.name!,
+        phone: body.phone!,
+        email: body.email!,
+        address1: body.address1,
+        city: body.city,
+        state: body.state,
+        zip: body.zip,
+        scheduledStart: body.scheduledStart!,
+        openings: body.openings,
+        quoteCents: typeof body.quoteCents === "number" ? body.quoteCents : null,
+        depositCents: typeof body.depositCents === "number" ? body.depositCents : null,
+        level: body.level ?? null,
+        smAppointmentId: result.appointmentId,
+        smContactId: result.contactId,
+        client,
+      }),
+    );
     return jsonResponse({ ok: true, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

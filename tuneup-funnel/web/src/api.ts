@@ -6,6 +6,7 @@
  */
 
 import type { LevelBucket } from "./types";
+import type { TrackingContext } from "./tracking";
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
@@ -30,18 +31,22 @@ export async function saveProgress(
 
 export async function submitLead(
   id: string,
-  lead: { name: string; phone: string; email: string },
+  lead: { name: string; phone: string; email: string; zip?: string },
+  tracking?: TrackingContext,
 ): Promise<void> {
-  await post("/api/lead", { sessionId: id, ...lead });
+  await post("/api/lead", { sessionId: id, ...lead, ...tracking });
 }
 
-export async function requestCallback(payload: {
-  sessionId: string | null;
-  name: string;
-  phone: string;
-  bestTime: string;
-}): Promise<void> {
-  await post("/api/callback", payload);
+export async function requestCallback(
+  payload: {
+    sessionId: string | null;
+    name: string;
+    phone: string;
+    bestTime: string;
+  },
+  tracking?: TrackingContext,
+): Promise<void> {
+  await post("/api/callback", { ...payload, ...tracking });
 }
 
 export interface PreviewResult {
@@ -115,12 +120,15 @@ export async function recordAgreement(
   await post("/api/agreement", { sessionId, name, agreedAt: new Date().toISOString() });
 }
 
-export async function startDeposit(payload: {
-  sessionId: string;
-  depositCents: number;
-  slotStart: string;
-}): Promise<{ mode: string; paymentUrl?: string }> {
-  return post("/api/checkout", payload);
+export async function startDeposit(
+  payload: {
+    sessionId: string;
+    depositCents: number;
+    slotStart: string;
+  },
+  tracking?: TrackingContext,
+): Promise<{ mode: string; paymentUrl?: string }> {
+  return post("/api/checkout", { ...payload, ...tracking });
 }
 
 export async function confirmBooking(payload: Record<string, unknown>): Promise<{ ok: boolean }> {

@@ -4,16 +4,16 @@ Instant-quote + booking funnel for Kitchen Tune-Up Bloomfield (First Generation 
 Deploys to `ktubloomfield.com/tuneup`. Full build spec lives with the owner (CLAUDE build-spec
 doc); this README covers what is implemented so far.
 
-## Status: Phase 1 scaffold
+## Status: Phases 1–5 built
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| P0 | SM API verification, brand extraction, Stripe setup, agreement draft, calibration set | SM services/rates verified readable ✅; rest pending |
+| P0 | SM API verification, brand extraction, agreement draft, calibration set | SM services/rates verified readable ✅; calibration labeling pending |
 | **P1** | **Pricing engine + SM cron sync + $2k floor, unit-tested to the penny** (SDD dropped per owner 2026-07-18) | **Done** |
 | **P2** | **Vision classifier (level buckets, white-wash detect, opening cross-check)** | **Built — needs calibration run** |
-| P3 | Frontend funnel (React SPA, in-app camera, call-back) | Not started |
+| **P3** | **Frontend funnel (React SPA, in-app camera, call-back, gallery)** | **Built** |
 | **P4** | **SM calendar slots + service agreement + HighLevel deposit + booking chain** | **Built — needs SM calendar availability + HL payment config** |
-| P5 | HighLevel lead/booking fan-out + Meta Pixel/CAPI + GA4 | Not started |
+| **P5** | **HighLevel lead/booking fan-out + Meta Pixel/CAPI + GA4** | **Worker+SPA built — owner: HL workflows (AI-builder prompt), CAPI token, GA4 ids — see `docs/highlevel-phase5.md`** |
 | P6–P7 | QA, soft launch | Not started |
 
 ## Architecture (Phase 1 slice)
@@ -150,7 +150,7 @@ with a progress bar; every gate writes to D1 through the Worker.
 | ZIP | Service-area check; out-of-area → capture-and-exit |
 | Kitchen details | Opening counter, material/age chips, **+ smoking & polish-product questions** (sales-training signals photos can't see) |
 | Photos | Guided in-app camera — 4 required + 4 optional slots, `capture="environment"` opens the device camera; desktop upload fallback; stall >90s auto-offers a call-back |
-| Contact | Name/phone/email required before price; lead fires to backend (HighLevel push in P5) |
+| Contact | Name/phone/email required before price; lead fires to backend + HighLevel tag `tuneup-lead` + Meta/GA4 lead events (P5) |
 | Price reveal | Uploads photos → `/api/vision/classify` → `/api/quote/preview` → firm price + 50% deposit + firm-price copy. Low-confidence / L5 / white-wash-uncertain / any failure → "finalized within 2 hours" human-review screen (never a guessed price) |
 | Schedule (P4) | Service address + live SM slots (`/api/slots`, Tune-Up Residential calendar); graceful "we'll confirm your time" when no slots are configured yet |
 | Agreement (P4) | Scrollable service agreement (NJ HIC #13VH10775400, 3-day rescission, refund, firm-price) with scroll-gated e-consent; recorded server-side |
