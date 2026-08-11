@@ -69,7 +69,7 @@ likely the BTU/Oracabessa entity. Not used here.)
 | SM proposal text (agreement source) | ⬜ **needed from owner** (Scope of Work placeholder) |
 | NJ HIC number | ✅ `13VH10775400` (KTU / First Generation USA LLC) |
 | Deposit payments | ✅ HighLevel (Phase 4 built; fallback active until HL payment config set) |
-| SM Tune-Up calendar availability | ⬜ assign agents/hours so slot search returns times |
+| SM Tune-Up calendar availability | ✅ verified live 2026-08-11: slot search on service 30382 returns 17 slots/day (8:00a start, Service-category "Service Agents" resource, Mon–Sun). Tune-ups run **primarily Saturdays** (owner) — funnel Schedule stage is Saturday-first, weekdays behind a "see weekday options" toggle. Note: Felipe isn't a separate API service agent; availability comes from the shared Service Agents resource, and SM offers all 7 days — if weekday/Sunday slots should be blocked at the source, tighten that resource's Service-category hours in SM. |
 | Calibration photos labeled + ingested | ⬜ owner/Ben (see calibration/) |
 | Meta Pixel ID | ✅ `109034988941656` |
 | Booking/callback notification recipient | ✅ **Sonya (office)** — P5 Worker fan-out built (tags `tuneup-lead/callback/booked`); ⬜ owner builds the HL notification workflows (AI-builder prompt in `docs/highlevel-phase5.md`) |

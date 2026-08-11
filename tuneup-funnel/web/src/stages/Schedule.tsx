@@ -4,15 +4,22 @@ import type { FunnelState } from "../types";
 import { fetchSlots, saveProgress, type SlotsResult } from "../api";
 import { PHONE_DISPLAY, PHONE_TEL } from "../content";
 
-function nextDays(count: number): string[] {
-  const out: string[] = [];
-  const d = new Date();
-  for (let i = 1; out.length < count; i++) {
-    const day = new Date(d.getTime() + i * 86_400_000);
-    // Skip Sundays.
-    if (day.getDay() !== 0) out.push(day.toISOString().slice(0, 10));
+/**
+ * Saturday-first scheduling (owner 2026-08-11): tune-ups run primarily on
+ * Saturdays, so offer the next 3 Saturdays up front and weekdays as the
+ * secondary option. Sundays are never offered.
+ */
+function upcomingDates(): { saturdays: string[]; weekdays: string[] } {
+  const saturdays: string[] = [];
+  const weekdays: string[] = [];
+  for (let i = 1; i <= 28 && (saturdays.length < 3 || weekdays.length < 5); i++) {
+    const day = new Date(Date.now() + i * 86_400_000);
+    const dow = day.getDay();
+    const iso = day.toISOString().slice(0, 10);
+    if (dow === 6 && saturdays.length < 3) saturdays.push(iso);
+    else if (dow !== 0 && dow !== 6 && weekdays.length < 5) weekdays.push(iso);
   }
-  return out;
+  return { saturdays, weekdays };
 }
 
 function fmtDate(iso: string): string {
@@ -37,8 +44,9 @@ export function Schedule({
   onNext: () => void;
   onCallback: () => void;
 }) {
-  const days = nextDays(6);
-  const [date, setDate] = useState(days[0]);
+  const { saturdays, weekdays } = upcomingDates();
+  const [date, setDate] = useState(saturdays[0]);
+  const [showWeekdays, setShowWeekdays] = useState(false);
   const [result, setResult] = useState<SlotsResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [addr, setAddr] = useState(state.address);
@@ -63,7 +71,10 @@ export function Schedule({
     <div className="stage stack">
       <div className="card">
         <h1>Pick your appointment</h1>
-        <p className="muted">Your Tune-Up takes about one day. Choose a date to see open times.</p>
+        <p className="muted">
+          Your Tune-Up takes about one day. Saturday is our dedicated Tune-Up day — pick the
+          Saturday that works for you.
+        </p>
 
         <label>Service address</label>
         <input
@@ -94,14 +105,34 @@ export function Schedule({
       </div>
 
       <div className="card">
-        <label>Choose a date</label>
+        <label>Choose a Saturday</label>
         <div className="chips">
-          {days.map((d) => (
+          {saturdays.map((d) => (
             <button key={d} className="chip" aria-pressed={date === d} onClick={() => setDate(d)}>
               {fmtDate(d)}
             </button>
           ))}
         </div>
+        {!showWeekdays ? (
+          <button
+            className="btn ghost"
+            style={{ marginTop: 10 }}
+            onClick={() => setShowWeekdays(true)}
+          >
+            Saturdays don't work? See weekday options
+          </button>
+        ) : (
+          <>
+            <label style={{ marginTop: 12 }}>Weekdays</label>
+            <div className="chips">
+              {weekdays.map((d) => (
+                <button key={d} className="chip" aria-pressed={date === d} onClick={() => setDate(d)}>
+                  {fmtDate(d)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         <div style={{ marginTop: 16 }}>
           {loading && <p className="muted">Checking open times…</p>}
