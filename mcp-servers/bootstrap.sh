@@ -70,7 +70,7 @@ if require COMPANYCAM_TOKEN; then
 else skipped+=("companycam (COMPANYCAM_TOKEN)"); fi
 
 if require SM_KEY_KTU SM_KEY_BTU; then
-  reg serviceminder "{\"command\":\"python3\",\"args\":[\"$DIR/serviceminder/server.py\"],\"env\":{\"SM_KEY_KTU\":\"$SM_KEY_KTU\",\"SM_KEY_BTU\":\"$SM_KEY_BTU\"}}"
+  reg serviceminder "{\"command\":\"python3\",\"args\":[\"$DIR/serviceminder/server.py\"],\"env\":{\"SM_KEY_KTU\":\"$SM_KEY_KTU\",\"SM_KEY_BTU\":\"$SM_KEY_BTU\",\"SM_USERID_KTU\":\"${SM_USERID_KTU:-}\",\"SM_USERID_BTU\":\"${SM_USERID_BTU:-}\"}}"
 else skipped+=("serviceminder (SM_KEY_KTU/SM_KEY_BTU)"); fi
 
 if require GOOGLE_ADS_DEVELOPER_TOKEN GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET GOOGLE_ADS_REFRESH_TOKEN; then
