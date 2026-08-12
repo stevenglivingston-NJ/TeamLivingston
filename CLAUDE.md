@@ -169,6 +169,34 @@ Two independent schedulers — do not confuse them:
   - `agent-freshness-watchdog` (hourly) → `check_agent_freshness()` writes stale agents
     to the `system_health` section and queues one alert per stale section per day.
 
+### Supabase from a scheduled run — use `mcp-servers/sb.sh`, never the MCP tool
+
+A scheduled fire is non-interactive. `mcp__Supabase__execute_sql` opens an "Allow"
+permission prompt with nobody to answer it, so the session hangs and the whole cycle
+stalls. Scheduled agents must read and write Supabase through:
+
+```
+bash mcp-servers/sb.sh "SELECT * FROM notify_queue WHERE status='pending' LIMIT 50"
+```
+
+It translates a practical SQL subset (SELECT / INSERT / UPDATE / DELETE, `WHERE` with
+AND/OR, `IN`, `IS NULL`, `LIKE`, and `now() - interval '5 minutes'`) into PostgREST
+calls over curl — no prompt, no MCP. SELECT prints a JSON array; writes print
+`{"ok":true,"count":N,"rows":[…]}`; failures print `{"ok":false,"error":…}` and exit 1.
+
+Two gotchas it already handles, worth knowing if you call PostgREST directly:
+- The project's **default PostgREST schema is `api`**, but the intranet tables live in
+  `public` — every request needs `Accept-Profile: public` / `Content-Profile: public`,
+  or you get `PGRST205 Could not find the table 'api.<name>'`.
+- There is **no arbitrary-SQL RPC** on this project, so joins, CTEs, aggregate
+  expressions and `INSERT … SELECT` cannot be translated. Split those into a read
+  followed by a write instead.
+
+`UPDATE`/`DELETE` without a `WHERE` are refused outright. Reads/writes use
+`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` from the environment, so RLS is bypassed —
+keep owner-only data (`docs_finance`, Moola's sections) out of team-visible surfaces
+yourself; the service role will not stop you.
+
 To activate real-time delivery, set function secrets on the `dispatch-notify` function:
 `SLACK_BOT_TOKEN` (scopes `chat:write`, `users:read.email`, `im:write`), optional
 `SLACK_ALERTS_CHANNEL`, and `RESEND_API_KEY` + `NOTIFY_FROM_EMAIL` for email.
