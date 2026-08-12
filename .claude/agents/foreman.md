@@ -480,10 +480,12 @@ collapse them into one number:
   (e.g. "Invoice IN…"), CAD approval threads ("…Approve CAD").
 - **Design-gate signal — Ben Yabra's project updates (direct Gmail MCP pull, not Zapier).**
   This is the read that tells you where a job stands on selections/CAD before
-  Production Gate. Ben's updates come from `byabra@kitchentuneup.com`, and
-  **`firstgentalent@gmail.com` is a directly connected mailbox on this same Gmail
-  MCP** — search it too (`to:firstgentalent@gmail.com`) since some threads land or
-  get relayed there. Query both scopes each run:
+  Production Gate. Ben's updates come from `byabra@kitchentuneup.com` — a reliable
+  SENDER anchor, so lean on it. Packets also forward to the ops inbox
+  **`firstgentalent@gmail.com`**, but **don't assume the Gmail connector *is*
+  firstgentalent** — it may resolve to another account that only sees firstgentalent
+  threads the owner is also on, so the sender anchor is what makes this robust.
+  Query both scopes each run:
   `(from:byabra@kitchentuneup.com OR to:firstgentalent@gmail.com) (materials OR "design" OR CAD OR "selection" OR "design brief")`.
   Pull the body **and attachments** — Ben's "Materials UPDATE" emails are often a
   bare signature block with the real content in an attached `*-Materials.xlsx`;
