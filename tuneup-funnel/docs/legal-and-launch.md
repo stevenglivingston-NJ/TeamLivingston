@@ -66,7 +66,7 @@ likely the BTU/Oracabessa entity. Not used here.)
 |------|--------|
 | Attorney sign-off on agreement | ✅ owner-confirmed 2026-07-18 |
 | Refund tiers / rescission | ✅ defined above |
-| SM proposal text (agreement source) | ⬜ **needed from owner** (Scope of Work placeholder) |
+| SM proposal text (agreement source) | ✅ Scope of Work completed 2026-08-11 from the SM "Tune-Up Residential" service description (the text SM prints on Tune-Up proposals; no accepted Tune-Up proposal exists in SM to mirror). Agreement bumped to v1-2026-08-11 — **give the completed document a final attorney read before launch** |
 | NJ HIC number | ✅ `13VH10775400` (KTU / First Generation USA LLC) |
 | Deposit payments | ✅ HighLevel (Phase 4 built; fallback active until HL payment config set) |
 | SM Tune-Up calendar availability | ✅ verified live 2026-08-11: slot search on service 30382 returns 17 slots/day (8:00a start, Service-category "Service Agents" resource, Mon–Sun). Tune-ups run **primarily Saturdays** (owner) — funnel Schedule stage is Saturday-first, weekdays behind a "see weekday options" toggle. Felipe is set up as a **subcontractor** (owner 2026-08-11), so he doesn't appear as an API service agent — bookings land on the shared Service Agents resource and Felipe is dispatched internally; working as intended. SM offers all 7 days — if weekday/Sunday slots should be blocked at the source, tighten that resource's Service-category hours in SM. |
@@ -75,7 +75,7 @@ likely the BTU/Oracabessa entity. Not used here.)
 | Booking/callback notification recipient | ✅ **Sonya (office)** — P5 Worker fan-out built (tags `tuneup-lead/callback/booked`); ⬜ owner builds the HL notification workflows (AI-builder prompt in `docs/highlevel-phase5.md`) |
 | Meta CAPI token + GA4 property | ⬜ owner: CAPI token, GA4 `G-` id + MP secret (steps in `docs/highlevel-phase5.md`); Worker no-ops until set |
 | HL custom fields for Tune-Up | ⬜ owner: create the 9 `tuneup_*` contact custom fields (list in `docs/highlevel-phase5.md`) |
-| SM pricing configured | ✅ live per-door: L1_2 $96 / L3 $112 / L4 $136 / uplift $390.35 / white-wash $620. ⬜ base still $0 — set $275 on SM service 30382 BasePrice |
+| SM pricing configured | ✅ live per-door: L1_2 $96 / L3 $112 / L4 $136 / uplift $390.35 / white-wash $620. Base: SM still returns $0 (re-verified 2026-08-11) → the engine now applies the owner-confirmed **$275 fallback** (flagged `owner_fallback` in the rate table + audit note). Setting BasePrice=275 on SM service 30382 makes SM authoritative again and clears the flag |
 | Cloudflare D1 + KV | ✅ created 2026-07-18 |
 | Cloudflare R2 | ✅ bucket `ktu-tuneup-photos` created 2026-08-06; PHOTOS binding live in wrangler.toml |
 | Landing gallery photos + award names | ⬜ owner to select best before/after pairs |

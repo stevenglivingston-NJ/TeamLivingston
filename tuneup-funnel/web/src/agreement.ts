@@ -2,13 +2,15 @@
  * Customer-facing service agreement. Version must match the Worker's
  * AGREEMENT_VERSION (src/agreement.ts) so recorded e-consent ties to this text.
  *
- * ⚠️ DRAFT — not launch-ready. The scope-of-work section is a placeholder until
- * the owner supplies the ServiceMinder proposal text (the agreement must mirror
- * it), and the whole document needs final attorney confirmation once that text
- * is in. The fixed NJ Home Improvement Contractor elements below are in place.
+ * Scope of Work mirrors the ServiceMinder "Tune-Up Residential" service
+ * description (service 30382) — the text SM prints on Tune-Up proposals —
+ * pulled live 2026-08-11. Owner marked the agreement attorney-signed-off
+ * 2026-07-18; per docs/legal-and-launch.md, this scope insertion is a material
+ * completion of that document and should get a final attorney read before
+ * launch. NJ Home Improvement Contractor elements are in place.
  */
 
-export const AGREEMENT_VERSION = "v0-draft-2026-07-18";
+export const AGREEMENT_VERSION = "v1-2026-08-11";
 
 export const HIC_NUMBER = "13VH10775400";
 export const CONTRACTOR = "First Generation USA LLC d/b/a Kitchen Tune-Up Bloomfield";
@@ -29,8 +31,7 @@ export const AGREEMENT_SECTIONS: AgreementSection[] = [
   },
   {
     heading: "Scope of Work",
-    pending: true,
-    body: `Kitchen Tune-Up cabinet restoration (Tune-Up service) at the Owner's service address, as described in your instant quote and confirmed by on-site inspection. [FINAL SCOPE-OF-WORK TEXT PENDING — this section will mirror the ServiceMinder proposal text the owner supplies before launch.]`,
+    body: `Contractor will perform the Kitchen Tune-Up core service on the Owner's kitchen cabinetry at the service address, covering the number of cabinet openings (doors and drawer fronts) stated in your quote, at the condition level assessed from your photos, including the white-wash treatment only if it appears on your quote. The Tune-Up core service process: chemically clean, degrease and prep existing cabinetry to artistically repair stain and finish damage; adjustment of sheen along with install of new rubber bumper pads on doors and drawer fronts if needed; inspect and adjust door hinges and drawer glides. The process does not change the existing color or repair major sun damage, and does not unwarp doors. This process is an artistic restoration created to improve the overall appearance of the cabinetry and should not be confused with complete refinishing. The scope is confirmed by on-site inspection before work begins.`,
   },
   {
     heading: "Price",

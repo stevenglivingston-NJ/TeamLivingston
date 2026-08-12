@@ -5,7 +5,7 @@
  * part for the L1_2 bucket, so each bucket maps to exactly one SM part.
  */
 
-import { SM_PRICING } from "../config";
+import { QUOTE_RULES, SM_PRICING } from "../config";
 import { dollarsToMilli } from "./money";
 
 export type LevelBucket = "L1_2" | "L3" | "L4";
@@ -13,8 +13,10 @@ export type LevelBucket = "L1_2" | "L3" | "L4";
 export interface RateTable {
   fetchedAt: string;
   serviceId: number;
-  /** SM service BasePrice, milli-dollars. */
+  /** Effective base price, milli-dollars. */
   baseMilli: number;
+  /** Where baseMilli came from: SM's BasePrice, or the owner-confirmed fallback while SM reads 0. */
+  baseSource: "sm" | "owner_fallback";
   /** "Tune-Up Uplift" part, milli-dollars. Merged into the displayed base. */
   upliftMilli: number;
   levelRatesMilli: Record<LevelBucket, number>;
@@ -72,7 +74,14 @@ export function buildRateTable(payload: SmServicesPayload, now: Date): RateTable
     return milli;
   };
 
-  const baseMilli = dollarsToMilli(service.BasePrice ?? 0);
+  const smBaseMilli = dollarsToMilli(service.BasePrice ?? 0);
+  // SM base wins whenever it's set; the owner-confirmed $275 covers the gap
+  // while the service record's Base Price still reads 0 (see config.ts).
+  const baseSource: RateTable["baseSource"] = smBaseMilli > 0 ? "sm" : "owner_fallback";
+  const baseMilli = smBaseMilli > 0 ? smBaseMilli : QUOTE_RULES.baseFallbackMilli;
+  if (baseSource === "owner_fallback") {
+    missing.push("base: SM BasePrice is 0 — using owner-confirmed $275 fallback (set BasePrice on service 30382 to clear this)");
+  }
   const upliftMilli = partMilli(SM_PRICING.partIds.uplift, "uplift");
   const level12 = partMilli(SM_PRICING.partIds.level12, "level12");
   const level3 = partMilli(SM_PRICING.partIds.level3, "level3");
@@ -92,10 +101,13 @@ export function buildRateTable(payload: SmServicesPayload, now: Date): RateTable
     L4: level4,
   };
 
-  // A quotable table needs a positive effective base and positive level rates.
-  // White-wash is intentionally excluded: its absence only blocks white-wash quotes.
+  // A quotable table needs the uplift part, a positive base, and positive level
+  // rates. Uplift is checked on its own — the base fallback must never paper
+  // over a missing/deleted SM part. White-wash is intentionally excluded: its
+  // absence only blocks white-wash quotes.
   const complete =
-    baseMilli + upliftMilli > 0 &&
+    upliftMilli > 0 &&
+    baseMilli > 0 &&
     Object.values(levelRatesMilli).every((r) => r > 0);
   if (!complete) missing.push("rate table incomplete: effective base or a level rate is missing/zero");
 
@@ -103,6 +115,7 @@ export function buildRateTable(payload: SmServicesPayload, now: Date): RateTable
     fetchedAt: now.toISOString(),
     serviceId: SM_PRICING.serviceId,
     baseMilli,
+    baseSource,
     upliftMilli,
     levelRatesMilli,
     whiteWashPremiumMilli,

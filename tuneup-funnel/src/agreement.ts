@@ -4,9 +4,10 @@
  * (funnel_events "agreement_signed") to the exact agreement version the customer
  * saw. Bump it whenever the agreement wording changes.
  *
- * v0-draft: legal boilerplate present (NJ HIC #13VH10775400, 3-day rescission,
- * refund policy). The scope-of-work section still needs the ServiceMinder
- * proposal text from the owner and is marked as such in the SPA — do NOT mark
- * this agreement launch-ready until that text is in and attorney re-confirms.
+ * v1-2026-08-11: Scope of Work completed from the ServiceMinder "Tune-Up
+ * Residential" service description (service 30382, pulled live 2026-08-11) —
+ * the text SM prints on Tune-Up proposals. Legal boilerplate unchanged from
+ * v0 (NJ HIC #13VH10775400, 3-day rescission, refund policy). Get a final
+ * attorney read of the completed document before launch.
  */
-export const AGREEMENT_VERSION = "v0-draft-2026-07-18";
+export const AGREEMENT_VERSION = "v1-2026-08-11";

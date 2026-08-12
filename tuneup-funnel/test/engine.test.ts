@@ -19,6 +19,7 @@ const specRates: RateTable = {
   fetchedAt: "2026-07-17T12:00:00.000Z",
   serviceId: 30382,
   baseMilli: 250_000, // $250
+  baseSource: "sm",
   upliftMilli: 389_650, // $389.65
   levelRatesMilli: { L1_2: 96_485, L3: 111_329, L4: 136_070 },
   whiteWashPremiumMilli: 618_500, // $618.50
@@ -58,31 +59,32 @@ describe("spec rates — floor and deposit to the penny", () => {
 });
 
 describe("live SM rates (2026-07-18 snapshot — rebuilt template)", () => {
-  // Effective base = $0 + $390.35 uplift. L1_2 $96, L3 $112, L4 $136, white-wash $620.
+  // Effective base = $275 owner fallback (SM BasePrice still 0) + $390.35 uplift.
+  // L1_2 $96, L3 $112, L4 $136, white-wash $620.
   const live = buildRateTable(liveSnapshot as SmServicesPayload, new Date("2026-07-18T12:00:00Z"));
 
   it("10 openings L1_2 is under the floor: $2,000 firm, deposit $1,000", () => {
-    // 390.35 + 96×10 = $1,350.35 → floor
+    // 275 + 390.35 + 96×10 = $1,625.35 → floor
     const r = ok(computeQuote({ openings: 10, level: "L1_2", whiteWash: false }, live));
     expect(r.floorApplied).toBe(true);
     expect(r.quoteCents).toBe(200_000);
     expect(r.depositCents).toBe(100_000);
   });
 
-  it("22 openings L1_2 clears the floor: $2,502.35, deposit $1,251.18", () => {
-    // 390.35 + 96×22 = $2,502.35; deposit 125,117.5¢ → half-up
+  it("22 openings L1_2 clears the floor: $2,777.35, deposit $1,388.68", () => {
+    // 275 + 390.35 + 96×22 = $2,777.35; deposit 138,867.5¢ → half-up
     const r = ok(computeQuote({ openings: 22, level: "L1_2", whiteWash: false }, live));
     expect(r.floorApplied).toBe(false);
-    expect(r.quoteCents).toBe(250_235);
-    expect(r.depositCents).toBe(125_118);
+    expect(r.quoteCents).toBe(277_735);
+    expect(r.depositCents).toBe(138_868);
   });
 
-  it("15 openings L4 + white-wash now prices instantly: $3,050.35, deposit $1,525.18", () => {
-    // 390.35 + 136×15 + 620 = $3,050.35; deposit 152,517.5¢ → half-up
+  it("15 openings L4 + white-wash now prices instantly: $3,325.35, deposit $1,662.68", () => {
+    // 275 + 390.35 + 136×15 + 620 = $3,325.35; deposit 166,267.5¢ → half-up
     const r = ok(computeQuote({ openings: 15, level: "L4", whiteWash: true }, live));
-    expect(r.quoteCents).toBe(305_035);
+    expect(r.quoteCents).toBe(332_535);
     expect(r.whiteWashCents).toBe(62_000);
-    expect(r.depositCents).toBe(152_518);
+    expect(r.depositCents).toBe(166_268);
   });
 });
 

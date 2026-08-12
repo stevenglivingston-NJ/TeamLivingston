@@ -37,6 +37,14 @@ export const QUOTE_RULES = {
   floorCents: 200_000,
   /** Deposit is 50% of the quote. */
   depositPercent: 50,
+  /**
+   * Owner-confirmed Tune-Up base price ($275, 2026-07-18) used ONLY while the
+   * SM service BasePrice still reads 0 (verified still 0 on 2026-08-11 —
+   * whatever was entered in SM isn't on the service record's Base Price
+   * field). The moment SM returns a positive BasePrice it wins and this
+   * fallback is ignored. Sole exception to "rates are never hardcoded".
+   */
+  baseFallbackMilli: 275_000,
 } as const;
 
 export const VISION = {
