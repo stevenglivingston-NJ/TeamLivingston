@@ -119,6 +119,24 @@ Slack, Zapier, Facebook) load from the account automatically and need
 no bootstrap. (monday.com is being retired — its boards/docs are exported to
 Google Drive and mapped by the Librarian; don't depend on the monday connector.)
 
+### Supabase from scheduled (non-interactive) runs — use `sb.sh`
+
+Scheduled agent fires have no human at the keyboard, so any MCP/connector call
+that pauses on an "Allow" prompt stalls the whole run. For Supabase, skip MCP
+entirely and use `mcp-servers/sb.sh`, which runs SQL over plain curl against the
+`public.exec_sql(query text)` RPC with the service-role key:
+
+```bash
+bash mcp-servers/sb.sh "SELECT * FROM notify_queue WHERE status='pending'"
+bash mcp-servers/sb.sh -f query.sql        # or pipe SQL on stdin
+```
+
+SELECT returns a JSON array of rows; writes return `{"ok":true}`; errors go to
+stderr with exit 1 (4xx fails fast, transport errors retry 3× with backoff).
+Needs `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` in the environment's env-var
+config. Note PostgREST's default schema here is `api`, so the table-level REST
+paths 404 on `public` tables — `exec_sql` is the reliable route.
+
 ### HighLevel access — two paths, and the KTU gotcha
 
 HighLevel is reachable **two different ways**, and they are NOT interchangeable —
