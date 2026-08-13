@@ -169,6 +169,42 @@ Two independent schedulers — do not confuse them:
   - `agent-freshness-watchdog` (hourly) → `check_agent_freshness()` writes stale agents
     to the `system_health` section and queues one alert per stale section per day.
 
+### Supabase from a headless run — use `mcp-servers/sb.sh`, not the MCP tool
+
+Scheduled agent fires are non-interactive: nobody can answer an "Allow" prompt, so
+an MCP call that asks for permission stalls the whole cycle. `mcp-servers/sb.sh`
+is the prompt-free path — it talks to PostgREST over curl:
+
+```bash
+bash mcp-servers/sb.sh "SELECT * FROM notify_queue WHERE status='pending' LIMIT 50"
+bash mcp-servers/sb.sh "UPDATE notify_queue SET status='sent', sent_at=now() WHERE id='…'"
+```
+
+SELECT returns a JSON array; INSERT/UPDATE/DELETE return `{"ok":true,"count":N,"rows":[…]}`.
+Needs only `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` from the environment.
+
+Two things worth knowing before you write a query against this project:
+
+- **PostgREST here defaults to the `api` schema, not `public`.** A bare REST call
+  404s with `PGRST205 Could not find the table 'api.<name>'`. `sb.sh` sends
+  `Accept-Profile: public` on every request; hand-rolled curl must do the same.
+- **There is no arbitrary-SQL RPC on this project**, so `sb.sh` translates a
+  practical subset of SQL into REST calls: SELECT/INSERT/UPDATE/DELETE with
+  `WHERE` (`= <> < > <= >=`, `IN`, `LIKE`, `IS [NOT] NULL`, AND-joined),
+  `ORDER BY`, `LIMIT/OFFSET`, `ON CONFLICT DO NOTHING/UPDATE`, `now() ± interval`,
+  and `::jsonb` casts. JOIN, GROUP BY, aggregates, `INSERT … SELECT`, and DDL are
+  **not** supported — decompose those into a SELECT, build the rows in the agent,
+  then INSERT. Unsupported SQL exits non-zero with the reason; it never returns an
+  empty array, so a broken query can't be mistaken for "no rows". `UPDATE`/`DELETE`
+  without a `WHERE` are refused outright.
+
+Slack has a prompt-free path too: the bot token in `public.app_secrets`
+(`SLACK_BOT_TOKEN`) posts via `chat.postMessage`, and `dispatch_config.slack_webhook_url`
+is the webhook fallback. That token can **write** but not **read** — it lacks
+`channels:history`, and `search.messages` rejects bot tokens
+(`not_allowed_token_type`), so scanning #ask-ax still needs the Slack MCP connector.
+Add the `channels:history` scope if that read should also work without MCP.
+
 To activate real-time delivery, set function secrets on the `dispatch-notify` function:
 `SLACK_BOT_TOKEN` (scopes `chat:write`, `users:read.email`, `im:write`), optional
 `SLACK_ALERTS_CHANNEL`, and `RESEND_API_KEY` + `NOTIFY_FROM_EMAIL` for email.
