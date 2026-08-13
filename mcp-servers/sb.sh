@@ -57,10 +57,34 @@ if [ "$CODE" != "200" ] && [ "$CODE" != "201" ] && [ "$CODE" != "204" ]; then
   exit 1
 fi
 
-# exec_sql returns null for statements that produce no result set (INSERT/UPDATE/
-# DELETE without RETURNING). A SELECT that matched nothing returns [] — keep those
-# distinct, so callers can tell "write succeeded" from "query found no rows".
-case "$(printf '%s' "$PAYLOAD" | tr -d '[:space:]')" in
+# How api.exec_sql answers (see its definition):
+#   execute format('select coalesce(jsonb_agg(row_to_json(t)), ''[]''::jsonb)
+#                   from (%s) t', query)
+#   exception when others then  execute query;  return {"ok": true}
+#
+# So: rows -> [ ... ], a SELECT matching nothing -> [], and a write -> the
+# exception path -> {"ok": true}. That fallback is silent, which is the trap:
+# if a SELECT fails to WRAP, its rows are executed bare and THROWN AWAY, and the
+# caller still sees {"ok": true} — a read that found nothing and a read that was
+# discarded look identical.
+#
+# The wrap fails most often on an alias collision: a query whose output column is
+# named `t` (e.g. `SELECT to_char(now(),'HH24:MI') AS t`) makes `row_to_json(t)`
+# resolve to that column instead of the subquery row, which raises. Rename the
+# column and it works. Guard reads so this can never be mistaken for success.
+STMT="$(printf '%s' "$SQL" | sed -e 's/^[[:space:]]*//' | tr '[:lower:]' '[:upper:]')"
+NORM="$(printf '%s' "$PAYLOAD" | tr -d '[:space:]')"
+
+case "$STMT" in
+  SELECT*|WITH*|TABLE*|SHOW*|EXPLAIN*)
+    if [ "$NORM" = '{"ok":true}' ]; then
+      echo '{"error":"exec_sql fell back to bare execute: this read was run but its rows were DISCARDED, not returned. Most likely an output column named `t`, which collides with the wrapper alias in exec_sql — rename it (AS t -> AS val) and retry."}' >&2
+      exit 1
+    fi
+    ;;
+esac
+
+case "$NORM" in
   ""|"null") echo '{"ok":true}' ;;
   *)         echo "$PAYLOAD" ;;
 esac
