@@ -96,13 +96,26 @@ else skipped+=("amazon-sp (AMAZON_SP_* x3)"); fi
 # header. Location IDs are public identifiers; the PITs are SECRETS (env vars,
 # full value including the "pit-" prefix). Verified 2026-07-03: KTU PIT returns
 # Kitchen Tune-Up, BTU PIT returns Bath Tune-Up.
+#
+# The Authorization header MUST carry the "Bearer " prefix. The PIT env vars hold
+# the bare "pit-…" token, so the prefix has to be added here — same as the
+# clarity / google-ads HTTP blocks below. Sending the bare token instead makes
+# LeadConnector answer every call with 401 {"error":"invalid_token"}, while
+# `reg` still reports the server as Registered (it only checks the env var is
+# non-empty). That combination is silent: bootstrap looks healthy and the agents
+# go blind. Regression check (expect HTTP 200, serverInfo ghl-mcp):
+#   curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+#     https://services.leadconnectorhq.com/mcp/ \
+#     -H "Authorization: Bearer $GHL_PIT_KTU" -H "locationId: nHLCxHPidnhV1NFzRtZZ" \
+#     -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+#     -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"c","version":"1"}}}'
 
 if require GHL_PIT_KTU; then
-  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"$GHL_PIT_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
+  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
 else skipped+=("ghl-ktu (GHL_PIT_KTU)"); fi
 
 if require GHL_PIT_BTU; then
-  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"$GHL_PIT_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
+  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
 else skipped+=("ghl-btu (GHL_PIT_BTU)"); fi
 
 # ---- 4. Shared ------------------------------------------------------------

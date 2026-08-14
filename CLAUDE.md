@@ -151,6 +151,20 @@ A 401 there means the token itself is revoked/expired → regenerate the locatio
 Private Integration Token in HighLevel and update the env var. A 200 there while
 the pipe still shows broken means it's purely the env-var wiring.
 
+**A missing env var is not the only failure mode — check the header form too.**
+Found 2026-08-14: both PITs were set and valid (each returned its location name
+on the curl above), yet every HighLevel call still 401'd, because `bootstrap.sh`
+registered the servers with the bare token as `Authorization` instead of
+`Bearer <token>`. Registration still *succeeded* — `reg` only checks the env var
+is non-empty — so the startup log read `Registered (9) … ghl-ktu ghl-btu` while
+both pipes were dead. Fixed in `bootstrap.sh`; the lesson generalises: **a server
+listed as Registered proves the variable is set, never that the credential
+works.** Only a live probe proves a pipe is up. To test the real endpoint rather
+than the REST API, POST an `initialize` call to
+`https://services.leadconnectorhq.com/mcp/` with `Authorization: Bearer $GHL_PIT_KTU`
+and the `locationId` header — 200 with `serverInfo: ghl-mcp` means the pipe is
+genuinely up (the exact command is in `bootstrap.sh` above the `ghl-*` block).
+
 ## Scheduling & notification delivery (how the automation actually runs)
 
 Two independent schedulers — do not confuse them:
