@@ -173,6 +173,34 @@ To activate real-time delivery, set function secrets on the `dispatch-notify` fu
 `SLACK_BOT_TOKEN` (scopes `chat:write`, `users:read.email`, `im:write`), optional
 `SLACK_ALERTS_CHANNEL`, and `RESEND_API_KEY` + `NOTIFY_FROM_EMAIL` for email.
 
+## Scheduled agent runs — model tiers & no-repo-writes policy
+
+Two rules keep the daily fleet cheap and stop the duplicate-PR loop. Agent specs
+use `model: inherit`, so the model is set on the **CCR Routine**, not the spec.
+
+**1. Pin a model tier per Routine — never leave it on the env default (Opus 5).**
+Daily ops agents do read → gather → write-brief work; none needs Opus.
+- **Haiku 4.5** (`claude-haiku-4-5`) — mechanical / high-frequency: Ax (hourly
+  dispatcher), the ServiceMinder→intranet syncs (Agent Performance, Appointment
+  Follow-ups), the office-address check (12×/day).
+- **Sonnet 5** (`claude-sonnet-5`) — the daily analytical briefs: Goldeneye,
+  Foreman, Paid, Moola, Organic, Pipeline, Cellar, Harvest, Tekki.
+- **Opus** — none of the recurring runs; reserve for one-off deep work.
+An unpinned Routine silently rides the env default (Opus 5) and burns tokens —
+new Routines MUST set a model. Keep **one** Routine per agent (no duplicate daily
+runs — e.g. a single Paid, single Tekki, single Moola).
+
+**2. Scheduled ops agents write to Supabase, never to the repo.** Goldeneye,
+Moola, Foreman, Paid, Organic, Pipeline, Tekki, Ax, Cellar, Harvest, Librarian
+publish via `sb.sh` / Supabase only — they must NOT `git commit`, `git push`, or
+open a pull request. The duplicate-PR loop (dozens of "Add sb.sh" drafts, ~24/day)
+came from fired sessions landing on stale `claude/*` branches, re-adding the
+missing `sb.sh`, and auto-PRing it. `setup.sh` now hard-resets each run to
+`origin/main` (so `sb.sh` is already present and there is nothing to commit), and
+its `SETUP_SCRIPT_VERSION` echo lets you confirm the Cloud-console Setup-script
+copy isn't stale. Point each Routine's environment at `main`, not a fresh
+`claude/*` branch.
+
 ## Connection ownership (pipe → consumer agent)
 
 Which agent depends on which pipe — so a broken connection maps straight to the
