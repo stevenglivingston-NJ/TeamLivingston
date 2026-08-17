@@ -136,16 +136,30 @@ Deno.serve(async (req) => {
       const to = r.recipient_email || c.default_recipient || "stevenglivingston@gmail.com";
       const slackText = `🔔 *${r.subject || "Axyom notification"}*\n${r.body || ""}`;
 
-      const [, slackResult] = await Promise.allSettled([
+      const [emailResult, slackResult] = await Promise.allSettled([
         sendEmail(c, to, r.subject || "Axyom notification", r.body || ""),
         sendSlack(c, slackText),
       ]);
 
-      via.push(`email:${to}`);
-      if (slackResult?.status === "fulfilled" && slackResult.value) {
-        via.push("slack-webhook");
-      } else if (slackResult?.status === "rejected") {
-        via.push("slack-error");
+      // Record only the channels that actually delivered. Claiming `email:<to>`
+      // unconditionally hid a revoked GHL token for three weeks: the email leg
+      // rejected on every row while `via` still reported it as sent.
+      const failures: string[] = [];
+      if (emailResult.status === "fulfilled") {
+        via.push(`email:${to}`);
+      } else {
+        failures.push("email: " + String(emailResult.reason).slice(0, 150));
+      }
+      if (slackResult.status === "fulfilled") {
+        if (slackResult.value) via.push("slack-webhook");
+      } else {
+        failures.push("slack: " + String(slackResult.reason).slice(0, 150));
+      }
+
+      // One surviving channel is still a delivery — only a total blackout counts
+      // as failure, so a dead email token can't suppress a working Slack webhook.
+      if (via.length === 0) {
+        throw new Error(failures.join(" | ") || "no delivery channel succeeded");
       }
 
       // status guard avoids double-marking if a sweep raced us
@@ -153,7 +167,11 @@ Deno.serve(async (req) => {
         .update({
           status: "sent",
           sent_at: new Date().toISOString(),
-          result: { via: via.join("+"), dispatcher: "edge" },
+          result: {
+            via: via.join("+"),
+            dispatcher: "edge",
+            ...(failures.length ? { partial_failures: failures } : {}),
+          },
         })
         .eq("id", r.id)
         .eq("status", "pending");
