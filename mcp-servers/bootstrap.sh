@@ -94,15 +94,26 @@ else skipped+=("amazon-sp (AMAZON_SP_* x3)"); fi
 # ---- 3b. HighLevel direct MCP (HTTP transport, PIT auth) -------------------
 # LeadConnector's hosted MCP endpoint, scoped per sub-account by locationId
 # header. Location IDs are public identifiers; the PITs are SECRETS (env vars,
-# full value including the "pit-" prefix). Verified 2026-07-03: KTU PIT returns
-# Kitchen Tune-Up, BTU PIT returns Bath Tune-Up.
+# full value including the "pit-" prefix).
+#
+# TWO things here are load-bearing — get either wrong and every tool call comes
+# back 401, which reads like a revoked token but is not:
+#   1. The endpoint is /mcp/anthropic/v2. The bare /mcp/ path no longer accepts
+#      these PITs and returns {"error":"invalid_token"}.
+#   2. The Authorization header MUST carry the "Bearer " prefix. Passing the raw
+#      pit-… value 401s on both the old and new endpoints.
+# To tell a bad token apart from a bad endpoint, curl the REST location API
+# (see CLAUDE.md) — that returns 200 whenever the PIT itself is still valid.
+#
+# Verified 2026-08-17: both PITs valid (REST 200); MCP initialize returns 200 on
+# /mcp/anthropic/v2 with Bearer auth for KTU and BTU.
 
 if require GHL_PIT_KTU; then
-  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"$GHL_PIT_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
+  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/anthropic/v2\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
 else skipped+=("ghl-ktu (GHL_PIT_KTU)"); fi
 
 if require GHL_PIT_BTU; then
-  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"$GHL_PIT_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
+  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/anthropic/v2\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
 else skipped+=("ghl-btu (GHL_PIT_BTU)"); fi
 
 # ---- 4. Shared ------------------------------------------------------------

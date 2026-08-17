@@ -159,15 +159,29 @@ curl -H "Authorization: Bearer $GHL_PIT_BTU" -H "Version: 2021-07-28" https://se
 ```
 
 A 401 there means the token itself is revoked/expired → regenerate the location's
-Private Integration Token in HighLevel and update the env var. A 200 there while
-the pipe still shows broken means it's purely the env-var wiring.
+Private Integration Token in HighLevel and update the env var.
+
+**A 401 from the MCP tools while that REST curl returns 200 is NOT a token
+problem** — it means the transport is misconfigured, and HighLevel reports it
+with the same misleading `Invalid Private Integration token` / `invalid_token`
+text. Two settings in `bootstrap.sh` cause it:
+
+- **Endpoint** must be `https://services.leadconnectorhq.com/mcp/anthropic/v2`.
+  The bare `/mcp/` path no longer accepts these PITs.
+- **Authorization header** must be `Bearer <pit>`. The raw `pit-…` value 401s on
+  both the old and new endpoints.
+
+Both brands broke this way on 2026-08-17 (bootstrap was on `/mcp/` with a raw
+token) and were fixed by correcting the URL and adding the prefix. Always run the
+REST curl first — it separates "token died" from "transport wrong" in one call.
 
 A 200 on `/locations/{id}` alone does **not** prove the pipe is usable — the
-OAuth connector returns 200 there and 401 on everything else. To confirm a brand
-is genuinely readable, call a location-scoped tool (`contacts_get-contacts` or
+OAuth connector returns 200 there and 401 on everything else, and so does a
+valid PIT pointed at the wrong MCP endpoint. To confirm a brand is genuinely
+readable, call a location-scoped tool (`contacts_get-contacts` or
 `conversations_search-conversation`) on its `ghl-*` server and check you get
-rows back. Last verified 2026-08-17: KTU 18,488 contacts / 11,056 conversations,
-BTU 17,586 contacts / 8,459 conversations, both live to the current day.
+rows back. Reference volumes (2026-08-17): KTU 18,488 contacts / 11,056
+conversations, BTU 17,586 contacts / 8,459 conversations.
 
 ## Scheduling & notification delivery (how the automation actually runs)
 
