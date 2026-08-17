@@ -1,0 +1,3 @@
+# Copy to .dev.vars for `wrangler dev`. Never commit real values.
+SERVICEMINDER_API_KEY=sm-key-for-ktu-location
+ANTHROPIC_API_KEY=sk-ant-...

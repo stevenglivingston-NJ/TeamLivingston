@@ -1,0 +1,8 @@
+# Cloudflare Pages headers. Keep the funnel out of search indexes (paid-traffic
+# landing) and apply baseline security headers, matching the KTU buyer portal.
+/*
+  X-Robots-Tag: noindex, nofollow
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), geolocation=()
