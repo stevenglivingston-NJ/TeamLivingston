@@ -1,0 +1,324 @@
+<title>Job 80 · Murchison — Production Tracker</title>
+<style>
+  :root{
+    --bg:#f6f4f0; --panel:#fffefb; --panel-2:#f0ece5;
+    --ink:#1c1e22; --ink-2:#4a4d54; --muted:#8a857b;
+    --line:#e2ddd3; --line-2:#d3ccbf;
+    --accent:#1f3a5f; --accent-2:#2e5e8c;
+    --done:#2e7d5b; --done-bg:#e4f0ea; --done-line:#bcdccc;
+    --wip:#b5721b; --wip-bg:#f6ecd8; --wip-line:#ecd3a3;
+    --wait:#7c8390; --wait-bg:#ecebe8; --wait-line:#d8d5cf;
+    --shadow:0 1px 2px rgba(28,30,34,.05),0 4px 16px rgba(28,30,34,.05);
+    --radius:12px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#141518; --panel:#1c1e22; --panel-2:#23262b;
+      --ink:#ece9e3; --ink-2:#b3afa7; --muted:#8b8880;
+      --line:#2c2f34; --line-2:#3a3e44;
+      --accent:#7fa8d4; --accent-2:#9cc0e6;
+      --done:#5cc08c; --done-bg:#18241e; --done-line:#2c4635;
+      --wip:#e0a94a; --wip-bg:#2a2317; --wip-line:#4d3e1f;
+      --wait:#9aa0aa; --wait-bg:#24262b; --wait-line:#383b41;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.28);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#f6f4f0; --panel:#fffefb; --panel-2:#f0ece5;
+    --ink:#1c1e22; --ink-2:#4a4d54; --muted:#8a857b;
+    --line:#e2ddd3; --line-2:#d3ccbf;
+    --accent:#1f3a5f; --accent-2:#2e5e8c;
+    --done:#2e7d5b; --done-bg:#e4f0ea; --done-line:#bcdccc;
+    --wip:#b5721b; --wip-bg:#f6ecd8; --wip-line:#ecd3a3;
+    --wait:#7c8390; --wait-bg:#ecebe8; --wait-line:#d8d5cf;
+  }
+  :root[data-theme="dark"]{
+    --bg:#141518; --panel:#1c1e22; --panel-2:#23262b;
+    --ink:#ece9e3; --ink-2:#b3afa7; --muted:#8b8880;
+    --line:#2c2f34; --line-2:#3a3e44;
+    --accent:#7fa8d4; --accent-2:#9cc0e6;
+    --done:#5cc08c; --done-bg:#18241e; --done-line:#2c4635;
+    --wip:#e0a94a; --wip-bg:#2a2317; --wip-line:#4d3e1f;
+    --wait:#9aa0aa; --wait-bg:#24262b; --wait-line:#383b41;
+  }
+  /* status-scale semantic tokens */
+  :root{--ahead:#2f6f8f; --crit:#b23b3b}
+  @media (prefers-color-scheme:dark){:root{--ahead:#6db3cf; --crit:#e58585}}
+  :root[data-theme="light"]{--ahead:#2f6f8f; --crit:#b23b3b}
+  :root[data-theme="dark"]{--ahead:#6db3cf; --crit:#e58585}
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.5;font-size:15px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1020px;margin:0 auto;padding:28px 20px 64px}
+  .grot{font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,sans-serif;}
+  .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:650}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* Header */
+  header.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px 24px;margin-bottom:18px}
+  header.head h1{margin:.15em 0 0;font-size:clamp(24px,4.4vw,34px);letter-spacing:-.02em;font-weight:750;text-wrap:balance;line-height:1.05}
+  .subaddr{color:var(--ink-2);font-size:14px;margin-top:6px}
+  .idtags{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .idtag{font-size:11px;letter-spacing:.04em;padding:4px 9px;border:1px solid var(--line-2);border-radius:999px;color:var(--ink-2);background:var(--panel)}
+  .idtag b{color:var(--ink);font-weight:650}
+
+  /* PM Status verdict */
+  .verdict{background:var(--panel);border:1px solid var(--line);border-left:5px solid var(--wip);
+    border-radius:var(--radius);padding:16px 18px 17px;margin-bottom:22px;box-shadow:var(--shadow)}
+  .vtop{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}
+  .vtop .veye{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:650}
+  .vflag{font-size:12px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--wip);background:var(--wip-bg);border:1px solid var(--wip-line);padding:5px 13px;border-radius:999px}
+  .scale{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:14px}
+  .sseg{text-align:center;font-size:11.5px;font-weight:650;letter-spacing:.01em;padding:10px 6px;border-radius:8px;
+    border:1px solid var(--line-2);color:var(--muted);background:var(--panel-2)}
+  .sseg .mk{display:block;font-size:9px;letter-spacing:.14em;font-weight:800;margin-top:3px;opacity:0;height:0}
+  .sseg.active{color:#fff;border-color:transparent;box-shadow:var(--shadow)}
+  .sseg.active .mk{opacity:.9;height:auto}
+  .sseg.ahead.active{background:var(--ahead)}
+  .sseg.on.active{background:var(--done)}
+  .sseg.risk.active{background:var(--wip)}
+  .sseg.behind.active{background:var(--crit)}
+  .vwhy{margin:0;font-size:14px;color:var(--ink)}
+  .vwhy b{font-weight:700}
+  .vfix{margin:9px 0 0;font-size:13px;color:var(--ink-2);padding-top:9px;border-top:1px dashed var(--line-2)}
+  .vfix b{color:var(--wip);font-weight:700;letter-spacing:.02em}
+
+  /* Tiles */
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+  .tile .k{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:650}
+  .tile .v{font-size:22px;font-weight:750;margin-top:6px;letter-spacing:-.01em}
+  .tile .v small{font-size:13px;font-weight:600;color:var(--ink-2);letter-spacing:0}
+  .tile .s{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+
+  /* Progress bar */
+  .progwrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:26px;box-shadow:var(--shadow)}
+  .progtop{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;gap:10px}
+  .progtop .lbl{font-weight:650;font-size:13.5px}
+  .progtop .pct{font-weight:750;font-size:14px}
+  .track{height:12px;border-radius:999px;background:var(--panel-2);overflow:hidden;display:flex}
+  .seg{height:100%}
+  .seg.d{background:var(--done)}
+  .seg.w{background:var(--wip)}
+  .leg{display:flex;flex-wrap:wrap;gap:16px;margin-top:11px;font-size:12px;color:var(--ink-2)}
+  .leg span{display:inline-flex;align-items:center;gap:6px}
+  .leg i{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .leg i.d{background:var(--done)} .leg i.w{background:var(--wip)} .leg i.p{background:var(--wait)}
+
+  /* Section */
+  h2.sec{font-size:12px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent-2);font-weight:700;
+    margin:30px 0 12px;display:flex;align-items:center;gap:10px}
+  h2.sec::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  .group{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);margin-bottom:14px}
+  .ghead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:var(--panel-2);border-bottom:1px solid var(--line)}
+  .ghead .gt{font-weight:700;font-size:14.5px;letter-spacing:-.01em}
+  .ghead .gc{font-size:11.5px;color:var(--muted);letter-spacing:.04em;font-variant-numeric:tabular-nums}
+
+  .row{display:flex;gap:13px;padding:11px 16px;border-top:1px solid var(--line);position:relative}
+  .row:first-of-type{border-top:none}
+  .row .stripe{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .row.done .stripe{background:var(--done)} .row.wip .stripe{background:var(--wip)} .row.wait .stripe{background:var(--wait)}
+  .row .body{flex:1;min-width:0}
+  .row .item{font-weight:600;font-size:14px}
+  .row .spec{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+  .pill{flex:none;align-self:flex-start;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    padding:4px 9px;border-radius:999px;white-space:nowrap}
+  .pill.done{color:var(--done);background:var(--done-bg);border:1px solid var(--done-line)}
+  .pill.wip{color:var(--wip);background:var(--wip-bg);border:1px solid var(--wip-line)}
+  .pill.wait{color:var(--wait);background:var(--wait-bg);border:1px solid var(--wait-line)}
+
+  /* Sequence */
+  .seq{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .step{display:flex;gap:14px;padding:12px 16px;border-top:1px solid var(--line);align-items:baseline}
+  .step:first-child{border-top:none}
+  .step .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;
+    font-size:12.5px;display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums}
+  :root[data-theme="dark"] .step .n,@media (prefers-color-scheme:dark){}
+  .step .st{flex:1}
+  .step .st b{font-weight:650;font-size:14px}
+  .step .st .d{font-size:12.5px;color:var(--ink-2);margin-top:1px}
+  .step .day{flex:none;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;letter-spacing:.03em;padding-top:3px}
+
+  /* Watch */
+  .watch{background:var(--wip-bg);border:1px solid var(--wip-line);border-left:5px solid var(--wip);border-radius:var(--radius);padding:14px 18px 14px}
+  .watch h3{margin:0 0 8px;font-size:12px;letter-spacing:.13em;text-transform:uppercase;color:var(--wip);font-weight:750}
+  .watch ul{margin:0;padding-left:18px}
+  .watch li{margin:5px 0;font-size:13.5px;color:var(--ink)}
+  .watch li b{font-weight:650}
+
+  footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.7}
+  footer b{color:var(--ink-2);font-weight:600}
+
+  @media (max-width:720px){
+    .tiles{grid-template-columns:repeat(2,1fr)}
+    .banner .btag{display:none}
+  }
+  @media (max-width:420px){
+    .tiles{grid-template-columns:1fr}
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="head">
+    <div>
+      <div class="eyebrow">Bath Tune-Up · Production Tracker</div>
+      <h1 class="grot">Job 80 — Murchison</h1>
+      <div class="subaddr">66 Lenox Terrace, West Orange NJ · Basement full-gut bathroom remodel</div>
+      <div class="idtags">
+        <span class="idtag">SM Invoice <b>I476132</b></span>
+        <span class="idtag">JobTread <b>Job 80</b></span>
+        <span class="idtag">Design pkt <b>80-4</b></span>
+        <span class="idtag">Selections <b>80-5</b></span>
+        <span class="idtag">Designer <b>Karen Naithe</b></span>
+        <span class="idtag">Lead <b>Miguel O</b></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="verdict">
+    <div class="vtop">
+      <span class="veye">PM Status Call · as of Jul 24 (day 5)</span>
+      <span class="vflag">At Risk</span>
+    </div>
+    <div class="scale">
+      <span class="sseg ahead">Ahead of Target</span>
+      <span class="sseg on">On Target</span>
+      <span class="sseg risk active">At Risk<span class="mk">◆ NOW</span></span>
+      <span class="sseg behind">Behind Target</span>
+    </div>
+    <p class="vwhy"><b>Recoverable, but trending to 8/6 — two days past the 8/4 target.</b> Field pace is genuinely good — rough-in complete on day 5, all trades self-performed in-house — but the schedule of record (JobTread) ends 8/6, there is no buffer, and finish materials on site are not yet confirmed. Any slip lands it past target.</p>
+    <p class="vfix"><b>To pull to On Target:</b> confirm every finish item is staged now, hold daily photo cadence, and compress the finish run to land by 8/4 rather than 8/6.</p>
+  </div>
+
+  <div class="tiles">
+    <div class="tile">
+      <div class="k">Build window</div>
+      <div class="v num">Jul 20 → Aug 4</div>
+      <div class="s">JobTread built to Aug 6</div>
+    </div>
+    <div class="tile">
+      <div class="k">Elapsed</div>
+      <div class="v num">5 <small>working days</small></div>
+      <div class="s">Started Mon 7/20</div>
+    </div>
+    <div class="tile">
+      <div class="k">Remaining</div>
+      <div class="v num">7 <small>working days</small></div>
+      <div class="s">7/27 → 8/4</div>
+    </div>
+    <div class="tile">
+      <div class="k">Shower type</div>
+      <div class="v">Sentrel panel</div>
+      <div class="s">No tile cure — schedule saver</div>
+    </div>
+  </div>
+
+  <div class="progwrap">
+    <div class="progtop">
+      <span class="lbl">Overall progress — status as of CompanyCam photos 7/24</span>
+      <span class="pct num">~40%</span>
+    </div>
+    <div class="track">
+      <div class="seg d" style="width:36%"></div>
+      <div class="seg w" style="width:8%"></div>
+    </div>
+    <div class="leg">
+      <span><i class="d"></i> Complete — demo, framing, rough plumbing &amp; electrical, shower base</span>
+      <span><i class="w"></i> In progress — wall board &amp; waterproofing</span>
+      <span><i class="p"></i> Remaining — shower finish, floor, cabinets, fixtures, paint, trim</span>
+    </div>
+  </div>
+
+  <!-- STRUCTURAL / ROUGH-IN -->
+  <h2 class="sec">Structural &amp; Rough-In</h2>
+  <div class="group">
+    <div class="ghead"><span class="gt">Gut, framing &amp; rough trades</span><span class="gc">5 / 5 complete</span></div>
+    <div class="row done"><span class="stripe"></span><div class="body"><div class="item">Full demo &amp; gut</div><div class="spec">Walls, floor &amp; ceiling opened; old shower, vanity, toilet &amp; tile removed</div></div><span class="pill done">Done</span></div>
+    <div class="row done"><span class="stripe"></span><div class="body"><div class="item">New framing &amp; blocking</div><div class="spec">Shower walls, niche opening, soffit, grab-bar &amp; door backing</div></div><span class="pill done">Done</span></div>
+    <div class="row done"><span class="stripe"></span><div class="body"><div class="item">Rough plumbing</div><div class="spec">Supply / drain / vent relocated; shower valve set</div></div><span class="pill done">Done</span></div>
+    <div class="row done"><span class="stripe"></span><div class="body"><div class="item">Rough electrical — in-house</div><div class="spec">Home-run + 2 new breakers; fan, ceiling light, vanity light &amp; mirror circuits</div></div><span class="pill done">Done</span></div>
+    <div class="row wip"><span class="stripe"></span><div class="body"><div class="item">Wall board + waterproofing</div><div class="spec">Moisture-resistant board hanging; shower waterproofing to follow</div></div><span class="pill wip">In progress</span></div>
+  </div>
+
+  <!-- SHOWER -->
+  <h2 class="sec">Shower</h2>
+  <div class="group">
+    <div class="ghead"><span class="gt">Sentrel alcove system · matte black</span><span class="gc">1 done · 6 to go</span></div>
+    <div class="row done"><span class="stripe"></span><div class="body"><div class="item">Shower base — set</div><div class="spec">DreamLine SlimLine 32″D × 42″W single-threshold, White (DLT-1132420)</div></div><span class="pill done">Set</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Sentrel wall panels</div><div class="spec">Sentrel decorative panel system — <b>Frost</b> finish</div></div><span class="pill wait">Not started</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Shower system + valve trim</div><div class="spec">Rainfall 6-spray square + handheld, Matte Black (valve included)</div></div><span class="pill wait">Not started</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Recessed niche — finish</div><div class="spec">SS double-shelf 14″W × 25″H × 4″D, Matte Black (framed)</div></div><span class="pill wait">Framed</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Frameless glass door</div><div class="spec">Pivot, 304 SS, clear glass, Matte Black — 43 × 75 (LY9701)</div></div><span class="pill wait">Not started</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Grab bars ×2</div><div class="spec">16″ Matte Black — backing in place, install pending</div></div><span class="pill wait">Backing in</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Shower seat</div><div class="spec">Transolid Preston seat — spec added 7/23</div></div><span class="pill wait">Not started</span></div>
+  </div>
+
+  <!-- FLOOR -->
+  <h2 class="sec">Flooring</h2>
+  <div class="group">
+    <div class="ghead"><span class="gt">LVT field</span><span class="gc">started</span></div>
+    <div class="row wip"><span class="stripe"></span><div class="body"><div class="item">LVT floor</div><div class="spec">Marmoreal Cement Taupe LVT, 16 × 32 (683854) — threshold started, field pending</div></div><span class="pill wip">Started</span></div>
+  </div>
+
+  <!-- CABINETRY -->
+  <h2 class="sec">Cabinetry &amp; Vanity</h2>
+  <div class="group">
+    <div class="ghead"><span class="gt">Elias cabinets · Nautical Blue (Pacific shaker)</span><span class="gc">0 / 5</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Vanity cabinet</div><div class="spec">Elias 30″W × 19″D × 35″H, 2-door + fake front drawer — Nautical Blue</div></div><span class="pill wait">Not started</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Countertop + sink</div><div class="spec">Calacatta Sfrya quartz top; rectangular undermount sink (white vitreous)</div></div><span class="pill wait">Not started</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Vanity faucet</div><div class="spec">Solid brass single-handle, Matte Black (22301QT MB)</div></div><span class="pill wait">Not started</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Linen cabinet</div><div class="spec">Elias single-door 19″W × 21″D × 76″H — Nautical Blue</div></div><span class="pill wait">Not started</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Vanity mirror</div><div class="spec">24″ LED lighted anti-fog wall-hung, Silver (LM-24B)</div></div><span class="pill wait">Not started</span></div>
+  </div>
+
+  <!-- FIXTURES & FINISHES -->
+  <h2 class="sec">Fixtures &amp; Finishes</h2>
+  <div class="group">
+    <div class="ghead"><span class="gt">Set, trim-out &amp; paint</span><span class="gc">0 / 7</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Toilet</div><div class="spec">One-piece siphonic, soft-close (WC0318) — old unit decommissioned</div></div><span class="pill wait">Not started</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Exhaust fan / vent — trim</div><div class="spec">New Panasonic ceiling vent (rough in place)</div></div><span class="pill wait">Rough in</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Ceiling light — trim</div><div class="spec">12″ black square ultra-low-profile LED flush mount, 3CCT (rough in place)</div></div><span class="pill wait">Rough in</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Toilet paper holder</div><div class="spec">Recessed wall-mount, Black</div></div><span class="pill wait">Not started</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Paint</div><div class="spec">Walls &amp; ceiling — Benjamin Moore Chantilly Lace OC-65</div></div><span class="pill wait">Not started</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Base molding</div><div class="spec">3¼″ base where needed</div></div><span class="pill wait">Not started</span></div>
+    <div class="row wait"><span class="stripe"></span><div class="body"><div class="item">Punch &amp; final clean</div><div class="spec">Walk, touch-ups, hand-off</div></div><span class="pill wait">Not started</span></div>
+  </div>
+
+  <!-- SEQUENCE -->
+  <h2 class="sec">Remaining Sequence · 7/27 → 8/4</h2>
+  <div class="seq">
+    <div class="step"><span class="n num">1</span><div class="st"><b>Finish wall board + waterproofing</b><div class="d">Complete board, waterproof shower walls</div></div><span class="day">Mon 7/27</span></div>
+    <div class="step"><span class="n num">2</span><div class="st"><b>Sentrel panels · niche · glass door</b><div class="d">No tile cure — the big time-saver</div></div><span class="day">7/27–7/29</span></div>
+    <div class="step"><span class="n num">3</span><div class="st"><b>LVT floor field install</b><div class="d">Marmoreal Cement Taupe, full field</div></div><span class="day">7/29</span></div>
+    <div class="step"><span class="n num">4</span><div class="st"><b>Vanity · quartz top · linen · mirror</b><div class="d">Elias Nautical Blue set + Calacatta Sfrya</div></div><span class="day">7/30</span></div>
+    <div class="step"><span class="n num">5</span><div class="st"><b>Toilet, fan/light &amp; ceiling trim, TP holder</b><div class="d">Fixture set &amp; electrical trim-out</div></div><span class="day">7/31</span></div>
+    <div class="step"><span class="n num">6</span><div class="st"><b>Drywall finish + paint</b><div class="d">Chantilly Lace OC-65, walls &amp; ceiling</div></div><span class="day">8/1–8/3</span></div>
+    <div class="step"><span class="n num">7</span><div class="st"><b>Shower/plumbing trim-out · base molding · grab bars · seat</b><div class="d">Matte-black trim, door, base</div></div><span class="day">8/3</span></div>
+    <div class="step"><span class="n num">8</span><div class="st"><b>Punch &amp; final clean</b><div class="d">Walk-through + hand-off</div></div><span class="day">8/4</span></div>
+  </div>
+
+  <!-- WATCH -->
+  <h2 class="sec">Watch Items (scheduling)</h2>
+  <div class="watch">
+    <h3>Keep these from slipping 8/4</h3>
+    <ul>
+      <li><b>Confirm all finish material is on site now</b> — Sentrel Frost kit, glass door, Marmoreal LVT, Elias cabinets (Nautical Blue), Calacatta Sfrya top, toilet, mirror, shower seat, Panasonic vent. A missing item is the only thing that breaks the finish run.</li>
+      <li><b>7/22–7/23 photo gap</b> — no CompanyCam activity those two days. If they were down days, the finish buffer is gone and paint → trim gets tight.</li>
+      <li><b>Daily photos through finishes</b> — JobTread schedule is a single un-updated task built to 8/6, so CompanyCam is the only live pacing signal.</li>
+    </ul>
+  </div>
+
+  <footer>
+    <b>Sources:</b> ServiceMinder Invoice I476132 (scope of work) · JobTread Job 80 (schedule 7/20–8/6) · Google Drive design packet 80-4 (Presentation) &amp; Selections 80-5 · CompanyCam project (54 photos, status through 7/24).<br>
+    Status reflects field photos as of Jul 24. Update after each production day.
+  </footer>
+
+</div>
