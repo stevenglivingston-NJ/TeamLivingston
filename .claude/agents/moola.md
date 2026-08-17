@@ -115,6 +115,66 @@ The structured daily scorecard, folded in from the retired standalone "Moola Ben
 6. **Exec summary:** one `moola_exec_summary` row per brand (at least Combined), fields `{run_date,brand,verdict,findings:[3-5 bullets citing numbers],recs:[{action,impact}],counts:{on,watch,off,nodata}}`.
 7. **Alerts:** for any metric `off` today but NOT `off` in the prior run, insert into `public.notify_queue` `{kind:'critical', subject:'[Benchmark] <metric> off track', body:'<metric> <value> vs benchmark <band> — <variance>. <driver>', source:'moola_benchmark'}` (fans out to Slack/email/push).
 
+### HFC royalty tracking — sections `moola_royalty` + `moola_royalty_jobs` (monthly, owner-only)
+
+HFC emails a **monthly royalty workbook per brand** to the `firstgentalent@gmail.com` ops
+inbox (`July_KTU_Livingston.xlsx`, `July_BTU_Livingston.xlsx` — one sheet per month,
+January onward). Read it the same way as the bills in step 7 — the **Zapier** Gmail
+connection (`gmail_find_email`), NOT the direct `mcp__Gmail__` connector. Search
+`subject:(royalty OR Livingston) has:attachment` over a rolling window. When a new month
+lands, parse it and publish. This is the royalty side of the fixed 5% + NAF 2% load you
+already carry in the liability register — here it becomes auditable **by name**.
+
+**Workbook shape** (verified against the July 2026 files):
+- Row 1 = licence header (`KTU 688 - Bloomfield Montclair, NJ - Livingston`, `BTU 199 - Bloomfield, NJ - Livingston`).
+- A `Revenue` block: one row per **named job** — Name, Email, Phone, Address, City, State, Zip, Date, **Number** (the licence the job was billed under), Revenue Category, Subtotal, Tax, Amount Paid, Materials, Labor, Profit, Margin, Channel, Campaign.
+- A `Revenue Category` block: the royalty calculation, **per licence, in declining volume bands** (`licence | rate | revenue in band | royalty`), subtotalled per licence.
+- A `Proposals` block: created / won / close-% **per rep**, month and YTD.
+- A `Leads and Marketing` block: per channel/campaign contacts → conversion → revenue.
+
+**Two licences per brand.** KTU bills under **688** and **824**; BTU under **BTU199** and
+**BTU200**. Every job row carries its licence in the `Number` column — always split by it,
+because the two licences are on **different rate schedules** and reconcile separately.
+
+1. **Write one `moola_royalty` row per licence per month.**
+   `fields = {period, license, revenue_basis, royalty, effective_rate, charge_type, bands, other_charges, bank_debit, bank_debit_date, variance, recon_status, notes, scan_date}`
+   - `period` — `YYYY-MM`. `license` — `688 | 824 | BTU199 | BTU200`.
+   - `charge_type` — `percentage` (revenue × band rates) or **`minimum`** (a flat floor billed because revenue didn't support a percentage charge).
+   - `bands` — the band detail as billed, e.g. `7.0% on $30,000 + 6.0% on $8,623.50`.
+   - `effective_rate` — `royalty ÷ revenue_basis`; write `null` when `charge_type='minimum'` or the basis is ≤ 0 (a rate on negative revenue is meaningless — never publish one).
+   - `other_charges` — any line in the royalty block that is **not** a rate × revenue product. Do not silently fold these into royalty and do not drop them; carry them here with whatever label the file gives (often none) and flag them per the alerts below.
+
+2. **Write one `moola_royalty_jobs` row per named job** — this is the by-name view.
+   `fields = {period, license, customer, city, category, revenue, rate_applied, royalty_attributed, channel, scan_date}`
+   - `customer` — first name + last initial only (`Comerchero, M.`), consistent with `moola_ar`.
+   - **Attribution rule:** HFC bills per licence, not per job. Where a licence is charged at one flat rate, apply it directly. Where it is charged in **bands**, attribute each job at the licence's **blended effective rate** so the column reconciles exactly to the HFC total. Label it as attribution — never present it as an HFC per-job charge.
+   - **Reconcile before writing**: Σ `royalty_attributed` per licence must equal that licence's `moola_royalty.royalty`. If it doesn't, do not publish — emit the discrepancy to `moola_briefing` instead.
+   - Negative rows are real (reversals/credits) and carry negative attributed royalty. Keep them; they are why a month's basis can fall below its revenue.
+
+3. **Alerts — queue to `notify_queue` and lead the `moola_briefing`:**
+   - **`charge_type='minimum'`** — the brand paid royalty on revenue that didn't earn it. Name the licences, the floor amount, and the revenue that triggered it. This is a fixed cost of holding the licence and belongs in the liability register and the 13-week forecast whether or not the brand sells.
+   - **Effective YTD rate above the headline rate** (KTU ~5.5%, BTU 7%) — minimum floors in weak months pull the blend up. Report the blended rate and the dollar gap versus the headline.
+   - **Any `other_charges` line** — an unlabelled or irregular charge is a question for HFC, not a rounding difference. Report the amount, which months it appears in, and which it doesn't.
+   - **A licence's marginal rate stepping down** (e.g. KTU 688 ran 7.0% → 5.5% → 4.0% across 2026 as cumulative volume grew) — call the step when it happens and use the new rate when forecasting the rest of the year.
+   - **Duplicate rep records** in the Proposals block (the same person appearing twice with split figures) — flag for a merge in the source system; per-rep close rates are wrong until it's fixed.
+
+4. **Reconcile what HFC BILLED against what actually LEFT THE BANK — every month, both brands.**
+   The workbook is HFC's invoice, not proof of payment. **Never mark a period reconciled off the workbook alone.** HFC auto-debits by the **10th of the following month**, so for period `YYYY-MM` search **Bank Connection** (`mcp__Bank_Connection__get_transactions`, `budgetFlowType:'outflow'`) over roughly the 1st–15th of the *next* month, matching on description (`HFC`, `Home Franchise Concepts`, `royalty`, `NAF`) and on the entity's operating account. Then per licence/brand:
+   - `bank_debit` / `bank_debit_date` — the matched debit and when it cleared. `variance` = `bank_debit − (royalty + other_charges)`.
+   - `recon_status` — `matched` (variance within $1), `variance` (a real difference), `missing` (nothing debited by the 15th), or `unreconciled` (Bank Connection was unavailable this scan — say so, never imply a clean match).
+   - **Two brands, two-plus licences, and NAF**: HFC may debit royalty and the **2% NAF separately, or bundled**. Establish which per entity and hold to it — a bundled debit compared against royalty alone reads as a permanent overcharge, and a separate NAF debit compared against a bundled invoice reads as a double-charge. Whichever it is, the sum of matched debits must equal royalty + NAF + `other_charges` for the period.
+   - **Reconcile to the entity that actually paid.** KTU (First Generation USA LLC) and BTU (Oracabessa LLC) have separate operating accounts; a debit hitting the wrong entity's account is an inter-entity item for the liability register, not a match.
+
+   **Escalate as `urgent` in `moola_briefing` and queue to `notify_queue`:**
+   - **`variance` ≠ 0** — HFC debited something other than what they billed. Name the licence, the invoice figure, the debit, and the difference. An overcharge is recoverable only if it is caught in the month it happens.
+   - **`missing` past the 10th** — either the debit failed or the account lacked funds. A returned auto-debit earns a late fee and, on the franchise agreement, is a default trigger — this is the same failure mode as the returned Newtek payment, so treat it with the same urgency.
+   - **A debit with no matching invoice** — HFC took money for a period whose workbook never arrived. Chase the workbook before paying the next one.
+   - **A minimum-royalty month** (`charge_type='minimum'`) that still debited a percentage-sized amount, or vice-versa.
+
+   **Call budget:** Bank Connection enforces a **hard daily API call cap** (25/day on the current Monitoring plan; it hard-fails, it does not degrade). Royalty reconciliation is monthly, so spend **one** windowed `get_transactions` call per entity — filtered by `transactionName` and a ~15-day range — and reuse the daily transaction pull you already make in step 5 wherever it covers the window. If the cap is already spent, write `recon_status:'unreconciled'`, note the blind lens in `moola_briefing`, and retry next scan — **do not** publish a reconciled status you could not verify.
+
+5. **Feed the rest of your work:** royalty is a **known** outflow — emit it to `moola_cashledger` (`category:'royalty'`, `confidence:'known'`, HFC auto-debit by the 10th) and into the accrued-obligations line of the liability register. Minimum-floor months are the important case: they are owed whether or not the brand sells, so they belong in the forecast even when projected revenue is zero. The per-job attribution is also the honest input to per-project profitability (§ per-project P&L) — a job's fully-loaded margin should carry its own royalty, not an average.
+
 ## Monthly deep-dive — leverage, balance sheet, capacity (first scan of each month; ported from CMO Financial 5e/5f + Pipeline breakeven)
 
 Once a month, go below the cash surface:
