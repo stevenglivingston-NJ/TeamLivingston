@@ -76,7 +76,7 @@ mcp-servers/
 └── cloudflare/           server.py  # 14 tools (Zones, DNS, Pages, Workers, R2, KV)
 
 HTTP-transport servers (registered by bootstrap.sh, no local code):
-  ghl-ktu / ghl-btu   → LeadConnector hosted MCP, PIT-scoped per location
+  ghl-ktu / ghl-btu   → LeadConnector hosted MCP (/mcp/anthropic/v2), PIT-scoped per location
   clarity             → Render-hosted ktubtu-mcp-clarity (Data-Export, static bearer)
 ```
 
@@ -134,6 +134,19 @@ coming back blind on KTU:
    Private Integration Token in an env var:
    - `ghl-ktu` → KTU location `nHLCxHPidnhV1NFzRtZZ`, token `GHL_PIT_KTU`
    - `ghl-btu` → BTU location `0uWA8M5BzHrrcJftuaDe`, token `GHL_PIT_BTU`
+
+   **Endpoint = `/mcp/anthropic/v2`** (corrected 2026-08-17). The legacy `/mcp/`
+   path still answers, but the two paths are different interfaces, not aliases:
+   `/mcp/` returns 36 fixed tools (`conversations_search-conversation`,
+   `contacts_get-contact`, …), while `/mcp/anthropic/v2` returns 4 dynamic ones —
+   `search_operations`, `describe_operation`, `execute_operation`,
+   `list_locations` — fronting the whole GHL public API by operationId. Coverage
+   is broader on v2 (it reaches operations the fixed set never exposed, e.g.
+   `export-messages-by-location`), but **any agent spec that hardcodes a
+   `mcp__ghl-ktu__<toolname>` call breaks on v2** and must move to the
+   search → describe → execute flow. Watch for `requiresApproval: true` on write
+   operations: a scheduled non-interactive Routine cannot satisfy an approval
+   prompt, so reads are safe to migrate first.
 
 **KTU HighLevel only works via `ghl-ktu`.** If `GHL_PIT_KTU` isn't set in the
 environment's env-var config, `bootstrap.sh` skips that server, the intranet /

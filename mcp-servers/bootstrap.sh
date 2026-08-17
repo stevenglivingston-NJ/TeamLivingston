@@ -96,13 +96,27 @@ else skipped+=("amazon-sp (AMAZON_SP_* x3)"); fi
 # header. Location IDs are public identifiers; the PITs are SECRETS (env vars,
 # full value including the "pit-" prefix). Verified 2026-07-03: KTU PIT returns
 # Kitchen Tune-Up, BTU PIT returns Bath Tune-Up.
+#
+# Endpoint is /mcp/anthropic/v2 (verified 2026-08-17). This is a DIFFERENT tool
+# interface from the legacy /mcp/ path, not just a new address:
+#   legacy /mcp/          → 36 fixed tools (contacts_get-contact, conversations_*, …)
+#   /mcp/anthropic/v2     → 4 dynamic tools: search_operations, describe_operation,
+#                           execute_operation, list_locations
+# The v2 path fronts the whole GHL public API via an operation registry, so
+# coverage is strictly broader (e.g. conversations/messages/export, which the
+# legacy tool set never exposed). The trade-off: callers no longer bind to tool
+# names — they search for an operationId, then execute it. Agent specs that
+# hardcode `mcp__ghl-ktu__conversations_search-conversation` and friends must be
+# migrated to the search/describe/execute flow. Note also that some write
+# operations report requiresApproval:true / idempotencyRequired:true, which
+# matters for non-interactive scheduled Routines.
 
 if require GHL_PIT_KTU; then
-  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
+  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/anthropic/v2\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
 else skipped+=("ghl-ktu (GHL_PIT_KTU)"); fi
 
 if require GHL_PIT_BTU; then
-  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
+  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/anthropic/v2\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
 else skipped+=("ghl-btu (GHL_PIT_BTU)"); fi
 
 # ---- 4. Shared ------------------------------------------------------------
