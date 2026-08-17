@@ -74,7 +74,8 @@ likely the BTU/Oracabessa entity. Not used here.)
 | Meta Pixel ID | ✅ `109034988941656` |
 | Booking/callback notification recipient | ✅ **Sonya (office)** — P5 Worker fan-out built (tags `tuneup-lead/callback/booked`); ⬜ owner builds the HL notification workflows (AI-builder prompt in `docs/highlevel-phase5.md`) |
 | Meta CAPI token + GA4 property | ⬜ owner: CAPI token, GA4 `G-` id + MP secret (steps in `docs/highlevel-phase5.md`); Worker no-ops until set |
-| HL custom fields for Tune-Up | ⬜ owner: create the 9 `tuneup_*` contact custom fields (list in `docs/highlevel-phase5.md`) |
+| HL custom fields + tags for Tune-Up | ✅ created 2026-08-17 in KTU `nHLCxHPidnhV1NFzRtZZ` — all 9 `tuneup_*` fields + the 3 trigger tags, with the Worker's exact payload verified live against them (ids in `docs/highlevel-phase5.md`) |
+| HL notification workflows | ⬜ owner: build the 3 workflows in the HL UI / AI builder (prompt in `docs/highlevel-phase5.md`). HighLevel's API cannot create workflows — UI-only |
 | SM pricing configured | ✅ live per-door: L1_2 $96 / L3 $112 / L4 $136 / uplift $390.35 / white-wash $620. Base: SM still returns $0 (re-verified 2026-08-11) → the engine now applies the owner-confirmed **$275 fallback** (flagged `owner_fallback` in the rate table + audit note). Setting BasePrice=275 on SM service 30382 makes SM authoritative again and clears the flag |
 | Cloudflare D1 + KV | ✅ created 2026-07-18 |
 | Cloudflare R2 | ✅ bucket `ktu-tuneup-photos` created 2026-08-06; PHOTOS binding live in wrangler.toml |

@@ -25,20 +25,63 @@ code deploy.
 - Purchase **value = deposit actually collected** (not the full quote). The
   full quote rides along in HL custom fields and GA4 `quote_value`.
 
-## HighLevel configuration needed (owner/one-time)
+## HighLevel configuration — status
 
-1. **Custom fields** (Settings → Custom Fields, Contact type — create with
-   these exact keys):
-   `tuneup_session_id`, `tuneup_quote`, `tuneup_deposit`, `tuneup_openings`,
-   `tuneup_level`, `tuneup_appointment`, `tuneup_best_time`,
-   `tuneup_sm_appointment_id`, `tuneup_sm_contact_id`
-2. **Secrets/vars** (Cloudflare): `HIGHLEVEL_API_KEY` secret = KTU Private
+### ✅ Custom fields — CREATED 2026-08-17 (live in KTU `nHLCxHPidnhV1NFzRtZZ`)
+
+Created via the LeadConnector API. HighLevel derived each `fieldKey` itself, and
+every key matches what `src/hl/client.ts` sends — no code change needed.
+
+| Label in HL | fieldKey | Type | Field id |
+|---|---|---|---|
+| Tune-Up Session ID | `contact.tuneup_session_id` | TEXT | `4IJZcBwu4lmdgNP0QqgR` |
+| Tune-Up Quote | `contact.tuneup_quote` | MONETORY | `Hmk3E7KAcvDcxotGqEEh` |
+| Tune-Up Deposit | `contact.tuneup_deposit` | MONETORY | `a8xb7pEkVBBn9pFvKPoU` |
+| Tune-Up Openings | `contact.tuneup_openings` | NUMERICAL | `75wW3bOqHTHUUf0dxXps` |
+| Tune-Up Level | `contact.tuneup_level` | TEXT | `yn3KoCuwnG68BV6RXSt9` |
+| Tune-Up Appointment | `contact.tuneup_appointment` | TEXT | `7oFWIPC8sX6dKkSmsDx5` |
+| Tune-Up Best Time | `contact.tuneup_best_time` | TEXT | `1A7leX4rDEzkxaIqgpyd` |
+| Tune-Up SM Appointment ID | `contact.tuneup_sm_appointment_id` | TEXT | `wjO1qCUn2ib4MqDHmj4W` |
+| Tune-Up SM Contact ID | `contact.tuneup_sm_contact_id` | TEXT | `lyQfQs6sna6zz4U3IvXb` |
+
+`tuneup_appointment` is deliberately TEXT: the Worker sends a full ISO datetime
+(`2026-08-22T09:00:00`), which an HL DATE field would reject.
+
+### ✅ Tags — CREATED 2026-08-17
+
+`tuneup-lead` (`FpmViiiB38Po2LFXe8Z8`), `tuneup-callback` (`W3U4GmTVwHobZ25DgFkl`),
+`tuneup-booked` (`04jk7yuJyG4MJtEeyIL2`).
+
+### ✅ Payload verified end-to-end against the live location
+
+A throwaway contact was upserted with the exact body `upsertHlContact` builds,
+then deleted. All eight sent fields populated, confirming:
+
+- the bare `key` form (`tuneup_quote`, no `contact.` prefix) is accepted;
+- MONETORY parses the string `"2777.35"` → `2777.35`, NUMERICAL `"22"` → `22`,
+  so the Worker's `.toFixed(2)` strings need no changes;
+- the tag applies on upsert.
+
+### ⬜ Still needed from owner
+
+1. **Secrets/vars** (Cloudflare): `HIGHLEVEL_API_KEY` secret = KTU Private
    Integration Token (location `nHLCxHPidnhV1NFzRtZZ`, already a wrangler var).
    PIT scopes needed: **Contacts write** (plus payments per Phase 4).
-3. **Workflows** — build in the HighLevel AI builder (prompt below): the
-   notification/reaction side stays in HL on purpose.
+2. **Workflows** — must be built in the HL UI / AI builder (prompt below).
+
+> **Why workflows can't be scripted:** HighLevel's public API has no
+> workflow-creation endpoint — `POST /workflows/` returns `Cannot POST
+> /workflows/`. Reading them is also blocked here: the Zapier LeadConnector
+> passthrough appends `?version=v3`, which several GET endpoints reject with
+> `property version should not exist` (affects `/customFields`, `/workflows`,
+> `/opportunities/pipelines`; POST/DELETE are unaffected). Workflows are a
+> UI-only artifact — which is why the AI-builder prompt below exists.
 
 ## HighLevel AI-builder prompt (paste into HL)
+
+The three tags and all nine `Tune-Up *` custom fields this prompt references
+already exist in the KTU location (see above), so the builder can bind to them
+directly — it should not need to create anything.
 
 > Build three workflows for the Kitchen Tune-Up location:
 >
