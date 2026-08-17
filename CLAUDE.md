@@ -127,37 +127,51 @@ coming back blind on KTU:
 
 1. **The claude.ai OAuth connector — listed as `High Level`** (not "Highlevel";
    search that exact string in the connector list). It loads from the account, no
-   bootstrap. Two limits, and the second one bites hardest:
-   - It is **locked to a single sub-account: Bath Tune-Up**
-     (`isAgencySubAccount: false`). It cannot switch locations, so it covers **BTU
-     only**. There is no location parameter that makes it reach KTU.
-   - **It is currently toggled OFF in-chat** (`enabledInChat: false`), and its
-     `installState` reads `unknown` rather than `connected`. Verified 2026-08-17
-     via `ListConnectors`: no `mcp__High_Level__*` tools load in a Cloud session.
-     **So today the OAuth path contributes nothing — for either brand.**
+   bootstrap.
+   - As of **2026-08-17 it was sub-account-scoped**: locked to Bath Tune-Up
+     (`isAgencySubAccount: false` on the location), so it could reach BTU only.
+   - **Steven has since upgraded it to an agency-level connection**, which should
+     remove that lock (agency grants can address any location under the company,
+     `KhkzcV7jCB3zEgueksFN`). **This is not yet verified from a session** — the
+     upgrade doesn't take effect until the connector is enabled in-chat and a
+     fresh session starts, and at last check (`ListConnectors`, same day) it
+     still read `enabledInChat: false` / `installState: unknown`, so no
+     `mcp__High_Level__*` tools had loaded yet. Whoever verifies next: confirm
+     the connector is enabled for chat, start a fresh session, and check whether
+     it can read the **KTU** location — that's the capability the old grant
+     structurally could not provide, so it's the real test.
 2. **The per-location PIT servers `ghl-ktu` / `ghl-btu`** (LeadConnector hosted
-   HTTP MCP, registered by `bootstrap.sh`) — each scoped to one location by a
-   Private Integration Token in an env var:
-   - `ghl-ktu` → KTU location `nHLCxHPidnhV1NFzRtZZ`, token `GHL_PIT_KTU`
-   - `ghl-btu` → BTU location `0uWA8M5BzHrrcJftuaDe`, token `GHL_PIT_BTU`
+   HTTP MCP, registered by `bootstrap.sh`) — scoped by a Private Integration
+   Token, one per location, or one agency token covering both:
+   - `ghl-ktu` → KTU location `nHLCxHPidnhV1NFzRtZZ`
+   - `ghl-btu` → BTU location `0uWA8M5BzHrrcJftuaDe`
+   - Token env vars: `GHL_PIT_KTU` / `GHL_PIT_BTU` (per-location), or
+     `GHL_PIT_AGENCY` alone to cover both — bootstrap.sh falls back to the
+     agency token per location when its specific PIT is unset, and a
+     per-location PIT always wins if both are set. Confirmed working (both
+     locations return their correct name) as of 2026-08-17.
 
-**Net: 100% of working HighLevel access — both brands — rides on the two PIT
-servers.** Treat the PIT path as primary and load-bearing, not as a KTU-only
-stopgap. OAuth can only ever be a supplementary BTU path, because a sub-account
-OAuth grant structurally cannot reach KTU; "move everything to OAuth" is not a
-reachable end state without an agency-level integration.
+**Net: this is the load-bearing path today, and it doesn't depend on the OAuth
+connector's state.** The PIT servers are HTTP MCP registrations, entirely
+separate from the claude.ai connector — enabling/disabling `High Level` in chat
+has no effect on `ghl-ktu` / `ghl-btu`. If the agency OAuth connector verifies as
+KTU-capable, it becomes a second, redundant path into both locations — useful for
+resilience, but the PIT/agency-token path should stay wired regardless, since it
+is what scheduled Routine sessions (which don't carry claude.ai connector state
+the same way) actually use.
 
-**KTU HighLevel only works via `ghl-ktu`.** If `GHL_PIT_KTU` isn't set in the
-environment's env-var config, `bootstrap.sh` skips that server, the intranet /
+**KTU HighLevel only works via `ghl-ktu`.** If neither `GHL_PIT_KTU` nor
+`GHL_PIT_AGENCY` is set, `bootstrap.sh` skips that server, the intranet /
 Tekki health check flags the KTU HighLevel pipe as broken, and any agent that
 reads KTU conversations (Goldeneye, Paid, Foreman) silently misses all KTU
-SMS/email/calls. BTU can still *look* fine because the OAuth connector covers it —
-masking the fact that KTU is dark.
+SMS/email/calls. Do not assume BTU losing its PIT is any safer — the OAuth
+connector cannot be relied on as a silent fallback (see above), so a missing BTU
+token means BTU goes dark too, the same as KTU would.
 
-**Fix = wire the two env vars** (values are the location PITs; set them in the
-Cloud environment's env-var/secrets config, never in the repo). To sanity-check a
-PIT without registering anything, curl it directly — a valid token returns 200
-with the location name:
+**Fix = wire `GHL_PIT_KTU` + `GHL_PIT_BTU`, or `GHL_PIT_AGENCY` alone** (set in
+the Cloud environment's env-var/secrets config, never in the repo). To
+sanity-check a token without registering anything, curl it directly — a valid
+token returns 200 with the location name:
 `curl -H "Authorization: Bearer $GHL_PIT_KTU" -H "Version: 2021-07-28" https://services.leadconnectorhq.com/locations/nHLCxHPidnhV1NFzRtZZ`
 A 401 there means the token itself is revoked/expired → regenerate the location's
 Private Integration Token in HighLevel and update the env var. A 200 there while

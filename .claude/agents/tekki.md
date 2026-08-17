@@ -160,19 +160,28 @@ sections) when you write/refresh these:**
 - **HighLevel** — there are TWO non-interchangeable access paths, and confusing
   them is the top cause of "HighLevel connection broken" and of agents going
   blind on KTU. State plainly: (1) the claude.ai OAuth connector — listed as
-  **`High Level`**, not "Highlevel" — is **BTU-only** (locked to sub-account
-  `0uWA8M5BzHrrcJftuaDe`, `isAgencySubAccount: false` — it cannot reach KTU), and
-  as of 2026-08-17 it is **toggled off in-chat** (`enabledInChat: false`,
-  `installState: unknown`), so it contributes **nothing** to either brand today;
-  (2) **ALL working HighLevel access — both brands — runs through the `ghl-ktu` /
-  `ghl-btu` PIT servers**, which need env vars **`GHL_PIT_KTU`** / **`GHL_PIT_BTU`**
-  set. Dependency line: "if `GHL_PIT_KTU` is unset, bootstrap skips `ghl-ktu` and
-  Goldeneye/Paid/Foreman silently miss all KTU SMS/email/calls." Note that the
-  old reassurance "BTU still looks fine because OAuth covers it" **no longer
-  holds** — with the connector off, losing a PIT makes that brand fully dark.
-  Include the 1-line PIT health check (curl `/locations/{id}` with the token →
-  200 = token good, wiring issue; 401 = regenerate the PIT). Name the env vars,
-  never their values.
+  **`High Level`**, not "Highlevel" — was **BTU-only** (locked to sub-account
+  `0uWA8M5BzHrrcJftuaDe`) as of 2026-08-17, and separately was toggled off
+  in-chat that day (`enabledInChat: false`), so it contributed nothing to either
+  brand. Steven has since upgraded it to an **agency-level** connection, which
+  should let it reach any location including KTU — **but this is unverified**
+  pending the connector being enabled in-chat and probed from a fresh session
+  (check `ListConnectors` for `High Level` → `enabledInChat`; if true, verify it
+  can read KTU specifically, since that's what the old grant couldn't do).
+  Whatever its state, don't treat it as load-bearing until confirmed — score it
+  in the health board as unverified, not green, until an agent has actually
+  called an `mcp__High_Level__*` tool successfully against KTU.
+  (2) **The load-bearing path regardless of OAuth state is the `ghl-ktu` /
+  `ghl-btu` PIT servers** (separate HTTP MCP registrations, unaffected by the
+  claude.ai connector toggle) — confirmed working both directions as of
+  2026-08-17. They take env vars **`GHL_PIT_KTU`** / **`GHL_PIT_BTU`**
+  (per-location) or **`GHL_PIT_AGENCY`** alone (falls back per-location when the
+  specific PIT is unset). Dependency line: "if neither `GHL_PIT_KTU` nor
+  `GHL_PIT_AGENCY` is set, bootstrap skips `ghl-ktu` and Goldeneye/Paid/Foreman
+  silently miss all KTU SMS/email/calls — and the same is true of BTU with its
+  token missing, since OAuth cannot be assumed as a fallback." Include the
+  1-line PIT health check (curl `/locations/{id}` with the token → 200 = token
+  good, wiring issue; 401 = regenerate). Name the env vars, never their values.
   Coverage caveat for the SOW: the GHL MCP surface has **no list-calendars /
   list-users / list-groups tool**, so `calendars_get-calendar-events` (422
   without an ID) only works from calendar IDs recorded in CLAUDE.md — KTU
