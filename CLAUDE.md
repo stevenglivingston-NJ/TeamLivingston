@@ -119,37 +119,55 @@ Slack, Zapier, Facebook) load from the account automatically and need
 no bootstrap. (monday.com is being retired — its boards/docs are exported to
 Google Drive and mapped by the Librarian; don't depend on the monday connector.)
 
-### HighLevel access — two paths, and the KTU gotcha
+### HighLevel access — the PIT servers are the only real path
 
-HighLevel is reachable **two different ways**, and they are NOT interchangeable —
-this is the #1 cause of "HighLevel connection broken" and of Goldeneye/Paid
-coming back blind on KTU:
+HighLevel is reachable **two different ways**, and they are NOT interchangeable.
+Only one of them can actually read CRM data:
 
-1. **The claude.ai `Highlevel` connector (OAuth)** — loads from the account, no
-   bootstrap. But it is **locked to a single sub-account: Bath Tune-Up**
-   (`isAgencySubAccount: false`). It cannot switch locations, so it covers **BTU
-   only**. There is no location parameter that makes it reach KTU.
-2. **The per-location PIT servers `ghl-ktu` / `ghl-btu`** (LeadConnector hosted
+1. **The per-location PIT servers `ghl-ktu` / `ghl-btu`** (LeadConnector hosted
    HTTP MCP, registered by `bootstrap.sh`) — each scoped to one location by a
-   Private Integration Token in an env var:
+   Private Integration Token in an env var. **This is the only path that reads
+   contacts, conversations, or opportunities.**
    - `ghl-ktu` → KTU location `nHLCxHPidnhV1NFzRtZZ`, token `GHL_PIT_KTU`
    - `ghl-btu` → BTU location `0uWA8M5BzHrrcJftuaDe`, token `GHL_PIT_BTU`
+2. **The claude.ai `Highlevel` connector (OAuth)** — loads from the account, no
+   bootstrap. Its token is **agency/company auth class**, which reads
+   `/locations/*` metadata for *both* sub-accounts but is denied every
+   location-scoped resource. Contacts, conversations, and opportunities all
+   return `401 — "This authClass type is not allowed to access this scope"`, for
+   KTU and BTU alike. Treat it as address-book metadata only.
 
-**KTU HighLevel only works via `ghl-ktu`.** If `GHL_PIT_KTU` isn't set in the
-environment's env-var config, `bootstrap.sh` skips that server, the intranet /
-Tekki health check flags the KTU HighLevel pipe as broken, and any agent that
-reads KTU conversations (Goldeneye, Paid, Foreman) silently misses all KTU
-SMS/email/calls. BTU can still *look* fine because the OAuth connector covers it —
-masking the fact that KTU is dark.
+**Never treat the OAuth connector as a fallback for either brand.** It is not
+sub-account-locked (it resolves both KTU and BTU location records), but it
+cannot serve a single conversation or contact for either one. An agent that
+routes BTU reads through it gets 401s, not data.
+
+**Both brands go through their own PIT server.** If `GHL_PIT_KTU` or
+`GHL_PIT_BTU` isn't set in the environment's env-var config, `bootstrap.sh`
+skips that server, the intranet / Tekki health check flags that brand's
+HighLevel pipe as broken, and any agent that reads its conversations
+(Goldeneye, Paid, Foreman) silently misses all of that brand's SMS/email/calls.
+There is no second path to mask the gap.
 
 **Fix = wire the two env vars** (values are the location PITs; set them in the
 Cloud environment's env-var/secrets config, never in the repo). To sanity-check a
 PIT without registering anything, curl it directly — a valid token returns 200
 with the location name:
-`curl -H "Authorization: Bearer $GHL_PIT_KTU" -H "Version: 2021-07-28" https://services.leadconnectorhq.com/locations/nHLCxHPidnhV1NFzRtZZ`
+```sh
+curl -H "Authorization: Bearer $GHL_PIT_KTU" -H "Version: 2021-07-28" https://services.leadconnectorhq.com/locations/nHLCxHPidnhV1NFzRtZZ
+curl -H "Authorization: Bearer $GHL_PIT_BTU" -H "Version: 2021-07-28" https://services.leadconnectorhq.com/locations/0uWA8M5BzHrrcJftuaDe
+```
+
 A 401 there means the token itself is revoked/expired → regenerate the location's
 Private Integration Token in HighLevel and update the env var. A 200 there while
 the pipe still shows broken means it's purely the env-var wiring.
+
+A 200 on `/locations/{id}` alone does **not** prove the pipe is usable — the
+OAuth connector returns 200 there and 401 on everything else. To confirm a brand
+is genuinely readable, call a location-scoped tool (`contacts_get-contacts` or
+`conversations_search-conversation`) on its `ghl-*` server and check you get
+rows back. Last verified 2026-08-17: KTU 18,488 contacts / 11,056 conversations,
+BTU 17,586 contacts / 8,459 conversations, both live to the current day.
 
 ## Scheduling & notification delivery (how the automation actually runs)
 
