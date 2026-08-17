@@ -119,59 +119,71 @@ Slack, Zapier, Facebook) load from the account automatically and need
 no bootstrap. (monday.com is being retired — its boards/docs are exported to
 Google Drive and mapped by the Librarian; don't depend on the monday connector.)
 
-### HighLevel access — two paths, and the KTU gotcha
+### HighLevel access — OAuth is now primary (2026-08-17), PIT is the fallback
 
-HighLevel is reachable **two different ways**, and they are NOT interchangeable —
-this is the #1 cause of "HighLevel connection broken" and of Goldeneye/Paid
-coming back blind on KTU:
+**The claude.ai OAuth connector — listed as `High Level`** (not "Highlevel") is
+now the primary path, and it is **verified agency-scoped**:
 
-1. **The claude.ai OAuth connector — listed as `High Level`** (not "Highlevel";
-   search that exact string in the connector list). It loads from the account, no
-   bootstrap.
-   - As of **2026-08-17 it was sub-account-scoped**: locked to Bath Tune-Up
-     (`isAgencySubAccount: false` on the location), so it could reach BTU only.
-   - **Steven has since upgraded it to an agency-level connection**, which should
-     remove that lock (agency grants can address any location under the company,
-     `KhkzcV7jCB3zEgueksFN`). **This is not yet verified from a session** — the
-     upgrade doesn't take effect until the connector is enabled in-chat and a
-     fresh session starts, and at last check (`ListConnectors`, same day) it
-     still read `enabledInChat: false` / `installState: unknown`, so no
-     `mcp__High_Level__*` tools had loaded yet. Whoever verifies next: confirm
-     the connector is enabled for chat, start a fresh session, and check whether
-     it can read the **KTU** location — that's the capability the old grant
-     structurally could not provide, so it's the real test.
-2. **The per-location PIT servers `ghl-ktu` / `ghl-btu`** (LeadConnector hosted
-   HTTP MCP, registered by `bootstrap.sh`) — scoped by a Private Integration
-   Token, one per location, or one agency token covering both:
-   - `ghl-ktu` → KTU location `nHLCxHPidnhV1NFzRtZZ`
-   - `ghl-btu` → BTU location `0uWA8M5BzHrrcJftuaDe`
-   - Token env vars: `GHL_PIT_KTU` / `GHL_PIT_BTU` (per-location), or
-     `GHL_PIT_AGENCY` alone to cover both — bootstrap.sh falls back to the
-     agency token per location when its specific PIT is unset, and a
-     per-location PIT always wins if both are set. Confirmed working (both
-     locations return their correct name) as of 2026-08-17.
+- Until 2026-08-17 it was locked to a single sub-account (Bath Tune-Up only,
+  `isAgencySubAccount: false`) and was also toggled off in-chat — it contributed
+  nothing to either brand.
+- Steven upgraded it to an **agency-level connection** and enabled it in-chat.
+  **Verified the same day**, end to end, not just "connector shows connected":
+  - `mcp__High_Level__list_locations` returns **both** `nHLCxHPidnhV1NFzRtZZ`
+    (Kitchen Tune-Up) and `0uWA8M5BzHrrcJftuaDe` (Bath Tune-Up) — the sub-account
+    lock is gone.
+  - `execute_operation` → `get-location` returned 200 with correct data for
+    **both** locations: KTU (`nHLCxHPidnhV1NFzRtZZ`) and BTU
+    (`0uWA8M5BzHrrcJftuaDe`).
+  - `execute_operation` → `search-contacts-advanced` returned 200 for both,
+    with **18,488 KTU contacts / 17,586 BTU contacts** — both counts matching
+    exactly what the `ghl-ktu` / `ghl-btu` PIT servers independently returned
+    earlier the same day. Two different auth paths, same numbers, both brands,
+    from the live API — as solid a cross-check as this gets.
+- **How it's used:** unlike the old per-location servers, this is one connector
+  with generic `search_operations` / `describe_operation` / `execute_operation`
+  tools covering the full GHL public API — pass `locationId` explicitly per call
+  (KTU `nHLCxHPidnhV1NFzRtZZ` / BTU `0uWA8M5BzHrrcJftuaDe`) since the connection
+  is multi-location. This also closes the earlier `calendars` gap in a general
+  way: `search_operations` can find calendar/user/group list endpoints that the
+  old per-location `ghl-ktu`/`ghl-btu` servers simply didn't expose as tools.
+- **One thing still to confirm, not yet blocking:** connector enablement is
+  account-level per the existing rule in this file ("Setup scripts can NOT
+  enable the claude.ai connectors... must be enabled for scheduled runs in the
+  environment/connector settings") — the same caveat that already applies to
+  Gmail/Drive/Slack. Confirm `High Level` is enabled for **scheduled Routine**
+  fires specifically (Goldeneye/Paid/Foreman), not just this interactive
+  session, before fully retiring the PIT fallback below.
 
-**Net: this is the load-bearing path today, and it doesn't depend on the OAuth
-connector's state.** The PIT servers are HTTP MCP registrations, entirely
-separate from the claude.ai connector — enabling/disabling `High Level` in chat
-has no effect on `ghl-ktu` / `ghl-btu`. If the agency OAuth connector verifies as
-KTU-capable, it becomes a second, redundant path into both locations — useful for
-resilience, but the PIT/agency-token path should stay wired regardless, since it
-is what scheduled Routine sessions (which don't carry claude.ai connector state
-the same way) actually use.
+**The per-location PIT servers `ghl-ktu` / `ghl-btu`** (LeadConnector hosted HTTP
+MCP, registered by `bootstrap.sh`) are now the **fallback**, kept wired for
+resilience and for anything that still needs the older per-location tool shape:
 
-**KTU HighLevel only works via `ghl-ktu`.** If neither `GHL_PIT_KTU` nor
-`GHL_PIT_AGENCY` is set, `bootstrap.sh` skips that server, the intranet /
-Tekki health check flags the KTU HighLevel pipe as broken, and any agent that
-reads KTU conversations (Goldeneye, Paid, Foreman) silently misses all KTU
-SMS/email/calls. Do not assume BTU losing its PIT is any safer — the OAuth
-connector cannot be relied on as a silent fallback (see above), so a missing BTU
-token means BTU goes dark too, the same as KTU would.
+- `ghl-ktu` → KTU location `nHLCxHPidnhV1NFzRtZZ`
+- `ghl-btu` → BTU location `0uWA8M5BzHrrcJftuaDe`
+- Token env vars: `GHL_PIT_KTU` / `GHL_PIT_BTU` (per-location), or
+  `GHL_PIT_AGENCY` alone to cover both. **Currently unset** — Steven removed
+  these intentionally once the OAuth connector was confirmed working, so
+  `bootstrap.sh` skips both servers on a fresh session. Restore either if the
+  OAuth connector's Routine-scheduling coverage doesn't check out.
 
-**Fix = wire `GHL_PIT_KTU` + `GHL_PIT_BTU`, or `GHL_PIT_AGENCY` alone** (set in
-the Cloud environment's env-var/secrets config, never in the repo). To
-sanity-check a token without registering anything, curl it directly — a valid
-token returns 200 with the location name:
+A third path was explored and abandoned same-day: a self-serve OAuth MCP
+endpoint at `services.leadconnectorhq.com/mcp/anthropic/v2` (server name
+`leadconnector`), authenticated via `claude mcp login`. It requires a live
+browser + localhost callback that can't complete in a headless Cloud session,
+and even if authenticated it would have registered at **local, per-container
+scope** — useless for ephemeral scheduled sessions. Removed once the connector
+path (above) verified working instead. Not worth resurrecting unless the
+connector path breaks.
+
+**If the PIT servers are ever wired again** (env vars restored as fallback — see
+above, this is not the current state): `bootstrap.sh` needs `GHL_PIT_KTU` +
+`GHL_PIT_BTU`, or `GHL_PIT_AGENCY` alone, to register `ghl-ktu`/`ghl-btu` at
+all. Missing either means that brand's PIT-server fallback silently doesn't
+register — check whether the OAuth connector (now primary) is still covering
+that brand before treating it as an incident. To sanity-check a token without
+registering anything, curl it directly — a valid token returns 200 with the
+location name:
 `curl -H "Authorization: Bearer $GHL_PIT_KTU" -H "Version: 2021-07-28" https://services.leadconnectorhq.com/locations/nHLCxHPidnhV1NFzRtZZ`
 A 401 there means the token itself is revoked/expired → regenerate the location's
 Private Integration Token in HighLevel and update the env var. A 200 there while
@@ -193,36 +205,34 @@ parity, so anything that works for one brand works for the other:
 | `emails` | 2 | 🟢 KTU 7 · BTU 13 templates |
 | `social-media-posting` | 6 | 🟢 KTU 10 · BTU 4 accounts |
 | `blogs` | 7 | 🟢 200, no blog sites configured on either |
-| `calendars` | 2 | 🟢 KTU 57 events · 🟡 BTU unconfirmed — see below |
+| `calendars` | 2 | 🟢 KTU 57 events (old ID) · 🟢 BTU 155 events (corrected ID) |
 
-#### Consultation calendar IDs (the `calendars` family needs these)
+#### Consultation calendar IDs — RESOLVED via the OAuth connector's `get-calendars`
 
-`calendars_get-calendar-events` requires one of `calendarId` / `userId` /
-`groupId` (422 without one), and **no tool in the whole GHL MCP surface returns
-any of those IDs** — there is no list-calendars, list-users, or list-groups tool.
-Same for `calendars_get-appointment-notes`, which needs an `appointmentId` the MCP
-cannot produce. The IDs therefore have to be recorded here:
+The old per-location `ghl-ktu`/`ghl-btu` servers had no list-calendars tool, so
+`calendars_get-calendar-events` (422 without a `calendarId`) needed IDs recorded
+by hand, and there was no way to tell an empty result from a wrong ID. **The
+`High Level` OAuth connector's generic operations close this gap** —
+`search_operations` finds `get-calendars` (list, per location) and
+`get-calendar-events` (by ID), covering what the old surface couldn't.
 
-| Brand | Consultation calendar ID | Status |
-|---|---|---|
-| KTU | `IezEuyUywqr1OL7tjHEk` | ✅ verified 2026-08-17 — 57 events |
-| BTU | `15oJxXW4lJZpbYyk6Zca` | ⚠️ unverified — returns empty |
+| Brand | Consultation calendar ID | Name | isActive | Status |
+|---|---|---|---|---|
+| KTU | `IezEuyUywqr1OL7tjHEk` | Consultation Calendar | ✅ true | ✅ verified — 57 events (60-day window, 2026-07-18→08-29) |
+| BTU | ~~`15oJxXW4lJZpbYyk6Zca`~~ | ~~Free In-Home consultation~~ | ❌ **false** | ⚠️ retired — this was the source of the earlier "empty" mystery |
+| BTU | **`k6bokOz0oIicKYu93zhW`** | **Consultation Calendar** | ✅ true | ✅ **verified — 155 events for 2026** (88 confirmed, 67 cancelled) |
 
-**KTU is confirmed working:** a 60-day window returned 57 events, all correctly
-scoped (`calendarId` `IezEuyUywqr1OL7tjHEk`, `locationId` `nHLCxHPidnhV1NFzRtZZ`),
-spanning 2026-07-18 → 2026-08-29, with `appointmentStatus` values of cancelled /
-showed / confirmed. So GHL appointment data **is** reachable over MCP once you
-have the ID.
-
-**BTU could not be confirmed, and the failure mode is silent.** The BTU ID
-returned `[]` over a full-year window. Critically, querying a calendar ID that
-belongs to a *different* location also returns `[]` rather than a 404/403 —
-verified by running the KTU ID against `ghl-btu`. **So an empty result cannot be
-distinguished from a wrong, stale, or foreign calendar ID.** Never read `[]` from
-this endpoint as "no appointments"; treat it as "no answer" until the ID itself is
-confirmed. To confirm one, list the location's calendars over REST v2 with the
-same PIT — the MCP cannot do it:
-`curl -H "Authorization: Bearer $GHL_PIT_BTU" -H "Version: 2021-07-28" "https://services.leadconnectorhq.com/calendars/?locationId=0uWA8M5BzHrrcJftuaDe"`
+**The mystery is solved, not just worked around.** The BTU ID Steven originally
+gave (`15oJxXW4lJZpbYyk6Zca`) is real and correctly scoped to BTU — it's just a
+**retired legacy calendar** (`isActive: false`, type `round_robin`, named "Free
+In-Home consultation"). KTU has the exact same fossil sitting alongside its
+working calendar (`MScsc3B7AFkpkwMTQ4Zk`, same name, also `isActive: false`) —
+so this looks like a naming migration both brands went through, where an old
+"Free In-Home consultation" calendar was replaced by a `service_booking`-type
+"Consultation Calendar" and the old one was never deleted, just deactivated.
+**Lesson for future calendar IDs supplied by Steven or pulled from the GHL UI:
+cross-check `isActive` via `get-calendars` before trusting an ID that returns
+empty** — don't assume the endpoint or the ID is broken.
 
 Appointment truth still belongs to ServiceMinder; use the GHL calendar as a
 cross-check, not as the system of record.
