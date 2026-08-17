@@ -42,6 +42,16 @@
 # =============================================================================
 set -u
 
+# Bump this whenever setup.sh changes, and RE-PASTE the file into
+# Cloud env → Setup script. Every run echoes it: if a scheduled-run log shows an
+# OLDER version (or none), the Cloud console's Setup-script copy is STALE — which
+# is the #1 root cause of the stale-branch / duplicate-PR loop, because the
+# self-heal "reset to origin/main" below only runs from the console copy, not
+# from this file in the repo. A visible version turns that silent failure into a
+# one-line check.
+SETUP_SCRIPT_VERSION="2026-08-14"
+echo "▸ setup: canonical setup.sh version ${SETUP_SCRIPT_VERSION}"
+
 REPO_URL="https://github.com/stevenglivingston-NJ/TeamLivingston"
 MAIN_BRANCH="main"
 CANDIDATES=(/home/user/TeamLivingston /workspace/TeamLivingston "$HOME/TeamLivingston")

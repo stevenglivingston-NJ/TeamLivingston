@@ -478,12 +478,17 @@ collapse them into one number:
   **"Materials UPDATE"** emails (clients who have completed selections), Designer
   Appliances spec packages, countertop/tile partner scheduling, vendor invoices
   (e.g. "Invoice IN…"), CAD approval threads ("…Approve CAD").
-- **Design-gate signal — Ben Yabra's project updates (direct Gmail MCP pull, not Zapier).**
+- **Design-gate signal — Ben Yabra's project updates.**
   This is the read that tells you where a job stands on selections/CAD before
-  Production Gate. Ben's updates come from `byabra@kitchentuneup.com`, and
-  **`firstgentalent@gmail.com` is a directly connected mailbox on this same Gmail
-  MCP** — search it too (`to:firstgentalent@gmail.com`) since some threads land or
-  get relayed there. Query both scopes each run:
+  Production Gate. Ben's updates come from `byabra@kitchentuneup.com` — a reliable
+  SENDER anchor, so lean on it. Packets forward to the ops inbox
+  **`firstgentalent@gmail.com`**, which is connected via **Zapier** (its default
+  Gmail account), **not** the direct `mcp__Gmail__` connector (that's the personal
+  `stevenglivingston@gmail.com` inbox). Read firstgentalent through Zapier —
+  `mcp__Zapier__execute_zapier_read_action` (`selected_api: "GoogleMailV2CLIAPI"`,
+  `tool_name: "gmail_find_email"`, `action: "message"`) — and also check the
+  personal inbox via `mcp__Gmail__search_threads` for co-addressed copies. Same
+  query on both:
   `(from:byabra@kitchentuneup.com OR to:firstgentalent@gmail.com) (materials OR "design" OR CAD OR "selection" OR "design brief")`.
   Pull the body **and attachments** — Ben's "Materials UPDATE" emails are often a
   bare signature block with the real content in an attached `*-Materials.xlsx`;
@@ -514,10 +519,12 @@ collapse them into one number:
 
 ### 4b. Design packet review + budget/scope alignment (hand-in-hand with Moola)
 
-Design packets are now emailed to **firstgentalent@gmail.com** (and come from
-`byabra@kitchentuneup.com`) so you can review them. A packet is a **CAD / plan /
-elevation** ("…Approve CAD" threads carry a `<Client>.pdf`) and/or a **materials
-list** ("Materials UPDATE" carries a `*-Materials.xlsx`). Pull them each run:
+Design packets are emailed to **firstgentalent@gmail.com** (and come from
+`byabra@kitchentuneup.com`) so you can review them. firstgentalent is read via the
+**Zapier** Gmail connection (`gmail_find_email`, default account = firstgentalent),
+not the direct `mcp__Gmail__` connector. A packet is a **CAD / plan / elevation**
+("…Approve CAD" threads carry a `<Client>.pdf`) and/or a **materials list**
+("Materials UPDATE" carries a `*-Materials.xlsx`). Pull them each run with:
 `(to:firstgentalent@gmail.com OR from:byabra@kitchentuneup.com) (CAD OR "approve" OR plan OR elevation OR materials OR design)`.
 
 **Attachment-read limitation (be honest about it):** the Gmail MCP exposes the
