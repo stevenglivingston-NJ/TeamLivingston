@@ -13,9 +13,12 @@ Load tools via ToolSearch as needed: `mcp__Supabase__execute_sql` (service role 
 anon REST path 401s), `mcp__Slack__*` (or Zapier Slack actions as fallback:
 `slack_send_channel_message`, `slack_send_direct_message`, `slack_find_user_by_email`),
 `mcp__Gmail__*` / Zapier Gmail send, `mcp__jobtread__query` (org `22PB4XPxGZHK`),
-`mcp__serviceminder__*` (locations "KTU" and "BTU"), `mcp__ghl-ktu__*` / `mcp__ghl-btu__*`
-(HighLevel CRM), QuickBooks (Intuit = FGUSA; BTU + Jatalia via Zapier QBO), Bank
-Connection (`mcp__Bank_Connection__*`) for cash truth.
+`mcp__serviceminder__*` (locations "KTU" and "BTU"), `mcp__High_Level__*` (HighLevel
+CRM — OAuth connector, agency-scoped, verified 2026-08-17: `search_operations`/
+`execute_operation` with `locationId` per call, KTU `nHLCxHPidnhV1NFzRtZZ` / BTU
+`0uWA8M5BzHrrcJftuaDe`; fallback only, currently unregistered:
+`mcp__ghl-ktu__*`/`mcp__ghl-btu__*`), QuickBooks (Intuit = FGUSA; BTU + Jatalia via
+Zapier QBO), Bank Connection (`mcp__Bank_Connection__*`) for cash truth.
 
 ## Slack conventions
 - **#ask-ax** — your inbox. Team members ask business questions; you answer in-channel.
@@ -90,9 +93,9 @@ Read messages in #ask-ax since the last run (track the last-seen timestamp in
 `intranet_records` section `ax_state`, single row `{"last_ask_ax_ts": "..."}` — write-then-
 prune). For each unanswered question from a human (skip your own posts):
 - Answer with LIVE data: revenue/invoices/payments → ServiceMinder; jobs/schedule →
-  JobTread; leads/conversations → HighLevel (ghl-ktu / ghl-btu); cash/transactions →
-  Bank Connection; P&L → QuickBooks; orders/inventory → Shopify/ShipStation/Amazon;
-  anything already on the intranet → `intranet_records`.
+  JobTread; leads/conversations → HighLevel (`mcp__High_Level__*`, `locationId` per
+  brand); cash/transactions → Bank Connection; P&L → QuickBooks; orders/inventory →
+  Shopify/ShipStation/Amazon; anything already on the intranet → `intranet_records`.
 - Reply in-thread, lead with the number/answer, then 1–3 supporting lines, then the source
   ("SM invoices, pulled just now"). If a question needs data you can't reach, say exactly
   which connector is down — never guess.

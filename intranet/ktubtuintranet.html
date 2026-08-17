@@ -3867,8 +3867,7 @@ const INTG_CATS = ['Business Systems','Marketing & Ads','Web Analytics & Attribu
 const INTEGRATIONS = [
   // ---- Business Systems ----
   {cat:'Business Systems', name:'ServiceMinder', type:'Direct MCP', scope:'Both', status:'ok', d:'2026-07-03', note:'Source of truth — invoices, payments, appointments, proposals. Re-verified live (KTU + BTU keys OK).'},
-  {cat:'Business Systems', name:'HighLevel (KTU)', type:'claude.ai', scope:'KTU', status:'ok', d:'2026-07-03', note:'CRM leads, opportunities, conversations. NOTE: connector labels swapped — the "High_Level_BTU" connector actually serves KTU. Automation maps around it.'},
-  {cat:'Business Systems', name:'HighLevel (BTU)', type:'claude.ai', scope:'BTU', status:'ok', d:'2026-07-03', note:'CRM; served by the connector labeled "Highlevel_KTU" (labels swapped). Direct-integration JWT servers are dead (401) — use connectors.'},
+  {cat:'Business Systems', name:'HighLevel', type:'claude.ai (OAuth)', scope:'Both', status:'ok', d:'2026-08-17', note:'CRM leads, opportunities, conversations, calendars. Agency-scoped OAuth connector (mcp__High_Level__*) reaches both KTU + BTU by locationId — verified via matching contact counts against the prior PIT setup. Fallback only: mcp__ghl-ktu__*/mcp__ghl-btu__* PIT servers (currently unregistered).'},
   {cat:'Business Systems', name:'JobTread', type:'Direct MCP', scope:'Both', status:'ok', d:'2026-05-16', note:'Job costing catalog + budgets — parametric BTU proposals'},
   {cat:'Business Systems', name:'CompanyCam', type:'Direct MCP', scope:'Both', status:'ok', d:'2026-05-16', note:'Job site photos, projects, notes'},
   {cat:'Business Systems', name:'Closebot', type:'Direct MCP', scope:'Both', status:'ok', d:'2026-05-16', note:'AI chatbot — leads, messages, actions, bookings'},
