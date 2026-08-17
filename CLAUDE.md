@@ -179,17 +179,39 @@ parity, so anything that works for one brand works for the other:
 | `emails` | 2 | 🟢 KTU 7 · BTU 13 templates |
 | `social-media-posting` | 6 | 🟢 KTU 10 · BTU 4 accounts |
 | `blogs` | 7 | 🟢 200, no blog sites configured on either |
-| `calendars` | 2 | 🟡 **reachable but unusable — see below** |
+| `calendars` | 2 | 🟢 KTU 57 events · 🟡 BTU unconfirmed — see below |
 
-**The `calendars` gap.** `calendars_get-calendar-events` requires one of
-`calendarId` / `userId` / `groupId` (422 without one), and **no tool in the whole
-GHL MCP surface returns any of those IDs** — there is no list-calendars,
-list-users, or list-groups tool. Same for `calendars_get-appointment-notes`,
-which needs an `appointmentId` the MCP cannot produce. So GHL appointment data is
-**not** reachable through MCP alone: an agent must either hard-code IDs pulled
-from the GHL UI, or hit REST v2 (`/calendars/?locationId=…`) directly with the
-same PIT. Appointment truth should keep coming from ServiceMinder — do not write
-an agent that expects to read the GHL calendar over MCP.
+#### Consultation calendar IDs (the `calendars` family needs these)
+
+`calendars_get-calendar-events` requires one of `calendarId` / `userId` /
+`groupId` (422 without one), and **no tool in the whole GHL MCP surface returns
+any of those IDs** — there is no list-calendars, list-users, or list-groups tool.
+Same for `calendars_get-appointment-notes`, which needs an `appointmentId` the MCP
+cannot produce. The IDs therefore have to be recorded here:
+
+| Brand | Consultation calendar ID | Status |
+|---|---|---|
+| KTU | `IezEuyUywqr1OL7tjHEk` | ✅ verified 2026-08-17 — 57 events |
+| BTU | `15oJxXW4lJZpbYyk6Zca` | ⚠️ unverified — returns empty |
+
+**KTU is confirmed working:** a 60-day window returned 57 events, all correctly
+scoped (`calendarId` `IezEuyUywqr1OL7tjHEk`, `locationId` `nHLCxHPidnhV1NFzRtZZ`),
+spanning 2026-07-18 → 2026-08-29, with `appointmentStatus` values of cancelled /
+showed / confirmed. So GHL appointment data **is** reachable over MCP once you
+have the ID.
+
+**BTU could not be confirmed, and the failure mode is silent.** The BTU ID
+returned `[]` over a full-year window. Critically, querying a calendar ID that
+belongs to a *different* location also returns `[]` rather than a 404/403 —
+verified by running the KTU ID against `ghl-btu`. **So an empty result cannot be
+distinguished from a wrong, stale, or foreign calendar ID.** Never read `[]` from
+this endpoint as "no appointments"; treat it as "no answer" until the ID itself is
+confirmed. To confirm one, list the location's calendars over REST v2 with the
+same PIT — the MCP cannot do it:
+`curl -H "Authorization: Bearer $GHL_PIT_BTU" -H "Version: 2021-07-28" "https://services.leadconnectorhq.com/calendars/?locationId=0uWA8M5BzHrrcJftuaDe"`
+
+Appointment truth still belongs to ServiceMinder; use the GHL calendar as a
+cross-check, not as the system of record.
 
 ## Scheduling & notification delivery (how the automation actually runs)
 

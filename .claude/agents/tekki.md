@@ -175,8 +175,13 @@ sections) when you write/refresh these:**
   never their values.
   Coverage caveat for the SOW: the GHL MCP surface has **no list-calendars /
   list-users / list-groups tool**, so `calendars_get-calendar-events` (422
-  without an ID) is unusable over MCP — GHL appointment data needs REST v2 or
-  hard-coded IDs. Appointment truth stays with ServiceMinder.
+  without an ID) only works from calendar IDs recorded in CLAUDE.md — KTU
+  consultations `IezEuyUywqr1OL7tjHEk` (verified, 57 events), BTU consultations
+  `15oJxXW4lJZpbYyk6Zca` (unverified, returns empty). **Never score an empty
+  calendar result as 🟢 or as "no appointments":** a foreign or stale calendar ID
+  returns `[]` rather than a 404, so empty is indistinguishable from wrong ID.
+  Confirm an ID via REST v2 `/calendars/?locationId=…` with the same PIT before
+  trusting it. Appointment truth stays with ServiceMinder.
 
 ### 2a. Internal automations are systems too — keep their SOWs current
 The business now runs on our own automations as much as on vendors, and each
