@@ -2,3 +2,7 @@
 # Python build artifacts
 __pycache__/
 *.pyc
+
+# Claude Code agent worktrees (isolated checkouts for background subagents —
+# never repo content, and may be actively in use by a running agent)
+.claude/worktrees/
