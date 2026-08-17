@@ -159,15 +159,24 @@ No wall of jargon. If a section would only make sense to a developer, rewrite it
 sections) when you write/refresh these:**
 - **HighLevel** — there are TWO non-interchangeable access paths, and confusing
   them is the top cause of "HighLevel connection broken" and of agents going
-  blind on KTU. State plainly: (1) the claude.ai **Highlevel OAuth connector is
-  BTU-only** (locked to sub-account `0uWA8M5BzHrrcJftuaDe`, `isAgencySubAccount:
-  false` — it cannot reach KTU); (2) **KTU HighLevel works only via the `ghl-ktu`
-  PIT server**, which needs env var **`GHL_PIT_KTU`** set (BTU's own server is
-  `ghl-btu` / **`GHL_PIT_BTU`**). Dependency line: "if `GHL_PIT_KTU` is unset,
-  bootstrap skips `ghl-ktu` and Goldeneye/Paid/Foreman silently miss all KTU
-  SMS/email/calls while BTU still looks fine." Include the 1-line PIT health check
-  (curl `/locations/{id}` with the token → 200 = token good, wiring issue; 401 =
-  regenerate the PIT). Name the env vars, never their values.
+  blind on KTU. State plainly: (1) the claude.ai OAuth connector — listed as
+  **`High Level`**, not "Highlevel" — is **BTU-only** (locked to sub-account
+  `0uWA8M5BzHrrcJftuaDe`, `isAgencySubAccount: false` — it cannot reach KTU), and
+  as of 2026-08-17 it is **toggled off in-chat** (`enabledInChat: false`,
+  `installState: unknown`), so it contributes **nothing** to either brand today;
+  (2) **ALL working HighLevel access — both brands — runs through the `ghl-ktu` /
+  `ghl-btu` PIT servers**, which need env vars **`GHL_PIT_KTU`** / **`GHL_PIT_BTU`**
+  set. Dependency line: "if `GHL_PIT_KTU` is unset, bootstrap skips `ghl-ktu` and
+  Goldeneye/Paid/Foreman silently miss all KTU SMS/email/calls." Note that the
+  old reassurance "BTU still looks fine because OAuth covers it" **no longer
+  holds** — with the connector off, losing a PIT makes that brand fully dark.
+  Include the 1-line PIT health check (curl `/locations/{id}` with the token →
+  200 = token good, wiring issue; 401 = regenerate the PIT). Name the env vars,
+  never their values.
+  Coverage caveat for the SOW: the GHL MCP surface has **no list-calendars /
+  list-users / list-groups tool**, so `calendars_get-calendar-events` (422
+  without an ID) is unusable over MCP — GHL appointment data needs REST v2 or
+  hard-coded IDs. Appointment truth stays with ServiceMinder.
 
 ### 2a. Internal automations are systems too — keep their SOWs current
 The business now runs on our own automations as much as on vendors, and each
