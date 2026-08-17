@@ -137,7 +137,7 @@ already carry in the liability register — here it becomes auditable **by name*
 because the two licences are on **different rate schedules** and reconcile separately.
 
 1. **Write one `moola_royalty` row per licence per month.**
-   `fields = {period, license, revenue_basis, royalty, effective_rate, charge_type, bands, other_charges, notes, scan_date}`
+   `fields = {period, license, revenue_basis, royalty, effective_rate, charge_type, bands, other_charges, bank_debit, bank_debit_date, variance, recon_status, notes, scan_date}`
    - `period` — `YYYY-MM`. `license` — `688 | 824 | BTU199 | BTU200`.
    - `charge_type` — `percentage` (revenue × band rates) or **`minimum`** (a flat floor billed because revenue didn't support a percentage charge).
    - `bands` — the band detail as billed, e.g. `7.0% on $30,000 + 6.0% on $8,623.50`.
@@ -158,7 +158,22 @@ because the two licences are on **different rate schedules** and reconcile separ
    - **A licence's marginal rate stepping down** (e.g. KTU 688 ran 7.0% → 5.5% → 4.0% across 2026 as cumulative volume grew) — call the step when it happens and use the new rate when forecasting the rest of the year.
    - **Duplicate rep records** in the Proposals block (the same person appearing twice with split figures) — flag for a merge in the source system; per-rep close rates are wrong until it's fixed.
 
-4. **Feed the rest of your work:** royalty is a **known** outflow — emit it to `moola_cashledger` (`category:'royalty'`, `confidence:'known'`, HFC auto-debit by the 10th) and into the accrued-obligations line of the liability register. The per-job attribution is also the honest input to per-project profitability (§ per-project P&L) — a job's fully-loaded margin should carry its own royalty, not an average.
+4. **Reconcile what HFC BILLED against what actually LEFT THE BANK — every month, both brands.**
+   The workbook is HFC's invoice, not proof of payment. **Never mark a period reconciled off the workbook alone.** HFC auto-debits by the **10th of the following month**, so for period `YYYY-MM` search **Bank Connection** (`mcp__Bank_Connection__get_transactions`, `budgetFlowType:'outflow'`) over roughly the 1st–15th of the *next* month, matching on description (`HFC`, `Home Franchise Concepts`, `royalty`, `NAF`) and on the entity's operating account. Then per licence/brand:
+   - `bank_debit` / `bank_debit_date` — the matched debit and when it cleared. `variance` = `bank_debit − (royalty + other_charges)`.
+   - `recon_status` — `matched` (variance within $1), `variance` (a real difference), `missing` (nothing debited by the 15th), or `unreconciled` (Bank Connection was unavailable this scan — say so, never imply a clean match).
+   - **Two brands, two-plus licences, and NAF**: HFC may debit royalty and the **2% NAF separately, or bundled**. Establish which per entity and hold to it — a bundled debit compared against royalty alone reads as a permanent overcharge, and a separate NAF debit compared against a bundled invoice reads as a double-charge. Whichever it is, the sum of matched debits must equal royalty + NAF + `other_charges` for the period.
+   - **Reconcile to the entity that actually paid.** KTU (First Generation USA LLC) and BTU (Oracabessa LLC) have separate operating accounts; a debit hitting the wrong entity's account is an inter-entity item for the liability register, not a match.
+
+   **Escalate as `urgent` in `moola_briefing` and queue to `notify_queue`:**
+   - **`variance` ≠ 0** — HFC debited something other than what they billed. Name the licence, the invoice figure, the debit, and the difference. An overcharge is recoverable only if it is caught in the month it happens.
+   - **`missing` past the 10th** — either the debit failed or the account lacked funds. A returned auto-debit earns a late fee and, on the franchise agreement, is a default trigger — this is the same failure mode as the returned Newtek payment, so treat it with the same urgency.
+   - **A debit with no matching invoice** — HFC took money for a period whose workbook never arrived. Chase the workbook before paying the next one.
+   - **A minimum-royalty month** (`charge_type='minimum'`) that still debited a percentage-sized amount, or vice-versa.
+
+   **Call budget:** Bank Connection enforces a **hard daily API call cap** (25/day on the current Monitoring plan; it hard-fails, it does not degrade). Royalty reconciliation is monthly, so spend **one** windowed `get_transactions` call per entity — filtered by `transactionName` and a ~15-day range — and reuse the daily transaction pull you already make in step 5 wherever it covers the window. If the cap is already spent, write `recon_status:'unreconciled'`, note the blind lens in `moola_briefing`, and retry next scan — **do not** publish a reconciled status you could not verify.
+
+5. **Feed the rest of your work:** royalty is a **known** outflow — emit it to `moola_cashledger` (`category:'royalty'`, `confidence:'known'`, HFC auto-debit by the 10th) and into the accrued-obligations line of the liability register. Minimum-floor months are the important case: they are owed whether or not the brand sells, so they belong in the forecast even when projected revenue is zero. The per-job attribution is also the honest input to per-project profitability (§ per-project P&L) — a job's fully-loaded margin should carry its own royalty, not an average.
 
 ## Monthly deep-dive — leverage, balance sheet, capacity (first scan of each month; ported from CMO Financial 5e/5f + Pipeline breakeven)
 
