@@ -16,6 +16,16 @@ The agent spec (workflow, scoring model, ethics rules, report format) lives at
 | `leads/master-lead-list.csv` | Deduplicated CRM-ready lead ledger — the single source of truth; prevents duplicate outreach |
 | `reports/` | Weekly "North Jersey Multifamily Kitchen Opportunity Report" (one per week, dated the Monday) |
 
+## Intranet surfaces
+
+- **Prospect tab** (`prospect_report`, `prospect_leads`, `prospect_watchlist`,
+  `prospect_relationships`) — the weekly report, refreshed every Monday.
+- **Prospecting tab** (`prospecting_contacts`) — persistent Essex-County
+  contact directory + tracker (agents, brokers, architects, GCs, PMs,
+  developers by city) with status / last-contact / next-touch / notes. The
+  agent appends new contacts weekly; tracker fields are human-owned and never
+  overwritten.
+
 ## Operating rules (summary)
 
 - Runs **weekly, Monday morning**. Only surfaces leads with a clear reason to
