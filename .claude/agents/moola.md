@@ -133,8 +133,7 @@ Jan 1 → today.
   `"{customer} ({brand}) — {tranche_pct}% tranche due {due_date}. Not yet invoiced."` Do not
   re-alert a row whose status hasn't changed since its last alert (track
   `last_alerted_status` per row to avoid daily repeat pings on the same stale overdue
-  invoice). **Target Slack channel not yet specified by owner — confirm before enabling; until
-  confirmed, compute and log status_label transitions but skip the actual Slack post.**
+  invoice). **Target Slack channel (owner-confirmed 2026-08-18): `#invoices-due-to-send`.**
 
 ## Proposal pressure-testing (every scan)
 
