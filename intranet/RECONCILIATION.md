@@ -1,8 +1,13 @@
 # Intranet reconciliation — repo vs live (opened 2026-08-18)
 
-> **⛔ DO NOT RUN `npm run deploy` UNTIL THIS IS RESOLVED.**
-> Deploying `ktubtuintranet.html` as it stands today would **destroy roughly six
-> weeks of live production features**. See "Why you must not deploy" below.
+> **Status 2026-08-18: base adopted — deploying is now SAFE (a no-op).**
+> `ktubtuintranet.html` is now a byte-for-byte copy of the live worker, so a
+> deploy ships live's own content back to live. The danger described below is
+> what *would* have happened before this change, and is kept as the record of
+> why the base was reset.
+>
+> **Still outstanding:** the repo-only tabs are not yet ported. They are preserved
+> in `ktubtuintranet.repo-snapshot-2026-08-18.html` — see "The plan", steps 3-6.
 
 ## What happened
 
@@ -95,11 +100,13 @@ Populated or specified, but invisible on both:
 **Base = LIVE.** It is the newer build and the one people actually use; regressing
 production is the only truly unacceptable outcome. Port the repo-only work onto it.
 
-1. **Preserve live** — done. `ktubtuintranet.live-snapshot-2026-08-18.html` is the
-   verified 410,711-byte capture. Until now, live existed *only* on Cloudflare;
-   a single bad deploy would have been unrecoverable.
-2. **Adopt live as the new base** for `ktubtuintranet.html`, in one commit that
-   changes nothing functionally, so the diff that follows is reviewable.
+1. **Preserve live** — ✅ done. Live existed *only* on Cloudflare; a single bad
+   deploy would have been unrecoverable.
+2. **Adopt live as the new base** — ✅ done. `ktubtuintranet.html` is now
+   byte-identical to the live worker (412,567 bytes; `node build.mjs` verified to
+   build from it). Deploying is a no-op, which is the safest possible resting
+   state while the port proceeds. The undeployed repo work is preserved as
+   `ktubtuintranet.repo-snapshot-2026-08-18.html`, the source to port from.
 3. **Port repo-only features onto that base**, one tab per commit — Cash Flow,
    Paid, Organic, Library, payables, commissions, appointments, call notes, job
    costing, project timeline, resources, tab permissions, sensitive toggle. Each is

@@ -1,19 +1,22 @@
 # Axyom Intranet (`ktubtuintranet` Cloudflare Worker)
 
-> ## ⛔ STOP — DO NOT DEPLOY (as of 2026-08-18)
-> The repo copy and the live worker have **diverged into two different builds**.
-> `npm run deploy` overwrites the worker wholesale, so deploying this file today
-> would delete ~6 weeks of live-only features (benchmark scorecard, PWA + web
-> push, calendar, task kanban, Goldeneye callout state).
+> ## ⚠️ Reconciliation in progress (2026-08-18)
+> `ktubtuintranet.html` has been **reset to match the live worker byte-for-byte**,
+> so **deploying is now safe — it is a no-op against production.**
 >
-> Read **[RECONCILIATION.md](RECONCILIATION.md)** first. The live build is
-> preserved here as `ktubtuintranet.live-snapshot-2026-08-18.html`.
-> Deployment is safe again only once the reconciliation described there is done.
+> A month of repo-side work is NOT yet in this file. It is preserved in
+> `ktubtuintranet.repo-snapshot-2026-08-18.html` and is being ported back in
+> tab by tab. Read **[RECONCILIATION.md](RECONCILIATION.md)** before editing.
+>
+> Until the port completes, deploying ships live's own content back to live —
+> harmless, but it does not yet restore the Cash Flow, Paid, Organic or Library
+> tabs.
 
 `ktubtuintranet.html` is the full single-file app served at **https://dash.goaxyom.com**.
-It was recovered from the live site on 2026-07-05 (the worker had no source in this
-repo) and then improved — **treat this file as the source of truth going forward**
-and deploy from here, so the live worker and the repo never drift again.
+It was recovered from live on 2026-07-05, then the two copies forked (see
+RECONCILIATION.md). As of 2026-08-18 this file is a **verbatim copy of the live
+worker** again, which makes it a truthful base to build on — **treat it as the
+source of truth and deploy only from here**, so the two never drift again.
 
 The worker is a static HTML server: no server-side routes, all data flows
 browser → Supabase (`tguwpswcneywvscxzyef`) via supabase-js with the public
