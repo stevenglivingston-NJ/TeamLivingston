@@ -165,11 +165,17 @@ a phase/target table.
     DAY", "Holiday Office closed"), PTO ("PTO- Philipe", "Mayra OOO"),
     inspections, rough-ins, service calls, and third-party scope ("Tiling by
     Others") all carry it. Before treating one as the install window: drop tasks
-    with no `job` attached (these are calendar/admin rows), drop names matching
-    office-closed / PTO / OOO / holiday / inspection / service call / rework, and
-    where several remain on one job take the **longest-duration** task overlapping
-    the install period as the install window, listing the others as related scope.
-    If none survives the filter, treat the job as having **no** project window.
+    with no `job` attached (these are calendar/admin rows), and drop names matching
+    office-closed / PTO / OOO / holiday / inspection / walkthrough / service call /
+    touch-up / rework / "by others". If none survives the filter, treat the job as
+    having **no** project window.
+  - **The install date is the `startDate` of the project window** (owner rule).
+    Where a job carries several genuine Project Window tasks — phased scope such as
+    demo, labor, plumbing, painting, tiling — the install date is the **earliest**
+    surviving `startDate`; the later ones are related scope, listed but not the
+    install date. Worked example: Bohlman #75 has `Bohlman- Labor` (06-25 → 07-03)
+    and `Bohlman- Painting` (07-06 → 07-10) — install date is **2026-06-25**, which
+    is exactly what ServiceMinder holds for that job.
   - The **primary install date** is the location custom field **"Date of Primary
     Install"** (id `22PFZmFxL7Md`). Treat a missing value as missing data, not as
     "no install" — as of 2026-08 only 24 locations org-wide have it set and 23 of
