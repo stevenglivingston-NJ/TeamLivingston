@@ -323,13 +323,11 @@ def _resolve_lsa(location: str) -> str:
     return LSA_ACCOUNT_MAP[loc]
 
 
-@mcp.tool()
-def query_lsa_account(location: str, days: int = 30) -> dict[str, Any]:
-    """LSA account snapshot: business name, average rating, review count,
-    weekly budget, total cost current period, charged leads, phone calls."""
+def _lsa_account_report(location: str) -> dict[str, Any]:
+    """Shared account-report fetch. Returns the resolved LSA id, every account
+    visible in the MCC, and this brand's matched report (None if unmatched)."""
     mcc = _mcc_id()
-    query = f"manager_customer_id:{mcc}"
-    result = _lsa_query("accountReports", query)
+    result = _lsa_query("accountReports", f"manager_customer_id:{mcc}")
     target_id = _resolve_lsa(location)
     reports = result.get("accountReports", [])
     matched = [r for r in reports if r.get("accountId") == target_id]
@@ -346,9 +344,28 @@ def query_lsa_account(location: str, days: int = 30) -> dict[str, Any]:
 
 
 @mcp.tool()
+def query_lsa_account(location: str, days: int = 30) -> dict[str, Any]:
+    """LSA account snapshot: business name, average rating, review count,
+    weekly budget, total cost current period, charged leads, phone calls."""
+    return _lsa_account_report(location)
+
+
+def _as_int(value: Any) -> int:
+    """LSA reports return counts as strings. Absent/garbage -> 0."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+@mcp.tool()
 def query_lsa_leads(location: str, days: int = 30) -> dict[str, Any]:
     """Lead-by-lead detail from LSA: type (call/message), customer name,
-    job category, dispute status, charge amount."""
+    job category, dispute status, charge amount.
+
+    Returns a `status`: "ok" when the endpoint returned lead rows, or
+    "no_data" when it returned nothing at all while the account report shows
+    leads/calls in the same window (an access gap, NOT a quiet zero)."""
     from datetime import date, timedelta
     mcc = _mcc_id()
     target_id = _resolve_lsa(location)
@@ -358,14 +375,57 @@ def query_lsa_leads(location: str, days: int = 30) -> dict[str, Any]:
     result = _lsa_query("detailedLeadReports", query, start_date=start, end_date=end)
     leads = result.get("detailedLeadReports", [])
     brand_leads = [l for l in leads if l.get("accountId") == target_id]
-    return {
+    out: dict[str, Any] = {
         "lsa_account_id": target_id,
         "brand": location.upper().strip(),
         "date_range": {"start": start.isoformat(), "end": end.isoformat()},
         "lead_count": len(brand_leads),
         "leads": brand_leads,
         "all_brand_lead_count_in_mcc": len(leads),
+        "status": "ok",
     }
+    if leads:
+        return out
+
+    # Nothing came back for ANY account in the MCC. That is not the same as
+    # "this brand had no leads" - a bare 0 here reads as a real result and has
+    # already cost a brief its LSA lead-quality section. Cross-check against the
+    # account report (same token, same MCC) before reporting the zero.
+    try:
+        report = _lsa_account_report(location).get("report") or {}
+    except Exception as exc:
+        out["status"] = "no_data"
+        out["note"] = (
+            f"detailedLeadReports returned no rows for any account in MCC {mcc}, "
+            f"and the account-report cross-check itself failed "
+            f"({type(exc).__name__}: {exc}). Treat LSA lead detail as unavailable."
+        )
+        return out
+
+    charged = _as_int(report.get("currentPeriodChargedLeads"))
+    calls = _as_int(report.get("currentPeriodPhoneCalls"))
+    out["account_report_cross_check"] = {
+        "currentPeriodChargedLeads": charged,
+        "currentPeriodPhoneCalls": calls,
+    }
+    if charged or calls:
+        out["status"] = "no_data"
+        out["note"] = (
+            f"detailedLeadReports returned no rows for any account in MCC {mcc}, "
+            f"but the account report shows {charged} charged lead(s) and {calls} "
+            f"phone call(s) for {out['brand']} in this window. Lead-level data is "
+            f"NOT reachable - do not report 0 LSA leads. Likely cause: the MCC has "
+            f"reporting access to these LSA accounts but not lead-level access. "
+            f"Fix in the Local Services console (account access), not in this server. "
+            f"Account-level totals from query_lsa_account remain trustworthy."
+        )
+    else:
+        out["note"] = (
+            "detailedLeadReports returned no rows, and the account report also shows "
+            "no charged leads or phone calls in this window - consistent with a "
+            "genuinely quiet period."
+        )
+    return out
 
 
 if __name__ == "__main__":

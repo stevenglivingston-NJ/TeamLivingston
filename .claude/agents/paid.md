@@ -64,7 +64,12 @@ fill the gaps:**
   `query_negative_keywords` (coverage), `query_geo_performance` (town-level ROI),
   `query_lsa_account` + `query_lsa_leads` (Local Services leads and lead quality —
   requires `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (MCC id) in env; if unset both calls
-  error — flag it as an environment gap, don't silently skip LSA).
+  error — flag it as an environment gap, don't silently skip LSA). `query_lsa_leads`
+  returns a `status`: `"ok"` means the lead rows are real. `"no_data"` means the
+  endpoint returned nothing while the account report still shows charged leads or
+  calls — read the `note` and `account_report_cross_check`, report LSA lead quality
+  as UNAVAILABLE, and never write "0 LSA leads" off a `no_data` result. Account-level
+  LSA totals from `query_lsa_account` stay trustworthy either way.
 - **Meta Ads MCP**: `ads_insights_performance_trend` (trend by campaign),
   `ads_insights_anomaly_signal` (spikes/drops you'd otherwise miss),
   `ads_insights_industry_benchmark` + `ads_insights_auction_ranking_benchmarks`
