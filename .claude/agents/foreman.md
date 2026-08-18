@@ -142,11 +142,14 @@ passed**, the team wants a plain-English read on how it's actually going, not ju
 a phase/target table.
 
 - **Determine `install_started` + `install_date`.** Evidence, in priority order:
-  (1) the **primary install date / install window in ServiceMinder** (the
-  scheduled install appointment or job install-window dates) and the matching
-  **JobTread install/production task dates** — these named install dates are the
-  strongest signal; use the ServiceMinder primary-install date as `install_date`
-  when set, cross-checked against JobTread's; (2) a JobTread task/milestone dated
+  (1) the **primary install date in ServiceMinder** (the scheduled install
+  appointment — service `Installation - Primary Service`, KTU id 68761 / BTU id
+  173394, plus the BTU service-type installs `Full Bathroom Remodel`,
+  `Bathtub Remodel`) cross-checked against the **JobTread Project Window task**
+  (see the reading rules below) — these named install dates are the strongest
+  signal; **ServiceMinder is source of truth: when the two disagree, SM's date is
+  `install_date` and the JobTread divergence is reported, never silently
+  averaged or preferred**; (2) a JobTread task/milestone dated
   in the past whose name indicates install/production start ("Install Start",
   "Production Start", "Demo"); (3) a ServiceMinder job/appointment marked started;
   (4) **invoice-payment progress (see below): ≥75% of the contract collected means
@@ -154,7 +157,49 @@ a phase/target table.
   photo evidence of demo/prep or later phases (§2's phase inference). Set
   `install_started = true` and `install_date` = the ServiceMinder primary-install
   date when available, else the earliest other signal with real evidence — never
-  guess a date with no evidence behind it. Jobs still in Design/Selections or
+  guess a date with no evidence behind it.
+- **How to read JobTread dates (do not get this wrong — it silently corrupts pace).**
+  - The **project window** is a task whose `taskType` is **"Project Window"**
+    (id `22PL5TbwMMtu`). It is **NOT** `job.taskSummary` — that field is a
+    roll-up spanning *every* task on the job (deliveries, inspections, service
+    calls) and its `startDate`/`endDate` are routinely wider than the real
+    install window. Never use `taskSummary` as the project window.
+  - **A job can carry several Project Window tasks, and many are not installs.**
+    The type is used loosely: office closures ("OFFICE CLOSED - NO WORK ON THIS
+    DAY", "Holiday Office closed"), PTO ("PTO- Philipe", "Mayra OOO"),
+    inspections, rough-ins, service calls, and third-party scope ("Tiling by
+    Others") all carry it. Before treating one as the install window: drop tasks
+    with no `job` attached (these are calendar/admin rows), and drop names matching
+    office-closed / PTO / OOO / holiday / inspection / walkthrough / service call /
+    touch-up / rework / "by others". If none survives the filter, treat the job as
+    having **no** project window.
+  - **The install date is the `startDate` of the project window** (owner rule).
+    Where a job carries several genuine Project Window tasks — phased scope such as
+    demo, labor, plumbing, painting, tiling — the install date is the **earliest**
+    surviving `startDate`; the later ones are related scope, listed but not the
+    install date. Worked example: Bohlman #75 has `Bohlman- Labor` (06-25 → 07-03)
+    and `Bohlman- Painting` (07-06 → 07-10) — install date is **2026-06-25**, which
+    is exactly what ServiceMinder holds for that job.
+  - The **primary install date** is the location custom field **"Date of Primary
+    Install"** (id `22PFZmFxL7Md`). Treat a missing value as missing data, not as
+    "no install" — as of 2026-08 only 24 locations org-wide have it set and 23 of
+    those are 2025, so its absence proves nothing on its own.
+
+- **Install-date sync integrity (report every scan).** Compare the reconciled SM
+  install against the JobTread window per job and raise a `foreman_briefing` row
+  for each divergence class:
+  - **(a) SM install, no JobTread window** — production scheduled but the PM board
+    is blind. JobTread needs the window and the primary-install date.
+  - **(b) JobTread window, no SM install, proposal accepted** — SM is missing the
+    install; it should be booked so the money and the calendar agree.
+  - **(c) JobTread window, no accepted SM proposal** — 🔴 **crew scheduled against
+    an unsold job.** Name the job, the window, the assignee, and the open proposal.
+    Never treat this as an install: it must not set `install_date`, must not mark
+    `install_started`, and must not reach Moola's invoice triggers. Reference case:
+    Drechsel #230-13 (window 2026-07-16 → 08-05, Rocco assigned, SM has only sales
+    appointments and three open proposals).
+  - **(d) Both present, dates differ** — show both values side by side; SM wins.
+ Jobs still in Design/Selections or
   Production Gate with <75% collected are `install_started = false`; skip the rest
   of this section for them.
 - **Invoice-payment progress — a first-class status signal (owner rule).** Compute

@@ -90,6 +90,34 @@ Set each to 'processing', then execute per `payload.sync_targets`:
 Record per-target success/failure in `result` jsonb, then set status='done' (or 'error'
 if EVERY target failed). Partial success = done, with failures noted in result.
 
+### 2b. Reconcile install dates (ServiceMinder → JobTread)
+
+ServiceMinder is **source of truth** for install dates. JobTread's `Date of Primary
+Install` (location custom field `22PFZmFxL7Md`) went unmaintained after Dec 2025, which
+silently starved Moola's T-2 invoice trigger, its install-keyed cash forecast, and the
+`commissions` start-half. Repair it every run:
+
+1. Pull ServiceMinder installs for both brands — `query_appointments`, service
+   `Installation - Primary Service` (KTU 68761 / BTU 173394) plus the BTU service-type
+   installs (`Full Bathroom Remodel`, `Bathtub Remodel`) — for the next 90 days.
+2. Match to JobTread jobs on customer + normalized address (strip unit/suite, case,
+   punctuation; require street number + name + zip). **De-duplicate first** — several
+   customers have two JobTread jobs (e.g. Minichello 137/140, Blaszak 206/217, Hayes
+   230-29/005); pick the one with the accepted proposal and skip ambiguous pairs rather
+   than guessing.
+3. **Write the SM date into JobTread** where JobTread is empty or disagrees: set the
+   location's `Date of Primary Install`, and set the Project Window task's `startDate`
+   (the install date, per Foreman's reading rules) where a genuine window exists.
+   Never edit crew assignees, vendor/delivery tasks, or day-level planning inside the
+   window — JobTread owns those.
+4. **Do not create the ServiceMinder side.** Where JobTread has a project window and SM
+   has no install, that is a report, not a write — hand it to Foreman's divergence
+   classes (b)/(c). Booking an install for a job whose proposal is not accepted would
+   put a crew on an unsold job and trip Moola's invoice trigger against a contract
+   nobody signed. Reference case: Drechsel #230-13.
+5. Log what you changed, per job, so a re-run is verifiable and idempotent — re-writing
+   the same date is a no-op, not a second write.
+
 ### 3. Answer #ask-ax
 Read messages in #ask-ax since the last run (track the last-seen timestamp in
 `intranet_records` section `ax_state`, single row `{"last_ask_ax_ts": "..."}` — write-then-
@@ -134,7 +162,10 @@ prune). For each unanswered question from a human (skip your own posts):
 - Idempotency first: always filter on status='pending' and mark rows before/after work —
   a double-run must never double-post or double-write to JobTread/SM.
 - Writes to JobTread/ServiceMinder are NOTES and STATUS only — never create/delete jobs,
-  invoices, payments, or contacts on your own.
+  invoices, payments, or contacts on your own. **One narrow exception:** step 2b may set
+  JobTread's `Date of Primary Install` and a Project Window `startDate` from the
+  ServiceMinder install date. That exception is JobTread-only and date-only — it does not
+  extend to creating ServiceMinder appointments, which stays a human decision.
 - Batch Slack posts (one message per run per channel where possible) — no notification storms.
 - If Supabase is unreachable, SKIP the queue steps (they'll catch up next sweep) but ALWAYS
   still run the #ask-ax Q&A step — it needs no database: use the channel history itself as
