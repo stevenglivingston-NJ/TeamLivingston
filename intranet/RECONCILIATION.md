@@ -1,6 +1,15 @@
 # Intranet reconciliation — repo vs live (opened 2026-08-18)
 
-> **Status 2026-08-18: base adopted — deploying is now SAFE (a no-op).**
+> **Status 2026-08-18: port complete — one source of truth, ready to deploy.**
+> `ktubtuintranet.html` is now **live + every repo-only feature merged in**:
+> 267 functions (all 220 from live, plus 47 ported), 35 sections rendered, no
+> dangling references, scripts parse, `build.mjs` builds. `tools/verify.mjs`
+> asserts that no baseline function was lost; `tools/drift-check.mjs` reports
+> **nothing that exists only on live**, which is the proof nothing was destroyed.
+> Deploying now *adds* the missing tabs without removing anything.
+>
+> _(Earlier status, kept for the record:)_
+> **base adopted — deploying is SAFE (a no-op).**
 > `ktubtuintranet.html` is now a byte-for-byte copy of the live worker, so a
 > deploy ships live's own content back to live. The danger described below is
 > what *would* have happened before this change, and is kept as the record of
@@ -107,22 +116,64 @@ production is the only truly unacceptable outcome. Port the repo-only work onto 
    build from it). Deploying is a no-op, which is the safest possible resting
    state while the port proceeds. The undeployed repo work is preserved as
    `ktubtuintranet.repo-snapshot-2026-08-18.html`, the source to port from.
-3. **Port repo-only features onto that base**, one tab per commit — Cash Flow,
-   Paid, Organic, Library, payables, commissions, appointments, call notes, job
-   costing, project timeline, resources, tab permissions, sensitive toggle. Each is
-   largely self-contained (a `render*` function plus a `*_root` mount plus a tab
-   entry), which is what makes a staged port feasible.
-4. **Add renderers for the three unrendered sections** above.
-5. **Verify before deploying**: no duplicate function definitions, every `*_root`
-   mount has a renderer, every renderer's mount exists, every `fetchRecords('x')`
-   names a real section, and the file parses as JS.
-6. **Deploy once, then re-fetch live and diff to zero.**
+3. **Port repo-only features onto that base** — ✅ done. 47 functions, 7 panels
+   (Cash Flow, Library, Commissions, Resources, Paid & Organic, Appointments,
+   Project Timeline) plus the cash-flow-by-vendor card, each with its nav entry,
+   `TAB_TITLES` entry and `go()` dispatch.
+   These sections render again, having been written-but-invisible on live:
+   `moola_runway`, `moola_balances`, `moola_ar`, `moola_ap`, `moola_cashledger`,
+   `moola_cashflow`, `paid_brief`, `organic_report`, `library_docs`, `job_costs`.
+4. **Add renderers for `moola_royalty`, `moola_royalty_jobs`, `moola_pl_recon`** —
+   ⏳ outstanding. These are new UI, not a port; nothing to copy from either build.
+5. **Verify before deploying** — ✅ automated as `tools/verify.mjs`, run after every
+   port step. It fails the build if any of the 220 baseline functions disappears,
+   on duplicate definitions, on a dangling reference to snapshot-only code, or on a
+   parse error. It caught two real breakages during this port: `switchPO`,
+   `apptSetBucket`, `apptClearSlicer` and `addResource` reachable only from markup
+   `onclick=` handlers, and `refreshCostDetail`/`openCostDetail` likewise — every
+   one of which would have thrown at runtime while looking fine statically.
+6. **Deploy once, then re-fetch live and diff to zero** — ⏳ the remaining step.
+   `node tools/drift-check.mjs` currently lists the 47 ported functions as
+   "only in repo" (correct — not deployed yet) and **nothing as "only on live"**,
+   which is the evidence the port removed nothing. After deploying it should print
+   `✅ in sync`.
 
-## Preventing a repeat
+### Known gaps, deliberately not forced
+
+- **`system_health` is still not rendered.** Live's `renderDash` (586 bytes) and the
+  snapshot's (5,249 bytes) are genuinely different functions; only the snapshot's
+  reads `system_health`, and it targets Home markup live may not have. Swapping it
+  would risk the most-visited page for one status row, so it needs a hand-merge with
+  visual checking rather than a mechanical port.
+- **The Finance company selector (`finCompany`) was not ported** — it lives in the
+  snapshot's Finance panel, which live has its own version of. `finCompany()` is
+  null-safe (`return e ? e.value : ''`), so with no selector the finance cards simply
+  show every brand unfiltered. Correct behaviour, one lost convenience.
+- **Project Timeline has no nav entry** by design (it never had one — it opens from
+  a project). `openProjectTimeline()` is ported, but live's `renderProjects` does not
+  link to it yet, so the panel is currently unreachable from the UI.
+
+## Preventing a repeat — `tools/drift-check.mjs`
 
 The root cause is that the Cloudflare dashboard editor can change production
-without touching the repo. Either stop editing live directly (deploy only via
-`npm run deploy`), or add a scheduled drift check that curls `dash.goaxyom.com`,
-diffs it against `ktubtuintranet.html`, and raises a `system_health` row when they
-differ. The second is more robust, because it does not depend on everyone
-remembering the rule.
+without touching the repo, and DEPLOY.md's "diff against live first" rule relied
+on someone remembering it. That is now mechanical:
+
+```bash
+node tools/drift-check.mjs             # report only; exit 1 on drift
+node tools/drift-check.mjs --publish   # also write a system_health row
+```
+
+It separates the two failure directions, because they need opposite responses:
+**only on live** means someone edited production and it will be *destroyed* by the
+next deploy — commit it first; **only in repo** means work is written but not
+shipped. Run it from Tekki's daily sweep so drift surfaces within a day instead of
+six weeks.
+
+## Tooling added
+
+| File | Purpose |
+|---|---|
+| `tools/verify.mjs` | Structural safety gate — run after every edit, before every deploy |
+| `tools/drift-check.mjs` | Repo ↔ live comparison, with `--publish` to `system_health` |
+| `.baseline-live.html` | The 2026-08-18 live baseline `verify.mjs` checks against |
