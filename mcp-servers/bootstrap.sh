@@ -97,13 +97,26 @@ else skipped+=("amazon-sp (AMAZON_SP_* x3)"); fi
 # full value including the "pit-" prefix). Verified 2026-07-03: KTU PIT returns
 # Kitchen Tune-Up, BTU PIT returns Bath Tune-Up.
 
-if require GHL_PIT_KTU; then
-  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
-else skipped+=("ghl-ktu (GHL_PIT_KTU)"); fi
+# AGENCY TOKEN: `GHL_PIT_AGENCY` (agency/company KhkzcV7jCB3zEgueksFN) stands in
+# for either per-location PIT, so one secret can serve both brands. A specific
+# per-location PIT still WINS when set, so this is backwards-compatible — nothing
+# changes for an environment that already has GHL_PIT_KTU / GHL_PIT_BTU wired.
+#
+# Note this consolidates the CREDENTIAL, not the servers: the hosted MCP takes
+# `locationId` as a CONNECTION HEADER, not a per-call parameter, so each location
+# still needs its own registration even on an agency token. Don't collapse these
+# into one `ghl` server expecting to pass locationId per call — it isn't in the
+# tool schemas.
+GHL_TOKEN_KTU="${GHL_PIT_KTU:-${GHL_PIT_AGENCY:-}}"
+GHL_TOKEN_BTU="${GHL_PIT_BTU:-${GHL_PIT_AGENCY:-}}"
 
-if require GHL_PIT_BTU; then
-  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $GHL_PIT_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
-else skipped+=("ghl-btu (GHL_PIT_BTU)"); fi
+if [ -n "$GHL_TOKEN_KTU" ]; then
+  reg ghl-ktu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $GHL_TOKEN_KTU\",\"locationId\":\"nHLCxHPidnhV1NFzRtZZ\"}}"
+else skipped+=("ghl-ktu (GHL_PIT_KTU or GHL_PIT_AGENCY)"); fi
+
+if [ -n "$GHL_TOKEN_BTU" ]; then
+  reg ghl-btu "{\"type\":\"http\",\"url\":\"https://services.leadconnectorhq.com/mcp/\",\"headers\":{\"Authorization\":\"Bearer $GHL_TOKEN_BTU\",\"locationId\":\"0uWA8M5BzHrrcJftuaDe\"}}"
+else skipped+=("ghl-btu (GHL_PIT_BTU or GHL_PIT_AGENCY)"); fi
 
 # ---- 4. Shared ------------------------------------------------------------
 

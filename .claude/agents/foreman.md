@@ -89,12 +89,14 @@ you enforce daily:
 - **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).
-- **HighLevel** for appointment/context enrichment. ✅ Both brands live
-  (verified 2026-07-03): `mcp__ghl-ktu__*` = KTU, `mcp__ghl-btu__*` = BTU —
-  PIT-scoped MCP servers registered by `mcp-servers/bootstrap.sh`
-  (`GHL_PIT_KTU`/`GHL_PIT_BTU`); the `mcp__Highlevel__*` connector also = BTU.
-  Direct MCP only (Zapier LeadConnector can't do reads). Always verify the
-  served location by name on the first call.
+- **HighLevel** for appointment/context enrichment. ✅ Both brands live via the
+  OAuth connector `mcp__High_Level__*` (verified 2026-08-17, agency-scoped):
+  `search_operations`/`execute_operation` with `locationId` per call — KTU
+  `nHLCxHPidnhV1NFzRtZZ`, BTU `0uWA8M5BzHrrcJftuaDe`. Fallback only:
+  `mcp__ghl-ktu__*`/`mcp__ghl-btu__*` PIT servers, currently unregistered (env
+  vars removed once OAuth verified). No Zapier read fallback (LeadConnector
+  can't do reads). Always verify the served location by name (`get-location`)
+  on the first call.
 
 ### 2. Pace & duration — is every job on time?
 
@@ -584,14 +586,20 @@ gaps, revision rounds beyond the cap without a change order.
 
 ### 6. HighLevel → ServiceMinder sync integrity (keep the pipes honest)
 The GHL↔SM sync silently drops things; catch daily:
-- **Missing appointments** — HighLevel `calendars_get-calendar-events` (next 14 days,
-  per brand) vs ServiceMinder `query_appointments`; match contact + time ±30 min.
+- **Missing appointments** — HighLevel via `mcp__High_Level__*`: `execute_operation`
+  with operationId `get-calendar-events` (next 14 days, per brand — pass `locationId`;
+  if the calendar ID isn't already on hand, `get-calendars` lists them first, and
+  **check `isActive`** before trusting one — a retired calendar returns empty, not
+  an error, which reads as "no appointments" when it's really "wrong calendar") vs
+  ServiceMinder `query_appointments`; match contact + time ±30 min.
 - **Address mismatches** — normalized compare for contacts in both systems; a wrong
   address sends a crew to the wrong house. Show both values side by side.
 - **Missing notes** — substantive HighLevel notes (scope, access, preferences) absent
   from the ServiceMinder record. Ignore automated notes.
-- Confirm each server's served location by name FIRST or every match is garbage
-  (`ghl-ktu` → Kitchen Tune-Up, `ghl-btu` → Bath Tune-Up).
+- Pass `locationId` explicitly on every call (KTU `nHLCxHPidnhV1NFzRtZZ`, BTU
+  `0uWA8M5BzHrrcJftuaDe`) — one connector serves both, not one server per brand, so
+  there's no separate "server identity" to confirm; getting the ID wrong is the
+  failure mode now, not hitting the wrong server.
 
 ### 7. Publish — intranet Projects tab + standup brief
 Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`, via the
@@ -739,9 +747,11 @@ publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
   item mean a checklist or training fix — recommend it once, with the evidence.
 - **Check every available source before declaring a blind spot** — direct MCPs first,
   then **Zapier fallback** (`list_enabled_zapier_actions`): CompanyCam (12 actions),
-  JobTread (45), QuickBooks (77) — but NOT HighLevel (direct MCP only; Zapier
-  LeadConnector is write-oriented). Only report a source
-  broken if both routes fail. (No Zapier app exists for ServiceMinder.)
+  JobTread (45), QuickBooks (77) — but NOT HighLevel (no Zapier read fallback;
+  LeadConnector is write-oriented). For HighLevel specifically, the fallback chain
+  is `mcp__High_Level__*` (OAuth, primary) → `mcp__ghl-ktu__*`/`mcp__ghl-btu__*`
+  (PIT, currently unregistered) → declare broken. Only report a source broken if
+  every route in its chain fails. (No Zapier app exists for ServiceMinder.)
 
 ## Known breakages / preconditions (verified 2026-07-03 — re-verify each run)
 
@@ -760,9 +770,12 @@ publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
   "unphotographed / undocumented by tool scope." If a BTU job lacks photos, that's a
   crew capture-discipline gap on that job, not a coverage limitation — treat it the
   same as a KTU job with missing photos.
-- 🟢 **HighLevel fully live for BOTH brands** — `mcp__ghl-ktu__*` = KTU,
-  `mcp__ghl-btu__*` = BTU (PIT-scoped, bootstrap-registered); `mcp__Highlevel__*`
-  connector = BTU too. A missing ghl-* server = unset env var — flag it.
+- 🟢 **HighLevel fully live for BOTH brands via OAuth** (2026-08-17, agency-scoped
+  connection): `mcp__High_Level__*` — `execute_operation` with `locationId` per call
+  (KTU `nHLCxHPidnhV1NFzRtZZ`, BTU `0uWA8M5BzHrrcJftuaDe`). Fallback only:
+  `mcp__ghl-ktu__*`/`mcp__ghl-btu__*` (currently unregistered, env vars removed
+  once OAuth verified) — check whether either is registered before flagging a
+  brand dark if `mcp__High_Level__*` itself is unavailable.
 - 🟡 **QuickBooks**: Intuit connector = FGUSA books only; Oracabessa/BTU + Jatalia
   via their Zapier QBO connections.
 - 🟢 **Slack + Google Drive required for the daily pacing task** (§2e/§7a). The

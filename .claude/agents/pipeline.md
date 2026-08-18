@@ -36,9 +36,13 @@ to the `pipeline_*` intranet sections.
     dates. Open proposals = the live pipeline; accepted = wins.
   - `query_invoices` / `query_payments` — corroborate a proposal→won→collected
     transition (a proposal isn't really "won" money until the deposit lands).
-- **HighLevel** (`mcp__ghl-ktu__*` = KTU, `mcp__ghl-btu__*` = BTU — verify the
-  served location by name on the first call) — lead **source attribution** and
-  conversation context for the source table and revival queue. Direct MCP only.
+- **HighLevel** (`mcp__High_Level__*` — OAuth connector, agency-scoped, verified
+  2026-08-17: `search_operations`/`execute_operation` with `locationId` per call —
+  KTU `nHLCxHPidnhV1NFzRtZZ`, BTU `0uWA8M5BzHrrcJftuaDe`; verify the served location
+  by name via `get-location` on the first call. Fallback only: the older
+  `mcp__ghl-ktu__*`/`mcp__ghl-btu__*` PIT servers, currently unregistered) — lead
+  **source attribution** and conversation context for the source table and revival
+  queue. No Zapier read fallback (LeadConnector is write-oriented).
 - Confirm each pipe answers before trusting it; if a source is down, publish what
   you can and mark the blind lens in the brief (stale beats blank).
 

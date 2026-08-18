@@ -96,26 +96,31 @@ fill the gaps:**
 Attribution chain, in order of truth:
 1. **AnyTrack** — server-side conversion source of truth.
 2. **HighLevel** (CRM) — leads → opportunities → won deals. ✅ **Both brands live**
-   (verified 2026-07-03): `mcp__ghl-ktu__*` = Kitchen Tune-Up, `mcp__ghl-btu__*` =
-   Bath Tune-Up — PIT-scoped MCP servers registered by `mcp-servers/bootstrap.sh`
-   (`GHL_PIT_KTU`/`GHL_PIT_BTU`); the `mcp__Highlevel__*` connector also serves BTU.
-   Direct MCP only (Zapier LeadConnector is write-oriented, useless for reads).
-   Always verify the served location by name on the first call of a run; a missing
-   ghl-* server means the env var is unset — say so, don't silently skip the brand.
+   via the OAuth connector `mcp__High_Level__*` (verified 2026-08-17, agency-scoped):
+   `search_operations` → operationId → `execute_operation` with
+   `locationId: "nHLCxHPidnhV1NFzRtZZ"` (KTU) or `"0uWA8M5BzHrrcJftuaDe"` (BTU) — one
+   connector, pass the location per call. Fallback only: the older per-location
+   `mcp__ghl-ktu__*`/`mcp__ghl-btu__*` PIT servers (currently unregistered, env vars
+   removed once OAuth verified). No Zapier read fallback either way — LeadConnector's
+   Zapier actions are write-oriented. Always verify the served location by name
+   (`get-location`) on the first call of a run; if `mcp__High_Level__*` is missing
+   from the session, say so — don't silently skip the brand.
 3. **ServiceMinder** — invoices/payments = actual revenue per customer. Join leads
    to revenue by contact. This is where CAC→LTV becomes real.
 
 **Mine HighLevel's own attribution — never stop at the platform's claimed conversions:**
-- **Contact-level attribution**: `contacts_get-contact` returns first/last attribution
-  (source, medium, UTM campaign/content/keyword, session source, referrer, gclid/fbclid).
-  Pull it for every new lead and every won deal — this is the true-source record that
-  settles disputes between what Google, Meta, and GA4 each claim credit for. Reconcile
-  the three views daily and report the discrepancy, not just one platform's number.
-- **Phone-call triage**: calls are leads too. Use `conversations_search-conversation`
-  (call type) + `conversations_get-messages` to count inbound calls per tracking number
-  and map each HighLevel number pool / tracking number back to the channel it's assigned
-  to (LSA, GMB, site header, print, wraps). A channel judged only on form fills is
-  undercounted — always add its call volume before a spend verdict.
+- **Contact-level attribution**: `execute_operation({operationId: "get-contact", ...})`
+  returns first/last attribution (source, medium, UTM campaign/content/keyword, session
+  source, referrer, gclid/fbclid). Pull it for every new lead and every won deal — this
+  is the true-source record that settles disputes between what Google, Meta, and GA4
+  each claim credit for. Reconcile the three views daily and report the discrepancy,
+  not just one platform's number.
+- **Phone-call triage**: calls are leads too. Use `execute_operation` with
+  operationId `search-conversation` (call type) + `get-messages` to count inbound
+  calls per tracking number and map each HighLevel number pool / tracking number
+  back to the channel it's assigned to (LSA, GMB, site header, print, wraps). A
+  channel judged only on form fills is undercounted — always add its call volume
+  before a spend verdict.
 - **QR codes / trigger links**: scans arrive as trigger-link clicks or tagged contacts.
   The connector doesn't expose trigger-link stats directly — read them off the
   contact's tags/attribution fields via the direct connector. Report QR-driven
@@ -303,9 +308,13 @@ and so **Moola can pressure-test your reallocations** (Moola reads section
   Moola/Harvest territory, not yours.)
 - 🔴 **Windsor.ai RETIRED** — never cite it as a source; its channels (GA4, GMB,
   Bing, Facebook organic/leads, QuickBooks rollup) moved to Zapier.
-- 🟢 **HighLevel fully live for BOTH brands** (2026-07-03) — `mcp__ghl-ktu__*` =
-  KTU, `mcp__ghl-btu__*` = BTU (PIT-scoped, bootstrap-registered); `mcp__Highlevel__*`
-  connector = BTU too. If a ghl-* server is absent, the env var is unset — flag it.
+- 🟢 **HighLevel fully live for BOTH brands via OAuth** (2026-08-17, agency-scoped
+  connection): `mcp__High_Level__*` — `search_operations`/`execute_operation` with
+  `locationId` per call (KTU `nHLCxHPidnhV1NFzRtZZ`, BTU `0uWA8M5BzHrrcJftuaDe`).
+  Cross-checked against contact totals from the old PIT servers, exact match both
+  brands. Fallback only: `mcp__ghl-ktu__*`/`mcp__ghl-btu__*` (currently unregistered —
+  env vars removed once OAuth verified). If `mcp__High_Level__*` is absent, check
+  whether the fallback PIT servers are registered before flagging the brand dark.
 - 🟡 **HighLevel trigger-link / QR-scan stats** not exposed directly — read contact
   tags/attribution fields; if that yields no scan data, report QR as a tracking gap,
   not zero leads.
