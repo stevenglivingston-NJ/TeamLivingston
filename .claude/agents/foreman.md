@@ -626,11 +626,28 @@ section — stale beats blank):
   labor_rate, estimated_cost_coverage_pct,
   actual_cost_coverage_pct, estimated_gp_pct, actual_gp_pct, price_grade
   (over_market|at_market|under_market|no_catalog — BTU only, per §3), status
-  (🟢/🟡/🔴), action, install_started, install_date, pay_pct, payment_status
+  (🟢/🟡/🔴), action, install_started, install_date,
+  contract_signed (the ServiceMinder accepted-proposal date — this is the same
+  contract-signature date already used internally in §2/§2c as the timeline
+  anchor; write it out explicitly here too. The intranet's project detail modal
+  has rendered this key since it shipped and has always shown "not yet
+  published" because this field was never actually written — fix that gap),
+  pay_pct, payment_status
   (pre_production|started|complete, §2b owner rule), est_timeline (§2c week range
   from scope), est_completion (§2c, when install_date known), project_steps (§2c
   ordered step breakout with current position — shown in the Projects notes),
-  pm_comment, timeline_status
+  pm_comment,
+  company_cam_status (a 1-2 sentence plain-English narrative of what the LATEST
+  CompanyCam photos actually show for this job — e.g. "Demo complete, tile
+  in progress as of 8/17 photos" or "No new photos since 8/10 — flag if install
+  is active". Derive this from the same `list_recent_photos` pull and phase
+  inference already used for `stage`/§2's phase inference — this is that same
+  read, written out as its own short narrative field rather than folded silently
+  into `stage`, so the intranet can show it as a dedicated column. Include the
+  date of the photos it's based on. If a job has install_started=true but no
+  CompanyCam photos in the last 5 days, say so plainly here — that's itself the
+  status ("No coverage in 5 days — confirm crew is on site")),
+  timeline_status
   (within_timeline|at_risk|overrun, §2b — only for install_started jobs),
   timeline_goal (human-entered, CARRY FORWARD — see below), goal_assessment
   (on_track_for_goal|tight_but_possible|not_doable, only when timeline_goal is
