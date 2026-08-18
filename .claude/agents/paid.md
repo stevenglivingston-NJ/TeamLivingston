@@ -64,7 +64,12 @@ fill the gaps:**
   `query_negative_keywords` (coverage), `query_geo_performance` (town-level ROI),
   `query_lsa_account` + `query_lsa_leads` (Local Services leads and lead quality —
   requires `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (MCC id) in env; if unset both calls
-  error — flag it as an environment gap, don't silently skip LSA).
+  error — flag it as an environment gap, don't silently skip LSA). `query_lsa_leads`
+  returns a `status`: `"ok"` means the lead rows are real. `"no_data"` means the
+  endpoint returned nothing while the account report still shows charged leads or
+  calls — read the `note` and `account_report_cross_check`, report LSA lead quality
+  as UNAVAILABLE, and never write "0 LSA leads" off a `no_data` result. Account-level
+  LSA totals from `query_lsa_account` stay trustworthy either way.
 - **Meta Ads MCP**: `ads_insights_performance_trend` (trend by campaign),
   `ads_insights_anomaly_signal` (spikes/drops you'd otherwise miss),
   `ads_insights_industry_benchmark` + `ads_insights_auction_ranking_benchmarks`
@@ -191,6 +196,31 @@ curve vs our spend pacing, and the keyword landscape tables (volume/difficulty/C
 for both brands. Three verdicts max — where to expand, where we're over-indexed,
 what the next quarter's pacing should anticipate.
 
+### 7d. High-touch targeting research (each run; section `mkt_high_touch`)
+Service the intranet's High-Touch Targeting list — micro-target areas the team is
+considering for postcards / door drops / neighbor letters (e.g. "Fells Road, Essex
+Fells"). Read ALL rows in section `mkt_high_touch`. For every row where
+`demographics` OR `resources` is blank, or `status` is not "Researched" within the
+last 14 days, research that area (area + town + ZIP; WebSearch plus any demographic
+source available) and UPDATE the row in place. Preserve the team-entered
+area/town/brand/why/priority — only fill `demographics`, `resources`, `status`:
+- `demographics` — concise comma-separated snapshot for that street/neighborhood/ZIP:
+  median household income, homeownership %, median home value, % age 65+, household
+  count, typical home age/era. State the ZIP you used.
+- `resources` — 3–6 CONCRETE, NAMED local channels that fit this specific area, short
+  enough to read as a table cell: **print/magazines** (town or regional lifestyle
+  titles, HOA/community newsletters — with why they fit), **partners/sponsorships**
+  (local associations, community events, realtor/designer partners, country clubs or
+  HOAs in that area), **direct mail** (postcard/EDDM vendors plus the specific USPS
+  EDDM carrier routes / ZIP covering the area, and an est. household count per drop).
+- `status` — set to `Researched YYYY-MM-DD`. This section carries **no `scan_date`**,
+  so `status` is the only freshness signal the team and the watchdog can see. Always
+  set it, even on a run where you researched nothing new.
+Do not overwrite rows the team is still editing — fill blank or stale research fields
+only. Add a short 🎯 High-touch line to the brief: which areas you researched and the
+single best-fit resource for each. If WebSearch or the demographic sources are
+unavailable this run, say so and leave the fields blank rather than guessing.
+
 ### 8. Budget allocation verdicts
 Every daily brief ends with explicit calls, each with the dollar impact and the
 evidence:
@@ -245,6 +275,10 @@ and so **Moola can pressure-test your reallocations** (Moola reads section
 2. INSERT today's rows, and only after success prune older `scan_date` rows from
    section `paid_brief`. Never delete first; if the insert fails, yesterday's rows
    stay (stale beats blank). Always ≥1 row.
+3. Separately, write back any `mkt_high_touch` rows you researched in step 7d —
+   UPDATE in place, never delete-and-reinsert; those rows carry team-entered columns
+   you must not lose. This section has no other writer, so if you skip it nothing
+   else will fill it.
 
 ## Operating rules
 
