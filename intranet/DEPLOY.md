@@ -1,9 +1,22 @@
 # Axyom Intranet (`ktubtuintranet` Cloudflare Worker)
 
+> ## ⚠️ Reconciliation in progress (2026-08-18)
+> `ktubtuintranet.html` has been **reset to match the live worker byte-for-byte**,
+> so **deploying is now safe — it is a no-op against production.**
+>
+> A month of repo-side work is NOT yet in this file. It is preserved in
+> `ktubtuintranet.repo-snapshot-2026-08-18.html` and is being ported back in
+> tab by tab. Read **[RECONCILIATION.md](RECONCILIATION.md)** before editing.
+>
+> Until the port completes, deploying ships live's own content back to live —
+> harmless, but it does not yet restore the Cash Flow, Paid, Organic or Library
+> tabs.
+
 `ktubtuintranet.html` is the full single-file app served at **https://dash.goaxyom.com**.
-It was recovered from the live site on 2026-07-05 (the worker had no source in this
-repo) and then improved — **treat this file as the source of truth going forward**
-and deploy from here, so the live worker and the repo never drift again.
+It was recovered from live on 2026-07-05, then the two copies forked (see
+RECONCILIATION.md). As of 2026-08-18 this file is a **verbatim copy of the live
+worker** again, which makes it a truthful base to build on — **treat it as the
+source of truth and deploy only from here**, so the two never drift again.
 
 The worker is a static HTML server: no server-side routes, all data flows
 browser → Supabase (`tguwpswcneywvscxzyef`) via supabase-js with the public
@@ -59,3 +72,9 @@ After deploying, hard-refresh https://dash.goaxyom.com and confirm it renders
 
 **Before deploying, diff against live first** (`curl -s https://dash.goaxyom.com`)
 in case someone shipped a change that isn't in the repo yet — merge, don't clobber.
+
+This instruction was not followed between 2026-07-05 and 2026-08-18, and the two
+copies forked; see RECONCILIATION.md. Treat the diff-against-live step as
+mandatory, not advisory — and prefer automating it (a scheduled curl + diff that
+writes a `system_health` row on mismatch) over relying on memory, since the
+Cloudflare dashboard editor can change production without touching this repo.
