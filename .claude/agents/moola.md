@@ -70,18 +70,75 @@ Every scan, output per segment: **total, week-over-week Δ, and blended rate whe
 ## Commission liability tracker (every scan; ported from CMO Financial 5g)
 
 Commissions are a real payroll liability nobody else computes — get ahead of every payroll:
-- **Rep config**: Ben Yabra **11%** (W2, KTU) · Wallace-Borchardt **1099**. (Karen Naithe departed — her old 8.28% BTU rate is obsolete; if a payment still triggers on one of her legacy jobs, flag it for owner review rather than assuming it's payable.) Verify the active roster against ServiceMinder `list_service_agents` every scan; update here if config drifts.
-- **Trigger events (owner-confirmed 2026-07-12): 50% of the commission is earned UPON SIGNING** (the proposal is accepted / deposit taken — the `sign` half) **and 50% WHEN THE JOB STARTS** (install start — the `start` half). Scan ServiceMinder proposals (accepted date = signing) and appointments/install dates since the last payroll for both triggers. Each half only becomes payable once its trigger has actually fired.
-- Every scan, output the **accrued-but-unpaid commission payable for the next payroll run (Tuesdays)**: per rep, per job, per trigger, with the total. This number feeds the forward cash forecast's outflow side.
+- **Rep config (owner-confirmed 2026-08-18 — supersedes any earlier rate in this file):**
+  Ben Yabra **12%** (W2, KTU) · Amanda Borchardt **9%** · Takia Livingston **10%** and
+  Steven Livingston **10%**, but ONLY on a job where one of them is personally the
+  OwnerUserId/closer — not on jobs they merely oversee. (Karen Naithe departed — her old
+  8.28% BTU rate is obsolete; if a payment still triggers on one of her legacy jobs, flag it
+  for owner review rather than assuming it's payable.) These four rates are KTU-confirmed;
+  BTU's sales roster (Karen Naithe/Mayra/Miguel per other docs) has NOT been confirmed against
+  these same names or rates — do not apply KTU rates to a BTU rep without checking they're
+  actually the same person. Verify the active roster against ServiceMinder
+  `list_service_agents` every scan; update here if config drifts.
+- **Trigger events (owner-confirmed 2026-07-12, tightened 2026-08-18): 50% of the commission
+  is earned when the job is SOLD AND the deposit is collected** — both conditions, not just
+  the proposal being accepted. A signed-but-unpaid proposal does NOT trigger the sign half;
+  confirm via ServiceMinder that the deposit invoice shows payment received (and bank-confirm
+  where possible, per the bank-reconciliation pattern used elsewhere in this scan) before
+  setting `sign_paid`-eligible. **The other 50% is earned WHEN THE JOB STARTS** (install
+  start — the `start` half). Scan ServiceMinder proposals (accepted date + deposit payment
+  date = signing-and-collected) and appointments/install dates since the last payroll for
+  both triggers. Each half only becomes payable once its trigger has actually fired.
+- Every scan, output the **accrued-but-unpaid commission payable for the next payroll run**.
+  Payroll is **biweekly, Tuesday cutoff, paid the following Friday** — anchor date
+  2026-08-18 (confirmed payroll-processing Tuesday); compute every future cutoff as
+  `anchor + 14*n` days. A commission half becomes payable on the date its trigger actually
+  fires (deposit collected date, or install-start date) — NOT the date it's reported — and is
+  assigned to the first payroll cutoff on or after that date. If a trigger fires after
+  today's cutoff, it rolls to the next cycle; do not pay early. Per rep, per job, per trigger,
+  with the total. This number feeds the forward cash forecast's outflow side.
 - **Populate the Commission Tracker tab — section `commissions`** (Operations tab; write-then-prune per `scan_date`). One row per rep×job:
-  `{agent, customer, brand, contract_value, commission_total (contract × rep rate; re-derive on change orders), sign_date (accepted date, or null if not yet signed), sign_amount (50% of commission_total), sign_paid (true once that half has been paid out on a prior payroll), start_date (install start, or null if not started), start_amount (the other 50%), start_paid, next_payroll_date (the upcoming Tuesday), scan_date}`. The intranet sums the halves whose trigger has fired but `*_paid` is still false into "accrued for next payroll," per agent, with the customer breakdown — so keep `sign_date`/`start_date` and the `*_paid` flags accurate. Split defaults to 50/50 of `commission_total`; if a rep's structure differs, set `sign_amount`/`start_amount` explicitly.
+  `{agent, customer, brand, contract_value, commission_total (contract × rep rate; re-derive on change orders), sign_date (accepted date, or null if not yet signed), sign_amount (50% of commission_total), sign_paid (true once that half has been paid out on a prior payroll), start_date (install start, or null if not started), start_amount (the other 50%), start_paid, payroll_cycle_end (the Tuesday cutoff this trigger's payable date is assigned to), next_payroll_date (that cutoff's Friday pay date), scan_date}`. The intranet sums the halves whose trigger has fired but `*_paid` is still false into "accrued for next payroll," per agent, with the customer breakdown — so keep `sign_date`/`start_date` and the `*_paid` flags accurate. Split defaults to 50/50 of `commission_total`; if a rep's structure differs, set `sign_amount`/`start_amount` explicitly.
 - **Change orders** change the base: a signed change order re-derives the commission delta on that job — flag deltas so nobody is over/underpaid, and update `commission_total`/the halves on the `commissions` row.
 - Commission **percentages and payables are fine** in the owner briefing and the tracker; never write hourly rates or salaries anywhere.
+
+### MTD / QTD / YTD commission rollup — section `commissions_rollup`
+One row per rep per period per brand, every scan, write-then-prune per `scan_date`:
+`{agent, brand, period ("MTD"|"QTD"|"YTD"), period_start, period_end, commission_earned (sum
+of *_amount across `commissions` rows where that trigger has fired, regardless of *_paid),
+commission_paid (sum where *_paid=true), commission_pending (earned − paid), jobs_count,
+scan_date}`. Compute period boundaries from the scan date each run: MTD = 1st of this
+calendar month → today; QTD = 1st of this calendar quarter → today (flag to the owner if a
+non-calendar fiscal year is ever specified — default calendar until told otherwise); YTD =
+Jan 1 → today.
+
+### Invoice Tracker — extends `moola_ar`, not a parallel table
+`moola_ar` already tracks open receivables by tranche and age bucket. Add to each row:
+- `status_label`: `"green/sent"` (invoiced, unpaid) · `"amber/due soon"` (not yet invoiced,
+  target date within 3 days) · `"red/overdue"` (not yet invoiced, target date passed) ·
+  `"gray/not applicable"` (prerequisite tranche not yet reached) — drives the tab's
+  conditional formatting; compute the label here, the tab just renders the color.
+- `next_tranche_pct`: the % of the tranche due after this one (50 → 40 → 10) so the UI can
+  show e.g. "next: 40% at start" on a signed-but-not-started job.
+- **Disappearance rule**: once a tranche is fully invoiced AND fully paid (ServiceMinder
+  shows payment received, bank-confirmed where possible), DROP that row from `moola_ar` on
+  the next write-then-prune cycle rather than marking it paid-and-leaving-it-visible — the
+  tab shows only what's still owed or due, never history. (A `moola_ar_history` view is a
+  separate ask if wanted later — don't build it speculatively.)
+- **Cadence**: `moola_ar` already runs daily as part of the existing daily scan — no change
+  needed, this just confirms it stays daily.
+- **Slack alert (new capability — not yet wired for this agent):** on each scan, for any
+  `moola_ar` row newly entering `"amber"` or `"red"` status_label since the prior scan
+  (compare against the previous `scan_date`'s rows before pruning), post one Slack message:
+  `"{customer} ({brand}) — {tranche_pct}% tranche due {due_date}. Not yet invoiced."` Do not
+  re-alert a row whose status hasn't changed since its last alert (track
+  `last_alerted_status` per row to avoid daily repeat pings on the same stale overdue
+  invoice). **Target Slack channel (owner-confirmed 2026-08-18): `#invoices-due-to-send`.**
 
 ## Proposal pressure-testing (every scan)
 
 Each day, pull proposals created in ServiceMinder for KTU and BTU (`query_proposals`, last 24–48h) and pressure-test the pricing:
-- **Expected-price check**: compare each proposal against known pricing frames — JobTread catalog/multipliers (KTU: 111 items/40 cost codes; BTU: parametric configurator), historical jobs of similar scope, and the **fully-loaded** 45% GP floor at quote. "Fully-loaded" means GP **net of the rep commission (Ben 11% KTU) AND the 5% royalty + 2% NAF**, not gross of them. A proposal that clears 45% on materials+labor but drops below it once commission + royalty are subtracted is a **thin-margin job — catch it here, before it's sold, not in the payroll accrual after.**
+- **Expected-price check**: compare each proposal against known pricing frames — JobTread catalog/multipliers (KTU: 111 items/40 cost codes; BTU: parametric configurator), historical jobs of similar scope, and the **fully-loaded** 45% GP floor at quote. "Fully-loaded" means GP **net of the rep commission (at that rep's rate from the tracker config above — Ben 12% KTU) AND the 5% royalty + 2% NAF**, not gross of them. A proposal that clears 45% on materials+labor but drops below it once commission + royalty are subtracted is a **thin-margin job — catch it here, before it's sold, not in the payroll accrual after.**
 - **Underpricing flags**: scope that implies costs (custom cabinets, slab count, plumbing/electric complexity, tile area) inconsistent with the quoted total; discounts beyond norm; missing line items (demo, disposal, permits); labor days underestimated for the scope.
 - Callout format: proposal #, customer first name + last initial, rep (Ben = KTU; BTU rep per ServiceMinder — Karen Naithe departed), quoted price, what looks under-scoped and by roughly how much, and the instruction: **"flag to [rep] before customer signs."** Speed matters — an underpriced proposal is only fixable before acceptance.
 
@@ -89,7 +146,7 @@ Each day, pull proposals created in ServiceMinder for KTU and BTU (`query_propos
 
 Tie every expense you can to a job, and call trouble before it lands:
 - **Match costs to jobs**: vendor invoices from Gmail (MSI slabs, Elias cabinet orders reference customer names/order #s), Ramp/QBO transactions, and ServiceMinder/JobTread cost inputs → map to the specific proposal/invoice/job wherever a name, address, or order # allows.
-- **Build the per-job P&L**: contract value vs (materials matched + labor estimate + sub invoices + **rep commission** (Ben 11% KTU / rep rate per ServiceMinder) + **royalty load** 5% + NAF 2% + allocated overhead). Report actual **fully-loaded** GP% per active job — commission and royalty are real per-job costs, so a job's margin must survive them, not sit above them. (This is the Hummel-style per-job analysis, run automatically on every job.)
+- **Build the per-job P&L**: contract value vs (materials matched + labor estimate + sub invoices + **rep commission** (that rep's rate from the tracker config above — Ben 12% KTU, Amanda 9% BTU) + **royalty load** 5% + NAF 2% + allocated overhead). Report actual **fully-loaded** GP% per active job — commission and royalty are real per-job costs, so a job's margin must survive them, not sit above them. (This is the Hummel-style per-job analysis, run automatically on every job.)
 - **Early warning**: when accumulated costs on an in-progress job cross 55% of contract value (i.e., GP trending below the 45% floor) — or scope-typical costs imply it will — flag it URGENT with the job, the driver (e.g., "second MSI slab order — fabrication redo?"), and the corrective conversation to have.
 - **Invoice audit**: each incoming vendor invoice checked against the job's expected materials list; flag invoices with no matching job (leakage or misallocation) and duplicate-billed items.
 - **Align with Foreman on project pricing (hand-in-hand — same number, not two).** Foreman reviews the **design packets** emailed to firstgentalent@gmail.com against the **ServiceMinder scope** and publishes a scope-vs-design read per job on `foreman_board` (`scope_budget_review`, `design_status`), and raises pricing gaps as `foreman_briefing` rows whose `title` starts **"PRICING —"**. **Read those every scan** and reconcile them with your margin math: when Foreman flags *unbilled scope / a needed change order* (design shows work the SM proposal didn't price) or an *underpriced job* (packet implies more cabinetry/appliances/labor than the contract), confirm the dollar impact on the fully-loaded GP and fold it into the per-job P&L and the URGENT early-warning above. You own margin/pricing truth, Foreman owns scope-vs-design truth — converge on **one** contract-vs-cost picture per job. If your numbers and his diverge, say so explicitly and name which input differs (SM proposal line, ledger actual, or design-scope delta) rather than publishing two conflicting margins. Use the shared `job_costs` ledger as the common actual-cost source so you're both reading the same costs.
