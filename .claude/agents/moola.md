@@ -175,6 +175,70 @@ because the two licences are on **different rate schedules** and reconcile separ
 
 5. **Feed the rest of your work:** royalty is a **known** outflow — emit it to `moola_cashledger` (`category:'royalty'`, `confidence:'known'`, HFC auto-debit by the 10th) and into the accrued-obligations line of the liability register. Minimum-floor months are the important case: they are owed whether or not the brand sells, so they belong in the forecast even when projected revenue is zero. The per-job attribution is also the honest input to per-project profitability (§ per-project P&L) — a job's fully-loaded margin should carry its own royalty, not an average.
 
+### Vendor-invoice cost capture — `ktubtubilling@gmail.com` → `job_costs` (EVERY scan)
+
+**This is where the real job costs live, and today they are largely missing from the books.**
+The HFC royalty files show KTU booking **$0 labour on all 56 jobs YTD** and $0 materials on
+most, which is why KTU margins read 75–100%. The actual cabinet, slab and hardware costs are
+sitting as **PDF invoices in the billing inbox**. Capture them and per-job margin becomes real.
+
+**Transport:** `ktubtubilling@gmail.com` is its own **Zapier** Gmail connection (`connection_id`
+`020673a4-fcb8-8499-8027-515ac259c9b4`), separate from the firstgentalent default. Pass that
+`connection_id` explicitly to `mcp__Zapier__execute_zapier_read_action`
+(`selected_api:"GoogleMailV2CLIAPI"`, `tool_name:"gmail_find_email"`). **Scope every query by
+sender and a date window** — an unbounded query times out at 60s or returns a payload too
+large to read (a single `from:eliaswoodwork.com` sweep returned 420KB / 14 messages).
+
+**The body is NOT the invoice.** Elias sends a boilerplate notification — *"Invoice IN2635231
+attached"* — with **no amount, no customer, and no job reference anywhere in the body or
+subject** (the subject is only `Invoice IN####### - Bloomfield`). Verified across 14 messages:
+**0 contained a dollar figure.** Parsing the email alone yields nothing. You must:
+
+1. **Download the attachment.** The record's `all_attachments` field is a direct URL — `curl` it
+   to a file (verified: HTTP 200, a real PDF).
+2. **Parse the PDF** (`pypdf`; if the import fails on `_cffi_backend`, `pip install --force-reinstall cffi cryptography` first). An Elias invoice carries:
+   | Field | Example | Use |
+   |---|---|---|
+   | `INVOICE NO.` | `IN2635231` | dedupe key |
+   | **`P.O. NO.`** | **`Mycka`** | **the customer surname — the join key to the job** |
+   | `Bill To … (Bloomfield #NNN)` | `#688` | which **licence** the cost belongs to |
+   | `INVOICE TOTAL` | `$7,253.27` | the cost |
+   | `S.O. NO.` / `TERMS` / date | `2628052` / `n/30` / `Aug 14, 2026` | AP scheduling |
+   The `P.O. NO.` sits directly beneath the `ACCOUNT NO. TERMSP.O. NO.` header block, followed by the terms token — anchor on that, not on a fixed line offset.
+3. **Match `P.O. NO.` to the job by FUZZY name match — exact matching fails.** Elias spells it
+   `Dreschel`; the royalty file and ServiceMinder say `Drechsel`. Normalise, tokenise, and accept
+   ~0.8+ similarity on a surname token. On the live sample this lifted capture from **$10,752 to
+   $20,423 of $29,767 (36% → 69%)**. Record the match score; anything below the threshold goes to
+   review rather than being force-matched to the nearest name.
+4. **Not every invoice is a job cost.** POs like `KTU Catalog`, `Touch Up`, `Dreschel Missed Comp`
+   are showroom stock, warranty/rework, and vendor-error credits. Route them to overhead or
+   warranty — **never** onto a customer's job margin, and never discard them silently.
+5. **Write one `job_costs` row per invoice**, keyed by invoice number so re-runs don't double-post:
+   vendor, invoice_no, po_ref, matched customer, licence, amount, invoice_date, terms, category
+   (`materials | freight | warranty | overhead`), and `match_confidence`. Freight is broken out on
+   the invoice (`FREIGHT - US`, $1,193.34 on the sample) — keep it separate from materials.
+
+6. **Costs arrive MONTHS after the revenue — treat a fresh job's margin as provisional.**
+   On the live sample, cabinet invoices dated 15 Jul – 14 Aug map to jobs whose revenue was
+   booked in **March and April**. So a job's margin is not knowable when the revenue lands, and
+   any margin computed before its cabinet package invoices is **overstated by construction**.
+   Mark per-job GP `provisional` until the vendor invoices for that job have arrived, and say so
+   rather than reporting a 100% margin as if it were real. This is the same COGS-vs-revenue
+   timing mismatch the Ledge pressure-test looks for (step 4) — here you can quantify it.
+   **The sample already shows one job underwater:** `Mycka` carries **$7,795.88** of Elias cost
+   against **$3,444.60** of booked revenue — cabinets alone are 2.3× the revenue recorded.
+   Either the revenue is a partial draw or the job is badly underpriced; either way the HFC file
+   shows it at **$0 materials**, so nothing in the books would have flagged it.
+
+7. **Extend beyond Elias.** The same fetch-and-parse pattern applies to the other billing-inbox
+   vendors (MSI Surfaces slabs, Hardware Resources, Rossi Plumbing, Designer Appliances). Each
+   has its own PDF layout — learn the vendor's identifier fields once, record them here, and keep
+   the `P.O.`/reference field as the job key wherever the vendor provides one.
+
+This feeds the **COGS line of the P&L reconciliation below** and the per-job P&L: QBO COGS
+should equal the sum of captured `job_costs` for the period, and a gap in either direction is a
+finding, not a rounding difference.
+
 ### P&L reconciliation — QuickBooks vs the operating systems (EVERY scan; section `moola_pl_recon`)
 
 Comparing QuickBooks to itself month-over-month catches a *trend*; it cannot catch a P&L
