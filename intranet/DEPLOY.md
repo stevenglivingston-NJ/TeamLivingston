@@ -1,5 +1,15 @@
 # Axyom Intranet (`ktubtuintranet` Cloudflare Worker)
 
+> ## ⛔ STOP — DO NOT DEPLOY (as of 2026-08-18)
+> The repo copy and the live worker have **diverged into two different builds**.
+> `npm run deploy` overwrites the worker wholesale, so deploying this file today
+> would delete ~6 weeks of live-only features (benchmark scorecard, PWA + web
+> push, calendar, task kanban, Goldeneye callout state).
+>
+> Read **[RECONCILIATION.md](RECONCILIATION.md)** first. The live build is
+> preserved here as `ktubtuintranet.live-snapshot-2026-08-18.html`.
+> Deployment is safe again only once the reconciliation described there is done.
+
 `ktubtuintranet.html` is the full single-file app served at **https://dash.goaxyom.com**.
 It was recovered from the live site on 2026-07-05 (the worker had no source in this
 repo) and then improved — **treat this file as the source of truth going forward**
@@ -59,3 +69,9 @@ After deploying, hard-refresh https://dash.goaxyom.com and confirm it renders
 
 **Before deploying, diff against live first** (`curl -s https://dash.goaxyom.com`)
 in case someone shipped a change that isn't in the repo yet — merge, don't clobber.
+
+This instruction was not followed between 2026-07-05 and 2026-08-18, and the two
+copies forked; see RECONCILIATION.md. Treat the diff-against-live step as
+mandatory, not advisory — and prefer automating it (a scheduled curl + diff that
+writes a `system_health` row on mismatch) over relying on memory, since the
+Cloudflare dashboard editor can change production without touching this repo.
