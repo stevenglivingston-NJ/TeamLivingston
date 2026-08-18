@@ -175,6 +175,62 @@ because the two licences are on **different rate schedules** and reconcile separ
 
 5. **Feed the rest of your work:** royalty is a **known** outflow — emit it to `moola_cashledger` (`category:'royalty'`, `confidence:'known'`, HFC auto-debit by the 10th) and into the accrued-obligations line of the liability register. Minimum-floor months are the important case: they are owed whether or not the brand sells, so they belong in the forecast even when projected revenue is zero. The per-job attribution is also the honest input to per-project profitability (§ per-project P&L) — a job's fully-loaded margin should carry its own royalty, not an average.
 
+### P&L reconciliation — QuickBooks vs the operating systems (EVERY scan; section `moola_pl_recon`)
+
+Comparing QuickBooks to itself month-over-month catches a *trend*; it cannot catch a P&L
+that is simply **wrong**. The books are one opinion of the business — ServiceMinder, the
+bank, HFC and Gusto are independent records of the same events. Reconcile them and the
+disagreements *are* the findings. **QBO is the book of record; the bank is the truth. When
+they disagree, say so and name which line differs — never split the difference, never
+publish a blended number.**
+
+Transport per entity is as in step 1 (KTU direct via `mcp__Intuit_QuickBooks__*`; BTU and
+Jatalia via Zapier QBO). Reconcile the **closed prior month** each scan, and the
+month-to-date for early warning.
+
+Five lines, each with at least two independent sources:
+
+| P&L line | Book of record | Independent check(s) |
+|---|---|---|
+| **Revenue** | QBO revenue | ServiceMinder invoiced revenue · bank deposits · **HFC royalty basis** |
+| **COGS / materials** | QBO COGS | vendor invoices in `payables` · the `job_costs` ledger · Ramp |
+| **Payroll** | QBO payroll | Gusto runs · bank payroll debits |
+| **Royalty + NAF** | QBO royalty expense | `moola_royalty` (HFC billed) · the bank auto-debit |
+| **Marketing** | QBO advertising | Paid's `mkt_spend_summary` · Ramp/bank card spend |
+
+1. **Revenue is the one to get right, and HFC is the sharpest check.** HFC computes the
+   royalty basis themselves from their own view of your sales — so it is a genuinely
+   independent read of monthly revenue, not a copy of your books. For each brand and month
+   compare QBO revenue against ServiceMinder invoiced, bank deposits (net of financing draws
+   and inter-entity transfers), and the `moola_royalty` revenue basis. Deposits legitimately
+   lag invoicing under 50/40/10 — that timing gap is expected and is not a variance; a gap
+   between **QBO and the HFC basis** is not, and means one of the two has revenue the other
+   doesn't.
+2. **Write one `moola_pl_recon` row per line per entity per period.**
+   `fields = {period, entity, line, book_amount, check_source, check_amount, variance, variance_pct, status, explanation, scan_date}`
+   - `status` — `matched` (within the tolerance below), `variance`, `timing` (explained by a known lag — deposits behind invoices, accrual vs cash), or `unreconciled` (a source was blind this scan; say so rather than implying a match).
+   - `explanation` — the *reason*, not a restatement of the numbers. "Deposits lag invoicing by ~11 days under 50/40/10" is an explanation; "QBO is higher" is not.
+3. **Tolerance:** flag when a variance exceeds **the greater of $500 or 2%** of the line.
+   Below that, mark `matched` and move on — chasing rounding noise buries the real findings.
+4. **The anomalies that actually matter** (these are cross-source contradictions, not
+   threshold trips — the existing expense-ratio and benchmark checks already cover
+   single-source drift):
+   - **Revenue in QBO that no operating system saw** — nothing in ServiceMinder, no deposit, not in the HFC basis. Either a manual journal entry or misposted income.
+   - **Revenue the operating systems saw that QBO didn't** — invoiced and collected but unbooked. This is the one that quietly understates the business and misstates tax.
+   - **COGS with no matching job** — materials cost that the `job_costs` ledger and `payables` can't tie to a customer. Either an unassigned cost (so some job's margin is overstated) or spend that shouldn't be in COGS.
+   - **Royalty expense ≠ HFC billed ≠ bank debit** — a three-way break, and the most likely place a franchise overcharge survives unnoticed. Chain it to the royalty reconciliation above.
+   - **Payroll in QBO ≠ Gusto** — a run booked twice, a run missed, or owner draws sitting in payroll rather than distributions.
+   - **A line that reconciles perfectly every single month.** Real books don't tie to the cent across independent systems; a permanently zero variance usually means one side is being derived from the other, not independently observed. Say so rather than reporting a clean match.
+5. **Then pressure-test the books themselves** — the Ledge check in step 4 is the qualitative
+   half of this: miscategorised transactions, COGS-vs-revenue timing under 50/40/10, owner
+   distributions booked as payroll, missing accruals (royalty, NAF, commissions), and
+   inter-entity transfers that distort each entity's P&L. Where a reconciliation variance has
+   a bookkeeping cause, pair them: the variance is the evidence, the Ledge question is the fix.
+6. **Lead the briefing with contradictions, not ratios.** A revenue line that three systems
+   disagree on outranks any benchmark miss — a metric computed off an unreconciled P&L is
+   confidently wrong, which is worse than absent. If revenue doesn't reconcile this scan, say
+   so **before** reporting margin, and label the affected scorecard metrics accordingly.
+
 ## Monthly deep-dive — leverage, balance sheet, capacity (first scan of each month; ported from CMO Financial 5e/5f + Pipeline breakeven)
 
 Once a month, go below the cash surface:
