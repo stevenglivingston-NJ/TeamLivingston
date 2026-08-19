@@ -181,7 +181,23 @@ if require CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; then
   reg cloudflare "{\"command\":\"python3\",\"args\":[\"$DIR/cloudflare/server.py\"],\"env\":{\"CLOUDFLARE_API_TOKEN\":\"$CLOUDFLARE_API_TOKEN\",\"CLOUDFLARE_ACCOUNT_ID\":\"$CLOUDFLARE_ACCOUNT_ID\"}}"
 else skipped+=("cloudflare (CLOUDFLARE_API_TOKEN/ACCOUNT_ID)"); fi
 
-# ---- 5. Optional Clarity Data-Export (npm) --------------------------------
+# ---- 5. Clarity — direct live-insights + optional npm Data-Export ----------
+# clarity-live: direct Python stdio MCP wrapping the Clarity live-insights
+# endpoint (https://www.clarity.ms/export-data/api/v1/project-live-insights)
+# for both KTU (2708513173760009) and BTU (2789761772911940). Uses the same
+# CLARITY_KTU_TOKEN / CLARITY_BTU_TOKEN as the npm servers below; requires at
+# least one of the two to register. Rate-limited ~10 calls/project/day (shared
+# across all three clarity server variants).
+if require CLARITY_KTU_TOKEN || require CLARITY_BTU_TOKEN; then
+  ENV_JSON="{\"CLARITY_KTU_TOKEN\":\"${CLARITY_KTU_TOKEN:-}\",\"CLARITY_BTU_TOKEN\":\"${CLARITY_BTU_TOKEN:-}\""
+  [ -n "${CLARITY_KTU_PROJECT_ID:-}" ] && ENV_JSON="$ENV_JSON,\"CLARITY_KTU_PROJECT_ID\":\"$CLARITY_KTU_PROJECT_ID\""
+  [ -n "${CLARITY_BTU_PROJECT_ID:-}" ] && ENV_JSON="$ENV_JSON,\"CLARITY_BTU_PROJECT_ID\":\"$CLARITY_BTU_PROJECT_ID\""
+  ENV_JSON="$ENV_JSON}"
+  reg clarity-live "{\"command\":\"python3\",\"args\":[\"$DIR/clarity/server.py\"],\"env\":$ENV_JSON}"
+else skipped+=("clarity-live (CLARITY_KTU_TOKEN or CLARITY_BTU_TOKEN required)"); fi
+
+# clarity-ktu-export / clarity-btu-export: npm @microsoft/clarity-mcp-server —
+# broader set of Clarity Data-Export tools (dashboard, recordings, docs).
 # Rate-limited ~10 calls/project/day — agents call sparingly.
 if require CLARITY_KTU_TOKEN; then
   reg clarity-ktu-export "{\"command\":\"npx\",\"args\":[\"-y\",\"@microsoft/clarity-mcp-server\"],\"env\":{\"CLARITY_API_TOKEN\":\"$CLARITY_KTU_TOKEN\"}}"
