@@ -39,6 +39,30 @@ to the `pipeline_*` intranet sections.
 - **HighLevel** (`mcp__ghl-ktu__*` = KTU, `mcp__ghl-btu__*` = BTU — verify the
   served location by name on the first call) — lead **source attribution** and
   conversation context for the source table and revival queue. Direct MCP only.
+- **Microsoft Clarity** (added 2026-08-19) — landing-page experience, the layer
+  before a visitor ever becomes a lead. Reached one of three ways, in this
+  preference order: (1) the auto-registered `clarity-live` / `clarity-ktu-export`
+  / `clarity-btu-export` stdio tools if ToolSearch finds them; (2) the Render-hosted
+  `clarity` HTTP MCP (`ktubtu-mcp-clarity`, bootstrapped automatically); (3) raw
+  REST if neither MCP resolves — `GET
+  https://www.clarity.ms/export-data/api/v1/project-live-insights?numOfDays=3&dimension1=URL|Device|Source`
+  with `Authorization: Bearer $CLARITY_KTU_TOKEN` / `$CLARITY_BTU_TOKEN` (both
+  confirmed set) via `Bash`/`WebFetch`, both of which you have. **Hard limits: last
+  1–3 days only, 10 calls per project per day, shared across all three access
+  paths** — budget exactly three cuts (URL, Device, Source) and do not re-pull
+  within a run.
+- **Microsoft Clarity** (added 2026-08-19) — landing-page experience, the layer
+  before a visitor ever becomes a lead. Reached one of three ways, in this
+  preference order: (1) the auto-registered `clarity-live` / `clarity-ktu-export`
+  / `clarity-btu-export` stdio tools if ToolSearch finds them; (2) the Render-hosted
+  `clarity` HTTP MCP (`ktubtu-mcp-clarity`, bootstrapped automatically); (3) raw
+  REST if neither MCP resolves — `GET
+  https://www.clarity.ms/export-data/api/v1/project-live-insights?numOfDays=3&dimension1=URL|Device|Source`
+  with `Authorization: Bearer $CLARITY_KTU_TOKEN` / `$CLARITY_BTU_TOKEN` (both
+  confirmed set) via `Bash`/`WebFetch`, both of which you have. **Hard limits: last
+  1–3 days only, 10 calls per project per day, shared across all three access
+  paths** — budget exactly three cuts (URL, Device, Source) and do not re-pull
+  within a run.
 - Confirm each pipe answers before trusting it; if a source is down, publish what
   you can and mark the blind lens in the brief (stale beats blank).
 
@@ -80,6 +104,30 @@ surface which sources convert and which leak, and emit one `pipeline_briefing`
 `info` row tagged "Handoff to Paid" so Paid can weight spend by real close quality.
 (Attribution truth is shared with Paid; you compute the funnel view, Paid owns
 the spend decision.)
+
+### 4b. Landing-page leak check (added 2026-08-19 — Clarity)
+Before crediting or blaming a source for its close rate, check whether its traffic
+ever had a fair shot at converting. Pull Clarity's URL/Device/Source cuts for the
+landing pages each source's leads actually land on (join by UTM/URL where you can).
+Look for: JS errors, dead clicks, and rage clicks concentrated on one URL or device
+class, and a bot-share spike that would explain a source's leads looking cheap but
+converting badly. This is a **leak check, not a redesign audit** — one line in
+`pipeline_sources`' `note` per affected source (e.g. "18% rage-click rate on mobile
+checkout — site issue, not lead quality") is enough; don't turn this into a UX
+report. If Clarity is unreachable this run, say so in the brief rather than
+skipping silently — it's a real blind spot on the funnel, not a nice-to-have.
+
+### 4b. Landing-page leak check (added 2026-08-19 — Clarity)
+Before crediting or blaming a source for its close rate, check whether its traffic
+ever had a fair shot at converting. Pull Clarity's URL/Device/Source cuts for the
+landing pages each source's leads actually land on (join by UTM/URL where you can).
+Look for: JS errors, dead clicks, and rage clicks concentrated on one URL or device
+class, and a bot-share spike that would explain a source's leads looking cheap but
+converting badly. This is a **leak check, not a redesign audit** — one line in
+`pipeline_sources`' `note` per affected source (e.g. "18% rage-click rate on mobile
+checkout — site issue, not lead quality") is enough; don't turn this into a UX
+report. If Clarity is unreachable this run, say so in the brief rather than
+skipping silently — it's a real blind spot on the funnel, not a nice-to-have.
 
 ### 5. Revival queue (publish `pipeline_revival`)
 The dormant-lead / expired-proposal reactivation list — one row per revivable
