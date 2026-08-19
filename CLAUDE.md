@@ -17,8 +17,9 @@ This environment manages operations for two business groups:
 | closebot | stdio (Python) | Bots, messages, actions, bookings, billing | API key (X-CB-KEY header) |
 | companycam | stdio (Python) | Projects, photos, documents, notes, labels, users | Bearer token |
 | serviceminder | stdio (Python) | Contacts, appointments, invoices, payments, proposals, downloads | Per-location API keys (KTU + BTU) |
+| clarity-live | stdio (Python) | Direct live-insights endpoint (`/api/v1/project-live-insights`) for KTU+BTU — `get_live_insights`, `get_ktu_live_insights`, `get_btu_live_insights`, `test_connection` | `CLARITY_KTU_TOKEN` / `CLARITY_BTU_TOKEN` |
 | clarity | HTTP MCP (bootstrap) | Clarity Data-Export: landing-page experience, traffic-by-channel (KTU+BTU) | Static bearer (`CLARITY_MCP_AUTH_TOKEN`) — Render-hosted `ktubtu-mcp-clarity` |
-| clarity-ktu-export / clarity-btu-export | stdio (npm, optional) | Microsoft Clarity npm server — alternative to the Render `clarity` above | `CLARITY_KTU_TOKEN` / `CLARITY_BTU_TOKEN` |
+| clarity-ktu-export / clarity-btu-export | stdio (npm, optional) | Microsoft Clarity npm server — dashboard, recordings, docs tools per project | `CLARITY_KTU_TOKEN` / `CLARITY_BTU_TOKEN` |
 | ghl-ktu | HTTP MCP (bootstrap) | HighLevel CRM for KTU (location nHLCxHPidnhV1NFzRtZZ) | PIT (`GHL_PIT_KTU` env var) |
 | ghl-btu | HTTP MCP (bootstrap) | HighLevel CRM for BTU (location 0uWA8M5BzHrrcJftuaDe) | PIT (`GHL_PIT_BTU` env var) |
 | jobtread | connector | Project management, estimates, invoices | Bearer token |
@@ -73,7 +74,8 @@ mcp-servers/
 ├── companycam/           server.py  # 12 tools
 ├── shipstation/          server.py  # 17 tools (V2 API, Bearer auth)
 ├── amazon-sp/            server.py  # 15 tools (SP-API, LWA OAuth2)
-└── cloudflare/           server.py  # 14 tools (Zones, DNS, Pages, Workers, R2, KV)
+├── cloudflare/           server.py  # 14 tools (Zones, DNS, Pages, Workers, R2, KV)
+└── clarity/              server.py  # 4 tools — direct live-insights (KTU+BTU, Bearer)
 
 HTTP-transport servers (registered by bootstrap.sh, no local code):
   ghl-ktu / ghl-btu   → LeadConnector hosted MCP, PIT-scoped per location
@@ -211,7 +213,7 @@ brief it degrades. Tekkie audits all of these daily.
 | ServiceMinder (`SM_KEY_KTU/BTU`) | Moola, Foreman, Paid | Revenue/invoice/appointment truth; ROI tie-back |
 | HighLevel `ghl-ktu` / `ghl-btu` | Goldeneye, Paid, Foreman | Customer conversations, lead attribution, HL→SM sync audit |
 | Google Ads + LSA / Meta Ads | Paid | Spend sweep, CPL/CAC/ROAS |
-| Clarity (`clarity`, Render) | Paid | Landing-page-experience check |
+| Clarity (`clarity-live` stdio, `clarity` Render, `clarity-*-export` npm) | Paid, Organic | Landing-page-experience check; live-insights direct feed |
 | QuickBooks / Ramp / Bank_Connection | Moola | P&L, AR/AP, cash flow, card spend |
 | CompanyCam / JobTread | Foreman | Field progress, estimates, PM status |
 | Shopify / ShipStation / Amazon SP | Cellar (fulfillment), Harvest (demand) | Orders, inventory, FBA, ad ROAS |
