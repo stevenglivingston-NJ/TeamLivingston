@@ -98,11 +98,27 @@ you enforce daily:
 
 ### 2. Pace & duration — is every job on time?
 
-**FIRST establish the installation date — pace is meaningless without it.** For every
-active job, find the **production/installation appointment** (ServiceMinder
-`query_appointments` — the install appointment, NOT the "Consultation - In-Home"
-appointment; and/or the JobTread production schedule). Classify each job by install
-date before judging pace:
+**FIRST establish `install_date` — pace is meaningless without it, and this is now
+the single canonical determination used everywhere on the board** (§2b's phase and
+`pay_pct` tracking consumes this value; it does not re-derive it). For **every**
+active job, before judging pace or phase:
+
+1. **ServiceMinder primary install (preferred source).** The scheduled install
+   appointment — service `Installation - Primary Service` (KTU id `68761` / BTU id
+   `173394`), plus the BTU service-type installs `Full Bathroom Remodel` /
+   `Bathtub Remodel` — via `query_appointments`. NOT the "Consultation - In-Home"
+   appointment.
+2. **JobTread Project Window (fallback, and cross-check when SM has a date too).**
+   The task whose `taskType` is **"Project Window"** (id `22PL5TbwMMtu`) —
+   apply the filter and earliest-`startDate`-wins rule in §2b's "How to read
+   JobTread dates" before trusting one. **Never use `job.taskSummary`** — it rolls
+   up every task on the job (deliveries, inspections, service calls) and is
+   routinely wider than the real install window.
+3. **When both exist and disagree, ServiceMinder's date is `install_date`** —
+   report the JobTread divergence as a `foreman_briefing` row (§2b's sync-integrity
+   classes a–d below); never silently average the two or prefer JobTread.
+
+Classify each job by the resulting `install_date` before judging pace:
 - **Install date in the past** → job should be in/through production; measure
   production pace from the install start and infer field phase from photos.
 - **Install date in the future** → scheduled and on track by definition; only flag if
@@ -141,24 +157,20 @@ This is a second, more pointed lens on top of §2 — once a job's **install dat
 passed**, the team wants a plain-English read on how it's actually going, not just
 a phase/target table.
 
-- **Determine `install_started` + `install_date`.** Evidence, in priority order:
-  (1) the **primary install date in ServiceMinder** (the scheduled install
-  appointment — service `Installation - Primary Service`, KTU id 68761 / BTU id
-  173394, plus the BTU service-type installs `Full Bathroom Remodel`,
-  `Bathtub Remodel`) cross-checked against the **JobTread Project Window task**
-  (see the reading rules below) — these named install dates are the strongest
-  signal; **ServiceMinder is source of truth: when the two disagree, SM's date is
-  `install_date` and the JobTread divergence is reported, never silently
-  averaged or preferred**; (2) a JobTread task/milestone dated
-  in the past whose name indicates install/production start ("Install Start",
-  "Production Start", "Demo"); (3) a ServiceMinder job/appointment marked started;
-  (4) **invoice-payment progress (see below): ≥75% of the contract collected means
-  the job has physically started** even if no install task is dated; (5) CompanyCam
-  photo evidence of demo/prep or later phases (§2's phase inference). Set
-  `install_started = true` and `install_date` = the ServiceMinder primary-install
-  date when available, else the earliest other signal with real evidence — never
-  guess a date with no evidence behind it.
-- **How to read JobTread dates (do not get this wrong — it silently corrupts pace).**
+- **`install_date` is already set from §2 above**, for every active job — SM
+  primary install, else JobTread Project Window earliest `startDate`, SM wins on
+  conflict. Do not re-derive it here. What this section determines is
+  **`install_started`**: whether production has actually begun, which can be true
+  even when `install_date` is missing or hasn't strictly arrived yet. Evidence, in
+  priority order: (1) `install_date` from §2 has arrived/passed; (2) a JobTread
+  task/milestone dated in the past whose name indicates install/production start
+  ("Install Start", "Production Start", "Demo"); (3) a ServiceMinder job/appointment
+  marked started; (4) **invoice-payment progress (see below): ≥75% of the contract
+  collected means the job has physically started** even if no install task is
+  dated; (5) CompanyCam photo evidence of demo/prep or later phases (§2's phase
+  inference). Set `install_started = true` on the first of these with real
+  evidence behind it — never guess.
+- **How to read JobTread dates (referenced from §2 above — read this before computing `install_date` for any job; do not get it wrong, it silently corrupts pace).**
   - The **project window** is a task whose `taskType` is **"Project Window"**
     (id `22PL5TbwMMtu`). It is **NOT** `job.taskSummary` — that field is a
     roll-up spanning *every* task on the job (deliveries, inspections, service
