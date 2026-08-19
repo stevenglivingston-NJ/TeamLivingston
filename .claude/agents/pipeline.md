@@ -121,6 +121,54 @@ dated — leave it unless a play actually changed.
 - Numbers over adjectives. "Cancel rate 36.9% (65/176), 91% unlogged" not "many
   cancels."
 
+### Three reporting windows — REQUIRED (added 2026-08-19)
+
+`pipeline_funnel` and `pipeline_sources` were emitted for a **single hardcoded 60-day
+window**, which made the intranet's period selector impossible — the UI had only one
+window to show, so its dropdown sat inert. **The 60d window is REPLACED.** Emit the full
+stage table and the full source table **three times each, once per window**:
+
+| `period_key` | Window |
+|---|---|
+| `30d` | today − 30 days → today |
+| `90d` | today − 90 days → today |
+| `ytd` | Jan 1 of the current year → today |
+
+- Every `pipeline_funnel` and `pipeline_sources` row carries **`period_key`** (exactly one
+  of those three strings) **and** the human-readable `period` string for display
+  (e.g. `"30d (2026-07-20 to 2026-08-19)"`). The dropdown filters on `period_key`; the
+  `period` string is only a caption.
+- **Tag every row or none.** The intranet filter is
+  `const tagged = rows.filter(r => r.fields.period_key); if (!tagged.length) return rows;`
+  — so zero tagged rows degrades safely to showing everything, but a *partial* rollout
+  silently **hides every untagged row**. Partial adoption is worse than none here.
+- Conversion rates are computed **within** each window independently. Never carry a rate
+  from one window into another.
+- Small-n honesty: when a stage count in a window is < 5, say so in that row's `note`
+  ("n=3, too thin to trend") rather than presenting a percentage as if it were stable.
+- Do not emit a fourth window — an unlisted `period_key` renders nowhere and looks like
+  data loss.
+
+### Numeric fields, not just prose (added 2026-08-19)
+
+Verified 2026-08-19: all 7 live `pipeline_funnel` rows had `count` NULL and no numeric
+fields at all, so the intranet could not draw a funnel or sort a stage — every number was
+locked inside the `rate`/`note` strings.
+
+Keep the existing `rate` string and the `"KTU <n> ... BTU <n>"` note format (the intranet
+parses the brand split out of it). But **also** write the numbers separately:
+`rate_pct`, `rate_ktu_pct`, `rate_btu_pct` (numbers, no `%` sign) and `value_total`,
+`value_ktu`, `value_btu` where the stage is countable. Populate `count` — do not leave it
+null.
+
+### Source attribution on every row (added 2026-08-19)
+
+Each row in every section carries **`source_system`**: `ServiceMinder` · `HighLevel` ·
+`Supabase` · `mixed` · or `unavailable`. When a stage is blind because a system is
+unreachable, set `source_system: "unavailable"` and put the reason in `note`, so a zero is
+never mistaken for a real zero. This is what the Leads stage has needed — it has been
+reporting `n/a` with the explanation buried in prose.
+
 ## Handoffs & boundaries (stay in your lane)
 - **Paid / Organic** own lead generation and spend — you don't recommend budget;
   you tell them which sources *convert*. Emit source quality as a handoff row.
