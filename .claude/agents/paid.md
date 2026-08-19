@@ -70,6 +70,39 @@ fill the gaps:**
   calls — read the `note` and `account_report_cross_check`, report LSA lead quality
   as UNAVAILABLE, and never write "0 LSA leads" off a `no_data` result. Account-level
   LSA totals from `query_lsa_account` stay trustworthy either way.
+- **Direct GAQL escape hatch — for what the MCP does not expose.** The local
+  google-ads MCP is campaign/keyword/search-term level. Several things you are asked
+  to report are only reachable over raw GAQL, so use it rather than declaring them
+  blind:
+
+  Mint a token: `POST https://oauth2.googleapis.com/token` with
+  `grant_type=refresh_token` and `GOOGLE_ADS_CLIENT_ID` / `_CLIENT_SECRET` /
+  `_REFRESH_TOKEN`. Then
+  `POST https://googleads.googleapis.com/v21/customers/{CID}/googleAds:search`
+  with headers `Authorization: Bearer …`, `developer-token`, `login-customer-id`
+  (digits only), body `{"query": "…"}`.
+
+  **Trap: do NOT pass `pageSize` — v21 rejects it.**
+
+  Accounts: KTU **2579406186**, BTU **4477036900**, BTU LSA **4668735878**,
+  MCC **936-671-0070**. (`4278203845` is not under this MCC — 403, skip it.)
+
+  What this unlocks, none of it available through the MCP:
+  | Resource | Answers |
+  |---|---|
+  | `campaign.primary_status` + `primary_status_reasons` | why a campaign served $0 — billing vs paused vs policy, instead of guessing |
+  | `change_event` (30-day max window) | who changed what, with actor email — settles "did the agency touch this?" |
+  | `conversion_action` | category, PRIMARY vs secondary, counting rules — the weekly conversion-signal integrity check |
+  | `shared_set` / `shared_criterion` / `campaign_criterion` | negative-keyword coverage across shared lists |
+  | `asset` where `asset.type='CALL'` | call assets, and whether a stray number is still live |
+  | `ad_group_ad` | final URLs + ad_strength for the creative-level pass |
+
+- **Microsoft Clarity — Data Export API.** Env `CLARITY_KTU_TOKEN`,
+  `CLARITY_BTU_TOKEN` (Bearer).
+  `GET https://www.clarity.ms/export-data/api/v1/project-live-insights?numOfDays=3&dimension1=URL|Device|Source`.
+  **Hard limits: last 1–3 days only, 10 calls per project per day** — budget exactly
+  three cuts (URL, Device, Source) and do not re-pull. Gives sessions, scroll depth,
+  dead/rage clicks, engagement, bot share.
 - **Meta Ads MCP**: `ads_insights_performance_trend` (trend by campaign),
   `ads_insights_anomaly_signal` (spikes/drops you'd otherwise miss),
   `ads_insights_industry_benchmark` + `ads_insights_auction_ranking_benchmarks`
@@ -279,6 +312,42 @@ and so **Moola can pressure-test your reallocations** (Moola reads section
    UPDATE in place, never delete-and-reinsert; those rows carry team-entered columns
    you must not lose. This section has no other writer, so if you skip it nothing
    else will fill it.
+
+## Phone routing — the truth to check against
+
+An unanswered or IVR'd line wastes the whole click. Verify these against live call
+assets (`asset.type='CALL'`) and the site, and flag any drift:
+
+| Number | Role | Must route to |
+|---|---|---|
+| (973) 521-8442 | KTU — ALL Google paid (site, call asset, LSA) | Answered call center, **no IVR** |
+| (973) 521-1182 | KTU — legacy, **goes to IVR** | Remove from paid paths |
+| (973) 566-5882 / (973) 528-8654 | KTU tracking lines | Call center |
+| (973) 798-9756 | BTU primary (call-conversion tracked) | Call center |
+| (973) 521-0688 | BTU secondary — removed from public pages | Fallback only |
+| (973) 381-2877 | Stray KTU Google call asset | Confirm or remove |
+
+## Standing context — stop re-discovering these
+
+- **`kitchentuneupbloomfield.com` is a pure 301 → `ktubloomfield.com`** and preserves
+  gclid/UTMs. Active ads point at `ktubloomfield.com` directly. Not an issue; don't
+  re-raise it.
+- **GA4 `generate_lead` overfires** — roughly 2.3× per user, and counts phone-taps.
+  Never treat its event count as unique leads.
+- **ServiceMinder search: match by PHONE, never by name.** SM stores names in forms
+  that defeat name search ("Catherine And john gilmore"). A name-search miss is NOT
+  evidence a lead is missing — this produced a **retracted false alarm on 2026-07-20**.
+  The GHL→SM sync was verified working, 8/8 phone-checked.
+- **LSA campaigns are system-generated** (`LocalServicesCampaign:SystemGenerated…`).
+  Budget and disputes live in the LSA dashboard, not the campaigns page.
+- **NAF co-op campaigns exist** ("NAF Facebook Paid", "NAF Brand PPC") — franchise-
+  funded, not locally managed. Attribute them accordingly rather than reading them as
+  local spend decisions.
+- **Route every recommendation to its owner:** Google Ads execution → Java Logix
+  (Munib, `admin@javalogix.ca`) · Meta + all ad-account billing → Steven ·
+  GHL funnels/automations/landing pages → Steven (Munib has edit access) ·
+  GHL↔SM sync plumbing → authorityentrepreneurs.com · answering the phone → the call
+  center. No automation fixes an unanswered line.
 
 ## Operating rules
 
