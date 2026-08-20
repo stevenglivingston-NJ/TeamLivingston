@@ -105,6 +105,32 @@ Commissions are a real payroll liability nobody else computes — get ahead of e
   these same names or rates — do not apply KTU rates to a BTU rep without checking they're
   actually the same person. Verify the active roster against ServiceMinder
   `list_service_agents` every scan; update here if config drifts.
+- **Per-job attribution — verify against a second source, don't trust `OwnerUserId` alone
+  (added 2026-08-20).** The tracker's first population found `proposal.OwnerUserId` set to
+  Ben's user id on 87% of KTU proposals — plausible, since Ben is KTU's primary closer, but
+  `OwnerUserId` is a record-owner field (who the SM record is administratively assigned to),
+  not a documented sales-attribution field, so that concentration alone is not proof.
+  **Cross-check every job against the ServiceAgentId on its ServiceMinder appointment(s)** —
+  pull `query_appointments` for the job's `ContactId` and match the appointment sharing that
+  job's `ProposalId` (fall back to the closest-dated sales-type appointment — Consultation,
+  Site Visit, Follow up Sales — when no exact `ProposalId` match exists). `ServiceAgentId` is
+  set per-appointment by whoever is actually scheduled to run it, which is a materially
+  different and more granular signal than the proposal's record-owner field.
+  - **Both sources agree** (proposal `OwnerUserId` and appointment `ServiceAgentId` resolve
+    to the same person, cross-referencing `list_users`' `Id`/`ServiceAgentId` pair — they are
+    different id namespaces for the same person, e.g. Ben Yabra is `OwnerUserId 28055` /
+    `ServiceAgentId 31895`): set `agent_attribution_verified = true` and pay off either
+    field with confidence.
+  - **They disagree**, or the appointment side is missing: **use the appointment
+    `ServiceAgentName`**, not the proposal owner — it is the more specific, per-job signal —
+    and set `agent_attribution_verified = false` with a note naming both candidates, so a
+    disagreement is visible rather than silently resolved one way.
+  - Two real KTU cases already checked this way agree on both sources (Labagnara →
+    `OwnerUserId 28055` / appt `ServiceAgentId 31895`, both Ben; Cole → `OwnerUserId 9992` /
+    appt `ServiceAgentId 12688`, both Takia) — encouraging, but two jobs is not the full
+    roster. Run this check across the full `commissions` population before treating
+    `agent_attribution_verified` as broadly true; report the agree/disagree count each scan
+    until it's been checked at least once.
 - **Trigger events (owner-confirmed 2026-07-12, tightened 2026-08-18; ServiceMinder
   payment-percentage cross-check added 2026-08-20): 50% of the commission is earned when the
   job is SOLD AND the deposit is collected** — both conditions, not just the proposal being
@@ -151,7 +177,7 @@ Commissions are a real payroll liability nobody else computes — get ahead of e
   rep, per job, per trigger, with the total. This number feeds the forward cash forecast's
   outflow side.
 - **Populate the Commission Tracker tab — section `commissions`** (Operations tab; write-then-prune per `scan_date`). One row per rep×job:
-  `{agent, customer, brand, contract_value, commission_total (contract × rep rate; re-derive on change orders), pay_pct (current cumulative % of contract_value paid, per ServiceMinder), sign_date (accepted date, or null if not yet signed), sign_pay_pct (the pay_pct reading at the moment the sign half fired), sign_amount (50% of commission_total), sign_paid (true once that half has been paid out on a prior payroll), start_date (install start, or null if not started), start_trigger_source (pay_pct | install_date | both — which signal actually fired the start half), start_amount (the other 50%), start_paid, trigger_mismatch (true + a note when pay_pct and the install-date evidence disagree about whether the job has started), payroll_cycle_end (the Tuesday cutoff this trigger's payable date is assigned to), next_payroll_date (that cutoff's confirmed or provisional pay date — see the ground-truth rule above; NEVER assume it falls on a Friday), scan_date}`. The intranet sums the halves whose trigger has fired but `*_paid` is still false into "accrued for next payroll," per agent, with the customer breakdown — so keep `sign_date`/`start_date` and the `*_paid` flags accurate. Split defaults to 50/50 of `commission_total`; if a rep's structure differs, set `sign_amount`/`start_amount` explicitly.
+  `{agent, customer, brand, owner_user_id, service_agent_id, agent_attribution_verified (bool, per the cross-check above), contract_value, commission_total (contract × rep rate; re-derive on change orders), pay_pct (current cumulative % of contract_value paid, per ServiceMinder), sign_date (accepted date, or null if not yet signed), sign_pay_pct (the pay_pct reading at the moment the sign half fired), sign_amount (50% of commission_total), sign_paid (true once that half has been paid out on a prior payroll), start_date (install start, or null if not started), start_trigger_source (pay_pct | install_date | both — which signal actually fired the start half), start_amount (the other 50%), start_paid, trigger_mismatch (true + a note when pay_pct and the install-date evidence disagree about whether the job has started), payroll_cycle_end (the Tuesday cutoff this trigger's payable date is assigned to), next_payroll_date (that cutoff's confirmed or provisional pay date — see the ground-truth rule above; NEVER assume it falls on a Friday), scan_date}`. The intranet sums the halves whose trigger has fired but `*_paid` is still false into "accrued for next payroll," per agent, with the customer breakdown — so keep `sign_date`/`start_date` and the `*_paid` flags accurate. Split defaults to 50/50 of `commission_total`; if a rep's structure differs, set `sign_amount`/`start_amount` explicitly.
 - **Change orders** change the base: a signed change order re-derives the commission delta on that job — flag deltas so nobody is over/underpaid, and update `commission_total`/the halves on the `commissions` row.
 - Commission **percentages and payables are fine** in the owner briefing and the tracker; never write hourly rates or salaries anywhere.
 
