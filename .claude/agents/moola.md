@@ -105,15 +105,32 @@ Commissions are a real payroll liability nobody else computes — get ahead of e
   these same names or rates — do not apply KTU rates to a BTU rep without checking they're
   actually the same person. Verify the active roster against ServiceMinder
   `list_service_agents` every scan; update here if config drifts.
-- **Trigger events (owner-confirmed 2026-07-12, tightened 2026-08-18): 50% of the commission
-  is earned when the job is SOLD AND the deposit is collected** — both conditions, not just
-  the proposal being accepted. A signed-but-unpaid proposal does NOT trigger the sign half;
-  confirm via ServiceMinder that the deposit invoice shows payment received (and bank-confirm
-  where possible, per the bank-reconciliation pattern used elsewhere in this scan) before
-  setting `sign_paid`-eligible. **The other 50% is earned WHEN THE JOB STARTS** (install
-  start — the `start` half). Scan ServiceMinder proposals (accepted date + deposit payment
-  date = signing-and-collected) and appointments/install dates since the last payroll for
-  both triggers. Each half only becomes payable once its trigger has actually fired.
+- **Trigger events (owner-confirmed 2026-07-12, tightened 2026-08-18; ServiceMinder
+  payment-percentage cross-check added 2026-08-20): 50% of the commission is earned when the
+  job is SOLD AND the deposit is collected** — both conditions, not just the proposal being
+  accepted. A signed-but-unpaid proposal does NOT trigger the sign half.
+  **Make the check quantitative, not just "an invoice shows paid."** Compute
+  `pay_pct = paid ÷ contract_total` from ServiceMinder `query_invoices` / `query_payments`
+  for every job (bank-confirm where possible, per the bank-reconciliation pattern used
+  elsewhere in this scan). Record it on the row as `pay_pct`.
+  - **Sign half fires when `pay_pct` first reaches 50%.** Under the standard KTU/BTU 50/40/10
+    schedule this is exactly what "deposit collected" means numerically, and it also catches
+    a job paid in a lump sum outside the staged schedule. Record `sign_pay_pct` at the moment
+    it fires.
+  - **Start half fires when `pay_pct` reaches 75% or more (`≥ 75%`)** — the SAME threshold Foreman uses to set
+    `install_started = true` (KTU/BTU terms front-load payment, so three-quarters collected
+    means material has shipped and install is underway). Use this identical number, not a
+    different one, so the two agents can never disagree about whether a job has started.
+    Cross-check against the install-date evidence too (JobTread Project Window /
+    ServiceMinder primary install, per Foreman's own §2 determination): if `pay_pct ≥ 75%`
+    with no install date yet, or an install date has passed but `pay_pct` is still under 50%,
+    **flag the mismatch in the row rather than paying on either signal alone** — one of the
+    two sources is wrong (a mis-posted payment, or a job that started without the invoicing
+    catching up), and that is real risk, not noise. Record which source actually fired the
+    trigger as `start_trigger_source` (`pay_pct` | `install_date` | `both`).
+  Scan ServiceMinder proposals (accepted date + payment history) and appointments/install
+  dates since the last payroll for both triggers. Each half only becomes payable once its
+  trigger has actually fired.
 - Every scan, output the **accrued-but-unpaid commission payable for the next payroll run**.
   Payroll is **biweekly, Tuesday cutoff, paid the following Friday** — anchor date
   2026-08-18 (confirmed payroll-processing Tuesday); compute every future cutoff as
@@ -123,7 +140,7 @@ Commissions are a real payroll liability nobody else computes — get ahead of e
   today's cutoff, it rolls to the next cycle; do not pay early. Per rep, per job, per trigger,
   with the total. This number feeds the forward cash forecast's outflow side.
 - **Populate the Commission Tracker tab — section `commissions`** (Operations tab; write-then-prune per `scan_date`). One row per rep×job:
-  `{agent, customer, brand, contract_value, commission_total (contract × rep rate; re-derive on change orders), sign_date (accepted date, or null if not yet signed), sign_amount (50% of commission_total), sign_paid (true once that half has been paid out on a prior payroll), start_date (install start, or null if not started), start_amount (the other 50%), start_paid, payroll_cycle_end (the Tuesday cutoff this trigger's payable date is assigned to), next_payroll_date (that cutoff's Friday pay date), scan_date}`. The intranet sums the halves whose trigger has fired but `*_paid` is still false into "accrued for next payroll," per agent, with the customer breakdown — so keep `sign_date`/`start_date` and the `*_paid` flags accurate. Split defaults to 50/50 of `commission_total`; if a rep's structure differs, set `sign_amount`/`start_amount` explicitly.
+  `{agent, customer, brand, contract_value, commission_total (contract × rep rate; re-derive on change orders), pay_pct (current cumulative % of contract_value paid, per ServiceMinder), sign_date (accepted date, or null if not yet signed), sign_pay_pct (the pay_pct reading at the moment the sign half fired), sign_amount (50% of commission_total), sign_paid (true once that half has been paid out on a prior payroll), start_date (install start, or null if not started), start_trigger_source (pay_pct | install_date | both — which signal actually fired the start half), start_amount (the other 50%), start_paid, trigger_mismatch (true + a note when pay_pct and the install-date evidence disagree about whether the job has started), payroll_cycle_end (the Tuesday cutoff this trigger's payable date is assigned to), next_payroll_date (that cutoff's Friday pay date), scan_date}`. The intranet sums the halves whose trigger has fired but `*_paid` is still false into "accrued for next payroll," per agent, with the customer breakdown — so keep `sign_date`/`start_date` and the `*_paid` flags accurate. Split defaults to 50/50 of `commission_total`; if a rep's structure differs, set `sign_amount`/`start_amount` explicitly.
 - **Change orders** change the base: a signed change order re-derives the commission delta on that job — flag deltas so nobody is over/underpaid, and update `commission_total`/the halves on the `commissions` row.
 - Commission **percentages and payables are fine** in the owner briefing and the tracker; never write hourly rates or salaries anywhere.
 
