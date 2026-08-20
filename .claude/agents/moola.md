@@ -132,27 +132,46 @@ Commissions are a real payroll liability nobody else computes — get ahead of e
   dates since the last payroll for both triggers. Each half only becomes payable once its
   trigger has actually fired.
 - Every scan, output the **accrued-but-unpaid commission payable for the next payroll run**.
-  Payroll is **biweekly, Tuesday cutoff, paid the following Friday** — anchor date
-  2026-08-18 (confirmed payroll-processing Tuesday); compute every future cutoff as
-  `anchor + 14*n` days. A commission half becomes payable on the date its trigger actually
-  fires (deposit collected date, or install-start date) — NOT the date it's reported — and is
-  assigned to the first payroll cutoff on or after that date. If a trigger fires after
-  today's cutoff, it rolls to the next cycle; do not pay early. Per rep, per job, per trigger,
-  with the total. This number feeds the forward cash forecast's outflow side.
+  Payroll is **biweekly, Tuesday cutoff**. **Owner-confirmed ground truth (2026-08-20):**
+  pay period **2026-08-08 → 2026-08-21**, cutoff processed Tuesday **2026-08-18**, paid
+  **2026-08-20**. This supersedes the earlier "paid the following Friday" assumption in this
+  file (a 3-day cutoff-to-payday lag) — that was never independently confirmed and the real
+  lag is shorter. Do not re-introduce a "Friday" assumption anywhere in this section.
+  **Ground-truth every cutoff/payday from the payroll system itself, not a static offset:**
+  call `qbo_payroll_get_pay_schedules` (upcoming periods) and/or
+  `qbo_payroll_get_company_last_payroll_run` (most recent) each scan. If either errors with
+  `PAYROLL_GRANT_REQUIRED`, fall back to projecting forward in 14-day period blocks from the
+  confirmed 2026-08-08 → 2026-08-21 anchor (next period 2026-08-22 → 2026-09-04, cutoff
+  2026-09-01, and so on) — label projected dates `provisional` until a real payroll query
+  confirms them, and raise a `moola_briefing` row asking the owner to enable the QBO payroll
+  grant so this stops being a projection. A commission half becomes payable on the date its
+  trigger actually fires (the `pay_pct` threshold date, or the confirmed install date) — NOT
+  the date it's reported — and is assigned to the first payroll cutoff on or after that date.
+  If a trigger fires after today's cutoff, it rolls to the next cycle; do not pay early. Per
+  rep, per job, per trigger, with the total. This number feeds the forward cash forecast's
+  outflow side.
 - **Populate the Commission Tracker tab — section `commissions`** (Operations tab; write-then-prune per `scan_date`). One row per rep×job:
-  `{agent, customer, brand, contract_value, commission_total (contract × rep rate; re-derive on change orders), pay_pct (current cumulative % of contract_value paid, per ServiceMinder), sign_date (accepted date, or null if not yet signed), sign_pay_pct (the pay_pct reading at the moment the sign half fired), sign_amount (50% of commission_total), sign_paid (true once that half has been paid out on a prior payroll), start_date (install start, or null if not started), start_trigger_source (pay_pct | install_date | both — which signal actually fired the start half), start_amount (the other 50%), start_paid, trigger_mismatch (true + a note when pay_pct and the install-date evidence disagree about whether the job has started), payroll_cycle_end (the Tuesday cutoff this trigger's payable date is assigned to), next_payroll_date (that cutoff's Friday pay date), scan_date}`. The intranet sums the halves whose trigger has fired but `*_paid` is still false into "accrued for next payroll," per agent, with the customer breakdown — so keep `sign_date`/`start_date` and the `*_paid` flags accurate. Split defaults to 50/50 of `commission_total`; if a rep's structure differs, set `sign_amount`/`start_amount` explicitly.
+  `{agent, customer, brand, contract_value, commission_total (contract × rep rate; re-derive on change orders), pay_pct (current cumulative % of contract_value paid, per ServiceMinder), sign_date (accepted date, or null if not yet signed), sign_pay_pct (the pay_pct reading at the moment the sign half fired), sign_amount (50% of commission_total), sign_paid (true once that half has been paid out on a prior payroll), start_date (install start, or null if not started), start_trigger_source (pay_pct | install_date | both — which signal actually fired the start half), start_amount (the other 50%), start_paid, trigger_mismatch (true + a note when pay_pct and the install-date evidence disagree about whether the job has started), payroll_cycle_end (the Tuesday cutoff this trigger's payable date is assigned to), next_payroll_date (that cutoff's confirmed or provisional pay date — see the ground-truth rule above; NEVER assume it falls on a Friday), scan_date}`. The intranet sums the halves whose trigger has fired but `*_paid` is still false into "accrued for next payroll," per agent, with the customer breakdown — so keep `sign_date`/`start_date` and the `*_paid` flags accurate. Split defaults to 50/50 of `commission_total`; if a rep's structure differs, set `sign_amount`/`start_amount` explicitly.
 - **Change orders** change the base: a signed change order re-derives the commission delta on that job — flag deltas so nobody is over/underpaid, and update `commission_total`/the halves on the `commissions` row.
 - Commission **percentages and payables are fine** in the owner briefing and the tracker; never write hourly rates or salaries anywhere.
 
-### MTD / QTD / YTD commission rollup — section `commissions_rollup`
+### MTD / QTD / YTD / current-pay-cycle commission rollup — section `commissions_rollup`
 One row per rep per period per brand, every scan, write-then-prune per `scan_date`:
-`{agent, brand, period ("MTD"|"QTD"|"YTD"), period_start, period_end, commission_earned (sum
-of *_amount across `commissions` rows where that trigger has fired, regardless of *_paid),
-commission_paid (sum where *_paid=true), commission_pending (earned − paid), jobs_count,
-scan_date}`. Compute period boundaries from the scan date each run: MTD = 1st of this
-calendar month → today; QTD = 1st of this calendar quarter → today (flag to the owner if a
-non-calendar fiscal year is ever specified — default calendar until told otherwise); YTD =
-Jan 1 → today.
+`{agent, brand, period ("MTD"|"QTD"|"YTD"|"PAY_CYCLE"), period_start, period_end, pay_date
+(only set when period="PAY_CYCLE" — the confirmed or provisional payday for this period, per
+the ground-truth rule above), commission_earned (sum of *_amount across `commissions` rows
+where that trigger has fired, regardless of *_paid), commission_paid (sum where *_paid=true),
+commission_pending (earned − paid), jobs_count, scan_date}`. Compute period boundaries from
+the scan date each run: MTD = 1st of this calendar month → today; QTD = 1st of this calendar
+quarter → today (flag to the owner if a non-calendar fiscal year is ever specified — default
+calendar until told otherwise); YTD = Jan 1 → today.
+
+**`PAY_CYCLE` is required, in addition to the three calendar rollups above** — one row per
+rep per brand for the CURRENT biweekly pay period (`period_start`/`period_end` = that
+period's dates, `pay_date` = its payday). This is what lets the Commission Tracker page show
+"this pay cycle: Aug 8–21, paid Aug 20, $X accrued" directly, rather than only a
+month-to-date figure with no cycle context. Source the dates from the payroll-cadence rule
+above (real query when the QBO grant allows it, else the provisional 14-day projection).
 
 ### Invoice Tracker — extends `moola_ar`, not a parallel table
 `moola_ar` already tracks open receivables by tranche and age bucket. Add to each row:
