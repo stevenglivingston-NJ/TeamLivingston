@@ -81,7 +81,29 @@ mcp-servers/
 HTTP-transport servers (registered by bootstrap.sh, no local code):
   ghl-ktu / ghl-btu   → LeadConnector hosted MCP, PIT-scoped per location
   clarity             → Render-hosted ktubtu-mcp-clarity (Data-Export, static bearer)
+
+Direct-access helpers (curl/CLI, NOT registered MCP servers — no bootstrap needed):
+  sb.sh               → Supabase REST/RPC over curl
+  ghl.sh              → HighLevel over curl, same endpoint as ghl-ktu / ghl-btu
 ```
+
+**`ghl.sh` — HighLevel without MCP registration.** `bootstrap.sh` runs from the
+Cloud environment's setup script, so when that step doesn't run (or runs after
+the session's tool list is built) there are no `mcp__ghl-*` tools and an agent
+wrongly reports "HighLevel unavailable" even though both PITs are valid — that
+is exactly what happened on the 2026-08-21 Foreman run. `mcp-servers/ghl.sh`
+calls the same LeadConnector MCP endpoint over curl, reading `GHL_PIT_KTU` /
+`GHL_PIT_BTU` from the environment, so it works with zero dependency on
+registration. Prefer the `mcp__ghl-*` tools when they exist; fall back to this:
+
+```
+bash mcp-servers/ghl.sh KTU tools                              # list tool names
+bash mcp-servers/ghl.sh BTU contacts_get-contacts '{"query_limit":5}'
+```
+
+An agent must NOT report the HighLevel pipe as unreachable until it has tried
+`ghl.sh` — "no MCP tools registered" is not the same finding as "the token is
+dead", and only the latter is a real outage.
 
 > **Tekki owns this.** The `tekki` agent (`.claude/agents/tekki.md`) re-audits the
 > stack daily — maintains the Tech Stack registry + SOWs, live-probes every
