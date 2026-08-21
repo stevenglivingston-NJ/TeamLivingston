@@ -261,6 +261,66 @@ stack so Steven gets one number each morning.
 - Publish: replace Supabase section `tekki_health` (project `tguwpswcneywvscxzyef`, table `intranet_records`) — DELETE old rows, INSERT one row per pipe (`severity`/`component`/`status`/`detail`/`fix`/`scan_date`, brand-tagged).
 - **Score the stack /100**, weighted by business impact: money-in (ServiceMinder, QuickBooks, Supabase) 35 · demand/CRM (ghl-*, Google Ads, Meta, Clarity) 30 · ops+eComm (CompanyCam, JobTread, Shopify, ShipStation, Amazon) 20 · infra (Cloudflare, Render, bootstrap wiring) 15. Name the top 3 point-losers and the single highest-leverage fix.
 
+### 3c. Publish the Integrations tab (replaces the hardcoded list — write-then-prune)
+The intranet's Integrations tab used to be a hand-maintained JS array in `index.html`
+that went stale for months at a time (e.g. an Outlook row nobody re-checked, a GA4
+type that lagged a provider swap by weeks). That's now your job, same pattern as
+Pipeline/Moola: publish live rows to Supabase section **`system_integrations`**
+and the tab reads them straight from there instead of the hardcoded list.
+
+- Row shape, one per connector/tool (mirrors the tab's categories exactly):
+  `{cat, name, type, scope, status, d, note}` where:
+  - `cat` — one of the tab's 8 categories: `Business Systems`, `Marketing & Ads`,
+    `Web Analytics & Attribution`, `Finance`, `Comms & Productivity`,
+    `Content & Design`, `Jatalia / eCommerce`, `Infrastructure & Automation`.
+  - `type` — how it's connected (`Direct MCP`, `claude.ai`, `via Zapier`, `Zapier
+    MCP`, `CLI`, `Bank feeds`, `REST token`, `Vendor (no MCP)`, etc.).
+  - `scope` — `Both` / `KTU` / `BTU` / `Jatalia` / `All` / a named person, as
+    applicable.
+  - `status` — one of `ok` (connected/healthy) | `auth` (needs re-authorization)
+    | `degraded` (working via a fallback / partially working) | `dep`
+    (deprecated, kept for reference).
+  - `d` — the date (YYYY-MM-DD) you actually last verified this row, not the
+    date you happened to run today. Only bump it when you have real evidence.
+  - `note` — one honest sentence: what it's for and, if not `ok`, exactly what's
+    wrong and what fixes it.
+- **Master list**: cross-reference the CLAUDE.md MCP tables, `bootstrap.sh`, and
+  the agent specs (same ground truth as the §1 coverage sweep) — every connector
+  named there gets a row. Don't drop rows just because you can't live-probe them
+  this run; carry the last-known status forward and only change `status`/`d`/`note`
+  when you have fresh evidence (from §3b's live probes, a HEAD-check, or a direct
+  read of the spec/bootstrap wiring). Never flip a row to `ok` on faith.
+- **Reuse §3b's live-probe results** for anything you already tested there
+  (ServiceMinder, `ghl-ktu`/`ghl-btu`, Clarity, Supabase, QuickBooks, Shopify,
+  JobTread, Cloudflare) — a 🟢 there → `status:'ok'`; 🟡 → `'degraded'` with the
+  fallback named in `note`; 🔴 → `'auth'` or `'degraded'` per the actual failure,
+  with the exact fix.
+- **Email connectivity — architecture correction (do not flag Outlook/MS365
+  OAuth as broken).** The intended, correct wiring is: **Spark handles HFC
+  corporate mail** (bypasses the HFC tenant's OAuth block on purpose — this is
+  by design, not a workaround-in-waiting), and **Gmail direct (claude.ai
+  connector) + Zapier MCP handle everything else**. So:
+  - The `Outlook / MS365` row's `note` should say plainly that HFC mail is
+    handled by Spark by design, and Outlook/MS365 OAuth itself is not expected
+    to be authorized — do not mark it `auth`/degraded purely because Outlook
+    OAuth is unauthorized; that's the expected state, not a fault. Only mark it
+    `auth`/`degraded` if Spark itself is failing to reach HFC mail (test via
+    whatever Spark health-check is available) or if a genuinely new mailbox
+    needs coverage neither Spark nor Gmail/Zapier can reach.
+  - The `Gmail` row should reflect Gmail direct + Zapier MCP as the real path
+    for non-HFC mail; `status:'ok'` when both the Gmail connector and Zapier's
+    Gmail actions resolve normally.
+  - Apply the same logic to any other email-adjacent row you add or find —
+    judge each by whether SOMETHING in {Spark, Gmail direct, Zapier MCP}
+    actually covers it, not by whether Outlook OAuth alone is green.
+- Publish: **write-then-prune** — DELETE all existing `system_integrations`
+  rows, then INSERT the full current set in one pass (same idempotent pattern
+  as `tekki_health` in §3b — no `scan_date` needed here since this section has
+  no history to preserve, just current state).
+- If nothing in the wiring changed since your last run, still re-publish
+  (cheap — it's a straight replace) so `d` stays honest and the tab never
+  silently goes stale again.
+
 ### 4. Report
 - **Write the Tech Stack tab's executive summary** — section `exec_summary`,
   write-then-prune per `scan_date`, one row: `{tab:'techstack', owner:'Tekki',
