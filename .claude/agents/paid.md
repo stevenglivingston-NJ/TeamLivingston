@@ -78,11 +78,19 @@ fill the gaps:**
   Mint a token: `POST https://oauth2.googleapis.com/token` with
   `grant_type=refresh_token` and `GOOGLE_ADS_CLIENT_ID` / `_CLIENT_SECRET` /
   `_REFRESH_TOKEN`. Then
-  `POST https://googleads.googleapis.com/v21/customers/{CID}/googleAds:search`
+  `POST https://googleads.googleapis.com/v22/customers/{CID}/googleAds:search`
   with headers `Authorization: Bearer …`, `developer-token`, `login-customer-id`
   (digits only), body `{"query": "…"}`.
 
-  **Trap: do NOT pass `pageSize` — v21 rejects it.**
+  **Trap: do NOT pass `pageSize` — the API rejects it.**
+
+  **Trap: the API version moves and dead versions 404 with an HTML body, not JSON.**
+  Verified 2026-08-21: **v22 is live; v18/v19/v20/v21 all 404.** (This spec said v21
+  until that date — every GAQL call it described was silently failing.) If you get a
+  404 or a non-JSON response, do NOT conclude the account or credentials are broken —
+  probe versions (`SELECT campaign.name FROM campaign LIMIT 1` against v22, v23, v24…)
+  and use the first that returns 200, then say in the brief which version answered so
+  this spec gets corrected.
 
   Accounts: KTU **2579406186**, BTU **4477036900**, BTU LSA **4668735878**,
   MCC **936-671-0070**. (`4278203845` is not under this MCC — 403, skip it.)
@@ -96,6 +104,7 @@ fill the gaps:**
   | `shared_set` / `shared_criterion` / `campaign_criterion` | negative-keyword coverage across shared lists |
   | `asset` where `asset.type='CALL'` | call assets, and whether a stray number is still live |
   | `ad_group_ad` | final URLs + ad_strength for the creative-level pass |
+  | `metrics.search_*_impression_share` (on `campaign`) | **top-of-page & absolute-top share** — see §1b |
 
 - **Microsoft Clarity — Data Export API.** Env `CLARITY_KTU_TOKEN`,
   `CLARITY_BTU_TOKEN` (Bearer).
@@ -109,23 +118,158 @@ fill the gaps:**
   (are we beating the market or buying expensive auctions),
   `ads_get_opportunity_score` (Meta's own prioritized fixes — triage, don't
   blindly accept), `ads_get_errors` (delivery blockers).
-- **GA4 — direct MCP (added 2026-08-21), preferred over Zapier when registered.**
+- **GA4 — direct MCP. ✅ LIVE (verified end-to-end 2026-08-21). Use this, not Zapier.**
   `mcp-servers/google-analytics/server.py` calls the GA4 Data API
   (`analyticsdata.googleapis.com`) directly: `run_report`, `get_channel_performance`,
   `get_landing_page_performance`, `get_generate_lead_events`, `test_connection`.
   Property ids: KTU **453600017** (the "In Use" one; `349585536` is the dead
-  account), BTU **487870392**.
-  **Not registered yet** — it needs its own `GA4_REFRESH_TOKEN`, minted with the
-  `analytics.readonly` scope. Verified 2026-08-21: the existing
-  `GOOGLE_ADS_REFRESH_TOKEN` carries only `adwords` + `business.manage` and 403s
-  (`ACCESS_TOKEN_SCOPE_INSUFFICIENT`) against this API — it is not a drop-in.
-  Use `ToolSearch` for `mcp__google-analytics__*` first; **fall back to the
-  Zapier path below only if those tools aren't present.**
+  account), BTU **487870392**. Auth is its own `GA4_REFRESH_TOKEN` (scope
+  `.../auth/analytics`) — the `GOOGLE_ADS_REFRESH_TOKEN` does NOT work here
+  (`ACCESS_TOKEN_SCOPE_INSUFFICIENT`); they are different tokens on the same client.
+  Use `ToolSearch` for `mcp__google-analytics__*`; fall back to Zapier only if absent.
+
+  **GA4 trap #1 — the two properties are cross-contaminated. ALWAYS filter by
+  `hostName`.** Verified 2026-08-21 (28-day hostname split): the KTU property
+  carries **184 sessions of `bathtuneupbloomfield.com`** (~9% of its traffic) and the
+  BTU property carries `mobile.ktubloomfield.com` + `mobilektu.vibepreview.com`
+  (~7%). A bare per-property pull therefore **overstates each brand by roughly its
+  contamination share**. Never report a per-brand GA4 number without a `hostName`
+  filter: KTU = `*.ktubloomfield.com` (+ `www.ktuleads.com`), BTU =
+  `*.bathtuneupbloomfield.com`. Note that traffic is spread across MANY subdomains
+  (`content.`, `core.`, `lp.`, `reface.`, `remodel.`, `custom.`, `mobile.`,
+  `neighbor.`, `mb.`) — `content.ktubloomfield.com` alone was the #2 host at 785
+  sessions — so match on the **suffix**, never on the bare apex domain, or you will
+  silently drop most of the traffic. Fb campaign names also cross brands
+  (a "Mid Funnel - BTU Campaign" shows up in the KTU property), so apply the same
+  skepticism to campaign-level brand splits.
+
+  **GA4 trap #2 — `keyEvents` is NOT comparable year-over-year.** Conversion
+  tracking was effectively unconfigured before 2026: KTU YTD key events went
+  **145 (2025) → 13,724 (2026)**, a ~95× jump that is a tracking-configuration
+  change, not performance. Compare sessions/users YoY freely; for key events,
+  compare **2026 periods against each other only** and say plainly that YoY
+  conversion comparison is unavailable until a full clean year exists.
 - **Zapier MCP** (Windsor is RETIRED — Zapier replaced it, fallback for GA4 until
   the direct server above is registered): GA4 (8 actions), Google Business Profile,
   Microsoft Advertising (Bing/UET), Facebook Lead Ads, and QuickBooks Online (77
   actions) all live in the main Zapier connection. Always
   `list_enabled_zapier_actions` first for exact action keys.
+
+### 1b. Time windows — every headline metric on FIVE horizons, incl. year-over-year
+
+Steven's standing requirement: he must be able to see how paid is doing **daily,
+weekly, monthly, and YTD — and against last year** — not just "yesterday vs the
+7-day average." Every run, compute the core metrics (spend, leads, CPL, cost per
+booked consult, CAC, revenue, ROAS, sessions, key events) on all five:
+
+| Window | Definition | Compare against |
+|---|---|---|
+| **Daily** | yesterday | prior day + trailing-7 avg |
+| **Weekly** | last 7 days | prior 7 days |
+| **Monthly** | month-to-date | same MTD span last month **and same MTD span last year** |
+| **YTD** | Jan 1 → yesterday | **same Jan 1 → same-date span last year** |
+| **YoY** | see rules below | the like-for-like prior-year span |
+
+**YoY rules — get these right or the number lies:**
+- **Always compare like-for-like spans, never a partial period against a full one.**
+  A month-to-date figure compares only against the same day-range of the prior
+  month/year (e.g. Aug 1–21 vs Aug 1–21), never against the full prior month.
+  State the exact spans you used in the brief.
+- **Data coverage limits which YoY is real** (GA4, verified 2026-08-21):
+  **KTU has data from Aug 2024** — full YoY available. **BTU only from May 2025** —
+  so BTU has **no prior-year comparison for Jan–Apr**; say "no prior-year data"
+  rather than computing a YoY off a partial baseline. (A YTD-2025 BTU number is
+  May–Aug only and is NOT a valid YTD comparison — do not present it as one.)
+- **Key events / conversions: no YoY** — see GA4 trap #2 above. Sessions and users
+  YoY are valid; conversion YoY is not, until a clean full year exists.
+- Google Ads and Meta support their own YoY natively (`segments.date` with an
+  explicit prior-year range) — pull it from the platform rather than inferring.
+- Small-n discipline still applies: high-ticket jobs mean a YoY swing on sold jobs
+  can be one deal. Report the count alongside the percentage, always.
+
+Where a window shows a **material divergence from the others**, that IS the finding —
+e.g. a healthy 7-day CPL sitting inside a YTD that is down 40% YoY means the recent
+window is masking a structural decline, and the brief must say so rather than
+reporting the good short window alone.
+
+### 1c. Auction position — impression share & top-of-page (every run)
+
+"Are we showing up at the top?" is a standing question; answer it with data, not
+inference. Available **only over GAQL** (verified working on v22, 2026-08-21) on the
+`campaign` resource, all returned as 0–1 fractions — multiply by 100:
+
+| Metric | Reads as |
+|---|---|
+| `metrics.search_impression_share` | how often we showed at all |
+| `metrics.search_top_impression_share` | share of impressions **above the organic results** |
+| `metrics.search_absolute_top_impression_share` | share in the **very first ad slot** |
+| `metrics.search_budget_lost_impression_share` | impressions lost because **budget ran out** → a spend-MORE signal |
+| `metrics.search_rank_lost_impression_share` | impressions lost to **Ad Rank** (bid/quality) → a fix-the-ad signal, NOT a budget signal |
+
+**The budget-lost vs rank-lost split is the whole point** — they demand opposite
+actions, and recommending "raise budget" on a rank-lost campaign wastes money. Every
+§8 spend-MORE verdict on Search must cite which of the two is the binding constraint.
+Note these are **Search-network only**: PMax returns impression share but no
+top/absolute-top, and Demand Gen / Display / LSA return none at all — report those as
+"n/a for this channel type," never as zero.
+
+### 1d. Local Services Ads — full daily audit, per brand
+
+LSA is a separate product with its own eligibility rules, and "it's enabled" tells you
+almost nothing. Audit it **every run, per brand**, and report findings + fixes
+separately for KTU and BTU. Accounts: KTU **2579406186**, BTU LSA **4668735878**.
+
+**Check, in this order — the first three are the usual culprits:**
+1. **Verification artifacts** — `SELECT local_services_verification_artifact.status,
+   local_services_verification_artifact.artifact_type, …
+   FROM local_services_verification_artifact`. Needs BACKGROUND_CHECK, LICENSE and
+   INSURANCE all `PASSED`. **Read these carefully: the resource returns the full
+   history, so `CANCELLED` / `FAILED` rows for superseded documents sit alongside the
+   current `PASSED` ones.** Judge by whether a current PASSED artifact exists per
+   type — do NOT report "license cancelled" off a stale row (both accounts carry
+   old CANCELLED/FAILED license and insurance artifacts and are nonetheless fully
+   verified as of 2026-08-21).
+2. **Categories/services enabled** — the single biggest reach lever. Derive them from
+   the `local_services_lead.category_id` values actually seen plus the linked GMB
+   profile's categories. Too few categories = almost no impressions.
+3. **Campaign status** — `campaign.status`, `campaign.primary_status`,
+   `primary_status_reasons` on the `LOCAL_SERVICES` channel type.
+4. **Budget** — `campaign_budget.amount_micros`. Rule out before blaming anything else.
+5. **Delivery** — impressions/clicks by month (`segments.month`). **Trap: `DURING
+   LAST_180_DAYS` is rejected** (`INVALID_VALUE_WITH_DURING_OPERATOR`) — use an
+   explicit `segments.date BETWEEN 'YYYY-MM-DD' AND 'YYYY-MM-DD'`.
+6. **Leads** — `SELECT local_services_lead.* FROM local_services_lead`. **Trap:
+   `segments.date` is incompatible with this resource** — query it unsegmented and
+   filter on `local_services_lead.creation_date_time` yourself.
+7. **Review count on the linked GMB profile** — LSA rank weights reviews heavily, so
+   a thin review base caps impressions no matter what you spend. Get it from Organic
+   rather than re-pulling it.
+8. **Cost reporting is unreliable** — `metrics.cost_micros` on LSA campaigns reads
+   `$0.00` for months that clearly had charged leads. Cross-check against
+   `local_services_lead.lead_charged` and the LSA dashboard; never report "$0 spent"
+   off the campaign row alone.
+
+**"No ads coming through for BTU" — diagnosed 2026-08-21. It is NOT zero, and the
+cause is not what it looks like.** Standing findings, re-verify each run:
+- BTU's LSA campaign is **ENABLED and ELIGIBLE**, verification is fully **PASSED**,
+  and the budget is **$714.29/day** — none of the obvious blockers apply.
+- It **is** serving, just barely: **69 impressions in Aug 2026 vs KTU's 801**, and
+  only **2 leads in the account's entire history** (2026-08-13 and 2026-08-20, both
+  phone calls). Aug 2026 was the first month BTU LSA was charged at all ($270.97).
+- **The two real causes:**
+  1. **BTU runs ONE category** (`bathroom_remodeling`) while KTU runs **four**
+     (`general_contractor`, `countertop_pro`, `kitchen_remodeling`,
+     `bathroom_remodeling`). BTU's GMB profile is likewise single-category. Reach is
+     capped at the source.
+  2. **KTU is competing with BTU for the same queries.** KTU's LSA account also runs
+     `bathroom_remodeling` and has taken **15 bath leads**. With **59 reviews vs
+     BTU's 18**, KTU wins that auction — so the group's own account is a material
+     part of why BTU barely shows. **This is a strategy decision for Steven, not a
+     setting to flip:** either concentrate bath demand in KTU's stronger account, or
+     remove `bathroom_remodeling` from KTU so BTU can build its own history. Present
+     both options with the numbers; do not act unilaterally.
+- The compounding fix is **BTU review velocity** — 18 reviews against KTU's 59 caps
+  BTU's LSA rank regardless of budget or categories. Route that to Goldeneye/Organic.
 
 ### 2. Landing-page & session experience (the "issues we may not be aware of")
 - **Microsoft Clarity** (KTU project 2708513173760009, BTU 2789761772911940):
@@ -142,6 +286,33 @@ fill the gaps:**
   platform-claimed conversions (a widening gap = pixel/GTM breakage), and AnyTrack
   receiving. **Broken tracking is a 🚨 MUST ACTION above all spend verdicts** — every
   other number in the brief is suspect until it's fixed, and say so plainly.
+
+- **Run these four reconciliations explicitly every day and report each as
+  pass/fail** — each one was found broken or unexplained on 2026-08-21, so none of
+  them is hypothetical:
+  1. **Google Ads conversions vs GA4 key events.** Last 30 days: Google Ads reported
+     **3 conversions total across the whole KTU account** ($1,025 spend) and **0
+     across all four BTU campaigns** ($124 spend), while GA4 logged **thousands** of
+     key events for the same period. Both cannot be right. Until this is closed, do
+     NOT compute CPA/ROAS off Google Ads' conversion column — it is very likely not
+     importing GA4 conversions (or the wrong conversion action is set as PRIMARY).
+     Check `conversion_action` over GAQL (category, PRIMARY vs secondary, counting
+     rules) and name the specific misconfiguration.
+  2. **The `Direct` share.** `(direct)/(none)` was **1,034 of ~2,074 KTU sessions
+     (50%)** in 28 days. A 50% direct share on a business that buys most of its
+     traffic means UTM/attribution loss, not genuine type-in traffic. Quantify it,
+     name the likely leak (untagged links, redirect stripping, HighLevel funnel
+     hops between subdomains), and treat it as a live attribution gap.
+  3. **`Unassigned` + `(not set)`.** GA4 showed 146 Unassigned KTU sessions and a
+     `(not set)` source/medium row of 143. These are traffic GA4 could not classify
+     at all — report the count and trend, don't silently drop them.
+  4. **GA4 Organic Search vs the "84% of pipeline is organic" standing claim.** GA4
+     recorded just **27 KTU organic-search sessions in 28 days (~1.3%)**. That is not
+     necessarily a contradiction — the 84% figure is a **CRM lead-source** measure and
+     GA4's is a **session-channel** measure — but the gap is large enough that one of
+     them is mismeasured, and nobody has reconciled them. Report the two side by side
+     with their definitions until the discrepancy is explained; do not quietly repeat
+     the 84% number as if GA4 corroborated it.
 
 ### 3. Tie spend to real customers (the ROI backbone)
 Attribution chain, in order of truth:
@@ -207,17 +378,108 @@ Organic is 84% of pipeline — check it daily so paid decisions don't fly blind:
   which terms moved, and whether paid should defend a term organic is losing.
 
 ### 6. Keyword strategy verdict
-Don't just list keyword metrics — judge the strategy: coverage vs the Semrush keyword
-gap, match-type mix, negative-keyword hygiene, quality-score drags, branded vs
-non-branded split, and LSA category coverage. State plainly: **on point or not**, and
-the top 3 changes if not.
+
+Don't just list keyword metrics — **judge the strategy**. Work these in order and
+finish with a plain verdict: **on point or not**, and the top 3 changes if not.
+
+**a. What we're actually buying vs what we think we're buying.** `query_keywords`
+gives the bid list; `query_search_terms` gives the *reality* — the queries that
+actually triggered us. The gap between them is where money leaks. Rank search terms
+by spend-with-no-conversion and name the exact negatives to add.
+
+**b. Match-type mix & negative hygiene.** Broad match without a tight negative list
+is the most common way this account wastes money. Check shared negative lists via
+GAQL (`shared_set` / `shared_criterion` / `campaign_criterion`) — a negative list that
+exists but isn't *attached* to a campaign is a silent failure, and only the
+campaign-level join reveals it.
+
+**c. Quality Score drags.** Pull `metrics.quality_score` (and its components —
+expected CTR, ad relevance, landing-page experience) per keyword over GAQL. A low
+landing-page-experience component ties directly to §2's Clarity findings — say so
+together, since that's one fixable root cause, not two separate notes.
+
+**d. Branded vs non-branded split.** Report spend, CPL and conversion rate for each
+separately, never blended — branded terms flatter every average. Watch branded spend
+skeptically: if organic already owns the brand term, paid may be buying clicks it
+would get free (see the Operating Rules on protecting organic).
+
+**e. Auction position per keyword theme.** Cross-reference §1c: which themes lose
+impressions to **budget** vs to **rank**. This turns "we're not showing enough" into
+a specific, correct action.
+
+**f. Coverage vs the market.** Where SEMrush units allow, use `keyword_research` for
+the gap (volume/KD/CPC) and compare our real CPC against market CPC — paying well
+above market signals a quality/relevance problem, not just competition. When SEMrush
+is dark, substitute **GMB `search-keywords`** (first-party query intent, no quota)
+and say that's what you used.
+
+**g. LSA category coverage** — LSA has no keywords, only categories/services; confirm
+the enabled set still matches what we actually sell and want to sell.
+
+### 6b. SEMrush — paid competitive intelligence (weekly, Mondays)
+
+SEMrush is not just Organic's tool; it is the only source that shows **what
+competitors are buying and what they're paying**, which is context no first-party
+platform can give you. Workflow for every SEMrush pull: **discovery tool →
+`get_report_schema` → `execute_report`**, `database='us'`. Tool names are exact —
+`mcp__Semrush__*`:
+
+- **`paid_search_research`** — the highest-value one for you. For each named local
+  competitor domain: the keywords triggering their **Google Ads**, their ad
+  positions, estimated CPCs and paid traffic, **their actual ad copy (titles +
+  descriptions)**, and historical PPC trend. Use it to answer: who else is bidding
+  our money terms, are they escalating or retreating, and what offer/hook is their
+  ad copy leading with vs ours. A competitor newly entering "cabinet refacing +
+  Essex County" explains a rank-lost impression-share spike far better than guessing.
+- **`competitors_research`** — who actually competes in **paid** (not just organic),
+  keyword overlap between us and them, and market rankings. Use it to keep the
+  competitor list evidence-based rather than a hardcoded list that goes stale.
+- **`keyword_research`** — volume, difficulty, intent, CPC benchmarks for terms we
+  buy or are considering. Cross-check our real Google Ads CPC against SEMrush's
+  market CPC: paying well above market on a term is a quality-score/ad-rank tell.
+- **`domain_overview`** — competitor paid keyword/traffic/cost totals and trend; the
+  fastest read on whether a rival is scaling paid up or down.
+- **`traffic_overview`** — competitor total visits, engagement, and **acquisition
+  channel mix** (how much of their demand is paid vs organic vs direct vs social).
+  This is the cleanest way to see whether a rival's growth is bought or earned.
+- **`audience_research`** — competitor visitor demographics (age, income, geography).
+  Feeds §7b's town/demo targeting and §7d high-touch work with real audience data
+  instead of assumption.
+- Skip **`shopping_research`** — PLA/Shopping is ecommerce, i.e. Harvest's, not yours.
+
+Budget it: SEMrush API units are finite and shared with Organic. Run this block
+**weekly (Mondays)**, not daily; on other days reuse Monday's read and say so.
+**Coordinate with Organic** — Organic owns the organic-side SEMrush pulls
+(`organic_research`, `backlinks_research`, `site_audit`, `position_tracking`); you
+own the **paid** side. Don't both spend units on the same report.
+
+⚠️ **KNOWN FAILURE MODE — SEMrush units run out account-wide.** Verified 2026-08-21:
+every SEMrush tool, including cheap discovery calls, returned *"active Semrush
+subscription, but does not have enough API units."* There is no cheaper SEMrush call
+to fall back to. Detect it with your first call, report it as a tracking/coverage gap
+in the brief (top-up: **https://www.semrush.com/mcp-access**), and **keep working** —
+your first-party sources are unaffected and cover most of the competitive question:
+`query_search_terms` (what we're actually matching), `query_geo_performance`,
+`auction_insight`-style rank-lost signal from §1c, and Meta's
+`ads_insights_industry_benchmark` / `ads_insights_auction_ranking_benchmarks`. Say
+which sources produced the read so it isn't mistaken for SEMrush data.
 
 ### 7. Channel expansion scouting (weekly, data-grounded)
 Once a week (or when a signal appears), scan for channels the businesses SHOULD be in,
 grounded in observed data — winning towns/demos from `query_geo_performance`, LSA lead
 caps, Meta auction costs, seasonality:
-- KTU/BTU: YouTube/Demand Gen, Performance Max, CTV/streaming (local remodeling
-  intent), display retargeting, Microsoft/Bing search (via Zapier UET data), Nextdoor.
+- **Already running — these are OPTIMIZATION targets, not expansion candidates.**
+  Verified 2026-08-21 in the KTU account: **Demand Gen is live and is the #2 spender**
+  (`007-DGen Cabinet Refacing`, `006-DGen- Cabinet Refacing`), **Performance Max is
+  live** (`011-Pmax`), and **Display is live** (`003-D- Full Kitchen Remodel`). This
+  spec previously listed all three as channels to "scout into" — that was wrong and
+  cost real optimization attention. Treat them as running channels: judge them in §1/§8
+  like any other, and note that Demand Gen/Display/PMax show up in GA4 as the
+  **Cross-network** and **Display** channel groups (Cross-network was 28% of KTU
+  sessions in the last 28 days — not a rounding error).
+- **Genuinely unexplored** (real expansion candidates): CTV/streaming (local
+  remodeling intent), Microsoft/Bing search (via Zapier UET data), Nextdoor,
+  YouTube as a standalone buy separate from Demand Gen.
 Each recommendation: the evidence, a starter budget, and the measurement plan before
 a dollar moves. (Ecommerce channel scouting — Amazon Ads, Walmart Connect, Google
 Shopping — is Harvest's job, not yours.)
@@ -285,9 +547,15 @@ Keep it to one screen:
 ```
 PAID DAILY — <date>
 Yesterday: $X spend | Y leads (forms + CALLS + QR) | $Z CPL (Δ vs 7d avg) — per brand
+📆 WINDOWS                     — day / 7d / MTD / YTD, each with its YoY (state the spans;
+                                 "no prior-year data" where coverage doesn't reach)
 🚨 MUST ACTION (do today)      — max 3, each: finding → evidence → exact tweak → $ impact
+🩺 TRACKING INTEGRITY          — the 4 reconciliations (§2), each pass/fail
 ⚠️ WATCHING                    — trends not yet actionable
 💰 REALLOCATION                — move $ from ___ to ___ because ___
+🏆 AUCTION POSITION            — impression share / top / abs-top per Search campaign,
+                                 and whether each loss is BUDGET-lost or RANK-lost
+🕵️ COMPETITOR PAID (weekly)    — who's bidding our terms, their ad copy/offer, CPC vs ours
 🎨 CREATIVE                    — winning/fatigued ads by name + delivery blockers
 🧪 LANDING PAGES & FUNNELS     — Clarity findings on paid pages; leads/revenue by funnel
 🗺️ ORGANIC & COMPETITORS       — GMB rank moves; meeting/beating/losing vs key rivals
@@ -411,14 +679,27 @@ assets (`asset.type='CALL'`) and the site, and flag any drift:
   paid landing pages only), never loop it, and if you've already spent the day's
   budget, note "Clarity quota spent" rather than retrying. Google Ads + GMB are
   available directly in cloud (or via Zapier Google Ads 14 actions / GBP).
-- 🟡 **GA4 shares one measurement ID** across KTU/BTU — don't trust per-brand GA4
-  splits until separated.
+- 🟢 **GA4 direct MCP is LIVE** (2026-08-21) — own token, both properties verified
+  returning data (KTU 453600017, BTU 487870392), history back to **Aug 2024 (KTU)** /
+  **May 2025 (BTU)**. Supersedes the old "shares one measurement ID, don't trust
+  per-brand splits" note: there ARE two properties, but they are **cross-contaminated
+  by hostname** — per-brand splits are trustworthy *only* with a `hostName` filter
+  (see GA4 trap #1 in §1). Unfiltered per-brand GA4 numbers remain wrong.
+- 🔴 **Sessions are down sharply year-over-year — this is a standing headline, not a
+  one-off.** Like-for-like verified 2026-08-21: **KTU YTD (Jan 1–Aug 21) 25,122 → 15,402
+  sessions, −38.7% YoY**; KTU Aug 1–21 **2,677 → 1,576, −41%**; **BTU Aug 1–21 513 →
+  225, −56%**. Re-measure each run and lead with it if it persists. (BTU's YTD YoY is
+  NOT computable — its data starts May 2025.)
 - 🟢 **QuickBooks live again** (re-authed 2026-07-03): Intuit connector = FGUSA
   books; Oracabessa/BTU books via the Zapier QBO connection (main Zapier = KTU
   account; BTU Zapier connection is code-action-only in cloud). (Jatalia books are
   Moola/Harvest territory, not yours.)
-- 🔴 **Windsor.ai RETIRED** — never cite it as a source; its channels (GA4, GMB,
-  Bing, Facebook organic/leads, QuickBooks rollup) moved to Zapier.
+- 🔴 **Windsor.ai RETIRED** — never cite it as a source; its channels (GMB, Bing,
+  Facebook organic/leads, QuickBooks rollup) moved to Zapier; **GA4 now has its own
+  direct MCP** and should not go through Zapier at all.
+- 🔴 **Google Ads API version drifts and dead versions 404 with HTML.** v22 is live as
+  of 2026-08-21; v18–v21 are all dead. This spec said v21, which means every documented
+  GAQL call was failing silently. Probe the version before concluding anything is broken.
 - 🟢 **HighLevel fully live for BOTH brands** (2026-07-03) — `mcp__ghl-ktu__*` =
   KTU, `mcp__ghl-btu__*` = BTU (PIT-scoped, bootstrap-registered); `mcp__Highlevel__*`
   connector = BTU too. If a ghl-* server is absent, the env var is unset — flag it.
