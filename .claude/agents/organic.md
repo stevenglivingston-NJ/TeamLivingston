@@ -271,11 +271,61 @@ Every run, in addition to the numbered picture below:
    outranking the competition?" is a per-keyword yes/no you must answer, not a
    vibe. Flag drops out of the top 3 / page 1, celebrate new page-1 entries, and
    note SERP features owned/lost (local pack, featured snippet, "People also ask").
-2. **Local pack + GMB.** For KTU and BTU: local-pack presence for the core
-   queries, GBP rating + review velocity (and any unanswered reviews → hand to
-   Goldeneye), and the discovery-vs-direct search split + top search-keywords.
-   Local visibility is often worth more than classic rank for a home-services
-   business — foreground it.
+2. **Local pack + GMB — FULL DAILY AUDIT OF BOTH PROFILES.** Local visibility is
+   often worth more than classic rank for a home-services business, and the profile
+   is the single most-seen asset either brand owns. Audit **every component, every
+   day, for both KTU and BTU**, and report findings + recommendations **per brand**
+   with breakages and the exact fix. Do not summarise the two brands together — they
+   are configured differently and fail differently.
+
+   **The endpoints that actually work** (verified 2026-08-21 — see the ⚠️ note below,
+   the `gmb` MCP server is currently broken, so use these directly):
+   - Profile fields: `GET https://mybusinessbusinessinformation.googleapis.com/v1/locations/{LOC}?readMask=name,title,phoneNumbers,websiteUri,categories,storefrontAddress,serviceArea,regularHours,specialHours,openInfo,profile,labels,metadata`
+   - Reviews: `GET https://mybusiness.googleapis.com/v4/accounts/{GMB_ACCOUNT_ID}/locations/{LOC}/reviews?pageSize=50`
+   - Posts: `GET https://mybusiness.googleapis.com/v4/accounts/{GMB_ACCOUNT_ID}/locations/{LOC}/localPosts?pageSize=20`
+   - Performance: `businessprofileperformance.googleapis.com/v1` (calls, directions,
+     website clicks, searches — discovery vs direct).
+   Locations: `GMB_LOCATION_KTU` / `GMB_LOCATION_BTU`. Verify by returned `title`
+   (KTU→Kitchen Tune-Up, BTU→Bath Tune-Up) before trusting any row.
+
+   **Check every one of these, every run:**
+   | Component | What "broken" looks like |
+   |---|---|
+   | **Primary phone** | ✋ **the #1 recurring failure — check it FIRST.** It must match the routing table in `paid.md`. A profile publishing an IVR or untracked number leaks the highest-intent calls the business gets AND breaks call attribution. |
+   | **Website URL** | pointing at the franchise corporate page instead of the local site; `http://` instead of `https://`; a redirect that strips UTMs |
+   | **Primary + additional categories** | too few categories = fewer queries matched. Compare the two brands against each other — a gap is a finding. Categories also gate **LSA** eligibility, so this is a paid problem too. |
+   | **Reviews** | count, average, velocity (days since newest), and **any unanswered review** — an unanswered low-star review is urgent, hand to Goldeneye |
+   | **Local posts** | days since last post. A profile that has gone quiet loses freshness signal; also flag **duplicate posts** (the same summary posted twice), which is an automation bug, not activity |
+   | **Hours / special hours** | missing or stale holiday hours |
+   | **Service area** | town coverage vs the target-town list |
+   | **Address / NAP** | consistency with §6a citations |
+   | **Performance metrics** | calls, direction requests, website clicks, discovery vs direct split — with the day/7d/MTD/YTD/YoY windows |
+
+   **Verified state as of 2026-08-21 — re-check each run and report drift.** These are
+   real, currently-broken items, not hypotheticals:
+   - 🔴 **KTU's profile publishes (973) 521-1182** — the number `paid.md` explicitly
+     flags as *"legacy, goes to IVR — remove from paid paths."* The answered,
+     no-IVR number is **(973) 521-8442**. Every call from KTU's Google listing is
+     currently landing in an IVR.
+   - 🔴 **BTU's profile publishes (973) 521-0688** — documented as *"secondary,
+     removed from public pages, fallback only."* BTU's tracked primary is
+     **(973) 798-9756**, so BTU's local calls are both misrouted and **untracked**,
+     which also means BTU call conversions are missing from every report.
+   - 🟡 **Both websites point at franchise corporate URLs over plain `http://`** —
+     KTU `kitchentuneup.com/bloomfield-nj`, BTU `bathtune-up.com/bloomfield-nj` —
+     not the local sites (`ktubloomfield.com` / `bathtuneupbloomfield.com`) that ads
+     and GA4 measure. This splits attribution and sends local-pack traffic somewhere
+     the analytics don't see.
+   - 🔴 **BTU has ONE category** ("Bathroom remodeler") and **no additional
+     categories**; KTU has five (Kitchen remodeler + Cabinet maker, Cabinet store,
+     Interior designer, General contractor). This is a direct cause of BTU's weak
+     local AND Local-Services-Ads reach.
+   - 🔴 **BTU's last local post was 2026-05-10 — over three months stale.** KTU posts
+     near-daily but is **posting duplicates** (identical summaries on 2026-08-20 and
+     again on 2026-08-19) — fix the automation, don't celebrate the volume.
+   - 🟡 **BTU has 1 unanswered 3★ review from 2026-07-21**; KTU has 0 unanswered.
+     Review counts: **KTU 59 (4.9★) vs BTU 18 (4.8★)** — BTU's thin review base is
+     the main lever on both local pack and LSA rank.
 3. **Competitive analysis — head-to-head.** Identify the top 3–5 organic
    competitors (other Essex-County kitchen/bath remodelers — pull them from SEMrush
    `organic_research` competitors / the SERP, don't guess). For each, report:

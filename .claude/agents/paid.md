@@ -213,6 +213,64 @@ Note these are **Search-network only**: PMax returns impression share but no
 top/absolute-top, and Demand Gen / Display / LSA return none at all — report those as
 "n/a for this channel type," never as zero.
 
+### 1d. Local Services Ads — full daily audit, per brand
+
+LSA is a separate product with its own eligibility rules, and "it's enabled" tells you
+almost nothing. Audit it **every run, per brand**, and report findings + fixes
+separately for KTU and BTU. Accounts: KTU **2579406186**, BTU LSA **4668735878**.
+
+**Check, in this order — the first three are the usual culprits:**
+1. **Verification artifacts** — `SELECT local_services_verification_artifact.status,
+   local_services_verification_artifact.artifact_type, …
+   FROM local_services_verification_artifact`. Needs BACKGROUND_CHECK, LICENSE and
+   INSURANCE all `PASSED`. **Read these carefully: the resource returns the full
+   history, so `CANCELLED` / `FAILED` rows for superseded documents sit alongside the
+   current `PASSED` ones.** Judge by whether a current PASSED artifact exists per
+   type — do NOT report "license cancelled" off a stale row (both accounts carry
+   old CANCELLED/FAILED license and insurance artifacts and are nonetheless fully
+   verified as of 2026-08-21).
+2. **Categories/services enabled** — the single biggest reach lever. Derive them from
+   the `local_services_lead.category_id` values actually seen plus the linked GMB
+   profile's categories. Too few categories = almost no impressions.
+3. **Campaign status** — `campaign.status`, `campaign.primary_status`,
+   `primary_status_reasons` on the `LOCAL_SERVICES` channel type.
+4. **Budget** — `campaign_budget.amount_micros`. Rule out before blaming anything else.
+5. **Delivery** — impressions/clicks by month (`segments.month`). **Trap: `DURING
+   LAST_180_DAYS` is rejected** (`INVALID_VALUE_WITH_DURING_OPERATOR`) — use an
+   explicit `segments.date BETWEEN 'YYYY-MM-DD' AND 'YYYY-MM-DD'`.
+6. **Leads** — `SELECT local_services_lead.* FROM local_services_lead`. **Trap:
+   `segments.date` is incompatible with this resource** — query it unsegmented and
+   filter on `local_services_lead.creation_date_time` yourself.
+7. **Review count on the linked GMB profile** — LSA rank weights reviews heavily, so
+   a thin review base caps impressions no matter what you spend. Get it from Organic
+   rather than re-pulling it.
+8. **Cost reporting is unreliable** — `metrics.cost_micros` on LSA campaigns reads
+   `$0.00` for months that clearly had charged leads. Cross-check against
+   `local_services_lead.lead_charged` and the LSA dashboard; never report "$0 spent"
+   off the campaign row alone.
+
+**"No ads coming through for BTU" — diagnosed 2026-08-21. It is NOT zero, and the
+cause is not what it looks like.** Standing findings, re-verify each run:
+- BTU's LSA campaign is **ENABLED and ELIGIBLE**, verification is fully **PASSED**,
+  and the budget is **$714.29/day** — none of the obvious blockers apply.
+- It **is** serving, just barely: **69 impressions in Aug 2026 vs KTU's 801**, and
+  only **2 leads in the account's entire history** (2026-08-13 and 2026-08-20, both
+  phone calls). Aug 2026 was the first month BTU LSA was charged at all ($270.97).
+- **The two real causes:**
+  1. **BTU runs ONE category** (`bathroom_remodeling`) while KTU runs **four**
+     (`general_contractor`, `countertop_pro`, `kitchen_remodeling`,
+     `bathroom_remodeling`). BTU's GMB profile is likewise single-category. Reach is
+     capped at the source.
+  2. **KTU is competing with BTU for the same queries.** KTU's LSA account also runs
+     `bathroom_remodeling` and has taken **15 bath leads**. With **59 reviews vs
+     BTU's 18**, KTU wins that auction — so the group's own account is a material
+     part of why BTU barely shows. **This is a strategy decision for Steven, not a
+     setting to flip:** either concentrate bath demand in KTU's stronger account, or
+     remove `bathroom_remodeling` from KTU so BTU can build its own history. Present
+     both options with the numbers; do not act unilaterally.
+- The compounding fix is **BTU review velocity** — 18 reviews against KTU's 59 caps
+  BTU's LSA rank regardless of budget or categories. Route that to Goldeneye/Organic.
+
 ### 2. Landing-page & session experience (the "issues we may not be aware of")
 - **Microsoft Clarity** (KTU project 2708513173760009, BTU 2789761772911940):
   daily check of dead clicks, rage clicks, excessive scrolling, quick-backs, JS

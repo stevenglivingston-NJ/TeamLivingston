@@ -26,7 +26,9 @@ from google.oauth2.credentials import Credentials
 mcp = FastMCP("gmb")
 
 API_BASE = "https://mybusinessbusinessinformation.googleapis.com/v1"
-REVIEWS_BASE = "https://mybusinessreviews.googleapis.com/v1"
+# Reviews live ONLY on the legacy v4 API and are account-scoped.
+# mybusinessreviews.googleapis.com does not exist and 404s (verified 2026-08-21).
+REVIEWS_BASE = "https://mybusiness.googleapis.com/v4"
 PERFORMANCE_BASE = "https://businessprofileperformance.googleapis.com/v1"
 HTTP_TIMEOUT = 30.0
 
@@ -144,7 +146,7 @@ def list_reviews(
     params: dict[str, Any] = {"pageSize": page_size, "orderBy": order_by}
     if page_token:
         params["pageToken"] = page_token
-    url = f"{REVIEWS_BASE}/{loc_name}/reviews"
+    url = f"{REVIEWS_BASE}/accounts/{_account_id()}/{loc_name}/reviews"
     return _get(url, params)
 
 
@@ -152,7 +154,7 @@ def list_reviews(
 def get_review(location: str, review_id: str) -> dict[str, Any]:
     """Get a single review by ID."""
     loc_name = _location_name(location)
-    url = f"{REVIEWS_BASE}/{loc_name}/reviews/{review_id}"
+    url = f"{REVIEWS_BASE}/accounts/{_account_id()}/{loc_name}/reviews/{review_id}"
     return _get(url)
 
 
@@ -160,7 +162,7 @@ def get_review(location: str, review_id: str) -> dict[str, Any]:
 def reply_to_review(location: str, review_id: str, comment: str) -> dict[str, Any]:
     """Reply to a review. Updates existing reply if one exists."""
     loc_name = _location_name(location)
-    url = f"{REVIEWS_BASE}/{loc_name}/reviews/{review_id}/reply"
+    url = f"{REVIEWS_BASE}/accounts/{_account_id()}/{loc_name}/reviews/{review_id}/reply"
     return _patch(url, {"comment": comment}, "comment")
 
 
@@ -168,7 +170,7 @@ def reply_to_review(location: str, review_id: str, comment: str) -> dict[str, An
 def delete_review_reply(location: str, review_id: str) -> dict[str, Any]:
     """Delete an existing reply to a review."""
     loc_name = _location_name(location)
-    url = f"{REVIEWS_BASE}/{loc_name}/reviews/{review_id}/reply"
+    url = f"{REVIEWS_BASE}/accounts/{_account_id()}/{loc_name}/reviews/{review_id}/reply"
     with httpx.Client(timeout=HTTP_TIMEOUT) as client:
         resp = client.delete(url, headers=_headers())
         resp.raise_for_status()
@@ -263,9 +265,18 @@ def get_search_keywords(
 
 @mcp.tool()
 def get_location_info(location: str) -> dict[str, Any]:
-    """Get full business info: name, address, phone, hours, categories, etc."""
+    """Get full business info: name, address, phone, hours, categories, etc.
+
+    readMask is REQUIRED by the Business Information API — omitting it returns
+    400, it does not default to all fields (verified 2026-08-21).
+    """
     loc_name = _location_name(location)
-    url = f"{API_BASE}/{loc_name}"
+    read_mask = ",".join([
+        "name", "title", "phoneNumbers", "websiteUri", "categories",
+        "storefrontAddress", "serviceArea", "regularHours", "specialHours",
+        "openInfo", "profile", "labels", "latlng", "metadata",
+    ])
+    url = f"{API_BASE}/{loc_name}?readMask={read_mask}"
     return _get(url)
 
 
