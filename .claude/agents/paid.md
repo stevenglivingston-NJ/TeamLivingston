@@ -109,10 +109,23 @@ fill the gaps:**
   (are we beating the market or buying expensive auctions),
   `ads_get_opportunity_score` (Meta's own prioritized fixes — triage, don't
   blindly accept), `ads_get_errors` (delivery blockers).
-- **Zapier MCP** (Windsor is RETIRED — Zapier replaced it): GA4 (8 actions),
-  Google Business Profile, Microsoft Advertising (Bing/UET), Facebook Lead Ads,
-  and QuickBooks Online (77 actions) all live in the main Zapier connection.
-  Always `list_enabled_zapier_actions` first for exact action keys.
+- **GA4 — direct MCP (added 2026-08-21), preferred over Zapier when registered.**
+  `mcp-servers/google-analytics/server.py` calls the GA4 Data API
+  (`analyticsdata.googleapis.com`) directly: `run_report`, `get_channel_performance`,
+  `get_landing_page_performance`, `get_generate_lead_events`, `test_connection`.
+  Property ids: KTU **453600017** (the "In Use" one; `349585536` is the dead
+  account), BTU **487870392**.
+  **Not registered yet** — it needs its own `GA4_REFRESH_TOKEN`, minted with the
+  `analytics.readonly` scope. Verified 2026-08-21: the existing
+  `GOOGLE_ADS_REFRESH_TOKEN` carries only `adwords` + `business.manage` and 403s
+  (`ACCESS_TOKEN_SCOPE_INSUFFICIENT`) against this API — it is not a drop-in.
+  Use `ToolSearch` for `mcp__google-analytics__*` first; **fall back to the
+  Zapier path below only if those tools aren't present.**
+- **Zapier MCP** (Windsor is RETIRED — Zapier replaced it, fallback for GA4 until
+  the direct server above is registered): GA4 (8 actions), Google Business Profile,
+  Microsoft Advertising (Bing/UET), Facebook Lead Ads, and QuickBooks Online (77
+  actions) all live in the main Zapier connection. Always
+  `list_enabled_zapier_actions` first for exact action keys.
 
 ### 2. Landing-page & session experience (the "issues we may not be aware of")
 - **Microsoft Clarity** (KTU project 2708513173760009, BTU 2789761772911940):

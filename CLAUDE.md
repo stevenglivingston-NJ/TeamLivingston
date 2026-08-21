@@ -14,6 +14,7 @@ This environment manages operations for two business groups:
 |--------|------|-------|------|
 | google-ads | stdio (Python) | Campaigns, keywords, search terms, geo performance, LSA | OAuth2 (Desktop client) |
 | gmb | stdio (Python) | Reviews, metrics, search keywords, location info, hours | OAuth2 (shared with google-ads) |
+| google-analytics | stdio (Python) | GA4 Data API direct — channel/landing-page performance, generate_lead events | OAuth2, own token — NOT registered yet (needs analytics.readonly scope; google-ads token 403s) |
 | closebot | stdio (Python) | Bots, messages, actions, bookings, billing | API key (X-CB-KEY header) |
 | companycam | stdio (Python) | Projects, photos, documents, notes, labels, users | Bearer token |
 | serviceminder | stdio (Python) | Contacts, appointments, invoices, payments, proposals, downloads | Per-location API keys (KTU + BTU) |

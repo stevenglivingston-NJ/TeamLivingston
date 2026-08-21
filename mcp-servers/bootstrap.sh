@@ -151,6 +151,17 @@ if require GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET GOOGLE_ADS_REFRESH_TOKE
   reg gmb "{\"command\":\"python3\",\"args\":[\"$DIR/gmb/server.py\"],\"env\":{\"GOOGLE_ADS_CLIENT_ID\":\"$GOOGLE_ADS_CLIENT_ID\",\"GOOGLE_ADS_CLIENT_SECRET\":\"$GOOGLE_ADS_CLIENT_SECRET\",\"GOOGLE_ADS_REFRESH_TOKEN\":\"$GOOGLE_ADS_REFRESH_TOKEN\",\"GMB_ACCOUNT_ID\":\"$GMB_ACCOUNT_ID\",\"GMB_LOCATION_KTU\":\"$GMB_LOCATION_KTU\",\"GMB_LOCATION_BTU\":\"$GMB_LOCATION_BTU\"}}"
 else skipped+=("gmb (GMB_* + GOOGLE_ADS OAuth)"); fi
 
+# google-analytics: direct GA4 Data API, replacing the Zapier raw-request path in
+# paid.md. Deliberately requires its OWN refresh token (GA4_REFRESH_TOKEN), not
+# GOOGLE_ADS_REFRESH_TOKEN — verified 2026-08-21 that token carries only
+# adwords + business.manage scopes and 403s on analyticsdata.googleapis.com
+# (ACCESS_TOKEN_SCOPE_INSUFFICIENT). A fresh OAuth consent for the same client
+# with the added analytics.readonly scope is required; this cannot be minted
+# non-interactively, so this server stays unregistered until that token exists.
+if require GA4_REFRESH_TOKEN; then
+  reg google-analytics "{\"command\":\"python3\",\"args\":[\"$DIR/google-analytics/server.py\"],\"env\":{\"GA4_CLIENT_ID\":\"${GA4_CLIENT_ID:-$GOOGLE_ADS_CLIENT_ID}\",\"GA4_CLIENT_SECRET\":\"${GA4_CLIENT_SECRET:-$GOOGLE_ADS_CLIENT_SECRET}\",\"GA4_REFRESH_TOKEN\":\"$GA4_REFRESH_TOKEN\",\"GA4_PROPERTY_ID_KTU\":\"${GA4_PROPERTY_ID_KTU:-}\",\"GA4_PROPERTY_ID_BTU\":\"${GA4_PROPERTY_ID_BTU:-}\"}}"
+else skipped+=("google-analytics (GA4_REFRESH_TOKEN — needs a fresh OAuth consent with analytics.readonly, not the google-ads token)"); fi
+
 # ---- 3. Jatalia / Earthwise servers ---------------------------------------
 
 if require SHIPSTATION_API_KEY; then
