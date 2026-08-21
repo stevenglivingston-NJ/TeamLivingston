@@ -284,7 +284,7 @@ RLS-locked to `is_admin()`.
 
 | Project | Path | Purpose |
 |---------|------|---------|
-| KTU Instant Tune-Up Funnel | `tuneup-funnel/` | Instant-quote + booking funnel for `ktubloomfield.com/tuneup` (Cloudflare Workers + D1/KV/R2). Phase 1 (pricing engine + ServiceMinder 15-min sync) scaffolded — see `tuneup-funnel/README.md` for status, SM part mapping, and open SM config gaps. |
+| KTU Instant Tune-Up Funnel | **moved 2026-08-19 →** [`ktubtu-automations/tuneup-funnel/`](https://github.com/stevenglivingston-NJ/ktubtu-automations/tree/main/tuneup-funnel) | Instant-quote + booking funnel for `ktubloomfield.com/tuneup` (Cloudflare Workers + Pages, D1/KV/R2, ServiceMinder, HighLevel, Meta/GA4). Phases 1–5 complete, full git history preserved on the move. No longer in this repo. |
 
 ## Dashboards
 
