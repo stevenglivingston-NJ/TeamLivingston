@@ -320,10 +320,43 @@ Organic is 84% of pipeline — check it daily so paid decisions don't fly blind:
   which terms moved, and whether paid should defend a term organic is losing.
 
 ### 6. Keyword strategy verdict
-Don't just list keyword metrics — judge the strategy: coverage vs the Semrush keyword
-gap, match-type mix, negative-keyword hygiene, quality-score drags, branded vs
-non-branded split, and LSA category coverage. State plainly: **on point or not**, and
-the top 3 changes if not.
+
+Don't just list keyword metrics — **judge the strategy**. Work these in order and
+finish with a plain verdict: **on point or not**, and the top 3 changes if not.
+
+**a. What we're actually buying vs what we think we're buying.** `query_keywords`
+gives the bid list; `query_search_terms` gives the *reality* — the queries that
+actually triggered us. The gap between them is where money leaks. Rank search terms
+by spend-with-no-conversion and name the exact negatives to add.
+
+**b. Match-type mix & negative hygiene.** Broad match without a tight negative list
+is the most common way this account wastes money. Check shared negative lists via
+GAQL (`shared_set` / `shared_criterion` / `campaign_criterion`) — a negative list that
+exists but isn't *attached* to a campaign is a silent failure, and only the
+campaign-level join reveals it.
+
+**c. Quality Score drags.** Pull `metrics.quality_score` (and its components —
+expected CTR, ad relevance, landing-page experience) per keyword over GAQL. A low
+landing-page-experience component ties directly to §2's Clarity findings — say so
+together, since that's one fixable root cause, not two separate notes.
+
+**d. Branded vs non-branded split.** Report spend, CPL and conversion rate for each
+separately, never blended — branded terms flatter every average. Watch branded spend
+skeptically: if organic already owns the brand term, paid may be buying clicks it
+would get free (see the Operating Rules on protecting organic).
+
+**e. Auction position per keyword theme.** Cross-reference §1c: which themes lose
+impressions to **budget** vs to **rank**. This turns "we're not showing enough" into
+a specific, correct action.
+
+**f. Coverage vs the market.** Where SEMrush units allow, use `keyword_research` for
+the gap (volume/KD/CPC) and compare our real CPC against market CPC — paying well
+above market signals a quality/relevance problem, not just competition. When SEMrush
+is dark, substitute **GMB `search-keywords`** (first-party query intent, no quota)
+and say that's what you used.
+
+**g. LSA category coverage** — LSA has no keywords, only categories/services; confirm
+the enabled set still matches what we actually sell and want to sell.
 
 ### 6b. SEMrush — paid competitive intelligence (weekly, Mondays)
 
@@ -361,6 +394,17 @@ Budget it: SEMrush API units are finite and shared with Organic. Run this block
 **Coordinate with Organic** — Organic owns the organic-side SEMrush pulls
 (`organic_research`, `backlinks_research`, `site_audit`, `position_tracking`); you
 own the **paid** side. Don't both spend units on the same report.
+
+⚠️ **KNOWN FAILURE MODE — SEMrush units run out account-wide.** Verified 2026-08-21:
+every SEMrush tool, including cheap discovery calls, returned *"active Semrush
+subscription, but does not have enough API units."* There is no cheaper SEMrush call
+to fall back to. Detect it with your first call, report it as a tracking/coverage gap
+in the brief (top-up: **https://www.semrush.com/mcp-access**), and **keep working** —
+your first-party sources are unaffected and cover most of the competitive question:
+`query_search_terms` (what we're actually matching), `query_geo_performance`,
+`auction_insight`-style rank-lost signal from §1c, and Meta's
+`ads_insights_industry_benchmark` / `ads_insights_auction_ranking_benchmarks`. Say
+which sources produced the read so it isn't mistaken for SEMrush data.
 
 ### 7. Channel expansion scouting (weekly, data-grounded)
 Once a week (or when a signal appears), scan for channels the businesses SHOULD be in,

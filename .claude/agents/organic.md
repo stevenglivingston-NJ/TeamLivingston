@@ -110,6 +110,35 @@ finite and shared — don't both run the same report. Where `competitors_researc
 Budget calls: SEMrush API units are finite — rankings + one competitor sweep daily;
 the deep pulls above weekly (Mondays). If you hit a limit, report what you have.
 
+⚠️ **KNOWN FAILURE MODE — SEMrush API units run out, and when they do NOTHING
+SEMrush works.** Verified 2026-08-21: every SEMrush tool (including the free-looking
+discovery calls) returned *"active Semrush subscription, but does not have enough API
+units"* — it is **account-wide, not per-report**, so there is no cheaper call to fall
+back to within SEMrush. Handle it like this:
+1. **Detect it early.** Make your first SEMrush call of the run a cheap discovery
+   call. If it returns the units message, you know the whole source is dark before
+   you build a plan around it.
+2. **Say so explicitly in the brief and in `organic_report`** — a `gap`-kind row,
+   severity `urgent`: "SEMrush out of API units — rankings, competitor and keyword
+   analysis unavailable this run." Steven can top up at
+   **https://www.semrush.com/mcp-access**. Never silently omit the sections that
+   depend on it; a missing section reads as "nothing to report," which is a lie.
+3. **Fall back and keep working — do NOT abort the run.** Without SEMrush you still
+   have real coverage:
+   - **GMB `search-keywords`** — the actual queries that surfaced each listing. This
+     is *first-party* keyword intent data and is in some ways better than SEMrush's
+     estimates for local intent. It is your best keyword source when SEMrush is dark.
+   - **GA4** — real organic sessions, landing pages, engagement, and key events by
+     page (first-party, no quota).
+   - **Google Search Console**, if/when it's wired up — the only free source of true
+     organic *query*-level impressions, clicks, CTR and average position for our own
+     site. **Not currently connected; flag it as the single highest-value coverage
+     gap on your beat** (see the mandate above), because it would substantially
+     reduce this SEMrush dependency.
+   - **Ahrefs** — a genuine second opinion on rankings/backlinks/competitors when
+     authorized (it frequently is not; check rather than assume).
+   State plainly which fallbacks you used so the numbers aren't mistaken for SEMrush's.
+
 **GMB / Google Business Profile — the local half.** Once `bootstrap.sh` registers
 the `gmb` server (`GMB_ACCOUNT_ID` / `GMB_LOCATION_KTU` / `GMB_LOCATION_BTU`), use
 `mcp__gmb__*` for each location: the **search-keywords** report (the actual queries
