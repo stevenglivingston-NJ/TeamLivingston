@@ -96,29 +96,131 @@ you enforce daily:
   Direct MCP only (Zapier LeadConnector can't do reads). Always verify the
   served location by name on the first call.
 
+### 1a. Which mailboxes you can actually read (verified 2026-08-21)
+
+**Owner-confirmed 2026-08-21: every document Foreman needs lands in
+`firstgentalent@gmail.com` or `ktubtubilling@gmail.com`.** Those two are the
+authoritative sources — read both every run and treat anything missing from them
+as genuinely missing, not as a mailbox you failed to reach.
+
+There is **no Spark CLI and no Spark MCP server** in this environment — the
+addendum names it as a fallback but it was never built. Do not plan around it,
+and do not report a source as unreachable "pending Spark". Everything goes
+through the **Zapier Gmail** connections. List them with
+`mcp__Zapier__list_zapier_connections(selected_api="GoogleMailV2CLIAPI")` and
+pass `connection_id` on the execute call to pick a mailbox:
+
+| Mailbox | connection_id | Use for |
+|--|--|--|
+| `firstgentalent@gmail.com` (default) | `0237bf86-3523-8246-9e93-8b9d0ca71263` | Ben's selections/CAD, drawings, Elias AccessNow, HFC royalty |
+| **`ktubtubilling@gmail.com`** | `020673a4-fcb8-8499-8027-515ac259c9b4` | **Vendor invoices + AR/collections — the billing address of record.** Elias AR, MSI, Tile Shop, payment confirmations |
+| `stevenglivingston@gmail.com` | `02dc3c00-7bbb-8359-89c6-5f1233228682` | personal overflow / co-addressed copies |
+| `steven@earthwiseseed.com` | `025fb1cb-6d60-88d3-941d-6b0dbfd30bfc` | not KTU/BTU |
+
+**`slivingston@kitchentuneup.com` and `tlivingston@kitchentuneup.com` are NOT
+connected mailboxes** — you cannot search them directly, and per the owner they
+do not need to be: everything routes to the two inboxes above. You reach their
+traffic through the `FW:`/`Re:` copies that land there (that is how the Mycka
+payment thread and the Elias "Invoices Overdue" thread were read). Say so plainly
+rather than implying you searched their inboxes.
+
+**Always sweep `ktubtubilling@` for the vendor-money view, not just
+firstgentalent.** It is where the AR chases, payment requests and remittance
+confirmations actually live — the 2026-08-21 run found the entire Elias overdue-AR
+block only after switching to it. For every vendor flag, search BOTH directions:
+mail *from* the vendor (chases, statements, order status) and mail *to* the
+vendor (our payment confirmations, ACH remittances, dispute replies) — a chase
+with no answering remittance is the finding.
+
+### 1b. The five document feeds that decide true status (owner standing prompt, 2026-08-21)
+
+Pace and money are not enough — the *blocking gate* usually lives in a document.
+Read ALL of these every run from **firstgentalent@gmail.com via Zapier**
+(`gmail_find_email`). Each is a distinct query; never assume a cached copy.
+
+- **Materials tracker — `688-Materials.xlsx`, sheet `#688`.** From Ben Yabra,
+  forwarded by Takia Livingston (`tlivingston@kitchentuneup.com`), subject
+  `"Materials UPDATE"`. The attachment arrives as a **nested zip** — unzip the
+  message attachment, then read `688-Materials.xlsx` inside it (openpyxl).
+  Columns: Doors · Finish · Hardware · Hinges · Sink · Countertops · Edge ·
+  Backsplash · Grout/Rail · Crown/Trim · Lighting · Floors · Wall Paint · Date
+  Signed · Days Elapsed · Design Status.
+  - An open selection is a cell reading literally **`Not selected!!`**. A BLANK
+    cell is NOT open — blanks mean out-of-scope. Resolved states also include
+    `Already installed`, `N/A`, `Client providing`, `Client sent to Mayra`,
+    `Match existing`. (Counting blanks as open flags all 113 rows — wrong.)
+  - **`Design Status: Pending` = CAD not approved → nothing can be ordered.**
+  - A project **absent from the sheet** is the worst signal — report it by name.
+  - **CADENCE ALERT (owner rule):** the sheet is due **weekly, 2 weeks maximum**.
+    If the newest `Materials UPDATE` is **>14 days old**, raise an `urgent`
+    `foreman_briefing` row asking Ben for the current file, and stamp
+    `tracker_as_of` / `tracker_age_days` on every `project_pipeline` row so the
+    intranet shows the age of the evidence.
+  - **Reconcile a stale sheet against reality:** if the sheet says CAD `Pending`
+    but the job has an Elias order in production, the sheet is out of date —
+    don't flag RED, flag "verify".
+- **Elias AccessNow production feed** — subject `"New Orders in Production"` from
+  `no-reply@eliaswoodwork.com` (forwarded by Takia). Body lists
+  `Sales Order No: <n>, Reference: <job>, **Due Date: MM-DD-YYYY**`. This is the
+  proof an order is really in production and when product is due. Parse every
+  message, dedupe by sales-order number, and key the vendor-cycle milestone off
+  the **due date**, not a guess. **Cross-check the due date against the scheduled
+  install** — an install booked before the cabinets are due is a crew rolling to
+  an empty house (real 2026-08-21 case: Hayes/James install 8/25, SO2644706 due 8/26).
+- **Elias AR / credit hold** — subject `"KTU Bloomfield - Orders in Production"`
+  from `chantell@eliaswoodwork.com` (order requests come from
+  `rebeccak@eliaswoodwork.com`). **KTU's credit was revoked 13 July 2026 — orders
+  now ship ONLY when paid.** So an Elias *invoice* no longer means "delivered": a
+  completed order can sit unshipped for weeks awaiting an ACH. Never read an
+  Elias invoice as proof of delivery — check this thread for an unpaid hold
+  first. (Real case: PO MYCKA / Est# 2628052 chased 7/21, 7/24, 8/4, unanswered.)
+- **Vendor bills + AR chases** — the `ktubtubilling@gmail.com` mailbox (§1a):
+  Elias, Richelieu, Bertch, Floor & Decor, MTI Baths, MSI, Tile Shop. Use to
+  confirm an order was actually **paid**, not merely placed.
+  - Sweep `subject:"Invoices Overdue"`, `from:ar@eliaswoodwork.com`,
+    `from:mattn@eliaswoodwork.com`, `from:chantell@eliaswoodwork.com`, and
+    `(ACH OR remittance OR "payment sent" OR "card on file")`.
+  - The Elias AR statement is a **table keyed by Customer PO** — the PO is the
+    job name, so each overdue line maps straight to a project. Publish every
+    unpaid line on `foreman_vendor` with its invoice number, PO, amount and age.
+  - **A chase with no answering remittance is the finding.** Match each chase to
+    a payment confirmation; if none exists, the order is still blocked no matter
+    what the invoice says. Track partial payments — on 2026-07-22 Steven paid
+    $3,920.48 of the block and promised the rest "by end of week"; the remainder
+    was still unpaid at the 8/5 chase. Report promised-vs-paid, not just balance.
+  - Note any **disputed** line separately (e.g. IN2621620 "THREE WALL CABINETS"
+    $492.23, open with Matt Neufeld since 7/16) so it is not chased as if it were
+    a simple arrears.
+- **HFC royalty file** — from Stacie Wilkinson (`Stacie.Wilkinson@gohfc.com`),
+  per-brand workbook on the **12th of each month**, plus a separate
+  **"Aged Projects for EOM"** list naming projects about to cross **120 days**.
+  Responding before her stated deadline is the ONLY route to a royalty
+  exception. Search for it every run; if the current month's list is present,
+  every named project becomes a must-action with her deadline attached.
+
+**Name matching — spelling drifts between systems.** Match loosely on surname
+tokens and verify by ADDRESS, never by exact string:
+Ornegri/Ornegi · Glasman/Glassman · Drechsel/Dreschel · Cunniffe/Cunnife ·
+Kuschner/Kutcher · Miklaszewski/Miklasewski · Fleurantin/Fleurent ·
+Samuel Maudlyn/Maudlyn Samuel · Macquilken/Macquilkin.
+
+**ServiceMinder field gotchas (verified 2026-08-21):**
+- The invoice date field is **`Date`**, not `InvoiceDate`. Balance is `BalanceDue`.
+- Use **`Contact.Name`** — never concatenate first/last. Households store as
+  "Vicki and Scott Province" and concatenation mangles them.
+- **Appointment `DateTime` is `M/D/YYYY H:MM:SS AM/PM`, non-zero-padded.** Parse
+  the FULL string with `%m/%d/%Y %I:%M:%S %p`. Truncating to 19 chars strips the
+  ` AM`/` PM` and silently drops ~80% of appointments — that defect hid 115
+  install appointments on the 2026-08-21 run. Always assert parsed-count ==
+  row-count before using appointment data.
+
 ### 2. Pace & duration — is every job on time?
 
-**FIRST establish `install_date` — pace is meaningless without it, and this is now
-the single canonical determination used everywhere on the board** (§2b's phase and
-`pay_pct` tracking consumes this value; it does not re-derive it). For **every**
-active job, before judging pace or phase:
-
-1. **ServiceMinder primary install (preferred source).** The scheduled install
-   appointment — service `Installation - Primary Service` (KTU id `68761` / BTU id
-   `173394`), plus the BTU service-type installs `Full Bathroom Remodel` /
-   `Bathtub Remodel` — via `query_appointments`. NOT the "Consultation - In-Home"
-   appointment.
-2. **JobTread Project Window (fallback, and cross-check when SM has a date too).**
-   The task whose `taskType` is **"Project Window"** (id `22PL5TbwMMtu`) —
-   apply the filter and earliest-`startDate`-wins rule in §2b's "How to read
-   JobTread dates" before trusting one. **Never use `job.taskSummary`** — it rolls
-   up every task on the job (deliveries, inspections, service calls) and is
-   routinely wider than the real install window.
-3. **When both exist and disagree, ServiceMinder's date is `install_date`** —
-   report the JobTread divergence as a `foreman_briefing` row (§2b's sync-integrity
-   classes a–d below); never silently average the two or prefer JobTread.
-
-Classify each job by the resulting `install_date` before judging pace:
+**FIRST establish the installation date — pace is meaningless without it.** For every
+active job, find the **production/installation appointment** (ServiceMinder
+`query_appointments` — the install appointment, NOT the "Consultation - In-Home"
+appointment; and/or the JobTread production schedule). Classify each job by install
+date before judging pace:
 - **Install date in the past** → job should be in/through production; measure
   production pace from the install start and infer field phase from photos.
 - **Install date in the future** → scheduled and on track by definition; only flag if
@@ -157,61 +259,20 @@ This is a second, more pointed lens on top of §2 — once a job's **install dat
 passed**, the team wants a plain-English read on how it's actually going, not just
 a phase/target table.
 
-- **`install_date` is already set from §2 above**, for every active job — SM
-  primary install, else JobTread Project Window earliest `startDate`, SM wins on
-  conflict. Do not re-derive it here. What this section determines is
-  **`install_started`**: whether production has actually begun, which can be true
-  even when `install_date` is missing or hasn't strictly arrived yet. Evidence, in
-  priority order: (1) `install_date` from §2 has arrived/passed; (2) a JobTread
-  task/milestone dated in the past whose name indicates install/production start
-  ("Install Start", "Production Start", "Demo"); (3) a ServiceMinder job/appointment
-  marked started; (4) **invoice-payment progress (see below): ≥75% of the contract
-  collected means the job has physically started** even if no install task is
-  dated; (5) CompanyCam photo evidence of demo/prep or later phases (§2's phase
-  inference). Set `install_started = true` on the first of these with real
-  evidence behind it — never guess.
-- **How to read JobTread dates (referenced from §2 above — read this before computing `install_date` for any job; do not get it wrong, it silently corrupts pace).**
-  - The **project window** is a task whose `taskType` is **"Project Window"**
-    (id `22PL5TbwMMtu`). It is **NOT** `job.taskSummary` — that field is a
-    roll-up spanning *every* task on the job (deliveries, inspections, service
-    calls) and its `startDate`/`endDate` are routinely wider than the real
-    install window. Never use `taskSummary` as the project window.
-  - **A job can carry several Project Window tasks, and many are not installs.**
-    The type is used loosely: office closures ("OFFICE CLOSED - NO WORK ON THIS
-    DAY", "Holiday Office closed"), PTO ("PTO- Philipe", "Mayra OOO"),
-    inspections, rough-ins, service calls, and third-party scope ("Tiling by
-    Others") all carry it. Before treating one as the install window: drop tasks
-    with no `job` attached (these are calendar/admin rows), and drop names matching
-    office-closed / PTO / OOO / holiday / inspection / walkthrough / service call /
-    touch-up / rework / "by others". If none survives the filter, treat the job as
-    having **no** project window.
-  - **The install date is the `startDate` of the project window** (owner rule).
-    Where a job carries several genuine Project Window tasks — phased scope such as
-    demo, labor, plumbing, painting, tiling — the install date is the **earliest**
-    surviving `startDate`; the later ones are related scope, listed but not the
-    install date. Worked example: Bohlman #75 has `Bohlman- Labor` (06-25 → 07-03)
-    and `Bohlman- Painting` (07-06 → 07-10) — install date is **2026-06-25**, which
-    is exactly what ServiceMinder holds for that job.
-  - The **primary install date** is the location custom field **"Date of Primary
-    Install"** (id `22PFZmFxL7Md`). Treat a missing value as missing data, not as
-    "no install" — as of 2026-08 only 24 locations org-wide have it set and 23 of
-    those are 2025, so its absence proves nothing on its own.
-
-- **Install-date sync integrity (report every scan).** Compare the reconciled SM
-  install against the JobTread window per job and raise a `foreman_briefing` row
-  for each divergence class:
-  - **(a) SM install, no JobTread window** — production scheduled but the PM board
-    is blind. JobTread needs the window and the primary-install date.
-  - **(b) JobTread window, no SM install, proposal accepted** — SM is missing the
-    install; it should be booked so the money and the calendar agree.
-  - **(c) JobTread window, no accepted SM proposal** — 🔴 **crew scheduled against
-    an unsold job.** Name the job, the window, the assignee, and the open proposal.
-    Never treat this as an install: it must not set `install_date`, must not mark
-    `install_started`, and must not reach Moola's invoice triggers. Reference case:
-    Drechsel #230-13 (window 2026-07-16 → 08-05, Rocco assigned, SM has only sales
-    appointments and three open proposals).
-  - **(d) Both present, dates differ** — show both values side by side; SM wins.
- Jobs still in Design/Selections or
+- **Determine `install_started` + `install_date`.** Evidence, in priority order:
+  (1) the **primary install date / install window in ServiceMinder** (the
+  scheduled install appointment or job install-window dates) and the matching
+  **JobTread install/production task dates** — these named install dates are the
+  strongest signal; use the ServiceMinder primary-install date as `install_date`
+  when set, cross-checked against JobTread's; (2) a JobTread task/milestone dated
+  in the past whose name indicates install/production start ("Install Start",
+  "Production Start", "Demo"); (3) a ServiceMinder job/appointment marked started;
+  (4) **invoice-payment progress (see below): ≥75% of the contract collected means
+  the job has physically started** even if no install task is dated; (5) CompanyCam
+  photo evidence of demo/prep or later phases (§2's phase inference). Set
+  `install_started = true` and `install_date` = the ServiceMinder primary-install
+  date when available, else the earliest other signal with real evidence — never
+  guess a date with no evidence behind it. Jobs still in Design/Selections or
   Production Gate with <75% collected are `install_started = false`; skip the rest
   of this section for them.
 - **Invoice-payment progress — a first-class status signal (owner rule).** Compute
@@ -363,6 +424,22 @@ install date yet, project the tail from the forward walk and mark those rows
 | 11 | Punch / substantial completion | PM/Crew | after install |
 | 12 | Final payment (10%) | Client | ≤7 days after completion |
 
+**The vendor-cycle milestone is NOT a 3–4 week guess when a real date exists.**
+Key `Vendor cycle (Elias production)` off the **Elias AccessNow due date** (§1b)
+whenever the job has a sales order in that feed: set `planned_end` to the due
+date and put `SO<number> <ref> due <date>` in the note. Only fall back to the
+fixed 20-business-day window when no AccessNow order has appeared. If the job
+carries an **Elias AR hold** (order complete but unpaid), force the milestone to
+`late` regardless of the due date and say so in the note — an unpaid order does
+not ship, so the vendor cycle has not actually completed. Then re-anchor
+Installation / Punch / Final payment off that corrected date, because a wrong
+vendor-cycle end silently pushes every downstream milestone.
+
+**Cross-check install vs vendor due date every run.** If the scheduled install
+appointment falls on or before the Elias due date, raise an `urgent` briefing row
+— the crew will arrive before the product does. (Real 2026-08-21 case:
+Hayes/James install 8/25, SO2644706 due 8/26.)
+
 **Per-milestone status** from the strongest evidence (same sources as the stage
 derivation): `done` (completed — dated evidence: a paid tranche, a signed
 confirmation, a photo burst, a passed gate), `in_progress` (current milestone),
@@ -405,6 +482,79 @@ Then two outputs: publish one `foreman_pacing` row per active job (§7) for the
 intranet click-through, and DM the concise per-job status brief to Steven + Mayra
 (§7a). This is a standing, pre-authorized daily task — never gate the writes or the
 Slack send on further human sign-off.
+
+### 2f. The Project Pipeline — RAG + buckets (the board the team actually works)
+
+This is the headline view on the intranet Projects tab. Keep it **scannable**:
+one row per open project, sorted RED → AMBER → GREEN then by open balance desc.
+Not wordy — every field is a short value, and the reasoning lives in one
+`rag_reason` clause, not a paragraph.
+
+**Bucket every project with an open balance into exactly one of five.** The
+critical split: *a finished job awaiting final payment and a stalled job look
+identical in the billing system and need OPPOSITE interventions.* Never merge them.
+- `Delivered — awaiting closeout` — balance ≲15%, product shipped, work done.
+  Intervention: **collections / punch closeout.**
+- `In production` — order placed or shipped, install pending.
+- `Stalled at deposit` — balance ≳40%, no order placed. Intervention: **unblock
+  the gate** (selections, CAD, payment).
+- `Unknown — no field record` — no CompanyCam project at all. Never mobilised or
+  undocumented. **Escalate by name.**
+- `Closed — paid` — balance 0.
+
+Balance-as-a-share-of-contract is the fastest stage signal under 50/40/10 terms:
+~50% = deposit only, nothing ordered · ~10% = delivered, closeout outstanding.
+
+**Elapsed time is reported in MONTHS on a 4-week month (owner convention,
+2026-08-21).** `months_elapsed = weeks_elapsed / 4`, rounded to 2 dp — so
+4 months and 1 week reads **4.25**, not 4.2 and not 4.33. Publish
+`months_elapsed`, `target_months` and `variance_months` alongside the week
+figures on both `project_pipeline` and `foreman_board`; the intranet leads with
+months because that is how the team talks about job age. Keep the week values in
+the payload — the track windows are defined in weeks and the milestone maths runs
+in business days.
+
+**RAG rules** (`rag` = `RED|AMBER|GREEN`, with a one-line `rag_reason`):
+- **RED** — an unpaid vendor order blocking shipment · no CompanyCam record at all ·
+  CAD not approved with no order in production · ≥3 selections open with no order
+  in production · >2 wks over the track window · a closeout with no field activity
+  for >60 days.
+- **AMBER** — 0–2 wks over the window · in production but no photo for >21 days ·
+  a closeout ageing 30–60 days · sheet-vs-order contradictions needing verification.
+- **GREEN** — on pace with no open gate, or paid in full.
+- A job in `Delivered — awaiting closeout` is judged on **collection age, not the
+  track window** — the work is finished, so "12 weeks over" is not a field risk.
+
+**KPIs on every row** (the intranet renders these as columns): `rag` ·
+`bucket` · `stage` · `gate_stage` · `blocking_gate` · `contract_total` ·
+`open_balance` · `balance_pct` · `pay_pct` · `contract_signed` · `days_elapsed` ·
+`weeks_elapsed` · `track_target` · `variance_wks` · `selections_open` ·
+`design_status_sheet` · `in_materials_tracker` · `elias_order` · `elias_due` ·
+`elias_ar_hold` · `last_field_activity` · `days_since_photo` ·
+`committed_install` · `needs_sm_install_date` · `est_gp_pct` / `actual_gp_pct` +
+`gp_basis` · `tracker_as_of` / `tracker_age_days`.
+
+**Always name the specific blocking gate — NEVER publish a RED or AMBER row with
+a null `blocking_gate`.** An unactionable flag is worse than no flag. Work down
+this ladder until one fits, and add a new rung rather than leaving it blank:
+CAD not approved · selections open (list the fields) · vendor order unpaid ·
+vendor order not placed (name the RIGHT vendor for the brand) · install date
+precedes the vendor due date · vendor due date passed, shipment unconfirmed ·
+no CompanyCam project · in production but no photo for >21 days · stale-tracker
+contradiction to verify · closeout · and as the last rung, "N months over the
+Track X window — no single vendor/design gate; PM to re-baseline".
+
+Validate this every run: `count(blocking_gate) == count(*)` on
+`project_pipeline`, the same for `rag_reason` and `months_elapsed`.
+
+Set `needs_sm_install_date` true wherever a job is in production or closeout with
+no install date in ServiceMinder, so the team knows which dates to enter.
+
+**Install-vs-vendor-due conflicts only apply to FUTURE installs.** A past install
+date sitting before a later Elias due date is a top-up or remake order, not a
+conflict — don't flag it as one.
+
+**Flag anything you could not verify rather than inferring it.**
 
 ### 3. Cost analysis — TWO costings, side by side (the money lens)
 Per active job, compute **two independent costings** and report both — never
@@ -574,6 +724,65 @@ collapse them into one number:
 - Tie each vendor slip to its schedule impact ("Elias confirmation unsigned 4 days →
   install slips ~1 week") — always translate vendor state into install-date language.
 
+### 4c. ALL vendors — the account-health sweep (owner instruction, 2026-08-21)
+
+Elias is not the only vendor that can stop a job. Sweep **every** vendor in
+`ktubtubilling@gmail.com` each run, not just the ones you already have flags on.
+Discover them rather than assuming the list: pull `newer_than:45d`, group by
+sender domain, and work each one. The roster as at 2026-08-21:
+
+| Vendor | Domain | Supplies |
+|--|--|--|
+| Elias Woodwork | `eliaswoodwork.com` | KTU cabinets, doors, refacing |
+| Richelieu Hardware | `richelieu.com` | Cabinet hardware, hinges, slides |
+| Hardware Resources | `hardwareresources.com` | Hardware, Task Lighting, NorthPoint |
+| MSI Surfaces | `msisurfaces.com` | Countertops |
+| Bertch / MasterBrand | `masterbrand.com` | BTU bath vanities |
+| MTI Baths | `mtibaths.com` | BTU tubs / fixtures |
+| The Tile Shop | `tileshop.com` | Tile, grout, trim |
+| Floor & Decor | `email.flooranddecor.com` | Flooring |
+| Ricciardi Brothers | `ricciardibrothers.com` | Paint / sundries |
+| Home Depot Pro | `order.homedepot.com` | Site materials, pickup orders |
+| Designer Appliances | *(no traffic — blind spot)* | Appliances |
+
+Publish two levels, both write-then-prune by `scan_date`:
+
+- **`vendor_accounts`** — one row per vendor ACCOUNT:
+  `{vendor, category, account, health (RED|AMBER|GREEN), status, balance_open,
+  disputed, oldest_days, last_contact, contact, detail, action,
+  blocks_projects, scan_date}`, sorted RED → AMBER → GREEN then balance desc.
+  `health`: **RED** = shipments blocked or credit action (revoked credit, order
+  under review, repeated collection notices) · **AMBER** = past due / payment
+  requested / unresolved routing / a coverage gap · **GREEN** = current.
+- **`foreman_vendor`** — one row per ORDER or INVOICE line, uniform schema so the
+  intranet can colour it conditionally:
+  `{project, vendor, item, po_ref, amount, order_date, eta, age_days, status,
+  health, last_update, flag, action, scan_date}`.
+
+**Rules that catch the real problems:**
+- **A credit hold is the highest-severity vendor state.** Two are live: Elias
+  (credit revoked 13 Jul 2026) and Hardware Resources (FIR112 "order under
+  review due to an outstanding balance"). On these accounts an invoice or an
+  order confirmation is NOT evidence of delivery — check for a hold first.
+- **Match every chase to a remittance.** A chase with no answering payment means
+  the order is still blocked. Track promised-vs-paid: a partial payment plus
+  "we'll settle the rest this week" that never lands is a finding.
+- **Vendor-aware gating.** KTU cabinets come from Elias; **BTU vanities come from
+  Bertch/MasterBrand and MTI Baths, never Elias.** Never write "no Elias order
+  placed" on a BTU bath — it will be wrong (real 2026-08-21 case: Arenberg was
+  flagged that way while Bertch order 4073878 / PO ARENBERGBTU had been placed).
+  Pick the expected vendor from brand + scope before judging whether an order exists.
+- **High invoice volume is not automatically arrears.** Richelieu sent 61 emails
+  in a week; parsed, they were 35 invoices totalling ~$5.6k, median ~$110 — normal
+  dispatch cadence with no collection language. Read the amounts before escalating.
+- **Sanity-bound every parsed amount.** Richelieu PDFs collapse columns, so a naive
+  "largest number on the page" read produced $560,067 for a $423.60 invoice and a
+  fictional $1.26M total. Take the trailing `$n.nn` total block, and reject any
+  hardware/tile invoice over ~$25k as a parse failure rather than publishing it.
+- **Perishable deadlines count.** A Home Depot pickup order expires (collect by
+  date or it returns to stock); an MTI credit-card form goes stale. Give these an
+  `eta` and surface them like any other vendor risk.
+
 ### 4b. Design packet review + budget/scope alignment (hand-in-hand with Moola)
 
 Design packets are emailed to **firstgentalent@gmail.com** (and come from
@@ -683,28 +892,11 @@ section — stale beats blank):
   labor_rate, estimated_cost_coverage_pct,
   actual_cost_coverage_pct, estimated_gp_pct, actual_gp_pct, price_grade
   (over_market|at_market|under_market|no_catalog — BTU only, per §3), status
-  (🟢/🟡/🔴), action, install_started, install_date,
-  contract_signed (the ServiceMinder accepted-proposal date — this is the same
-  contract-signature date already used internally in §2/§2c as the timeline
-  anchor; write it out explicitly here too. The intranet's project detail modal
-  has rendered this key since it shipped and has always shown "not yet
-  published" because this field was never actually written — fix that gap),
-  pay_pct, payment_status
+  (🟢/🟡/🔴), action, install_started, install_date, pay_pct, payment_status
   (pre_production|started|complete, §2b owner rule), est_timeline (§2c week range
   from scope), est_completion (§2c, when install_date known), project_steps (§2c
   ordered step breakout with current position — shown in the Projects notes),
-  pm_comment,
-  company_cam_status (a 1-2 sentence plain-English narrative of what the LATEST
-  CompanyCam photos actually show for this job — e.g. "Demo complete, tile
-  in progress as of 8/17 photos" or "No new photos since 8/10 — flag if install
-  is active". Derive this from the same `list_recent_photos` pull and phase
-  inference already used for `stage`/§2's phase inference — this is that same
-  read, written out as its own short narrative field rather than folded silently
-  into `stage`, so the intranet can show it as a dedicated column. Include the
-  date of the photos it's based on. If a job has install_started=true but no
-  CompanyCam photos in the last 5 days, say so plainly here — that's itself the
-  status ("No coverage in 5 days — confirm crew is on site")),
-  timeline_status
+  pm_comment, timeline_status
   (within_timeline|at_risk|overrun, §2b — only for install_started jobs),
   timeline_goal (human-entered, CARRY FORWARD — see below), goal_assessment
   (on_track_for_goal|tight_but_possible|not_doable, only when timeline_goal is
@@ -735,8 +927,23 @@ section — stale beats blank):
   **Preserve `planned_end_override` and `actual_date`** when re-generating —
   merge by project+milestone, never blindly overwrite a human date edit
   (same discipline as `btu_ordering`'s `status`). Sort by `seq` (sort_order).
+- `project_pipeline` — **the headline Projects-tab board (§2f).** One row per
+  active project, sorted RED → AMBER → GREEN then open balance desc. Fields:
+  `{project, brand, track, rag, rag_reason, bucket, stage, blocking_gate,
+  contract_total, open_balance, balance_pct, pay_pct, contract_signed,
+  days_elapsed, weeks_elapsed, track_target, variance_wks, gate_stage,
+  selections_open, selections_open_fields, design_status_sheet,
+  in_materials_tracker, elias_order, elias_due, elias_ar_hold,
+  last_field_activity, days_since_photo, committed_install,
+  needs_sm_install_date, est_gp_pct, actual_gp_pct, gp_basis, tracker_as_of,
+  tracker_age_days, scan_date}`. Write-then-prune by `scan_date`.
+- `open_selections` — the per-customer open-selection worklist for Ben and Mayra:
+  `{customer, project, active, open_count, open_fields, design_status, owner,
+  tracker_as_of, scan_date}`, open_count desc, active projects first. Sourced
+  from `688-Materials.xlsx` cells reading `Not selected!!` (§1b).
 - `foreman_vendor` — one row per open order: `{project, vendor, item, status, eta,
-  last_update, flag, scan_date}`.
+  last_update, flag, scan_date}`. Include the Elias AccessNow sales-order number
+  and due date, and any AR/credit hold, per §1b.
 - `foreman_gates` — one row per job with gate exposure: `{project, gate_status,
   missing, owner, age, scan_date}`.
 - `client_status` — the intranet Clients board; one row per active/recent client
@@ -836,7 +1043,29 @@ publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
   same as a KTU job with missing photos.
 - 🟢 **HighLevel fully live for BOTH brands** — `mcp__ghl-ktu__*` = KTU,
   `mcp__ghl-btu__*` = BTU (PIT-scoped, bootstrap-registered); `mcp__Highlevel__*`
-  connector = BTU too. A missing ghl-* server = unset env var — flag it.
+  connector = BTU too.
+  **A missing `mcp__ghl-*` tool does NOT mean HighLevel is down.** Verified
+  2026-08-21: both PITs returned HTTP 200 the whole time while the session showed
+  no ghl tools at all, because `bootstrap.sh` had not run (`claude mcp list` →
+  "No MCP servers configured"). The claude.ai `High-Level` connector is a
+  different thing and needs interactive OAuth — ignore it. Before ever reporting
+  HighLevel unavailable, in this order:
+  1. `bash mcp-servers/ghl.sh KTU tools` — the **direct-curl helper**, which works
+     with zero MCP registration (same rationale as `sb.sh`). Usage:
+     `bash mcp-servers/ghl.sh <KTU|BTU> <tool> '<json-args>'`.
+  2. If that answers, HighLevel is UP — use the helper for the whole run.
+  3. Only if the helper also fails is it a real outage; then check `GHL_PIT_KTU` /
+     `GHL_PIT_BTU` are set and say which step failed.
+  Run `bash mcp-servers/bootstrap.sh` to restore the MCP servers for the NEXT
+  session (registration cannot load into an already-running session).
+  **Calendar gotcha:** `calendars_get-calendar-events` requires one of
+  `query_calendarId` / `query_userId` / `query_groupId` — a bare date range 422s.
+  The PIT toolset has no list-calendars tool, so enumerate calendars via REST:
+  `GET https://services.leadconnectorhq.com/calendars/?locationId=<id>` with the
+  same bearer and header `Version: 2021-04-15`. Operational calendars to sweep:
+  Installation, Installation - Primary Service, Measuring, Site Visit,
+  Consultation Calendar, Consultation - Showroom, Final Walkthrough,
+  Countertop Selection, Follow-up Estimate.
 - 🟡 **QuickBooks**: Intuit connector = FGUSA books only; Oracabessa/BTU + Jatalia
   via their Zapier QBO connections.
 - 🟢 **Slack + Google Drive required for the daily pacing task** (§2e/§7a). The
