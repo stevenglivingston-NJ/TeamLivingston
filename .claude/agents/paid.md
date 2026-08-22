@@ -621,16 +621,27 @@ assets (`asset.type='CALL'`) and the site, and flag any drift:
 | (973) 521-0688 | BTU — **published on BTU's Google profile**; re-pointed to the call center, no IVR (Steven, week of 2026-08-17) | Call center. **Verify call-conversion tracking follows it** — it was previously the untracked fallback |
 | (973) 381-2877 | Stray KTU Google call asset | Confirm or remove |
 
-**Status as of 2026-08-22 — the published number is not the test.** Routing behind
-a number can change without the profile changing, so judge a brand by whether its
-calls are answered, not by which number it lists. Use `connected_calls /
-phone_calls` from `query_lsa_periods` (that ratio is also what Google scores for
-LSA rank):
-- ✅ **BTU — 2 of 2 answered, responsiveness 1.00.** The no-IVR re-point landed.
-- 🔴 **KTU — 0 of 2 answered, responsiveness 0.60.** KTU appears to have been left
-  out of that change; its profile still publishes (973) 521-1182, the IVR line.
-  Same infrastructure as BTU, opposite result. This is the live suspect behind
-  KTU's LSA collapse (57 leads YTD vs 71 prior year; 1 lead in August).
+**Which surface carries which number — verified 2026-08-22.** These are separate
+systems with separate phone settings. Do not infer one from another; an earlier
+audit wrongly read a GBP phone as if it were the LSA phone.
+
+| Surface | KTU | BTU | State |
+|---|---|---|---|
+| **LSA profile** | (973) 521-8442 | (973) 798-9756 | ✅ correct (owner-confirmed) |
+| **Google Ads call assets** (account-level) | (973) 521-8442 ENABLED, 521-1182 PAUSED | (973) 798-9756 ENABLED | ✅ correct |
+| **Google Business Profile** | (973) 521-1182 | (973) 521-0688 | 🔴 **wrong** |
+| **Franchise site** `/bloomfield-nj` | (973) 521-1182 ×4 `tel:` | (973) 521-0688 ×4 `tel:` | 🔴 **wrong** |
+| **ktubloomfield.com** (own domain) | (973) 521-8442 | — | ✅ correct |
+
+**The LSA phone is NOT readable from any API here.** The Local Services API
+exposes no phone field, so never report an LSA phone from tool output — ask, or
+read the LSA console. `get_location_info` returns the *Business Profile* phone.
+
+**Do not use the LSA answered-call ratio as a routing test.** KTU reads 0 of 2
+answered / responsiveness 0.60 against BTU's 1.00, but KTU's LSA number is
+correct, so that gap is unexplained rather than a routing fault — and 2 calls is
+far too small a sample to conclude from. Treat responsiveness as a metric to
+watch, not as evidence about which number is configured where.
 
 ## Standing context — stop re-discovering these
 

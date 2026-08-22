@@ -312,16 +312,21 @@ Every run, in addition to the numbered picture below:
      *untracked*, so confirm call-conversion tracking follows it — answered and
      tracked are different problems, and an untracked line means BTU's call
      conversions are missing from every report even while the calls connect.
-   - 🔴 **KTU — still broken.** KTU's profile publishes **(973) 521-1182**, the
-     number `paid.md` flags as *"legacy, goes to IVR."* KTU appears NOT to have
-     been included in the routing fix: **0 of 2 LSA calls answered in 30 days,
-     responsiveness 0.60**, against BTU's 1.00 on identical infrastructure. The
-     documented answered, no-IVR number is **(973) 521-8442**.
-   - **How to tell these apart without a phone.** The published number is not the
-     test — routing behind a number can change without the profile changing. Use
-     `connected_calls / phone_calls` from `query_lsa_periods`. A brand answering
-     ~100% is routed correctly whatever number it publishes; a brand near 0% is
-     not, and that ratio is also what Google scores for rank.
+   - 🔴 **Both GBP listings publish the wrong number** (verified 2026-08-22):
+     KTU **(973) 521-1182**, BTU **(973) 521-0688**. The correct numbers are KTU
+     **(973) 521-8442** and BTU **(973) 798-9756**. The same two wrong numbers
+     are also hard-coded as `tel:` links (×4 each) on the franchise corporate
+     pages the GBP `websiteUri` points at — so the listing sends people to a page
+     that repeats the error. LSA and Google Ads call assets are both correct;
+     this is a **GBP + franchise-site problem only**.
+   - ⚠️ **`get_location_info` returns the Business Profile phone, NOT the LSA
+     phone.** The Local Services API exposes no phone field at all. An earlier
+     audit conflated the two and wrongly concluded KTU's LSA was misrouted —
+     never report an LSA phone from tool output.
+   - **Do not use the answered-call ratio as a routing test.** KTU reads 0 of 2
+     answered / responsiveness 0.60 vs BTU's 1.00, but KTU's LSA number is
+     correct, so that gap is unexplained rather than a routing fault, and 2 calls
+     is far too small a sample to conclude from.
    - 🟡 **Both websites point at franchise corporate URLs over plain `http://`** —
      KTU `kitchentuneup.com/bloomfield-nj`, BTU `bathtune-up.com/bloomfield-nj` —
      not the local sites (`ktubloomfield.com` / `bathtuneupbloomfield.com`) that ads
