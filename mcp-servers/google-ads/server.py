@@ -15,6 +15,7 @@ Required env vars (set in ~/.claude/settings.json):
   GOOGLE_ADS_LOGIN_CUSTOMER_ID (optional) - only if you have an MCC; leave blank otherwise
 """
 import os
+import time
 from typing import Any
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -297,10 +298,23 @@ def _lsa_query(endpoint: str, query: str,
         "endDate.month": end_date.month,
         "endDate.day": end_date.day,
     }
+    # The Local Services API rate-limits aggressively: two of these fired
+    # concurrently return 403 even though the same call succeeds on its own.
+    # Retry the transient statuses rather than surfacing a fake auth failure.
+    last_exc: Exception | None = None
     with httpx.Client(timeout=30) as client:
-        resp = client.get(url, headers=headers, params=params)
-        resp.raise_for_status()
-        return resp.json()
+        for attempt in range(3):
+            resp = client.get(url, headers=headers, params=params)
+            if resp.status_code in (403, 429, 500, 502, 503, 504):
+                last_exc = httpx.HTTPStatusError(
+                    f"{resp.status_code} from {endpoint}", request=resp.request,
+                    response=resp)
+                if attempt < 2:
+                    time.sleep(2 ** attempt)
+                    continue
+            resp.raise_for_status()
+            return resp.json()
+    raise last_exc  # type: ignore[misc]
 
 
 def _mcc_id() -> str:
@@ -323,17 +337,26 @@ def _resolve_lsa(location: str) -> str:
     return LSA_ACCOUNT_MAP[loc]
 
 
-def _lsa_account_report(location: str) -> dict[str, Any]:
+def _lsa_account_report(location: str, days: int = 30) -> dict[str, Any]:
     """Shared account-report fetch. Returns the resolved LSA id, every account
-    visible in the MCC, and this brand's matched report (None if unmatched)."""
+    visible in the MCC, and this brand's matched report (None if unmatched).
+
+    `days` sets the reporting window. The API derives its currentPeriod* fields
+    from that window and its previousPeriod* fields from the equal-length span
+    immediately before it, so the two are always like-for-like."""
+    from datetime import date, timedelta
     mcc = _mcc_id()
-    result = _lsa_query("accountReports", f"manager_customer_id:{mcc}")
+    end = date.today()
+    start = end - timedelta(days=days)
+    result = _lsa_query("accountReports", f"manager_customer_id:{mcc}",
+                        start_date=start, end_date=end)
     target_id = _resolve_lsa(location)
     reports = result.get("accountReports", [])
     matched = [r for r in reports if r.get("accountId") == target_id]
     return {
         "lsa_account_id": target_id,
         "brand": location.upper().strip(),
+        "date_range": {"start": start.isoformat(), "end": end.isoformat()},
         "matched_count": len(matched),
         "all_accounts_in_mcc": [
             {"accountId": r.get("accountId"), "businessName": r.get("businessName")}
@@ -346,8 +369,15 @@ def _lsa_account_report(location: str) -> dict[str, Any]:
 @mcp.tool()
 def query_lsa_account(location: str, days: int = 30) -> dict[str, Any]:
     """LSA account snapshot: business name, average rating, review count,
-    weekly budget, total cost current period, charged leads, phone calls."""
-    return _lsa_account_report(location)
+    weekly budget, total cost current period, charged leads, phone calls.
+
+    `days` is the reporting window (default 30). previousPeriod* fields cover
+    the equal-length span immediately before it.
+
+    Note: `impressionsLastTwoDays` reads 0 on accounts that demonstrably served
+    and took leads in that window. Do not treat it as a serving signal - use the
+    LOCAL_SERVICES campaign's impressions from `query_campaigns` instead."""
+    return _lsa_account_report(location, days=days)
 
 
 def _as_int(value: Any) -> int:
@@ -358,48 +388,114 @@ def _as_int(value: Any) -> int:
         return 0
 
 
+def _tally(rows: list[dict[str, Any]], key: str) -> dict[str, int]:
+    """Count rows by one field, biggest bucket first."""
+    counts: dict[str, int] = {}
+    for row in rows:
+        counts[row[key]] = counts.get(row[key], 0) + 1
+    return dict(sorted(counts.items(), key=lambda kv: -kv[1]))
+
+
+LSA_LEAD_FIELDS = """
+    local_services_lead.id,
+    local_services_lead.lead_type,
+    local_services_lead.lead_status,
+    local_services_lead.category_id,
+    local_services_lead.service_id,
+    local_services_lead.contact_details,
+    local_services_lead.creation_date_time,
+    local_services_lead.lead_charged,
+    local_services_lead.lead_feedback_submitted,
+    local_services_lead.locale,
+    local_services_lead.note.description,
+    local_services_lead.credit_details.credit_state,
+    local_services_lead.credit_details.credit_state_last_update_date_time
+"""
+
+
 @mcp.tool()
 def query_lsa_leads(location: str, days: int = 30) -> dict[str, Any]:
-    """Lead-by-lead detail from LSA: type (call/message), customer name,
-    job category, dispute status, charge amount.
+    """Lead-by-lead detail from LSA: type (call/message), job category, charge
+    status, dispute/credit state, and the consumer phone number.
 
-    Returns a `status`: "ok" when the endpoint returned lead rows, or
-    "no_data" when it returned nothing at all while the account report shows
-    leads/calls in the same window (an access gap, NOT a quiet zero)."""
+    Sourced from the Google Ads API `local_services_lead` resource, NOT the
+    Local Services REST `detailedLeadReports` endpoint - that endpoint returns
+    zero rows for these accounts while the same leads are readable here.
+
+    Consumer NAME is not exposed by this resource; `contact_details` carries the
+    phone number only. Pull names from the LSA console if a brief needs them.
+
+    Returns a `status`: "ok" when the account has readable lead history, or
+    "no_data" when the account has none at all while the account report shows
+    leads/calls - that combination means the lead pipe is broken, NOT a quiet
+    period, and must never be reported as 0 leads.
+    """
     from datetime import date, timedelta
-    mcc = _mcc_id()
-    target_id = _resolve_lsa(location)
-    query = f"manager_customer_id:{mcc}"
+    # LSA lead ids live on the LSA account, which is NOT the Google Ads CID for
+    # every brand (BTU's differ). Querying the Ads CID returns 0 rows silently.
+    cid = _resolve_lsa(location)
     end = date.today()
     start = end - timedelta(days=days)
-    result = _lsa_query("detailedLeadReports", query, start_date=start, end_date=end)
-    leads = result.get("detailedLeadReports", [])
-    brand_leads = [l for l in leads if l.get("accountId") == target_id]
+
+    # `segments.date` is incompatible with local_services_lead - the query must
+    # run unsegmented and be windowed here.
+    query = (f"SELECT {LSA_LEAD_FIELDS} FROM local_services_lead "
+             "ORDER BY local_services_lead.creation_date_time DESC")
+    service = _ads_client().get_service("GoogleAdsService")
+
+    leads: list[dict[str, Any]] = []
+    total_in_account = 0
+    for row in service.search(customer_id=cid, query=query):
+        lead = row.local_services_lead
+        total_in_account += 1
+        created = lead.creation_date_time or ""
+        if not (start.isoformat() <= created[:10] <= end.isoformat()):
+            continue
+        leads.append({
+            "id": str(lead.id),
+            "created": created,
+            "lead_type": lead.lead_type.name,
+            "lead_status": lead.lead_status.name,
+            "category": lead.category_id.replace("xcat:service_area_business_", ""),
+            "service_id": lead.service_id or None,
+            "charged": lead.lead_charged,
+            "credit_state": lead.credit_details.credit_state.name,
+            "credit_state_updated": (
+                lead.credit_details.credit_state_last_update_date_time or None),
+            "feedback_submitted": lead.lead_feedback_submitted,
+            "phone_number": lead.contact_details.phone_number or None,
+            "locale": lead.locale or None,
+            "note": lead.note.description or None,
+        })
+
     out: dict[str, Any] = {
-        "lsa_account_id": target_id,
+        "lsa_account_id": cid,
         "brand": location.upper().strip(),
         "date_range": {"start": start.isoformat(), "end": end.isoformat()},
-        "lead_count": len(brand_leads),
-        "leads": brand_leads,
-        "all_brand_lead_count_in_mcc": len(leads),
+        "lead_count": len(leads),
+        "charged_count": sum(1 for row in leads if row["charged"]),
+        "by_type": _tally(leads, "lead_type"),
+        "by_status": _tally(leads, "lead_status"),
+        "by_category": _tally(leads, "category"),
+        "leads": leads,
+        "total_leads_in_account_history": total_in_account,
         "status": "ok",
     }
-    if leads:
+    if total_in_account:
         return out
 
-    # Nothing came back for ANY account in the MCC. That is not the same as
-    # "this brand had no leads" - a bare 0 here reads as a real result and has
-    # already cost a brief its LSA lead-quality section. Cross-check against the
-    # account report (same token, same MCC) before reporting the zero.
+    # No lead history AT ALL. Before reporting that as a real zero, cross-check
+    # the account report: leads/calls there with nothing here means the lead pipe
+    # is broken. A bare 0 reads as a genuine result and has already cost a brief
+    # its LSA lead-quality section.
     try:
-        report = _lsa_account_report(location).get("report") or {}
+        report = _lsa_account_report(location, days=days).get("report") or {}
     except Exception as exc:
         out["status"] = "no_data"
         out["note"] = (
-            f"detailedLeadReports returned no rows for any account in MCC {mcc}, "
-            f"and the account-report cross-check itself failed "
-            f"({type(exc).__name__}: {exc}). Treat LSA lead detail as unavailable."
-        )
+            f"local_services_lead returned no rows for account {cid}, and the "
+            f"account-report cross-check itself failed ({type(exc).__name__}: "
+            f"{exc}). Treat LSA lead detail as unavailable.")
         return out
 
     charged = _as_int(report.get("currentPeriodChargedLeads"))
@@ -411,20 +507,16 @@ def query_lsa_leads(location: str, days: int = 30) -> dict[str, Any]:
     if charged or calls:
         out["status"] = "no_data"
         out["note"] = (
-            f"detailedLeadReports returned no rows for any account in MCC {mcc}, "
-            f"but the account report shows {charged} charged lead(s) and {calls} "
-            f"phone call(s) for {out['brand']} in this window. Lead-level data is "
-            f"NOT reachable - do not report 0 LSA leads. Likely cause: the MCC has "
-            f"reporting access to these LSA accounts but not lead-level access. "
-            f"Fix in the Local Services console (account access), not in this server. "
-            f"Account-level totals from query_lsa_account remain trustworthy."
-        )
+            f"local_services_lead returned no rows for account {cid}, but the "
+            f"account report shows {charged} charged lead(s) and {calls} phone "
+            f"call(s) for {out['brand']}. Lead-level data is NOT reachable - do "
+            f"not report 0 LSA leads. Check that {cid} is the right LSA account "
+            f"id for this brand and that the token's MCC still links it.")
     else:
         out["note"] = (
-            "detailedLeadReports returned no rows, and the account report also shows "
-            "no charged leads or phone calls in this window - consistent with a "
-            "genuinely quiet period."
-        )
+            "local_services_lead returned no rows and the account report also "
+            "shows no charged leads or phone calls - consistent with an account "
+            "that has genuinely never taken a lead.")
     return out
 
 
