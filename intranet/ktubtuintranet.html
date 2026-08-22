@@ -6386,6 +6386,9 @@ async function renderLsa(){
           </tr></thead>
           <tbody>${line('WTD','Week to date')}${line('MTD','Month to date')}${line('YTD','Year to date')}</tbody>
         </table></div>
+        ${(f.alerts||[]).length?`<div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">`+
+          f.alerts.map(a=>`<div class="ge-meta" style="padding:4px 8px;border-radius:3px;background:var(--bg);border-left:3px solid ${a.level==='urgent'?'var(--danger,#ef4444)':(a.level==='warn'?'#f59e0b':'var(--border)')}">${a.level==='urgent'?'🚨':(a.level==='warn'?'⚠️':'💡')} ${esc(a.text||'')}</div>`).join('')+
+          `</div>`:''}
         <div class="ge-meta" style="margin-top:6px">
           ${acct.rating?`${esc(String(acct.rating))}★ · ${num(acct.reviews)} reviews · `:''}
           ${acct.weekly_budget?`budget ${money(acct.weekly_budget)}/wk · `:''}
