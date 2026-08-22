@@ -209,6 +209,29 @@ def is_test_row(name: str | None, email: str | None = None,
     return False
 
 
+def _name_tokens(name: str | None) -> set[str]:
+    return {t for t in re.split(r"[^a-z]+", (name or "").lower())
+            if len(t) > 2 and t not in ("and", "the", "mr", "mrs", "ms", "jr", "sr")}
+
+
+def _names_agree(a: str | None, b: str | None) -> bool:
+    """Two names describe the same household.
+
+    Deliberately strict: at least two shared tokens, or one shared token that is
+    a distinctive surname both sides end on. "Jon and Jina McGriff" agrees with
+    itself across systems; "Robert Griffin" does not agree with "Jon McGriff".
+    """
+    ta, tb = _name_tokens(a), _name_tokens(b)
+    if not ta or not tb:
+        return False
+    shared = ta & tb
+    if len(shared) >= 2:
+        return True
+    last_a = (a or "").strip().split()[-1:] or [""]
+    last_b = (b or "").strip().split()[-1:] or [""]
+    return bool(shared) and last_a[0].lower() == last_b[0].lower()
+
+
 def dedupe(rows: list[dict], *keys: str) -> list[dict]:
     """Collapse rows that describe the same event.
 
@@ -284,15 +307,61 @@ def fetch_messages(brand: str, conv_id: str) -> list[dict]:
 # ServiceMinder lookups (memoised — the same phone recurs across checks)
 # --------------------------------------------------------------------------
 
-_sm_cache: dict[tuple[str, str], list[dict]] = {}
+_sm_cache: dict[tuple[str, str, str], list[dict]] = {}
 
 
 def sm_contacts_by_phone(brand: str, phone: str) -> list[dict]:
-    key = (brand, phone)
+    return _sm_locate(brand, "PhoneSearch", phone)
+
+
+def _sm_locate(brand: str, field: str, value: str) -> list[dict]:
+    key = (brand, field, value)
     if key not in _sm_cache:
-        r = sm(brand, "contacts/locate", {"PhoneSearch": phone, "Limit": 5})
+        r = sm(brand, "contacts/locate", {field: value, "Limit": 10})
         _sm_cache[key] = r.get("Matches") or []
     return _sm_cache[key]
+
+
+def sm_contacts_for(brand: str, phone: str = "", email: str = "",
+                    name: str = "") -> list[dict]:
+    """Find a customer's ServiceMinder record by phone, then email, then surname.
+
+    Phone alone is not enough, and trusting it produces false "missing booking"
+    alarms. Two real cases from the 2026-08 audit:
+      * a customer whose HighLevel record carried the junk phone 0000662453
+        while ServiceMinder held the real number — his installation existed
+      * a duplicate ServiceMinder record whose phone differed by ONE transposed
+        digit, with all the appointments on the copy the phone search missed
+    Both looked like lost bookings and were not. Always widen before alarming.
+    """
+    out, seen = [], set()
+    probes = []
+    if phone:
+        probes.append(("PhoneSearch", phone))
+    if email and "@" in email:
+        probes.append(("EmailSearch", email))
+    if name:
+        parts = [p for p in re.split(r"\s+|/|&", name) if len(p) > 2
+                 and p.lower() not in ("and", "the", "mr", "mrs", "ms")]
+        if parts:
+            probes.append(("NameSearch", parts[-1]))
+    for field, value in probes:
+        for m in _sm_locate(brand, field, value):
+            if m["Id"] in seen:
+                continue
+            # A surname probe drags in unrelated people ("Griffin", "Griffith"
+            # when looking for "McGriff"), so require corroboration. Matching on
+            # a shared email or phone is not enough on its own: the case this
+            # exists for had NEITHER — an empty HighLevel email and a junk
+            # phone — so a strong name agreement has to count too.
+            if field == "NameSearch":
+                same_email = bool(email) and (m.get("Email") or "").lower() == email.lower()
+                same_phone = bool(phone) and digits(m.get("Phone")) == phone
+                if not (same_email or same_phone or _names_agree(name, m.get("Name"))):
+                    continue
+            seen.add(m["Id"])
+            out.append(m)
+    return out
 
 
 def sm_appointments(brand: str, contact_id: int) -> list[dict]:
@@ -371,6 +440,8 @@ def sweep(days: int) -> dict:
             "missed_call": [],
             "lead_never_worked": [],
             "booking_missing_in_serviceminder": [],
+            "booking_date_mismatch": [],
+            "call_tracking": [],
             "service_recovery": [],
             "list_damage": [],
         },
@@ -533,7 +604,9 @@ def sweep(days: int) -> dict:
         report["brands"][brand] = stats
 
         # --- booking integrity: HighLevel calendar vs ServiceMinder ---------
-        report["buckets"]["booking_missing_in_serviceminder"] += audit_calendar(brand, today)
+        cal_missing, cal_drift = audit_calendar(brand, today)
+        report["buckets"]["booking_missing_in_serviceminder"] += cal_missing
+        report["buckets"]["booking_date_mismatch"] += cal_drift
         # --- booking integrity: a note claims a booking that does not exist -
         report["buckets"]["booking_missing_in_serviceminder"] += audit_notes(brand, days)
 
@@ -547,6 +620,49 @@ def sweep(days: int) -> dict:
     b["positive_ad_responses"] = dedupe(b["positive_ad_responses"], "phone_masked", "when")
     b["unanswered_customer"] = dedupe(b["unanswered_customer"], "phone_masked", "when")
     b["service_recovery"] = dedupe(b["service_recovery"], "phone_masked", "when")
+
+    # --- call-tracking performance, per number ------------------------------
+    # Inbound calls are supposed to auto-forward to the call centre, so a number
+    # with a poor answer rate is a routing fault, not a busy day. Name the number
+    # and list every call that went unanswered with its date, so each one can be
+    # dialled and tested — and so nobody has to cross-reference two tables.
+    for brand, s_ in report["brands"].items():
+        for number, v in s_["by_tracking_number"].items():
+            unanswered = sorted(
+                (r for r in b["missed_call"]
+                 if r["brand"] == brand and r.get("tracking_number") == number),
+                key=lambda r: r["when"])
+            rate = v["answer_rate"]
+            if rate is None:
+                continue
+            if v["no_answer"]:
+                status = "red"
+            elif v["total"] >= 3 and rate < 50:
+                status = "red"
+            elif rate < 100:
+                status = "amber"
+            else:
+                status = "green"
+            b["call_tracking"].append({
+                "brand": brand,
+                "number": number,
+                "calls": v["total"],
+                "answered": v["answered"],
+                "abandoned": v["abandoned"],
+                "rang_out": v["no_answer"],
+                "answer_rate_pct": rate,
+                "status": status,
+                "unanswered": [
+                    {"date": r["when"], "caller": r["phone_masked"],
+                     "who": r["who"], "outcome": r["detail"]}
+                    for r in unanswered],
+                "action": ("Test the forward on this number — call it and confirm "
+                           "where it lands." if status == "red"
+                           else "Watch — some callers are dropping before a human picks up."
+                           if status == "amber" else "Answering cleanly."),
+            })
+    b["call_tracking"].sort(key=lambda r: ({"red": 0, "amber": 1, "green": 2}[r["status"]],
+                                           -r["calls"]))
 
     # --- list damage rollup ------------------------------------------------
     for brand, s in report["brands"].items():
@@ -564,13 +680,18 @@ def sweep(days: int) -> dict:
     return report
 
 
-def audit_calendar(brand: str, today) -> list[dict]:
-    """Every confirmed HighLevel calendar event must exist in ServiceMinder."""
-    out = []
+def audit_calendar(brand: str, today) -> tuple[list[dict], list[dict]]:
+    """Every confirmed HighLevel calendar event must exist in ServiceMinder.
+
+    Returns (missing, date_mismatch). A booking on a different day is a stale
+    calendar entry, not a lost customer — grading them the same trains people to
+    ignore the card.
+    """
+    out, out_drift = [], []
     try:
         cals = ghl(brand, f"/calendars/?locationId={LOCATION_ID[brand]}").get("calendars") or []
     except Exception:
-        return out
+        return out, out_drift
     start = int(datetime.combine(today, datetime.min.time()).timestamp() * 1000)
     end = int((datetime.combine(today, datetime.min.time())
                + timedelta(days=60)).timestamp() * 1000)
@@ -590,29 +711,53 @@ def audit_calendar(brand: str, today) -> list[dict]:
                 contact = (ghl_v2(brand, f"/contacts/{ev['contactId']}").get("contact") or {})
             except Exception:
                 continue
-            name, phone = contact.get("contactName"), digits(contact.get("phone"))
-            if is_test_row(name, contact.get("email"), phone) or not phone:
+            name = contact.get("contactName") or " ".join(
+                filter(None, [contact.get("firstName"), contact.get("lastName")]))
+            phone, email = digits(contact.get("phone")), (contact.get("email") or "")
+            if is_test_row(name, email, phone):
+                continue
+            if not (phone or email or name):
                 continue
             ev_date = datetime.strptime(ev["startTime"][:10], "%Y-%m-%d").date()
-            matched = False
+
+            same_day, nearby = [], []
             for loc in ("KTU", "BTU"):
-                for m in sm_contacts_by_phone(loc, phone):
+                for m in sm_contacts_for(loc, phone, email, name):
                     for appt in sm_appointments(loc, m["Id"]):
-                        if sm_appt_date(appt) == ev_date:
-                            matched = True
-            if not matched:
-                out.append({
-                    "brand": brand,
-                    "who": short_name(name, phone),
-                    "phone_masked": mask(phone),
-                    "expected": f"{ev_date} {ev['startTime'][11:16]} ({cal.get('name')})",
-                    "evidence": "confirmed on the HighLevel calendar",
-                    "detail": "No ServiceMinder appointment on that date — "
-                              "nobody is scheduled to attend.",
-                    "action": "Create the ServiceMinder appointment or cancel the "
-                              "HighLevel event. Check for a slot conflict first.",
-                })
-    return out
+                        d = sm_appt_date(appt)
+                        if d is None:
+                            continue
+                        if d == ev_date:
+                            same_day.append((loc, appt))
+                        elif abs((d - ev_date).days) <= 10:
+                            nearby.append((loc, d, appt.get("ServiceName")))
+            if same_day:
+                continue
+
+            base = {
+                "brand": brand,
+                "who": short_name(name, phone),
+                "phone_masked": mask(phone),
+                "expected": f"{ev_date} {ev['startTime'][11:16]} ({cal.get('name')})",
+                "evidence": "confirmed on the HighLevel calendar",
+            }
+            if nearby:
+                # The appointment exists, on a different day. Almost always a
+                # reschedule that moved in ServiceMinder and left a stale event
+                # behind in HighLevel. Worth cleaning up, not worth an alarm.
+                out_drift.append(dict(base,
+                    detail="ServiceMinder has this customer on "
+                           + ", ".join(f"{d} ({s})" for _, d, s in sorted(nearby)[:3])
+                           + " — the HighLevel event still shows the old date.",
+                    action="Confirm which date is right and clear the stale "
+                           "HighLevel event so the two systems agree."))
+            else:
+                out.append(dict(base,
+                    detail="No ServiceMinder appointment on that date, and none "
+                           "within 10 days — nobody is scheduled to attend.",
+                    action="Create the ServiceMinder appointment or cancel the "
+                           "HighLevel event. Check for a slot conflict first."))
+    return out, out_drift
 
 
 def audit_notes(brand: str, days: int) -> list[dict]:
@@ -641,9 +786,15 @@ def audit_notes(brand: str, days: int) -> list[dict]:
         blob = " || ".join(f"{n.get('Title')}: {n.get('Body')}" for n in notes)
         if not NOTE_CLAIMS_BOOKING.search(blob):
             continue
-        phone = digits(c.get("Phone"))
-        # Look in both brands — a kitchen booking often sits on a BTU record.
-        if phone and has_any_appointment(phone):
+        phone, email, nm = digits(c.get("Phone")), (c.get("Email") or ""), c.get("Name")
+        # Look in both brands — a kitchen booking often sits on a BTU record —
+        # and match on more than the phone, which is routinely junk or duplicated.
+        found = False
+        for loc in ("KTU", "BTU"):
+            for m in sm_contacts_for(loc, phone, email, nm):
+                if sm_appointments(loc, m["Id"]):
+                    found = True
+        if found:
             continue
         if not phone and sm_appointments(brand, c["Id"]):
             continue
@@ -671,6 +822,10 @@ def grade(report: dict) -> dict:
     missing = b["booking_missing_in_serviceminder"]
     if missing:
         red_reasons.append(f"{len(missing)} booking(s) missing from ServiceMinder")
+    if b["booking_date_mismatch"]:
+        amber_reasons.append(
+            f"{len(b['booking_date_mismatch'])} booking(s) on different dates in "
+            "HighLevel vs ServiceMinder")
 
     unbooked_positive = [r for r in b["positive_ad_responses"] if not r["already_booked"]]
     if unbooked_positive:
