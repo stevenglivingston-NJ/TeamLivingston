@@ -2272,6 +2272,10 @@
         <h2>🌱 Organic — needs attention</h2>
         <div id="organic_root" class="loading">Loading…</div>
       </div>
+      <div class="card" id="lsaCard">
+        <h2>📞 Local Services Ads — week / month / year to date</h2>
+        <div id="lsa_root" class="loading">Loading…</div>
+      </div>
       <div class="card" id="paidCard" style="display:none">
         <h2>💰 Paid — acquisition brief</h2>
         <div id="paid_root" class="loading">Loading…</div>
@@ -6316,6 +6320,64 @@ async function renderOrganic(){
     + `<div class="ge-meta" style="margin-top:4px">Scan: ${esc(latest||'—')} · Organic runs daily; deep competitive/backlink pulls weekly.</div>`;
 }
 
+// ===== LSA week/month/year-to-date board (section organic_lsa) =====
+async function renderLsa(){
+  const el=document.getElementById('lsa_root'); if(!el) return;
+  const rows=await fetchRecords('organic_lsa');
+  const dates=[...new Set(rows.map(r=>r.fields.scan_date).filter(Boolean))].sort().reverse();
+  const latest=dates[0];
+  const show=(latest?rows.filter(r=>r.fields.scan_date===latest):rows)
+    .sort((a,b)=>(a.sort_order??99)-(b.sort_order??99));
+  if(!show.length){
+    el.innerHTML='<div class="ge-clear">💤 No LSA report yet — Organic pulls Local Services leads, spend and call answer-rate each morning and rolls them up week-, month- and year-to-date. First report lands with the next scan.</div>';
+    return;
+  }
+  const money=v=>(v===null||v===undefined)?'—':'$'+Number(v).toLocaleString(undefined,{maximumFractionDigits:2});
+  const num=v=>(v===null||v===undefined)?'—':String(v);
+  const pct=(a,b)=>{ if(!b) return ''; const d=Math.round(((a-b)/b)*100);
+    return ' <span style="opacity:.75">('+(d>=0?'+':'')+d+'% YoY)</span>'; };
+  const ICO={urgent:'🚨',warn:'⚠️',info:'💡'};
+  el.innerHTML = show.map(r=>{
+    const f=r.fields, P=f.periods||{}, py=P.prior_year_YTD||{}, acct=f.account||{};
+    const line=(k,label)=>{ const p=P[k]; if(!p) return '';
+      return `<tr>
+        <td style="padding:5px 10px 5px 0;white-space:nowrap"><b>${esc(label)}</b>
+          <span class="ge-meta" style="display:block;opacity:.7">${esc(p.start||'')} → ${esc(p.end||'')}</span></td>
+        <td style="padding:5px 10px;text-align:right">${num(p.leads)}${k==='YTD'?pct(p.leads,py.leads):''}</td>
+        <td style="padding:5px 10px;text-align:right">${num(p.charged)}${k==='YTD'?pct(p.charged,py.charged):''}</td>
+        <td style="padding:5px 10px;text-align:right">${money(p.cost)}</td>
+        <td style="padding:5px 10px;text-align:right">${num(p.phone_calls)}</td>
+        <td style="padding:5px 10px;text-align:right">${num(p.connected_calls)}</td>
+      </tr>`; };
+    const resp=acct.responsiveness;
+    const respFlag=(resp!==null&&resp!==undefined&&resp<0.8)?' style="color:var(--danger,#ef4444);font-weight:600"':'';
+    return `
+    <div class="ge-row ${esc(f.severity||'info')}" style="align-items:flex-start">
+      <div class="ge-ico">${ICO[f.severity]||'💡'}</div>
+      <div class="ge-body" style="width:100%">
+        <div class="ge-title">${esc(r.brand||f.brand||'')} — ${esc(f.headline||'Local Services Ads')}</div>
+        ${f.detail?`<div class="ge-detail">${esc(f.detail)}</div>`:''}
+        <div style="overflow-x:auto;margin-top:8px">
+        <table style="border-collapse:collapse;font-size:13px;min-width:520px">
+          <thead><tr style="text-align:right;opacity:.7">
+            <th style="text-align:left;padding:0 10px 4px 0">Window</th>
+            <th style="padding:0 10px 4px">Leads</th><th style="padding:0 10px 4px">Charged</th>
+            <th style="padding:0 10px 4px">Spend</th><th style="padding:0 10px 4px">Calls</th>
+            <th style="padding:0 10px 4px">Answered</th>
+          </tr></thead>
+          <tbody>${line('WTD','Week to date')}${line('MTD','Month to date')}${line('YTD','Year to date')}</tbody>
+        </table></div>
+        <div class="ge-meta" style="margin-top:6px">
+          ${acct.rating?`${esc(String(acct.rating))}★ · ${num(acct.reviews)} reviews · `:''}
+          ${acct.weekly_budget?`budget ${money(acct.weekly_budget)}/wk · `:''}
+          <span${respFlag}>answer rate ${resp===null||resp===undefined?'—':Math.round(resp*100)+'%'}</span>
+          ${py.coverage_note?` · <i>${esc(py.coverage_note)}</i>`:''}
+        </div>
+      </div>
+    </div>`}).join('')
+    + `<div class="ge-meta" style="margin-top:4px">Scan: ${esc(latest||'—')} · weeks start Monday · lead counts from the Google Ads local_services_lead resource; spend and call answer-rate from the LSA account report.</div>`;
+}
+
 // ===== ported from repo snapshot 2026-08-18: appointments =====
 async function renderAppointments(){
   const root=document.getElementById('appointments_root'); if(!root) return;
@@ -6535,13 +6597,15 @@ function switchPO(v){
     b.style.color = on ? '#fff' : 'var(--text-dim)';
   });
   const oc=document.getElementById('organicCard'), pc=document.getElementById('paidCard');
+  const lc=document.getElementById('lsaCard');
   if(oc) oc.style.display = v==='organic'?'':'none';
+  if(lc) lc.style.display = v==='organic'?'':'none';
   if(pc) pc.style.display = v==='paid'?'':'none';
   renderPO();
 }
 
 // ===== ported: resolved references (round 2) =====
-function renderPO(){ if(PO_VIEW==='paid'){ window.renderPaid&&renderPaid(); } else { window.renderOrganic&&renderOrganic(); } }
+function renderPO(){ if(PO_VIEW==='paid'){ window.renderPaid&&renderPaid(); } else { window.renderOrganic&&renderOrganic(); window.renderLsa&&renderLsa(); } }
 
 // ===== ported: resolved references (round 3) =====
 async function renderPaid(){

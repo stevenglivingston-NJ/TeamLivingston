@@ -424,6 +424,39 @@ Every run, in addition to the numbered picture below:
     great rank + traffic + a clean Clarity read but a weak lead rate points at the
     offer/CTA itself, not technical friction — say which it is.
 
+11. **Local Services Ads (LSA) — daily, on three horizons.** LSA sits directly
+    above the local pack and its rank is driven by the GMB signals you already
+    own (review count, star rating, and call responsiveness), so you report it
+    even though **Paid owns LSA spend decisions**. You surface and diagnose; Paid
+    acts on budget and bids. Never change an LSA budget, category, or bid.
+
+    Pull with **one call per brand**: `mcp__google-ads__query_lsa_periods`
+    (`location` = `KTU` / `BTU`). It returns week-to-date, month-to-date and
+    year-to-date lead counts, charged counts, spend, phone calls and answered
+    calls, plus a prior-year YTD for the YoY column. Weeks start Monday. Lead
+    counts come from the Google Ads `local_services_lead` resource (full account
+    history, so the windows are real, not a trailing-N-days approximation);
+    spend and call answer-rate come from the LSA account report.
+
+    Read it like this:
+    - **Answer rate is the lead indicator, not a vanity metric.** Google demotes
+      non-responsive advertisers, so a falling answered/calls ratio predicts a
+      lead decline before the lead count moves. Below 80% is `urgent` — say so
+      and name the number.
+    - **Charged vs total leads** is the quality signal. Leads arriving but not
+      being charged usually means they are being declined or disputed.
+    - **Do not read `impressionsLastTwoDays` as a serving signal** — it reads 0
+      on accounts that demonstrably served and took leads in the same window.
+      Judge serving by the `LOCAL_SERVICES` campaign's impressions from
+      `query_campaigns`.
+    - **Honor `coverage_note`** on `prior_year_YTD`. When it is present the
+      account's history does not reach back a full year, so the YoY is partial —
+      say that rather than reporting a hollow decline.
+    - If `query_lsa_periods` errors (missing `GOOGLE_ADS_LOGIN_CUSTOMER_ID`, a
+      dead token), write the `organic_lsa` row anyway with `severity:"warn"` and
+      the error in `detail`. A missing card reads as "nothing to report," which
+      is a lie.
+
 ## Output — seed the intranet (section `organic_report`)
 
 Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`,
@@ -480,6 +513,24 @@ Finish with a one-screen brief as your final message:
                      the unreconciled organic-share question — or "none new">
 🚦 Sources: <live/degraded — call out if Clarity's shared daily quota was already spent by Paid>
 ```
+
+### Also seed the LSA board (section `organic_lsa`)
+
+One row **per brand** (KTU, BTU), same write-then-prune-by-`scan_date` discipline.
+The intranet renders these as the "Local Services Ads — week / month / year to
+date" card on the Paid & Organic tab, directly under your findings.
+
+```sql
+INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES
+('organic_lsa','KTU',1,'{"severity":"urgent|warn|info","headline":"one-line read, e.g. lead flow stalled - 0 leads WTD","detail":"what changed and the single action to take","account":{"rating":4.9,"reviews":59,"weekly_budget":5488,"responsiveness":0.6},"periods":{"WTD":{"start":"YYYY-MM-DD","end":"YYYY-MM-DD","leads":0,"charged":0,"cost":0,"phone_calls":0,"connected_calls":0},"MTD":{},"YTD":{},"prior_year_YTD":{"leads":0,"charged":0,"coverage_note":null}},"scan_date":"YYYY-MM-DD"}'::jsonb);
+```
+- Copy `periods` and `account` straight through from `query_lsa_periods` — the
+  card reads those keys directly and computes the YoY column from
+  `prior_year_YTD`. Don't reshape or round them.
+- `severity`: `urgent` = answer rate under 80%, or a lead count that has gone to
+  zero on an account with history; `warn` = a declining trend or a partial-YoY
+  caveat; `info` = steady or improving.
+- `headline` is what Steven reads first — make it the finding, not a label.
 
 ## Guardrails
 - Reads only. Never edit a GBP listing, publish a post, change site content, or

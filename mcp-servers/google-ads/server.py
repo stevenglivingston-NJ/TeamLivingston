@@ -16,6 +16,7 @@ Required env vars (set in ~/.claude/settings.json):
 """
 import os
 import time
+from datetime import date, timedelta
 from typing import Any
 import httpx
 from mcp.server.fastmcp import FastMCP
@@ -517,6 +518,118 @@ def query_lsa_leads(location: str, days: int = 30) -> dict[str, Any]:
             "local_services_lead returned no rows and the account report also "
             "shows no charged leads or phone calls - consistent with an account "
             "that has genuinely never taken a lead.")
+    return out
+
+
+def _period_bounds(today: "date") -> dict[str, tuple["date", "date"]]:
+    """WTD / MTD / YTD spans ending today. Week starts Monday (ISO)."""
+    return {
+        "WTD": (today - timedelta(days=today.weekday()), today),
+        "MTD": (today.replace(day=1), today),
+        "YTD": (today.replace(month=1, day=1), today),
+    }
+
+
+def _bucket(leads: list[dict[str, Any]], start: "date", end: "date") -> dict[str, Any]:
+    """Roll a lead list up over one window."""
+    lo, hi = start.isoformat(), end.isoformat()
+    rows = [x for x in leads if lo <= x["created"][:10] <= hi]
+    return {
+        "start": lo,
+        "end": hi,
+        "days": (end - start).days,
+        "leads": len(rows),
+        "charged": sum(1 for x in rows if x["charged"]),
+        "by_type": _tally(rows, "lead_type"),
+        "by_category": _tally(rows, "category"),
+    }
+
+
+@mcp.tool()
+def query_lsa_periods(location: str, include_cost: bool = True) -> dict[str, Any]:
+    """LSA performance rolled up week-to-date, month-to-date and year-to-date,
+    with a prior-year YTD comparison.
+
+    Lead counts come from the Google Ads `local_services_lead` resource, which
+    carries full account history, so the windows are computed from real lead
+    timestamps rather than a trailing-N-days approximation. Week starts Monday.
+
+    `include_cost=True` additionally fetches the LSA account report once per
+    window for spend, phone calls, connected calls and responsiveness. That is
+    three REST calls per brand and the endpoint rate-limits, so pass False when
+    you only need lead volume.
+    """
+    from datetime import date
+    cid = _resolve_lsa(location)
+    today = date.today()
+    brand = location.upper().strip()
+
+    # One unsegmented pull of full history, bucketed locally per window.
+    query = (f"SELECT {LSA_LEAD_FIELDS} FROM local_services_lead "
+             "ORDER BY local_services_lead.creation_date_time DESC")
+    service = _ads_client().get_service("GoogleAdsService")
+    leads: list[dict[str, Any]] = []
+    for row in service.search(customer_id=cid, query=query):
+        lead = row.local_services_lead
+        leads.append({
+            "created": lead.creation_date_time or "",
+            "charged": lead.lead_charged,
+            "lead_type": lead.lead_type.name,
+            "lead_status": lead.lead_status.name,
+            "category": lead.category_id.replace("xcat:service_area_business_", ""),
+        })
+
+    periods = {name: _bucket(leads, lo, hi)
+               for name, (lo, hi) in _period_bounds(today).items()}
+
+    # Prior-year YTD, same calendar span one year back. History may not reach
+    # that far - say so rather than reporting a hollow 0 as a real decline.
+    py_start = today.replace(year=today.year - 1, month=1, day=1)
+    try:
+        py_end = today.replace(year=today.year - 1)
+    except ValueError:  # Feb 29
+        py_end = today.replace(year=today.year - 1, day=28)
+    prior = _bucket(leads, py_start, py_end)
+    earliest = min((x["created"][:10] for x in leads if x["created"]), default=None)
+    if earliest and earliest > py_start.isoformat():
+        prior["coverage_note"] = (
+            f"lead history starts {earliest}, after {py_start.isoformat()} - "
+            f"prior-year YTD is partial, do not report it as a clean YoY")
+    periods["prior_year_YTD"] = prior
+
+    out: dict[str, Any] = {
+        "brand": brand,
+        "lsa_account_id": cid,
+        "as_of": today.isoformat(),
+        "week_starts": "monday",
+        "total_leads_in_account_history": len(leads),
+        "periods": periods,
+    }
+
+    if not include_cost:
+        return out
+
+    # Spend/calls only exist on the account report, and only for the window
+    # requested - so one call per window.
+    for name in ("WTD", "MTD", "YTD"):
+        span = periods[name]
+        try:
+            report = _lsa_account_report(
+                location, days=max(span["days"], 1)).get("report") or {}
+        except Exception as exc:
+            span["cost_error"] = f"{type(exc).__name__}: {exc}"
+            continue
+        span["cost"] = report.get("currentPeriodTotalCost")
+        span["phone_calls"] = _as_int(report.get("currentPeriodPhoneCalls"))
+        span["connected_calls"] = _as_int(
+            report.get("currentPeriodConnectedPhoneCalls"))
+        out.setdefault("account", {
+            "business_name": report.get("businessName"),
+            "rating": report.get("averageFiveStarRating"),
+            "reviews": _as_int(report.get("totalReview")),
+            "weekly_budget": report.get("averageWeeklyBudget"),
+            "phone_responsiveness": report.get("phoneLeadResponsiveness"),
+        })
     return out
 
 
