@@ -473,6 +473,72 @@ Every run, in addition to the numbered picture below:
       the error in `detail`. A missing card reads as "nothing to report," which
       is a lie.
 
+12. **Local-health regression check — run every day, report drift only.** The
+    2026-08-22 audit fixed a long list of profile faults. Your job now is to make
+    sure none of them silently come back, and to keep the map-pack picture current.
+    Compare today's pull against these known-good values and raise a `local` row
+    for anything that has moved:
+
+    | Check | Known-good (2026-08-22) | Raise if |
+    |---|---|---|
+    | KTU phone | (973) 521-8442 | anything else |
+    | BTU phone | (973) 798-9756 | anything else |
+    | KTU website | ktubloomfield.com, HTTPS | franchise URL returns, or `http://` |
+    | BTU website | bathtuneupbloomfield.com, HTTPS | same |
+    | UTM on both website fields | `utm_source=google&utm_medium=organic&utm_campaign=gbp` | missing — GBP clicks fall into Direct and the pack loses attribution |
+    | Weekend hours | real hours or Closed | `00:00–24:00` returns on Sat/Sun — LSA then buys calls nobody staffs |
+    | BTU categories | >1 | back to 1 (single-category = the cap on BTU's whole LSA reach) |
+    | KTU structured services | >0 | 0 of 103 again |
+    | Unanswered reviews | 0 | any, and `urgent` if ≤3★ |
+    | LSA insurance / license | all PASSED | any FAILED/CANCELLED, **or expiry <60 days** |
+
+    **The insurance rule is not optional.** A lapsed policy silently suspended KTU's
+    LSA for 16 days (2026-07-25 → 08-09) and cost roughly a month of leads on a
+    $5,488/week account. Query `local_services_verification_artifact` daily; a
+    PASSED artifact inside 60 days of expiry is a `warn`, inside 30 days `urgent`.
+
+13. **Call-path health — the leading indicator.** From `query_lsa_periods`, watch
+    `connected_calls / phone_calls` **and** pull recent
+    `local_services_lead_conversation` rows for `phone_call_details.call_duration_millis`.
+    **A run of 0-second calls means the phone path is broken, not that calls went
+    unanswered** — that exact signature appeared on 2026-07-21 and went unnoticed
+    for a month while the ad served normally. Raise `urgent` on: two or more
+    consecutive 0-second calls, or any 7-day window with clicks but zero
+    PHONE_CALL conversations.
+
+14. **Map pack & competitive position.** Pack rank is proximity × relevance ×
+    prominence. Proximity is fixed, so track the two you can move:
+    - **Relevance** — from `get_search_keywords`, split branded vs unbranded
+      impressions. On 2026-08-22 KTU was almost entirely branded (`kitchen tune up`
+      196, every generic query <15), which is the real reason it is absent from
+      unbranded packs. Report the branded share and its trend; a rising unbranded
+      share is the win condition for the category/service work.
+    - **Prominence** — review count and 90-day velocity against the field. Known
+      competitor positions: **Magnolia Home Remodeling** ~509 reviews / 4.9 (the
+      prominence leader, with dedicated Bloomfield + Montclair pages), **Monk's**
+      ~285 / 4.9, **Mudosi** (Bloomfield showroom, 5.0), **UNO Group** ~91 / 4.9;
+      **Kitchen Magic / TJ's / Strive** own the "cabinet refacing Essex County"
+      organic results, and **Bath Fitter / West Shore Home** own tub-to-shower.
+      KTU sits at 59/4.9 and BTU at 18/4.8. At 2–3 reviews per 90 days the gap
+      widens every month — say so plainly when velocity is under ~4/month.
+    - Flag any BTU surfacing query for a town outside its service area (Wayne NJ
+      was 5 of its top queries on 2026-08-22).
+
+15. **NAP consistency across the citation network.** Yelp, Houzz, Angi,
+    HomeAdvisor, BBB, Facebook, Nextdoor, Apple Maps and Bing Places each hold
+    their own copy of name/address/phone. Mismatches suppress pack rank *and*
+    misroute callers. You cannot read most of these directly — surface it as a
+    standing `gap` row with the last-verified date rather than pretending it is
+    checked.
+
+16. **Clarity scope hygiene before using Clarity at all.** On 2026-08-22 the KTU
+    Clarity project was 83% page-builder traffic — 1,944 of 2,340 sessions
+    referred from `leadgen-vibe-ai-builder.leadconnectorhq.com`, top pages all
+    `vibepreview.com`, 92% desktop / 86% macOS. **Check the referrer and device mix
+    before drawing any landing-page conclusion.** If preview/builder domains lead
+    the referrers, report Clarity as unusable for that brand that day rather than
+    analysing noise.
+
 ## Output — seed the intranet (section `organic_report`)
 
 Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`,
@@ -547,6 +613,16 @@ INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES
   zero on an account with history; `warn` = a declining trend or a partial-YoY
   caveat; `info` = steady or improving.
 - `headline` is what Steven reads first — make it the finding, not a label.
+- **`alerts`** — an optional array of `{level, text}` (`level`: `urgent|warn|info`)
+  rendered as a strip under the table. This is where the two faults that caused the
+  2026 outage must surface, every day:
+  - **Verification expiry.** From `local_services_verification_artifact`: any
+    FAILED/CANCELLED artifact, or a PASSED one inside 60 days of expiry
+    (`urgent` inside 30). A lapsed policy suspended KTU for 16 days.
+  - **Call-path health.** Consecutive 0-second calls, or a 7-day window with LSA
+    clicks but zero PHONE_CALL conversations. Both mean the phone path is broken,
+    which is invisible in lead counts alone.
+  Write `"alerts": []` when everything is clean — an absent key reads as unchecked.
 
 ## Guardrails
 - Reads only. Never edit a GBP listing, publish a post, change site content, or
