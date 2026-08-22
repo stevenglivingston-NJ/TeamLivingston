@@ -92,8 +92,14 @@ COMPLAINT = re.compile(
     r"|no one (called|showed)|nobody (called|showed)|refund|complaint"
     r"|terrible|awful|unacceptable|poor (job|work|service))", re.I)
 
+# Placeholder numbers that many records share — 0000000000, 1234567890, repeated
+# digits. Treating one as an identity makes every holder a "duplicate" of every
+# other; one such number tied 17 unrelated records together.
+JUNK_PHONE = re.compile(r"^(0+|1234567890|(\d)\2{9})$")
+
 # Rows that are test scaffolding, not customers.
-TEST_ROW = re.compile(r"(^|\s)(test\b|holding time slot|steven livingston)", re.I)
+TEST_ROW = re.compile(
+    r"(^|\s)(test\b|holding time slot|steven livingston|zzz\b|api probe|delete me)", re.I)
 INTERNAL_EMAIL = re.compile(r"@(kitchentuneup|bathtune-up)\.com$", re.I)
 
 # Automated senders talking to us — our own AI responder, the other brand's
@@ -217,19 +223,18 @@ def _name_tokens(name: str | None) -> set[str]:
 def _names_agree(a: str | None, b: str | None) -> bool:
     """Two names describe the same household.
 
-    Deliberately strict: at least two shared tokens, or one shared token that is
-    a distinctive surname both sides end on. "Jon and Jina McGriff" agrees with
-    itself across systems; "Robert Griffin" does not agree with "Jon McGriff".
+    Requires at least TWO shared name tokens — normally a first name and a
+    surname. A shared surname alone is not enough and must never be: it matched
+    "Leslie Kowal" to "Marta KOWAL" and "Kerri Palen" to "Michal Palen", who are
+    different people. Two tokens still catches what matters — "Jon and Jina
+    McGriff" against itself across systems, "Nash Ayers" against "Nash and Greg
+    Ayers", "Marilyn Vargas" against "Marilyn  Vargas" — while rejecting
+    "Carmen Vargas".
     """
     ta, tb = _name_tokens(a), _name_tokens(b)
     if not ta or not tb:
         return False
-    shared = ta & tb
-    if len(shared) >= 2:
-        return True
-    last_a = (a or "").strip().split()[-1:] or [""]
-    last_b = (b or "").strip().split()[-1:] or [""]
-    return bool(shared) and last_a[0].lower() == last_b[0].lower()
+    return len(ta & tb) >= 2
 
 
 def dedupe(rows: list[dict], *keys: str) -> list[dict]:
@@ -441,6 +446,7 @@ def sweep(days: int) -> dict:
             "lead_never_worked": [],
             "booking_missing_in_serviceminder": [],
             "booking_date_mismatch": [],
+            "duplicate_contacts": [],
             "call_tracking": [],
             "service_recovery": [],
             "list_damage": [],
@@ -609,6 +615,7 @@ def sweep(days: int) -> dict:
         report["buckets"]["booking_date_mismatch"] += cal_drift
         # --- booking integrity: a note claims a booking that does not exist -
         report["buckets"]["booking_missing_in_serviceminder"] += audit_notes(brand, days)
+        report["buckets"]["duplicate_contacts"] += audit_duplicates(brand, days)
 
     # --- collapse duplicates ------------------------------------------------
     # The same call can appear on more than one thread, and one booking gap can
@@ -814,6 +821,64 @@ def audit_notes(brand: str, days: int) -> list[dict]:
     return out
 
 
+def audit_duplicates(brand: str, days: int) -> list[dict]:
+    """Two ServiceMinder records for one person.
+
+    This is not cosmetic. A duplicate splits a customer's history: the record a
+    human opens can hold the notes while the appointment sits on the copy, and
+    every automated lookup silently picks one of the two. It has already caused
+    three false "lost booking" alarms and one real double record. Catch it while
+    it is one day old and cheap to merge.
+    """
+    out: list[dict] = []
+    created_from = (datetime.now(ET) - timedelta(days=max(days, 30))).strftime("%Y-%m-%d")
+    contacts, skip = [], 0
+    while True:
+        try:
+            r = sm(brand, "contacts/locate", {
+                "CreatedFrom": created_from,
+                "CreatedThrough": (datetime.now(ET) + timedelta(days=1)).strftime("%Y-%m-%d"),
+                "Skip": skip, "Limit": 100})
+        except Exception:
+            break
+        batch = r.get("Matches") or []
+        contacts += batch
+        if len(batch) < 100 or skip > 1500:
+            break
+        skip += 100
+
+    seen_keys: set[str] = set()
+    for c in contacts:
+        if is_test_row(c.get("Name"), c.get("Email"), c.get("Phone")):
+            continue
+        phone, email = digits(c.get("Phone")), (c.get("Email") or "").lower()
+        if phone and JUNK_PHONE.match(phone):
+            phone = ""      # placeholder numbers collide everyone with everyone
+        key = phone or email
+        if not key or key in seen_keys:
+            continue
+        seen_keys.add(key)
+        matches = sm_contacts_for(brand, phone, email, c.get("Name"))
+        ids = {m["Id"] for m in matches}
+        if len(ids) < 2:
+            continue
+        detail = []
+        for m in matches:
+            n_appt = len(sm_appointments(brand, m["Id"]))
+            n_note = len(m.get("Notes") or [])
+            detail.append(f"id {m['Id']} (\"{m.get('Name')}\") — {n_appt} appt, {n_note} notes")
+        out.append({
+            "brand": brand,
+            "who": short_name(c.get("Name"), c.get("Phone")),
+            "phone_masked": mask(c.get("Phone")),
+            "records": sorted(ids),
+            "detail": "Two ServiceMinder records for one person: " + "; ".join(detail),
+            "action": "Merge in the ServiceMinder UI, keeping the record that holds "
+                      "the appointment and carrying the notes across.",
+        })
+    return out
+
+
 def grade(report: dict) -> dict:
     """Red / amber / green, with the reason stated."""
     b = report["buckets"]
@@ -854,6 +919,9 @@ def grade(report: dict) -> dict:
         if s["opt_outs"] >= 25:
             amber_reasons.append(f"{brand} took {s['opt_outs']} opt-outs")
 
+    if b["duplicate_contacts"]:
+        amber_reasons.append(
+            f"{len(b['duplicate_contacts'])} duplicate ServiceMinder record(s)")
     if report["degradations"]:
         amber_reasons.append(f"{len(report['degradations'])} data source(s) degraded")
 
