@@ -64,12 +64,25 @@ fill the gaps:**
   `query_negative_keywords` (coverage), `query_geo_performance` (town-level ROI),
   `query_lsa_account` + `query_lsa_leads` (Local Services leads and lead quality —
   requires `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (MCC id) in env; if unset both calls
-  error — flag it as an environment gap, don't silently skip LSA). `query_lsa_leads`
-  returns a `status`: `"ok"` means the lead rows are real. `"no_data"` means the
-  endpoint returned nothing while the account report still shows charged leads or
-  calls — read the `note` and `account_report_cross_check`, report LSA lead quality
-  as UNAVAILABLE, and never write "0 LSA leads" off a `no_data` result. Account-level
-  LSA totals from `query_lsa_account` stay trustworthy either way.
+  error — flag it as an environment gap, don't silently skip LSA).
+  `query_lsa_leads` reads the Google Ads `local_services_lead` resource (fixed
+  2026-08-22 — it previously used the Local Services REST `detailedLeadReports`
+  endpoint, which returns zero rows for these accounts; lead detail was reported
+  UNAVAILABLE for months while it was readable all along). It returns per-lead
+  type, status, category, charge flag, credit/dispute state and consumer phone,
+  plus `by_type`/`by_status`/`by_category` tallies. **Consumer name is not
+  available** from this resource — don't promise it in a brief.
+  `status` `"ok"` means the rows are real, including a legitimately empty window
+  when `total_leads_in_account_history` is non-zero. `"no_data"` now means the
+  account has NO lead history at all while the account report still shows charged
+  leads or calls — read the `note`, report lead quality as UNAVAILABLE, and never
+  write "0 LSA leads" off it. Account-level totals from `query_lsa_account` stay
+  trustworthy either way; its `days` window is honored as of the same fix (it was
+  silently pinned to 30 days before, so any past "LSA last 7 days" figure was
+  really 30-day data).
+  **`impressionsLastTwoDays` is not a serving signal** — it reads 0 on accounts
+  that demonstrably served and took leads in the window. Judge serving by the
+  LOCAL_SERVICES campaign's impressions from `query_campaigns`.
 - **Direct GAQL escape hatch — for what the MCP does not expose.** The local
   google-ads MCP is campaign/keyword/search-term level. Several things you are asked
   to report are only reachable over raw GAQL, so use it rather than declaring them
