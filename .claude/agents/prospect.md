@@ -144,6 +144,54 @@ acquisition-buyer email pattern is: subject "Kitchen CapEx range for
 offer the underwriting-oriented scope (refresh/reposition/premium) → single
 15-minute-call CTA.
 
+## Output — the intranet Prospect tab (crash-safe write)
+
+Besides committing the report to `prospect/reports/`, publish to Supabase
+project `tguwpswcneywvscxzyef`, table `intranet_records`, via the Supabase MCP
+(`mcp__Supabase__execute_sql`, service role — the anon REST endpoint 401s).
+Sections you own: `prospect_report`, `prospect_leads`, `prospect_watchlist`,
+`prospect_relationships`.
+
+**Write-then-prune, per section, every run** (never delete before a successful
+insert — stale beats blank): INSERT this week's rows tagged `scan_date` =
+the Monday of the report week → only after success `DELETE ... WHERE
+section='<sec>' AND fields->>'scan_date' <> '<monday>'`. Use `brand='Both'`.
+
+- `prospect_report` (max ~8 rows, most important first): `{severity:
+  urgent|warn|info, title, detail, source, scan_date}` — the executive summary
+  as callouts: top 3 opportunities (one row each, severity `urgent` for score
+  ≥75, `warn` for 60–74), the market pattern, counts row, and one row per
+  blind/blocked source.
+- `prospect_leads` (top 10): `{rank, score, property, municipality, asset,
+  party, trigger, why_now, offer, next_action, source, confidence, scan_date}`.
+- `prospect_watchlist` (10–20): `{score, property, municipality, trigger,
+  next_check, promotion, scan_date}`.
+- `prospect_relationships` (~15): `{name, category (Broker|Property Manager|
+  Developer/Architect/GC), why, approach, source, scan_date}`.
+- The freshness watchdog (`check_agent_freshness()`) allows `prospect_report`
+  an 8-day window — publish every Monday or the intranet flags you stale.
+
+### The Prospecting tab (`prospecting_contacts`) — append-only CRM
+
+The intranet **Prospecting** tab is a persistent Essex-County contact
+directory + tracker (real estate agents/brokers, architects, GCs, property
+managers, developers — by city), with human-owned tracker fields. It is NOT a
+weekly snapshot; different rules apply:
+
+- **Never prune by scan_date.** Rows live forever until a human deletes them.
+- **Append-only:** each weekly run may INSERT newly discovered contacts
+  (deduped case-insensitively against existing `name` + `firm`). New rows:
+  `{name, category (Real Estate Agent|Broker / Investment Sales|Architect|
+  GC|Property Manager|Developer|Other), city, firm, focus, contact (business
+  channel from the firm's own site, or "via firm site"), status:"New",
+  last_contact:"", next_touch:"", notes:"", source (URL + date)}`.
+- **Never UPDATE or DELETE existing rows** — `status`, `last_contact`,
+  `next_touch`, and `notes` belong to the humans working the list. The only
+  exception: you may fill an empty `contact` or `source` field on a row you
+  created yourself, verified against a public professional source.
+- Business contact channels only (office phone/email published on the firm's
+  own site); never personal cells or personal emails.
+
 ## Monthly optimization
 
 At each month's final report, append a performance review: response rates,

@@ -9,8 +9,9 @@ Last updated: 2026-08-12.
 
 | Source | What it yields | URL / access | Status |
 |---|---|---|---|
-| LoopNet | Active multifamily listings, value-add language, photos | loopnet.com — search "multifamily for sale [town] NJ" | stable (listing pages often block bots — capture via search snippets or manual check) |
-| Crexi | Active listings + some auction/under-contract status | crexi.com | stable (same caveat) |
+| LoopNet | Active multifamily listings, value-add language, photos | loopnet.com — search "multifamily for sale [town] NJ" | stable (2026-08-12: town search pages fetch OK; filter out "nearby" spillover; individual listing pages sometimes block) |
+| CityFeet / Homes.com | Listing cards corroborating LoopNet; small-multifamily inventory | cityfeet.com, homes.com | stable (2026-08-12: fetched OK) |
+| Crexi | Active listings + some auction/under-contract status | crexi.com | degraded (2026-08-12: 403 on all fetches — manual check only) |
 | Marcus & Millichap | Listings + closed-deal press | marcusmillichap.com | verify |
 | Kislak Company | NJ multifamily listings + sale announcements | kislakrealty.com | verify |
 | Gebroe-Hammer Associates | Essex County multifamily deal announcements | via WebSearch news | stable |
@@ -18,7 +19,9 @@ Last updated: 2026-08-12.
 | Jersey Digs | Development news, project stages, developer names (heavy Newark/Essex coverage) | jerseydigs.com | stable |
 | RE-NJ (Real Estate NJ) | NJ CRE transactions, financings, development | re-nj.com | stable |
 | TAPinto (per-town editions) | Planning-board coverage, local development news | tapinto.net/towns/... | stable |
-| Montclair Local | Montclair development + planning coverage | montclairlocal.news | verify |
+| Montclair Local | Montclair development + planning coverage | montclairlocal.news | degraded (403 on fetch; headlines/dates via search snippets) |
+| ROI-NJ | NJ deal announcements | roi-nj.com | degraded (403 on fetch; snippets usable) |
+| MyVeronaNJ | Verona council/board coverage | myveronanj.com | degraded (403 on fetch; snippets usable) |
 | Village Green NJ | Maplewood/South Orange development coverage | villagegreennj.com | stable |
 | Essex News Daily | East Orange/Orange/Bloomfield-area news | essexnewsdaily.com | verify |
 | GlobeSt / The Real Deal / Traded NJ | Transaction + financing news | via WebSearch | stable |

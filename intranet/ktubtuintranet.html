@@ -1035,6 +1035,8 @@
         <div class="nav-label">Growth</div>
         <div class="nav-item" data-tab="pipeline"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 4h18l-7 8v6l-4 2v-8z"/></svg></span><span class="lbl">Pipeline</span><span class="pin" onclick="event.stopPropagation();togglePin('pipeline','Pipeline')">Pin</span></div>
 <div class="nav-item" data-tab="appointments"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span class="lbl">Appointments</span><span class="pin" onclick="event.stopPropagation();togglePin('appointments','Appointments')">Pin</span></div>
+        <div class="nav-item" data-tab="prospect"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 21V8l7-5 7 5v4"/><path d="M7 21v-6h4v6"/><circle cx="17" cy="17" r="3.5"/><path d="M19.7 19.7L22 22"/></svg></span><span class="lbl">Prospect</span><span class="pin" onclick="event.stopPropagation();togglePin('prospect','Prospect')">Pin</span></div>
+        <div class="nav-item" data-tab="prospecting"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><circle cx="9" cy="7" r="3.5"/><path d="M2.5 21v-2a6.5 6.5 0 0113 0v2"/><path d="M17 8h5M17 12h5M17 16h4"/></svg></span><span class="lbl">Prospecting</span><span class="pin" onclick="event.stopPropagation();togglePin('prospecting','Prospecting')">Pin</span></div>
         <div class="nav-item" data-tab="marketing"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 3l9 9 4-4 5 5"/><path d="M14 3h7v7"/></svg></span><span class="lbl">Marketing</span><span class="pin" onclick="event.stopPropagation();togglePin('marketing','Marketing')">Pin</span></div>
         <div class="nav-item" data-tab="mktplan"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14l2.5 2.5L16 12"/></svg></span><span class="lbl">Marketing Plan</span><span class="pin" onclick="event.stopPropagation();togglePin('mktplan','Marketing Plan')">Pin</span></div>
         <div class="nav-item" data-tab="mktspend"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 2v20M17 6H9.5a3 3 0 000 6h5a3 3 0 010 6H6"/></svg></span><span class="lbl">Marketing Spend</span><span class="pin" onclick="event.stopPropagation();togglePin('mktspend','Marketing Spend')">Pin</span></div>
@@ -1545,6 +1547,58 @@
       <div class="card">
         <h2>📋 Follow-up &amp; revival playbook</h2>
         <div id="pipeline_playbook_root" class="loading">Loading…</div>
+      </div>
+    </section>
+
+    <section class="panel" id="prospect">
+      <div class="page-head">
+        <h1 class="page-title">🏢 Prospect — Multifamily Kitchen Leads</h1>
+        <p class="page-sub">Weekly B2B lead research for the Multifamily Kitchen Repositioning line: owners, buyers, developers and property managers in the North Jersey affluent corridor with a live reason to need kitchen work. Refreshed every Monday by the Prospect agent — every claim carries a source and confidence label; nothing here is invented.</p>
+      </div>
+      <div class="card" id="prospectCard">
+        <h2>📋 This week's report — executive summary</h2>
+        <div id="prospect_report_root" class="loading">Loading…</div>
+      </div>
+      <div class="card">
+        <h2>🎯 Immediate action list — top-scored leads</h2>
+        <p class="page-sub" style="margin-bottom:10px">Score ≥75 = outreach this week · 60–74 = within 14 days. One recommended offer and one specific next action per lead. Check the master list before contacting — no duplicate outreach inside 30 days.</p>
+        <div id="prospect_leads_root" class="loading">Loading…</div>
+      </div>
+      <div class="card">
+        <h2>👀 Strategic watchlist</h2>
+        <p class="page-sub" style="margin-bottom:10px">Scored 45–59 or waiting on a trigger. Each row names the event that would promote it to immediate action.</p>
+        <div id="prospect_watchlist_root" class="loading">Loading…</div>
+      </div>
+      <div class="card">
+        <h2>🤝 Relationship targets — brokers, PMs, developers</h2>
+        <p class="page-sub" style="margin-bottom:10px">The repeat-deal channel: multifamily brokers, property managers, and developers/GCs worth a long-term relationship. Business contact paths only, from public professional sources.</p>
+        <div id="prospect_relationships_root" class="loading">Loading…</div>
+      </div>
+    </section>
+
+    <section class="panel" id="prospecting">
+      <style>
+        #prospecting .pros-chip{font:inherit;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text-dim);border-radius:999px;padding:5px 12px;margin:0 6px 6px 0}
+        #prospecting .pros-chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+        #prospecting .pros-grp{display:inline-block;margin-right:14px;margin-bottom:4px}
+        #prospecting .pros-grp .lbl{font-size:11px;font-weight:600;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px}
+        #prospecting .zip-table td{vertical-align:top}
+      </style>
+      <div class="page-head">
+        <h1 class="page-title">📇 Prospecting — Essex County Contact Tracker</h1>
+        <p class="page-sub">The relationship engine behind the Prospect leads: real estate agents &amp; brokers, architects, GCs, property managers and developers by city — with live contact tracking. Statuses, notes and follow-up dates are yours to edit right here; the Prospect agent adds newly discovered contacts weekly from public sources and <b>never overwrites your notes or statuses</b>. Status values: New · To Contact · Contacted · Responded · Meeting Set · Active · Dormant · Do Not Contact.</p>
+      </div>
+      <div class="card">
+        <h2>📇 Contact directory &amp; tracker</h2>
+        <p class="page-sub" style="margin-bottom:10px">Filter by city, category or status; click any column header to sort; Edit any row to log a call, set the next touch date, or change status. Add contacts manually with the top row. Business contact channels only — sourced from firm websites and public deal coverage.</p>
+        <div style="margin-bottom:6px"><input id="prosSearch" placeholder="Search contacts…" style="font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 10px;min-width:220px" oninput="PROS_F.q=this.value;renderProspectingTable()"></div>
+        <div id="prospectingFilters" style="margin-bottom:10px"></div>
+        <div style="overflow-x:auto"><div id="prospecting_contacts_root" class="loading">Loading…</div></div>
+      </div>
+      <div class="card">
+        <h2>🔔 Follow-ups due</h2>
+        <p class="page-sub" style="margin-bottom:10px">Contacts whose next-touch date is today or past, plus anything Contacted with no logged response in 14+ days.</p>
+        <div id="prospecting_due_root" class="loading">Loading…</div>
       </div>
     </section>
 
@@ -2601,7 +2655,8 @@ const TAB_TITLES = {
   'earth-overview':'Earthwise · Overview','earth-products':'Earthwise · Products',
   'earth-orders':'Earthwise · Orders','earth-inventory':'Earthwise · Inventory',
   'earth-marketplaces':'Earthwise · Marketplace Ops','earth-vendors':'Earthwise · Vendors',
-  'earth-content':'Earthwise · Content', finance:'Financial Reporting'
+  'earth-content':'Earthwise · Content', finance:'Financial Reporting',
+  prospect:'Prospect · Multifamily Leads', prospecting:'Prospecting · Contact Tracker'
 };
 function go(tab,push=true){
   if(!document.getElementById(tab)) tab='home';
@@ -2625,6 +2680,8 @@ function go(tab,push=true){
   if(tab==='directory'){ renderDirectory(); }
   if(tab==='adminconsole'){ renderAdminConsole(); }
   if(tab==='pipeline'){ renderPipeline(); buildApptTabs(); }
+  if(tab==='prospect'){ renderProspect(); }
+  if(tab==='prospecting'){ renderProspecting(); }
   if(tab==='team'){ renderOrgChart(); }
   if(tab==='team'){ renderTeamDates(); }
   if(tab==='clients'){ renderClients(); }
@@ -3124,6 +3181,33 @@ const SECTIONS = {
   appt_followups:{ root:'appt_followups_root', kind:'cancelappt' },
   appt_completed:{ root:'appt_completed_root', kind:'completedappt' },
   proposals:{ root:'proposals_root', kind:'proposals' },
+  /* Prospect agent — weekly multifamily kitchen lead research */
+  prospect_leads:{ root:'prospect_leads_root', columns:[
+      {k:'rank',label:'#'},{k:'score',label:'Score'},{k:'property',label:'Property / project'},
+      {k:'municipality',label:'Town'},{k:'asset',label:'Asset · units'},{k:'party',label:'Owner / broker / developer'},
+      {k:'trigger',label:'Trigger / stage'},{k:'why_now',label:'Why now',type:'textarea'},
+      {k:'offer',label:'Offer'},{k:'next_action',label:'Next action',type:'textarea'},
+      {k:'source',label:'Source + date',type:'textarea'},{k:'confidence',label:'Confidence'}], kind:'zip' },
+  prospect_watchlist:{ root:'prospect_watchlist_root', columns:[
+      {k:'score',label:'Score'},{k:'property',label:'Property / project'},{k:'municipality',label:'Town'},
+      {k:'trigger',label:'Key trigger',type:'textarea'},{k:'next_check',label:'Next check'},
+      {k:'promotion',label:'Promotes to action when…',type:'textarea'}], kind:'zip' },
+  /* Prospecting — Essex County contact directory + tracker.
+     Registered here so the generic add/edit/delete machinery works, but drawn
+     by renderProspectingTable() (filtered view) — renderSection is routed. */
+  prospecting_contacts:{ root:'prospecting_contacts_root', columns:[
+      {k:'name',label:'Name'},{k:'category',label:'Category'},{k:'city',label:'City'},
+      {k:'firm',label:'Firm / Office'},{k:'focus',label:'Focus / why relevant',type:'textarea'},
+      {k:'contact',label:'Business contact'},{k:'status',label:'Status'},
+      {k:'last_contact',label:'Last contact'},{k:'next_touch',label:'Next touch'},
+      {k:'notes',label:'Contact notes',type:'textarea'},{k:'source',label:'Source'}], kind:'zip' },
+  prospect_relationships:{ root:'prospect_relationships_root', columns:[
+      {k:'name',label:'Name / firm'},{k:'category',label:'Category'},{k:'why',label:'Why they matter',type:'textarea'},
+      {k:'approach',label:'Relationship approach',type:'textarea'},{k:'source',label:'Source'}],
+    display:f=>`<h3>${esc(f.name)}</h3><div class="role">${esc(f.category)}</div>
+      <div class="meta"><b>Why:</b> ${esc(f.why)}</div>
+      <div class="meta"><b>Approach:</b> ${esc(f.approach)}</div>
+      <div class="note">${esc(f.source||'')}</div>`, kind:'cards' },
   docs_team:{ root:'docs_team_root', columns:[{k:'title',label:'Title'},{k:'url',label:'URL'},{k:'desc',label:'Description'}], kind:'doclinks' },
   docs_vendors:{ root:'docs_vendors_root', columns:[{k:'title',label:'Title'},{k:'url',label:'URL'},{k:'desc',label:'Description'}], kind:'doclinks' },
   docs_marketing:{ root:'docs_marketing_root', columns:[{k:'title',label:'Title'},{k:'url',label:'URL'},{k:'desc',label:'Description'}], kind:'doclinks' },
@@ -4482,6 +4566,92 @@ async function renderPipeline(){
   // metric sections use the generic engine
   ['pipeline_funnel','pipeline_sources','pipeline_revival','pipeline_playbook'].forEach(s=>renderSection&&renderSection(s));
 }
+
+async function renderProspect(){
+  const el=document.getElementById('prospect_report_root'); if(!el) return;
+  const rows=await fetchRecords('prospect_report');
+  const dates=[...new Set(rows.map(r=>r.fields.scan_date).filter(Boolean))].sort().reverse();
+  const latest=dates[0];
+  const show=(latest?rows.filter(r=>r.fields.scan_date===latest):rows)
+    .sort((a,b)=>({urgent:0,warn:1,info:2}[a.fields.severity]??3)-({urgent:0,warn:1,info:2}[b.fields.severity]??3));
+  if(!show.length){
+    el.innerHTML='<div class="ge-clear">💤 No report yet — Prospect runs every Monday morning and publishes the North Jersey Multifamily Kitchen Opportunity Report: scored leads, a watchlist, and relationship targets. First report lands with the next scan.</div>';
+  } else {
+    const ICO={urgent:'🚨',warn:'⚠️',info:'💡'};
+    el.innerHTML = show.map(r=>{const f=r.fields;return `
+      <div class="ge-row ${esc(f.severity||'info')}">
+        <div class="ge-ico">${ICO[f.severity]||'💡'}</div>
+        <div class="ge-body">
+          <div class="ge-title">${esc(f.title)}</div>
+          <div class="ge-detail">${esc(f.detail||'')}</div>
+          <div class="ge-meta">${esc(f.source||'')}${f.scan_date?' · week of '+esc(f.scan_date):''}</div>
+        </div>
+      </div>`}).join('')
+      + `<div class="ge-meta" style="margin-top:4px">Report week: ${esc(latest||'—')} · Prospect refreshes weekly (Mondays). Full report + master lead list live in the repo under <code>prospect/</code>.</div>`;
+  }
+  ['prospect_leads','prospect_watchlist','prospect_relationships'].forEach(s=>renderSection&&renderSection(s));
+}
+
+/* ================================================================
+   Prospecting — Essex County contact directory + tracker.
+   Filterable (city / category / status / search) editable table over the
+   `prospecting_contacts` section. Human-owned tracker fields (status, notes,
+   dates) are edited here; the Prospect agent only appends new contacts.
+   ================================================================ */
+let PROS_F={city:'all',category:'all',status:'all',q:''};
+const PROS_STATUSES=['New','To Contact','Contacted','Responded','Meeting Set','Active','Dormant','Do Not Contact'];
+async function renderProspecting(){ await renderProspectingTable(); }
+async function renderProspectingTable(){
+  const root=document.getElementById('prospecting_contacts_root'); if(!root) return;
+  const cfg=SECTIONS['prospecting_contacts'];
+  const rows=await fetchRecords('prospecting_contacts');
+  // Filter chips — rebuilt from live data so new cities/categories appear automatically
+  const fEl=document.getElementById('prospectingFilters');
+  if(fEl){
+    const cities=[...new Set(rows.map(r=>(r.fields.city||'').trim()).filter(Boolean))].sort();
+    const cats=[...new Set(rows.map(r=>(r.fields.category||'').trim()).filter(Boolean))].sort();
+    const grp=(g,vals)=>`<span class="pros-grp"><span class="lbl">${g==='city'?'City':g==='category'?'Category':'Status'}</span>`+
+      [['all','All'],...vals.map(v=>[v,v])].map(([v,l])=>
+        `<button class="pros-chip ${PROS_F[g]===v?'on':''}" data-g="${esc(g)}" data-v="${esc(v)}">${esc(l)}</button>`).join('')+`</span>`;
+    fEl.innerHTML=grp('city',cities)+grp('category',cats)+grp('status',PROS_STATUSES);
+    fEl.querySelectorAll('button.pros-chip').forEach(b=>{
+      b.onclick=()=>{ PROS_F[b.dataset.g]=b.dataset.v; renderProspectingTable(); };
+    });
+  }
+  const q=(PROS_F.q||'').toLowerCase();
+  const show=rows.filter(r=>{const f=r.fields||{};
+    return (PROS_F.city==='all'||(f.city||'').trim()===PROS_F.city)
+      && (PROS_F.category==='all'||(f.category||'').trim()===PROS_F.category)
+      && (PROS_F.status==='all'||((f.status||'New').trim()===PROS_F.status))
+      && (!q||Object.values(f).join(' ').toLowerCase().includes(q));});
+  root.classList.remove('loading');
+  root.innerHTML=`<div class="ge-meta" style="margin-bottom:6px">${show.length} of ${rows.length} contacts shown</div>`
+    +renderZip('prospecting_contacts',cfg,show);
+  // Follow-ups due card: next_touch <= today, or Contacted with last_contact 14+ days ago
+  const dueEl=document.getElementById('prospecting_due_root');
+  if(dueEl){
+    const today=new Date().toISOString().slice(0,10);
+    const cutoff=new Date(Date.now()-14*864e5).toISOString().slice(0,10);
+    const due=rows.filter(r=>{const f=r.fields||{};
+      if((f.status||'')==='Do Not Contact') return false;
+      const nt=(f.next_touch||'').trim(), lc=(f.last_contact||'').trim();
+      return (nt&&nt<=today)||((f.status||'')==='Contacted'&&lc&&lc<=cutoff);});
+    dueEl.classList.remove('loading');
+    dueEl.innerHTML=due.length?due.map(r=>{const f=r.fields;return `
+      <div class="ge-row warn"><div class="ge-ico">🔔</div><div class="ge-body">
+        <div class="ge-title">${esc(f.name)} — ${esc(f.firm||'')} (${esc(f.city||'')})</div>
+        <div class="ge-detail">Status: ${esc(f.status||'New')}${f.last_contact?' · last contact '+esc(f.last_contact):''}${f.next_touch?' · next touch '+esc(f.next_touch):''}${f.notes?' · '+esc(String(f.notes).slice(0,140)):''}</div>
+      </div></div>`}).join('')
+      :'<div class="ge-clear">✅ Nothing due — every tracked contact has a future touch date.</div>';
+  }
+}
+// Route the generic engine's re-renders (after add/edit/delete) through the
+// filtered view so filters survive every save.
+const _renderSectionCore=renderSection;
+renderSection=async function(section){
+  if(section==='prospecting_contacts') return renderProspectingTable();
+  return _renderSectionCore(section);
+};
 
 async function renderMoola(){
   const el=document.getElementById('moola_root'); if(!el) return;
