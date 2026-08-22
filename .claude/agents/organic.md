@@ -301,16 +301,27 @@ Every run, in addition to the numbered picture below:
    | **Address / NAP** | consistency with §6a citations |
    | **Performance metrics** | calls, direction requests, website clicks, discovery vs direct split — with the day/7d/MTD/YTD/YoY windows |
 
-   **Verified state as of 2026-08-21 — re-check each run and report drift.** These are
-   real, currently-broken items, not hypotheticals:
-   - 🔴 **KTU's profile publishes (973) 521-1182** — the number `paid.md` explicitly
-     flags as *"legacy, goes to IVR — remove from paid paths."* The answered,
-     no-IVR number is **(973) 521-8442**. Every call from KTU's Google listing is
-     currently landing in an IVR.
-   - 🔴 **BTU's profile publishes (973) 521-0688** — documented as *"secondary,
-     removed from public pages, fallback only."* BTU's tracked primary is
-     **(973) 798-9756**, so BTU's local calls are both misrouted and **untracked**,
-     which also means BTU call conversions are missing from every report.
+   **Verified state as of 2026-08-22 — re-check each run and report drift.** Both
+   profiles still publish the same numbers, but their routing has diverged, so the
+   published number alone no longer tells you whether a brand is healthy:
+   - ✅ **BTU — resolved.** BTU's profile publishes **(973) 521-0688**, and Steven
+     confirmed (week of 2026-08-17) that the numbers now route **straight to the
+     call center with no IVR**. The LSA data corroborates it: **2 of 2 calls
+     answered, responsiveness 1.00**. Treat this as fixed unless the answered
+     ratio drops. **Still open on BTU:** that number was previously documented as
+     *untracked*, so confirm call-conversion tracking follows it — answered and
+     tracked are different problems, and an untracked line means BTU's call
+     conversions are missing from every report even while the calls connect.
+   - 🔴 **KTU — still broken.** KTU's profile publishes **(973) 521-1182**, the
+     number `paid.md` flags as *"legacy, goes to IVR."* KTU appears NOT to have
+     been included in the routing fix: **0 of 2 LSA calls answered in 30 days,
+     responsiveness 0.60**, against BTU's 1.00 on identical infrastructure. The
+     documented answered, no-IVR number is **(973) 521-8442**.
+   - **How to tell these apart without a phone.** The published number is not the
+     test — routing behind a number can change without the profile changing. Use
+     `connected_calls / phone_calls` from `query_lsa_periods`. A brand answering
+     ~100% is routed correctly whatever number it publishes; a brand near 0% is
+     not, and that ratio is also what Google scores for rank.
    - 🟡 **Both websites point at franchise corporate URLs over plain `http://`** —
      KTU `kitchentuneup.com/bloomfield-nj`, BTU `bathtune-up.com/bloomfield-nj` —
      not the local sites (`ktubloomfield.com` / `bathtuneupbloomfield.com`) that ads

@@ -409,6 +409,14 @@
     color:#8a5a06;font-size:13px;line-height:1.65;margin-bottom:18px;
   }
   .warn-box b{color:#6d4704}
+  /* Stale-scan banner: used by the Finance, Organic and LSA cards when an agent's
+     scheduled run did not write today. Was referenced but never defined, so these
+     banners rendered as unstyled text. */
+  .cf-stale{
+    background:var(--warn-soft);border:1px solid #f0ddb8;border-radius:10px;
+    padding:10px 14px;color:#8a5a06;font-size:12.5px;line-height:1.55;margin-bottom:12px;
+  }
+  .cf-stale b{color:#6d4704}
   .warn-box ul{margin:8px 0 0;padding-left:18px}
   .hero-warn{
     background:linear-gradient(135deg,rgba(220,38,38,.08),rgba(217,119,6,.07));
@@ -6308,7 +6316,7 @@ async function renderOrganic(){
     return;
   }
   const ICO={urgent:'🚨',warn:'⚠️',info:'💡'};
-  el.innerHTML = show.map(r=>{const f=r.fields;return `
+  el.innerHTML = agentStaleBanner(latest,'Organic') + show.map(r=>{const f=r.fields;return `
     <div class="ge-row ${esc(f.severity||'info')}">
       <div class="ge-ico">${ICO[f.severity]||'💡'}</div>
       <div class="ge-body">
@@ -6318,6 +6326,17 @@ async function renderOrganic(){
       </div>
     </div>`}).join('')
     + `<div class="ge-meta" style="margin-top:4px">Scan: ${esc(latest||'—')} · Organic runs daily; deep competitive/backlink pulls weekly.</div>`;
+}
+
+// Shared staleness banner. These agents write with write-then-prune by scan_date,
+// so a failed scheduled run silently leaves the previous day's rows rendering as if
+// fresh. Without this the tab looks healthy while the data quietly ages.
+function agentStaleBanner(latest, agent){
+  if(!latest) return '';
+  const today=todayStr();
+  if(latest>=today) return '';
+  const days=Math.round((Date.parse(today)-Date.parse(latest))/86400000);
+  return `<div class="cf-stale">⏰ Latest scan is <b>${esc(latest)}</b>${days>1?` — <b>${days} days old</b>`:''}, not today. ${esc(agent)}'s scheduled run may not have completed; everything below is from the last successful scan.</div>`;
 }
 
 // ===== LSA week/month/year-to-date board (section organic_lsa) =====
@@ -6337,7 +6356,7 @@ async function renderLsa(){
   const pct=(a,b)=>{ if(!b) return ''; const d=Math.round(((a-b)/b)*100);
     return ' <span style="opacity:.75">('+(d>=0?'+':'')+d+'% YoY)</span>'; };
   const ICO={urgent:'🚨',warn:'⚠️',info:'💡'};
-  el.innerHTML = show.map(r=>{
+  el.innerHTML = agentStaleBanner(latest,'Organic') + show.map(r=>{
     const f=r.fields, P=f.periods||{}, py=P.prior_year_YTD||{}, acct=f.account||{};
     const line=(k,label)=>{ const p=P[k]; if(!p) return '';
       return `<tr>

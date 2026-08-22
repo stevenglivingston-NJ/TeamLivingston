@@ -216,6 +216,52 @@ To activate real-time delivery, set function secrets on the `dispatch-notify` fu
 `SLACK_BOT_TOKEN` (scopes `chat:write`, `users:read.email`, `im:write`), optional
 `SLACK_ALERTS_CHANNEL`, and `RESEND_API_KEY` + `NOTIFY_FROM_EMAIL` for email.
 
+### The 09:00–11:20 UTC dead zone (observed 2026-08-22)
+
+Every **enabled** Routine scheduled between 09:00 and 11:20 UTC silently stopped
+writing after 2026-08-19, while every Routine outside that band stayed current.
+Four for four against six for six, with identical environment, no persistent
+session binding, and no config difference between the two groups:
+
+| Fires (UTC) | Routine | Last wrote |
+|---|---|---|
+| 06:00 | Cellar | ✅ current |
+| 07:00 | Goldeneye | ✅ current |
+| 08:00 | Moola | ✅ current |
+| **09:00** | **Tekki** | ❌ stuck at 2026-08-19 |
+| **10:00** | **Organic** | ❌ stuck at 2026-08-19 |
+| **11:00** | **Paid** | ❌ stuck at 2026-08-19 |
+| **11:18** | **Pipeline** | ❌ stuck at 2026-08-19 |
+| 12:00 | Foreman | ✅ current |
+| 13:00 | Ax | ✅ current |
+| 14:00 | Harvest | ✅ current |
+
+**Recommended mitigation — must be done by Steven, an agent cannot do it.** Move
+these four out of the band to slots that demonstrably work, e.g. Tekki 15:00,
+Organic 16:00, Paid 17:00, Pipeline 17:30. `update_trigger` refuses here: these
+Routines were created via `http_api`, and an agent may only update Routines it
+created itself (`update_trigger: this routine was created via "http_api"`). So
+the reschedule has to happen in the Routines UI.
+
+**This is a mitigation, not a root cause** — the mechanism is unconfirmed, and it
+could equally be a capacity/quota window on the CCR side. If the moved Routines
+start writing again, the band is real; if they still fail at the new times, the
+cause is agent-specific and the schedule was a red herring. Re-check
+`max(fields->>'scan_date')` per section before concluding either way.
+
+Note the band is a *correlation across ten Routines*, not a proven mechanism.
+Before spending long on it, rule out the cheap explanation: open one failed run's
+session transcript and read the actual error. A connector that fails to
+authenticate produces exactly this signature — the Routine fires, the agent runs,
+and it writes nothing.
+
+**Why this is hard to notice:** these agents write with *write-then-prune by
+`scan_date`*, so a failed run leaves the last good day's rows in place. The tab
+renders fine and simply shows stale data — there is no error state on screen.
+`last_run` is also empty on every Routine here (they are persistent-session
+bound), so the scheduler's own history cannot be used to spot it. The only
+reliable check is the per-section `scan_date` query above.
+
 ## Scheduled agent runs — model tiers & no-repo-writes policy
 
 Two rules keep the daily fleet cheap and stop the duplicate-PR loop. Agent specs

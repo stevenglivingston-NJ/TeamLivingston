@@ -618,8 +618,19 @@ assets (`asset.type='CALL'`) and the site, and flag any drift:
 | (973) 521-1182 | KTU — legacy, **goes to IVR** | Remove from paid paths |
 | (973) 566-5882 / (973) 528-8654 | KTU tracking lines | Call center |
 | (973) 798-9756 | BTU primary (call-conversion tracked) | Call center |
-| (973) 521-0688 | BTU secondary — removed from public pages | Fallback only |
+| (973) 521-0688 | BTU — **published on BTU's Google profile**; re-pointed to the call center, no IVR (Steven, week of 2026-08-17) | Call center. **Verify call-conversion tracking follows it** — it was previously the untracked fallback |
 | (973) 381-2877 | Stray KTU Google call asset | Confirm or remove |
+
+**Status as of 2026-08-22 — the published number is not the test.** Routing behind
+a number can change without the profile changing, so judge a brand by whether its
+calls are answered, not by which number it lists. Use `connected_calls /
+phone_calls` from `query_lsa_periods` (that ratio is also what Google scores for
+LSA rank):
+- ✅ **BTU — 2 of 2 answered, responsiveness 1.00.** The no-IVR re-point landed.
+- 🔴 **KTU — 0 of 2 answered, responsiveness 0.60.** KTU appears to have been left
+  out of that change; its profile still publishes (973) 521-1182, the IVR line.
+  Same infrastructure as BTU, opposite result. This is the live suspect behind
+  KTU's LSA collapse (57 leads YTD vs 71 prior year; 1 lead in August).
 
 ## Standing context — stop re-discovering these
 
