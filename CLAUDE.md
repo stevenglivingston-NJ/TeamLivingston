@@ -85,7 +85,25 @@ HTTP-transport servers (registered by bootstrap.sh, no local code):
 Direct-access helpers (curl/CLI, NOT registered MCP servers — no bootstrap needed):
   sb.sh               → Supabase REST/RPC over curl
   ghl.sh              → HighLevel over curl, same endpoint as ghl-ktu / ghl-btu
+  lead-sweep.py       → daily ad-response / missed-lead / booking-integrity sweep
 ```
+
+**`lead-sweep.py` — the deterministic half of Goldeneye's morning run.** One pass
+over HighLevel + ServiceMinder that emits a RAG-graded JSON document: positive ad
+responses, unanswered customers, missed and abandoned calls broken out **by
+tracking number**, leads never worked, complaints, campaign list damage, and
+bookings that exist in HighLevel or in a Perceptionist note but **not in
+ServiceMinder** (an appointment nobody is scheduled to attend). Goldeneye reads
+the JSON and publishes it — it does not re-derive the analysis.
+
+```
+python3 mcp-servers/lead-sweep.py --days 2 --out /tmp/lead-sweep.json
+```
+
+It self-tests every pipe first and reports failures in `degradations`; an empty
+bucket next to a degradation is **unverified, not clean**. All HTTP goes through
+`curl` on purpose — python-urllib gets a 403 from the session egress proxy and
+would silently return zero rows.
 
 **`ghl.sh` — HighLevel without MCP registration.** `bootstrap.sh` runs from the
 Cloud environment's setup script, so when that step doesn't run (or runs after
