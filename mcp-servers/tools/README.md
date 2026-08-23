@@ -11,10 +11,19 @@ since the repo was created; the script never existed. This is it.
 
 ```bash
 pip install google-auth-oauthlib
-export GOOGLE_ADS_CLIENT_ID=...      # the Desktop OAuth client
-export GOOGLE_ADS_CLIENT_SECRET=...
+
+# Preferred — hand it Google's own download, no secret typed by hand.
+# Cloud Console > APIs & Services > Credentials > your Desktop client >
+# download icon > client_secret_*.json
+python3 mcp-servers/tools/get_refresh_token.py --preset tagmanager \
+  --client-secrets-file ~/Downloads/client_secret_XXX.json
+
+# Or, if the env vars are already set on this machine:
 python3 mcp-servers/tools/get_refresh_token.py --preset tagmanager
 ```
+
+The downloaded JSON contains the client secret — delete it once the token is
+minted, and never commit it.
 
 It opens a consent screen on localhost, so run it on a machine with a browser —
 not in a Cloud session. Sign in as the account that already holds the access you

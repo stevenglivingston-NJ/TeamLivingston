@@ -62,6 +62,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--preset", choices=sorted(PRESETS), required=True)
+    ap.add_argument("--client-secrets-file", metavar="PATH",
+                    help="Path to the client_secret_*.json downloaded from Cloud "
+                         "Console > Credentials. Preferred — avoids handling the "
+                         "secret by hand.")
     ap.add_argument("--client-id", default=os.environ.get("GOOGLE_ADS_CLIENT_ID"),
                     help="Desktop OAuth client ID. Defaults to GOOGLE_ADS_CLIENT_ID.")
     ap.add_argument("--client-secret", default=os.environ.get("GOOGLE_ADS_CLIENT_SECRET"),
@@ -70,10 +74,13 @@ def main() -> int:
                     help="Loopback port for the consent redirect. 0 picks a free one.")
     args = ap.parse_args()
 
-    if not args.client_id or not args.client_secret:
-        print("ERROR: need a Desktop OAuth client id and secret.\n"
-              "       Pass --client-id/--client-secret, or export\n"
-              "       GOOGLE_ADS_CLIENT_ID and GOOGLE_ADS_CLIENT_SECRET first.",
+    if not args.client_secrets_file and not (args.client_id and args.client_secret):
+        print("ERROR: need OAuth client credentials. Either:\n"
+              "         --client-secrets-file client_secret_XXX.json   (preferred)\n"
+              "       or --client-id / --client-secret\n"
+              "       or export GOOGLE_ADS_CLIENT_ID and GOOGLE_ADS_CLIENT_SECRET.\n\n"
+              "       Download the JSON from Cloud Console > APIs & Services >\n"
+              "       Credentials > your Desktop client > the download icon.",
               file=sys.stderr)
         return 2
 
@@ -84,15 +91,27 @@ def main() -> int:
         return 2
 
     env_var, scopes = PRESETS[args.preset]
-    client_config = {
-        "installed": {
-            "client_id": args.client_id,
-            "client_secret": args.client_secret,
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": ["http://localhost"],
+
+    if args.client_secrets_file:
+        import json
+        with open(args.client_secrets_file) as fh:
+            client_config = json.load(fh)
+        if "installed" not in client_config:
+            kind = next(iter(client_config), "unknown")
+            print(f"ERROR: {args.client_secrets_file} is a '{kind}' client, not a "
+                  f"Desktop app.\n       The loopback consent flow needs an "
+                  f"'installed' (Desktop) client.", file=sys.stderr)
+            return 2
+    else:
+        client_config = {
+            "installed": {
+                "client_id": args.client_id,
+                "client_secret": args.client_secret,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": ["http://localhost"],
+            }
         }
-    }
 
     print(f"Preset : {args.preset}")
     print(f"Scopes : {' '.join(scopes)}")
