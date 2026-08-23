@@ -69,9 +69,15 @@ variables instead of reusing one pair.
 
 ### Choosing a Tag Manager preset
 
-- **`tagmanager`** — read plus edit containers. An agent can stage a change as a
-  container version; a human still clicks Publish in the GTM UI before it is
-  live on the sites. **Prefer this.**
+- **`tagmanager`** — read, edit containers, and create container versions. An
+  agent can stage a change as a container version; a human still clicks Publish
+  in the GTM UI before it is live on the sites. **Prefer this.**
+  `tagmanager.edit.containerversions` is a *separate* scope from
+  `tagmanager.edit.containers`: with only the latter, workspace edits succeed
+  but `workspaces/…:create_version` returns 403
+  `ACCESS_TOKEN_SCOPE_INSUFFICIENT` (verified 2026-08-23 against
+  `GTM-KLT6WSH4`), leaving the change unstaged in the workspace. It grants no
+  publish rights, so the staging/publish split holds.
 - **`tagmanager-publish`** — adds publish rights, so an agent can ship a
   container live with no human step. Only grant this if you specifically want
   unattended publishing.

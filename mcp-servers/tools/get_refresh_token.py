@@ -19,8 +19,12 @@ Then copy the printed refresh token into the Cloud environment's env-var config
 under the name it tells you. Never commit the value.
 
 Presets:
-  tagmanager       read + edit containers. Stages changes as a container
-                   version; a human still clicks Publish in the GTM UI.
+  tagmanager       read + edit containers + create container versions.
+                   Stages changes as a container version; a human still
+                   clicks Publish in the GTM UI. `edit.containerversions` is
+                   separate from `edit.containers` — without it
+                   workspaces/:create_version returns 403
+                   ACCESS_TOKEN_SCOPE_INSUFFICIENT (verified 2026-08-23).
   tagmanager-publish
                    the above plus publish rights — an agent can ship a
                    container live with no human step. Prefer `tagmanager`.
@@ -37,6 +41,7 @@ PRESETS: dict[str, tuple[str, list[str]]] = {
         [
             "https://www.googleapis.com/auth/tagmanager.readonly",
             "https://www.googleapis.com/auth/tagmanager.edit.containers",
+            "https://www.googleapis.com/auth/tagmanager.edit.containerversions",
         ],
     ),
     "tagmanager-publish": (
@@ -44,6 +49,7 @@ PRESETS: dict[str, tuple[str, list[str]]] = {
         [
             "https://www.googleapis.com/auth/tagmanager.readonly",
             "https://www.googleapis.com/auth/tagmanager.edit.containers",
+            "https://www.googleapis.com/auth/tagmanager.edit.containerversions",
             "https://www.googleapis.com/auth/tagmanager.publish",
         ],
     ),
