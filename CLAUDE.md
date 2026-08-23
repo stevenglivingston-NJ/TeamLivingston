@@ -15,6 +15,7 @@ This environment manages operations for two business groups:
 | google-ads | stdio (Python) | Campaigns, keywords, search terms, geo performance, LSA | OAuth2 (Desktop client) |
 | gmb | stdio (Python) | Reviews, metrics, search keywords, location info, hours | OAuth2 (shared with google-ads) |
 | google-analytics | stdio (Python) | GA4 Data API direct — channel/landing-page performance, generate_lead events | ✅ LIVE (2026-08-21). Own `GA4_REFRESH_TOKEN` (scope `.../auth/analytics`; the google-ads token 403s here). Properties: KTU 453600017, BTU 487870392. **Filter by `hostName`** — the two properties are cross-contaminated |
+| gtm | stdio (Python) | Tag Manager API v2 — tags, triggers, variables, stage container versions (KTU GTM-KLT6WSH4, BTU GTM-PK4HC6SR) | Own `GTM_REFRESH_TOKEN` (scopes `tagmanager.readonly` + `edit.containers` + `edit.containerversions`, NO publish — humans publish in the GTM UI; current token lacks `edit.containerversions`, so `create_container_version` 403s until re-minted). Client id/secret fall back to `GOOGLE_ADS_CLIENT_ID/SECRET` |
 | closebot | stdio (Python) | Bots, messages, actions, bookings, billing | API key (X-CB-KEY header) |
 | companycam | stdio (Python) | Projects, photos, documents, notes, labels, users | Bearer token |
 | serviceminder | stdio (Python) | Contacts, appointments, invoices, payments, proposals, downloads | Per-location API keys (KTU + BTU) |
@@ -76,7 +77,8 @@ mcp-servers/
 ├── shipstation/          server.py  # 17 tools (V2 API, Bearer auth)
 ├── amazon-sp/            server.py  # 15 tools (SP-API, LWA OAuth2)
 ├── cloudflare/           server.py  # 14 tools (Zones, DNS, Pages, Workers, R2, KV)
-└── clarity/              server.py  # 4 tools — direct live-insights (KTU+BTU, Bearer)
+├── clarity/              server.py  # 4 tools — direct live-insights (KTU+BTU, Bearer)
+└── gtm/                  server.py  # 12 tools — Tag Manager v2, stage-only (no publish scope)
 
 HTTP-transport servers (registered by bootstrap.sh, no local code):
   ghl-ktu / ghl-btu   → LeadConnector hosted MCP, PIT-scoped per location
