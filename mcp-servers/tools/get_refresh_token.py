@@ -71,7 +71,12 @@ def main() -> int:
     ap.add_argument("--client-secret", default=os.environ.get("GOOGLE_ADS_CLIENT_SECRET"),
                     help="Desktop OAuth client secret. Defaults to GOOGLE_ADS_CLIENT_SECRET.")
     ap.add_argument("--port", type=int, default=0,
-                    help="Loopback port for the consent redirect. 0 picks a free one.")
+                    help="Loopback port for the consent redirect. 0 picks a free "
+                         "one (Desktop clients only). Web clients need a fixed port "
+                         "matching a registered redirect URI, e.g. --port 8080.")
+    ap.add_argument("--web-client", action="store_true",
+                    help="The --client-id/--client-secret given belong to a Web "
+                         "client, not a Desktop one. Requires --port.")
     args = ap.parse_args()
 
     if not args.client_secrets_file and not (args.client_id and args.client_secret):
@@ -96,20 +101,20 @@ def main() -> int:
         import json
         with open(args.client_secrets_file) as fh:
             client_config = json.load(fh)
-        if "installed" not in client_config:
+        if "installed" not in client_config and "web" not in client_config:
             kind = next(iter(client_config), "unknown")
-            print(f"ERROR: {args.client_secrets_file} is a '{kind}' client, not a "
-                  f"Desktop app.\n       The loopback consent flow needs an "
-                  f"'installed' (Desktop) client.", file=sys.stderr)
+            print(f"ERROR: {args.client_secrets_file} is a '{kind}' client. Need an "
+                  f"'installed' (Desktop) or 'web' client.", file=sys.stderr)
             return 2
     else:
         client_config = {
-            "installed": {
+            "installed" if not args.web_client else "web": {
                 "client_id": args.client_id,
                 "client_secret": args.client_secret,
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token",
-                "redirect_uris": ["http://localhost"],
+                "redirect_uris": [f"http://localhost:{args.port}/"
+                                  if args.port else "http://localhost"],
             }
         }
 
@@ -118,6 +123,21 @@ def main() -> int:
     print("\nSign in as the account that already has access to what you are "
           "granting —\nfor Tag Manager, the account with edit rights on BOTH "
           "containers.\n")
+
+    # A Desktop ("installed") client accepts any loopback port, so port 0 is fine.
+    # A Web client only accepts redirect URIs registered on it, so it needs a FIXED
+    # port that matches one of those entries exactly. Refusing port 0 here turns an
+    # opaque redirect_uri_mismatch in the browser into an instruction.
+    if "web" in client_config and "installed" not in client_config:
+        if not args.port:
+            print("ERROR: this is a Web client, so the redirect URI must be "
+                  "registered\n       and the port fixed. Re-run with --port 8080, "
+                  "and add\n\n         http://localhost:8080/\n\n       to that "
+                  "client's Authorized redirect URIs in Cloud Console >\n"
+                  "       APIs & Services > Credentials.", file=sys.stderr)
+            return 2
+        print(f"Client : Web — expects http://localhost:{args.port}/ to be "
+              f"registered on it")
 
     flow = InstalledAppFlow.from_client_config(client_config, scopes=scopes)
     # access_type=offline + prompt=consent forces a refresh token even when this

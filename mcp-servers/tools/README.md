@@ -40,6 +40,33 @@ Each Google API needs its own token. Verified, not assumed:
 | `GA4_REFRESH_TOKEN` | `analytics.readonly` | scoped to GA4 only |
 | `GTM_REFRESH_TOKEN` | `tagmanager.*` | scoped to Tag Manager only |
 
+### Which OAuth client to mint against
+
+Mint against **the client whose id and secret the environment already holds**.
+A refresh token can only be redeemed by its issuing client, so a token minted
+against some other client fails with `unauthorized_client` at the first refresh
+— before any API call, which makes it look like a scope or API problem.
+
+This environment holds `GOOGLE_ADS_CLIENT_ID` / `GOOGLE_ADS_CLIENT_SECRET` (and
+`GA4_CLIENT_ID` / `GA4_CLIENT_SECRET`, same values) — a **Web** client. GA4
+already runs on it, so web clients are fine. They differ from Desktop clients in
+one way: a Desktop client accepts any loopback port, a Web client only accepts
+redirect URIs registered on it. So a Web client needs a fixed `--port` and a
+matching entry under Authorized redirect URIs:
+
+```bash
+# One-time in Cloud Console > APIs & Services > Credentials > the Web client:
+#   add  http://localhost:8080/  under Authorized redirect URIs
+
+python3 mcp-servers/tools/get_refresh_token.py --preset tagmanager \
+  --web-client --port 8080 \
+  --client-id "$GOOGLE_ADS_CLIENT_ID" --client-secret "$GOOGLE_ADS_CLIENT_SECRET"
+```
+
+Minting against a *different* Desktop client works too, but then that client's
+id and secret must also be stored in the environment beside the token — three
+variables instead of reusing one pair.
+
 ### Choosing a Tag Manager preset
 
 - **`tagmanager`** — read plus edit containers. An agent can stage a change as a
