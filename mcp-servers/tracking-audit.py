@@ -521,6 +521,10 @@ def check_google_ads(a: Audit, brands: list[str]) -> None:
             a.degrade(f"google-ads:{brand}", exc)
 
 
+class _NotConfigured(Exception):
+    """A check that cannot run because its config is absent, not because it failed."""
+
+
 def check_campaign_health(a: Audit, brands: list[str]) -> None:
     """Campaign-level drift, from the 2026-08-23 campaign audit.
 
@@ -547,8 +551,17 @@ def check_campaign_health(a: Audit, brands: list[str]) -> None:
         canonical = CANONICAL_LP_HOST.get(brand)
 
         # --- final-URL drift -------------------------------------------------
+        # With no canonical host configured this check cannot run. Record that
+        # as a degradation rather than letting the metric read 0 ("clean") when
+        # it actually means "never looked" — the exact confusion this sweep
+        # exists to prevent.
+        if not canonical:
+            a.degrade(f"final-urls:{brand}",
+                      "CANONICAL_LP_HOST not set for this brand — drift unchecked")
         try:
             stale = {}
+            if not canonical:
+                raise _NotConfigured
             for r in svc.search(customer_id=cid, query="""
                     SELECT campaign.name, ad_group_ad.ad.id,
                            ad_group_ad.ad.final_urls
@@ -567,6 +580,8 @@ def check_campaign_health(a: Audit, brands: list[str]) -> None:
                     f"Affected campaigns: {', '.join(sorted(set(camps))[:4])}.",
                     "Repoint the ads, or update CANONICAL_LP_HOST if the "
                     "landing domain genuinely changed.")
+        except _NotConfigured:
+            pass                      # already recorded as a degradation above
         except Exception as exc:
             a.degrade(f"final-urls:{brand}", exc)
 
