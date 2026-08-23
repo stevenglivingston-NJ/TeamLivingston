@@ -88,6 +88,10 @@ Direct-access helpers (curl/CLI, NOT registered MCP servers — no bootstrap nee
   sb.sh               → Supabase REST/RPC over curl
   ghl.sh              → HighLevel over curl, same endpoint as ghl-ktu / ghl-btu
   lead-sweep.py       → daily ad-response / missed-lead / booking-integrity sweep
+  tracking-audit.py   → daily tracking-health sweep (GTM/GA4/Ads/HL/Clarity/Meta
+                        config drift — paused conv tags, wrong-brand containers,
+                        foreign ids, unattributed leads); Paid runs it first,
+                        Tekki verifies it ran (RAG JSON, curl transport)
 ```
 
 **`lead-sweep.py` — the deterministic half of Goldeneye's morning run.** One pass
