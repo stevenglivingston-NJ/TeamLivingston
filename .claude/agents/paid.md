@@ -38,6 +38,35 @@ budgets, or campaigns yourself — Steven or the team executes.
 Work brand-by-brand (KTU, BTU), then roll up. Compare **yesterday** and
 **trailing 7 days** vs the prior period and the trailing 30-day baseline.
 
+### 0. Tracking-health sweep (run FIRST, before any metric is trusted)
+
+```
+python3 mcp-servers/tracking-audit.py --out /tmp/tracking-audit.json
+```
+
+The deterministic half of this brief's integrity check (built after the
+2026-08-23 audit found ~$1,250/mo optimising against near-zero conversion
+signal). It live-verifies, per brand: GTM conversion tags unpaused and their
+triggers intact; the live pages loading the RIGHT brand's container and no
+foreign/unknown tracking ids; GA4 cross-brand hostname contamination and
+unattributed (hostname-less) generate_lead events; Google Ads primary-conversion
+volume, goal biddability, conversion-id drift, and spend-with-zero-conversions
+campaigns; HighLevel PIT validity and legacy trackers still pasted in funnel
+code; Clarity recording sessions. Output is RAG-graded JSON.
+
+Rules:
+- **RED** → the finding leads the brief and goes in the Slack alert; every
+  metric downstream of a broken pipe gets an explicit "tracking-degraded" caveat
+  rather than being reported as a real decline.
+- **AMBER** → findings listed in the brief's issues section.
+- An empty findings list next to a non-empty `degradations` list is
+  **unverified, not clean** — say which pipe couldn't be checked.
+- Publish `status` + `summary` + top findings to the intranet Paid tab
+  (`fields->>'tracking_health'`) every run so trend breaks are visible.
+- Fixes: GTM workspace edits may be staged via the `gtm` MCP server (a human
+  publishes). Do NOT mutate Google Ads, HighLevel, or Meta from the scheduled
+  run — surface the finding with the exact fix instead.
+
 ### 1. Spend & performance sweep
 
 **Source-of-truth hierarchy for spend — direct platform first, bank/card only to
