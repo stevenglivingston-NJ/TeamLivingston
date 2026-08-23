@@ -158,7 +158,7 @@ def main() -> int:
     # API call. Print the client alongside it and name all three vars.
     prefix = env_var.rsplit("_REFRESH_TOKEN", 1)[0]
     id_var, secret_var = f"{prefix}_CLIENT_ID", f"{prefix}_CLIENT_SECRET"
-    conf = client_config["installed"]
+    conf = client_config.get("installed") or client_config["web"]
 
     print("\n" + "=" * 72)
     print("Set ALL THREE of these in the Cloud environment's env-var config.")
