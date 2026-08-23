@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Mint a Google OAuth refresh token for one of the KTU/BTU MCP servers.
+
+Every Google-backed server here (google-ads, gmb, google-analytics, and now
+Tag Manager) authenticates the same way: a Desktop OAuth client plus a
+long-lived refresh token held in an environment variable. Scopes do NOT carry
+across tokens — the google-ads token 403s against the Analytics API, and it
+403s against Tag Manager too (verified 2026-08-23). Each API needs its own
+token minted with its own scopes.
+
+`server.py` in google-ads has referenced this script for months without it
+existing in the repo. This is that script.
+
+Run it on a machine with a browser — it opens a consent screen on localhost.
+
+    python3 mcp-servers/tools/get_refresh_token.py --preset tagmanager
+
+Then copy the printed refresh token into the Cloud environment's env-var config
+under the name it tells you. Never commit the value.
+
+Presets:
+  tagmanager       read + edit containers. Stages changes as a container
+                   version; a human still clicks Publish in the GTM UI.
+  tagmanager-publish
+                   the above plus publish rights — an agent can ship a
+                   container live with no human step. Prefer `tagmanager`.
+  analytics        GA4 Data API (matches the existing GA4_REFRESH_TOKEN).
+  ads              Google Ads API (matches GOOGLE_ADS_REFRESH_TOKEN).
+"""
+import argparse
+import os
+import sys
+
+PRESETS: dict[str, tuple[str, list[str]]] = {
+    "tagmanager": (
+        "GTM_REFRESH_TOKEN",
+        [
+            "https://www.googleapis.com/auth/tagmanager.readonly",
+            "https://www.googleapis.com/auth/tagmanager.edit.containers",
+        ],
+    ),
+    "tagmanager-publish": (
+        "GTM_REFRESH_TOKEN",
+        [
+            "https://www.googleapis.com/auth/tagmanager.readonly",
+            "https://www.googleapis.com/auth/tagmanager.edit.containers",
+            "https://www.googleapis.com/auth/tagmanager.publish",
+        ],
+    ),
+    "analytics": (
+        "GA4_REFRESH_TOKEN",
+        ["https://www.googleapis.com/auth/analytics.readonly"],
+    ),
+    "ads": (
+        "GOOGLE_ADS_REFRESH_TOKEN",
+        ["https://www.googleapis.com/auth/adwords"],
+    ),
+}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--preset", choices=sorted(PRESETS), required=True)
+    ap.add_argument("--client-id", default=os.environ.get("GOOGLE_ADS_CLIENT_ID"),
+                    help="Desktop OAuth client ID. Defaults to GOOGLE_ADS_CLIENT_ID.")
+    ap.add_argument("--client-secret", default=os.environ.get("GOOGLE_ADS_CLIENT_SECRET"),
+                    help="Desktop OAuth client secret. Defaults to GOOGLE_ADS_CLIENT_SECRET.")
+    ap.add_argument("--port", type=int, default=0,
+                    help="Loopback port for the consent redirect. 0 picks a free one.")
+    args = ap.parse_args()
+
+    if not args.client_id or not args.client_secret:
+        print("ERROR: need a Desktop OAuth client id and secret.\n"
+              "       Pass --client-id/--client-secret, or export\n"
+              "       GOOGLE_ADS_CLIENT_ID and GOOGLE_ADS_CLIENT_SECRET first.",
+              file=sys.stderr)
+        return 2
+
+    try:
+        from google_auth_oauthlib.flow import InstalledAppFlow
+    except ImportError:
+        print("ERROR: pip install google-auth-oauthlib", file=sys.stderr)
+        return 2
+
+    env_var, scopes = PRESETS[args.preset]
+    client_config = {
+        "installed": {
+            "client_id": args.client_id,
+            "client_secret": args.client_secret,
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": ["http://localhost"],
+        }
+    }
+
+    print(f"Preset : {args.preset}")
+    print(f"Scopes : {' '.join(scopes)}")
+    print("\nSign in as the account that already has access to what you are "
+          "granting —\nfor Tag Manager, the account with edit rights on BOTH "
+          "containers.\n")
+
+    flow = InstalledAppFlow.from_client_config(client_config, scopes=scopes)
+    # access_type=offline + prompt=consent forces a refresh token even when this
+    # account has authorised this client before; without prompt=consent Google
+    # returns an access token only and the run is silently useless.
+    creds = flow.run_local_server(port=args.port, access_type="offline",
+                                  prompt="consent")
+
+    if not creds.refresh_token:
+        print("\nERROR: no refresh token returned. Revoke this client for the "
+              "account at\n       https://myaccount.google.com/permissions and "
+              "run again.", file=sys.stderr)
+        return 1
+
+    print("\n" + "=" * 68)
+    print(f"Set this in the Cloud environment's env-var config as {env_var}:\n")
+    print(creds.refresh_token)
+    print("=" * 68)
+    print("\nIt is a credential. Do not commit it, paste it into a ticket, or "
+          "send it over chat.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
