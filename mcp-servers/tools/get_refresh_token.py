@@ -132,12 +132,26 @@ def main() -> int:
               "run again.", file=sys.stderr)
         return 1
 
-    print("\n" + "=" * 68)
-    print(f"Set this in the Cloud environment's env-var config as {env_var}:\n")
-    print(creds.refresh_token)
-    print("=" * 68)
-    print("\nIt is a credential. Do not commit it, paste it into a ticket, or "
-          "send it over chat.")
+    # A refresh token can only be redeemed by the client that issued it. The
+    # environment already holds a DIFFERENT client under GOOGLE_ADS_CLIENT_ID,
+    # so printing the token alone gets you "unauthorized_client" at the first
+    # API call. Print the client alongside it and name all three vars.
+    prefix = env_var.rsplit("_REFRESH_TOKEN", 1)[0]
+    id_var, secret_var = f"{prefix}_CLIENT_ID", f"{prefix}_CLIENT_SECRET"
+    conf = client_config["installed"]
+
+    print("\n" + "=" * 72)
+    print("Set ALL THREE of these in the Cloud environment's env-var config.")
+    print("The token is only redeemable by the client that issued it, so the")
+    print("client id and secret have to travel with it.\n")
+    print(f"{id_var}={conf['client_id']}")
+    print(f"{secret_var}=<the client secret from "
+          f"{args.client_secrets_file or 'the client you just used'}>")
+    print(f"{env_var}={creds.refresh_token}")
+    print("=" * 72)
+    print("\nThe token and the secret are credentials. Do not commit them, "
+          "paste them\ninto a ticket, or send them over chat. Delete the "
+          "client_secret JSON once\nboth values are stored.")
     return 0
 
 
