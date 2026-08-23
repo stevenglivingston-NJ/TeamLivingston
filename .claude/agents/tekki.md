@@ -273,7 +273,7 @@ $1,250/mo of spend optimising against near-zero conversion signal while every
 pipe probed green. Run the deterministic sweep and fold it into the board:
 
 ```
-python3 mcp-servers/tracking-audit.py --out /tmp/tracking-audit.json
+python3 mcp-servers/tracking-audit.py --publish --out /tmp/tracking-audit.json
 ```
 
 - Its `status` (GREEN/AMBER/RED) becomes a `tekki_health` component row named

@@ -64,6 +64,7 @@ import re
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit
 
 ET = timezone(timedelta(hours=-4))
 
@@ -107,6 +108,20 @@ LEGACY_TRACKERS = [
 ]
 
 SEVERITY_RANK = {"critical": 3, "high": 2, "low": 1}
+
+# Where each brand's paid traffic is supposed to land. Ads pointing anywhere
+# else are drift — this is how 22 KTU ads were found still on the pre-rebuild
+# host. Update this when a brand's landing domain genuinely moves.
+CANONICAL_LP_HOST = {
+    "KTU": "lp.ktubloomfield.com",
+    # BTU intentionally unset while its landing pages are being rebuilt; set it
+    # to the new host once they ship so drift detection turns back on.
+    "BTU": None,
+}
+
+# Intranet + alerting
+INTRANET_SECTION = "tracking_health"
+SLACK_ALERTS_CHANNEL = os.environ.get("SLACK_ALERTS_CHANNEL", "C0BHVTDPJ58")
 
 
 # ------------------------------------------------------------------- plumbing
@@ -506,6 +521,141 @@ def check_google_ads(a: Audit, brands: list[str]) -> None:
             a.degrade(f"google-ads:{brand}", exc)
 
 
+def check_campaign_health(a: Audit, brands: list[str]) -> None:
+    """Campaign-level drift, from the 2026-08-23 campaign audit.
+
+    Four things that quietly waste money and never raise an alarm on their own:
+      * ads pointing at a hostname that is no longer the canonical landing page
+      * campaigns losing impression share to budget (cheap volume left on table)
+      * RSAs stuck at POOR/AVERAGE strength
+      * live spend on search terms that convert nothing
+    """
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "gads", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                 "google-ads", "server.py"))
+        gads = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gads)
+        svc = gads._ads_client().get_service("GoogleAdsService")
+    except Exception as exc:
+        a.degrade("campaign-health", exc)
+        return
+
+    for brand in brands:
+        cid = ADS_ACCOUNT[brand]
+        canonical = CANONICAL_LP_HOST.get(brand)
+
+        # --- final-URL drift -------------------------------------------------
+        try:
+            stale = {}
+            for r in svc.search(customer_id=cid, query="""
+                    SELECT campaign.name, ad_group_ad.ad.id,
+                           ad_group_ad.ad.final_urls
+                    FROM ad_group_ad
+                    WHERE campaign.status='ENABLED' AND ad_group_ad.status='ENABLED'"""):
+                for url in r.ad_group_ad.ad.final_urls:
+                    host = urlsplit(url).netloc.lower()
+                    if canonical and host and host != canonical:
+                        stale.setdefault(host, []).append(r.campaign.name)
+            a.metrics[f"ads_{brand}_offcanonical_hosts"] = len(stale)
+            for host, camps in stale.items():
+                a.finding(
+                    "ADS-FINAL-URL-DRIFT", "high", brand, "google-ads",
+                    f"{len(camps)} live ads still point at {host}",
+                    f"Canonical landing host for {brand} is {canonical}. "
+                    f"Affected campaigns: {', '.join(sorted(set(camps))[:4])}.",
+                    "Repoint the ads, or update CANONICAL_LP_HOST if the "
+                    "landing domain genuinely changed.")
+        except Exception as exc:
+            a.degrade(f"final-urls:{brand}", exc)
+
+        # --- budget-constrained campaigns ------------------------------------
+        try:
+            for r in svc.search(customer_id=cid, query="""
+                    SELECT campaign.name, campaign_budget.amount_micros,
+                           metrics.search_budget_lost_impression_share,
+                           metrics.search_impression_share, metrics.cost_micros
+                    FROM campaign WHERE campaign.status='ENABLED'
+                    AND campaign.advertising_channel_type='SEARCH'
+                    AND segments.date DURING LAST_30_DAYS"""):
+                lost = r.metrics.search_budget_lost_impression_share * 100
+                if lost < 10:
+                    continue
+                budget = r.campaign_budget.amount_micros / 1e6
+                sev = "high" if lost >= 20 else "low"
+                a.finding(
+                    "ADS-BUDGET-CONSTRAINED", sev, brand, "google-ads",
+                    f"'{r.campaign.name}' losing {lost:.0f}% impression share to budget",
+                    f"Budget ${budget:,.2f}/day, 30d spend "
+                    f"${r.metrics.cost_micros/1e6:,.2f}, impression share "
+                    f"{r.metrics.search_impression_share*100:.0f}%.",
+                    "Raise the daily budget if this campaign's traffic converts.")
+        except Exception as exc:
+            a.degrade(f"budget-is:{brand}", exc)
+
+        # --- RSA strength ----------------------------------------------------
+        try:
+            weak = {"POOR": [], "AVERAGE": []}
+            for r in svc.search(customer_id=cid, query="""
+                    SELECT campaign.name, ad_group_ad.ad.id, ad_group_ad.ad_strength,
+                           ad_group_ad.ad.type
+                    FROM ad_group_ad
+                    WHERE campaign.status='ENABLED' AND ad_group_ad.status='ENABLED'"""):
+                if r.ad_group_ad.ad.type_.name != "RESPONSIVE_SEARCH_AD":
+                    continue
+                s = r.ad_group_ad.ad_strength.name
+                if s in weak:
+                    weak[s].append(str(r.ad_group_ad.ad.id))
+            a.metrics[f"ads_{brand}_rsa_poor"] = len(weak["POOR"])
+            a.metrics[f"ads_{brand}_rsa_average"] = len(weak["AVERAGE"])
+            if weak["POOR"]:
+                a.finding(
+                    "ADS-RSA-POOR", "high", brand, "google-ads",
+                    f"{len(weak['POOR'])} live RSAs rated POOR",
+                    "Poor-strength RSAs get throttled in the auction. Ad ids: "
+                    + ", ".join(weak["POOR"][:8]),
+                    "Rewrite headlines/descriptions to match the landing page.")
+            elif len(weak["AVERAGE"]) >= 8:
+                a.finding(
+                    "ADS-RSA-AVERAGE", "low", brand, "google-ads",
+                    f"{len(weak['AVERAGE'])} live RSAs only AVERAGE strength",
+                    "Headline/description variety is thin across most ad groups.",
+                    "Schedule an RSA refresh pass.")
+        except Exception as exc:
+            a.degrade(f"rsa:{brand}", exc)
+
+        # --- search-term waste ------------------------------------------------
+        # Reported, never auto-negated: a term showing zero conversions may just
+        # mean conversion tracking is broken, which is exactly the failure this
+        # script exists to catch. A human decides what to negate.
+        try:
+            agg = {}
+            for r in svc.search(customer_id=cid, query="""
+                    SELECT search_term_view.search_term, metrics.cost_micros,
+                           metrics.conversions
+                    FROM search_term_view WHERE segments.date DURING LAST_30_DAYS"""):
+                t = r.search_term_view.search_term
+                e = agg.setdefault(t, [0.0, 0.0])
+                e[0] += r.metrics.cost_micros / 1e6
+                e[1] += r.metrics.conversions
+            waste = sorted(((c, t) for t, (c, v) in agg.items() if v == 0 and c > 0),
+                           reverse=True)
+            total = sum(c for c, _ in waste)
+            a.metrics[f"ads_{brand}_zero_conv_spend_30d"] = round(total, 2)
+            if total >= 150:
+                top = ", ".join(f"{t} (${c:,.0f})" for c, t in waste[:5])
+                a.finding(
+                    "ADS-SEARCH-TERM-WASTE", "low", brand, "google-ads",
+                    f"${total:,.0f} on search terms with zero conversions (30d)",
+                    f"Top: {top}. Review before negating — a zero here can mean "
+                    f"broken tracking rather than bad traffic.",
+                    "Review the search-terms report and negate only terms whose "
+                    "intent is genuinely wrong.")
+        except Exception as exc:
+            a.degrade(f"search-terms:{brand}", exc)
+
+
 def check_highlevel(a: Audit, brands: list[str]) -> None:
     """PIT validity, and legacy trackers still pasted into funnel code."""
     for brand in brands:
@@ -612,19 +762,115 @@ def check_clarity(a: Audit, brands: list[str]) -> None:
 
 # ----------------------------------------------------------------------- main
 
+def _sql(statement: str) -> str:
+    """Run SQL through sb.sh (curl -> PostgREST rpc/exec_sql, no classifier gate)."""
+    sb = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sb.sh")
+    res = subprocess.run(["bash", sb, statement], capture_output=True, text=True)
+    if res.returncode != 0:
+        raise RuntimeError(f"sb.sh failed: {res.stderr[:200]}")
+    return res.stdout
+
+
+def _q(value: str) -> str:
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def publish(doc: dict) -> list[str]:
+    """Write the sweep to the intranet and queue CRITICAL findings to Slack.
+
+    Deterministic on purpose. The agent brief used to be told to publish and
+    alert; an instruction is not a guarantee, and a scheduled run that quietly
+    skips it looks identical to a clean day.
+    """
+    notes = []
+    scan = doc["scan_date"]
+
+    # Write-then-prune by scan_date, matching every other section's convention.
+    rows = []
+    for i, f in enumerate(doc["findings"]):
+        fields = {
+            "kind": "finding", "scan_date": scan, "severity": f["severity"],
+            "area": f["area"], "title": f["title"], "detail": f["detail"],
+            "fix": f["fix"], "finding_id": f["id"], "source": "tracking-audit",
+        }
+        rows.append((f.get("brand") or "Both", i + 1, fields))
+
+    summary_fields = {
+        "kind": "summary", "scan_date": scan, "status": doc["status"],
+        "severity": "critical" if doc["status"] == "RED" else (
+            "high" if doc["status"] == "AMBER" else "low"),
+        "title": f"Tracking health: {doc['status']}",
+        "detail": (f"{doc['summary']['critical']} critical, "
+                   f"{doc['summary']['high']} high, {doc['summary']['low']} low, "
+                   f"{doc['summary']['degradations']} pipe(s) unverified."),
+        "metrics": doc["metrics"], "degradations": doc["degradations"],
+        "source": "tracking-audit",
+    }
+    rows.insert(0, ("Both", 0, summary_fields))
+
+    values = ",".join(
+        f"({_q(INTRANET_SECTION)}, {_q(brand)}, {order}, {_q(json.dumps(fields))}::jsonb)"
+        for brand, order, fields in rows)
+    try:
+        _sql(f"DELETE FROM intranet_records WHERE section = {_q(INTRANET_SECTION)} "
+             f"AND fields->>'scan_date' = {_q(scan)}")
+        _sql("INSERT INTO intranet_records (section, brand, sort_order, fields) "
+             f"VALUES {values}")
+        # Keep a fortnight of history so trend breaks stay visible.
+        _sql(f"DELETE FROM intranet_records WHERE section = {_q(INTRANET_SECTION)} "
+             f"AND fields->>'scan_date' < {_q(scan)} "
+             "AND fields->>'scan_date' < to_char(now() - interval '14 days', 'YYYY-MM-DD')")
+        notes.append(f"published {len(rows)} rows to {INTRANET_SECTION}")
+    except Exception as exc:
+        notes.append(f"PUBLISH FAILED: {str(exc)[:160]}")
+
+    # CRITICAL only. Everything else lives on the tab; paging on AMBER trains
+    # people to ignore the channel.
+    critical = [f for f in doc["findings"] if f["severity"] == "critical"]
+    if not critical:
+        return notes
+    lines = [f"*Tracking health: {doc['status']}* — {len(critical)} critical "
+             f"finding(s), {scan}", ""]
+    for f in critical:
+        lines.append(f"• *[{f.get('brand','Both')}] {f['title']}*")
+        lines.append(f"    {f['detail']}")
+        lines.append(f"    _Fix:_ {f['fix']}")
+    if doc["degradations"]:
+        lines.append("")
+        lines.append(f"_{len(doc['degradations'])} pipe(s) could not be checked — "
+                     "an empty result there is unverified, not clean._")
+    body = "\n".join(lines)
+    source = f"tracking-audit:{scan}"
+    try:
+        # source is unique per day, so a re-run replaces rather than re-pages.
+        _sql(f"DELETE FROM notify_queue WHERE source = {_q(source)} AND status = 'pending'")
+        _sql("INSERT INTO notify_queue (kind, recipient_slack, subject, body, source, status) "
+             f"VALUES ('alert', {_q(SLACK_ALERTS_CHANNEL)}, "
+             f"{_q(f'[Axyom] Tracking CRITICAL: {len(critical)} finding(s)')}, "
+             f"{_q(body)}, {_q(source)}, 'pending')")
+        notes.append(f"queued Slack alert to {SLACK_ALERTS_CHANNEL} "
+                     f"({len(critical)} critical)")
+    except Exception as exc:
+        notes.append(f"ALERT QUEUE FAILED: {str(exc)[:160]}")
+    return notes
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", help="write JSON here instead of stdout")
     ap.add_argument("--brand", choices=["KTU", "BTU"], help="limit to one brand")
+    ap.add_argument("--publish", action="store_true",
+                    help="write results to the intranet tracking_health section "
+                         "and queue CRITICAL findings to the Slack alerts channel")
     args = ap.parse_args()
     brands = [args.brand] if args.brand else ["KTU", "BTU"]
 
     a = Audit()
     for name, fn in [
         ("gtm", check_gtm), ("live pages", check_live_pages), ("ga4", check_ga4),
-        ("google ads", check_google_ads), ("highlevel", check_highlevel),
-        ("meta", check_meta), ("clarity", check_clarity),
+        ("google ads", check_google_ads), ("campaign health", check_campaign_health),
+        ("highlevel", check_highlevel), ("meta", check_meta), ("clarity", check_clarity),
     ]:
         try:
             fn(a, brands)
@@ -647,6 +893,10 @@ def main() -> int:
         "metrics": a.metrics,
         "degradations": a.degradations,
     }
+    if args.publish:
+        for note in publish(doc):
+            print(note)
+
     text = json.dumps(doc, indent=2)
     if args.out:
         with open(args.out, "w") as fh:

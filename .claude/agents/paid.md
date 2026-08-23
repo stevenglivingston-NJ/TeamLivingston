@@ -41,7 +41,7 @@ Work brand-by-brand (KTU, BTU), then roll up. Compare **yesterday** and
 ### 0. Tracking-health sweep (run FIRST, before any metric is trusted)
 
 ```
-python3 mcp-servers/tracking-audit.py --out /tmp/tracking-audit.json
+python3 mcp-servers/tracking-audit.py --publish --out /tmp/tracking-audit.json
 ```
 
 The deterministic half of this brief's integrity check (built after the
@@ -61,8 +61,15 @@ Rules:
 - **AMBER** → findings listed in the brief's issues section.
 - An empty findings list next to a non-empty `degradations` list is
   **unverified, not clean** — say which pipe couldn't be checked.
-- Publish `status` + `summary` + top findings to the intranet Paid tab
-  (`fields->>'tracking_health'`) every run so trend breaks are visible.
+- `--publish` does the intranet write and the Slack alert itself: it writes
+  every finding to the `tracking_health` section (write-then-prune by
+  `scan_date`, 14 days of history) and queues CRITICAL findings only to the
+  Slack alerts channel. You do NOT need to publish or alert by hand — but DO
+  read the JSON and lead the brief with anything RED.
+- It also covers campaign drift now: ads pointing off the canonical landing
+  host, campaigns losing impression share to budget, POOR/AVERAGE RSAs, and
+  zero-conversion search-term spend. Never auto-negate a search term from
+  that list — a zero can mean broken tracking rather than bad traffic.
 - Fixes: GTM workspace edits may be staged via the `gtm` MCP server (a human
   publishes). Do NOT mutate Google Ads, HighLevel, or Meta from the scheduled
   run — surface the finding with the exact fix instead.
