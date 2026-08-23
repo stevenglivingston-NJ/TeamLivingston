@@ -162,6 +162,20 @@ if require GA4_REFRESH_TOKEN; then
   reg google-analytics "{\"command\":\"python3\",\"args\":[\"$DIR/google-analytics/server.py\"],\"env\":{\"GA4_CLIENT_ID\":\"${GA4_CLIENT_ID:-$GOOGLE_ADS_CLIENT_ID}\",\"GA4_CLIENT_SECRET\":\"${GA4_CLIENT_SECRET:-$GOOGLE_ADS_CLIENT_SECRET}\",\"GA4_REFRESH_TOKEN\":\"$GA4_REFRESH_TOKEN\",\"GA4_PROPERTY_ID_KTU\":\"${GA4_PROPERTY_ID_KTU:-}\",\"GA4_PROPERTY_ID_BTU\":\"${GA4_PROPERTY_ID_BTU:-}\"}}"
 else skipped+=("google-analytics (GA4_REFRESH_TOKEN — needs a fresh OAuth consent with analytics.readonly, not the google-ads token)"); fi
 
+# gtm: Tag Manager API v2 for the KTU (GTM-KLT6WSH4) and BTU (GTM-PK4HC6SR) web
+# containers. Same own-token rule as GA4: GTM_REFRESH_TOKEN must be minted with
+# tagmanager.readonly + tagmanager.edit.containers + edit.containerversions
+# (the google-ads token 403s here — verified 2026-08-23; without
+# edit.containerversions only create_container_version 403s). NO publish: the
+# server stages container versions and a human publishes from the GTM UI. Mint
+# via mcp-servers/tools/get_refresh_token.py --preset tagmanager.
+if require GTM_REFRESH_TOKEN; then
+  # Pass BOTH client pairs: a refresh token is only redeemable by the client
+  # that minted it, and GTM_CLIENT_ID has been observed pointing at a different
+  # client than the token's (2026-08-23) — the server tries each pair.
+  reg gtm "{\"command\":\"python3\",\"args\":[\"$DIR/gtm/server.py\"],\"env\":{\"GTM_CLIENT_ID\":\"${GTM_CLIENT_ID:-}\",\"GTM_CLIENT_SECRET\":\"${GTM_CLIENT_SECRET:-}\",\"GOOGLE_ADS_CLIENT_ID\":\"${GOOGLE_ADS_CLIENT_ID:-}\",\"GOOGLE_ADS_CLIENT_SECRET\":\"${GOOGLE_ADS_CLIENT_SECRET:-}\",\"GTM_REFRESH_TOKEN\":\"$GTM_REFRESH_TOKEN\"}}"
+else skipped+=("gtm (GTM_REFRESH_TOKEN — mint with tools/get_refresh_token.py --preset tagmanager)"); fi
+
 # ---- 3. Jatalia / Earthwise servers ---------------------------------------
 
 if require SHIPSTATION_API_KEY; then
