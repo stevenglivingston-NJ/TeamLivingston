@@ -23,6 +23,7 @@ from mcp.server.fastmcp import FastMCP
 from google.ads.googleads.client import GoogleAdsClient
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
+from google.protobuf.json_format import MessageToDict
 
 mcp = FastMCP("google-ads")
 
@@ -272,6 +273,135 @@ def query_campaigns(location: str, days: int = 30,
                 "avg_cpc": r.metrics.average_cpc / 1_000_000,
             })
     return {"location": location, "days": days, "rows": rows, "count": len(rows)}
+
+
+_MISSING = object()
+
+
+def _enum_name(value: Any) -> str:
+    """Enum -> bare name ('GOOGLE_ADS_UI'), not 'ChangeClientType.GOOGLE_ADS_UI'."""
+    name = getattr(value, "name", None)
+    if name:
+        return name
+    text = str(value)
+    return text.rsplit(".", 1)[-1] if "." in text else text
+
+
+def _changed_values(resource: Any, paths: list[str]) -> dict[str, Any]:
+    """Pull only the changed fields out of a ChangedResource proto.
+
+    ChangedResource wraps exactly one resource (campaign, campaign_budget, …)
+    and the API populates only the fields named in changed_fields, so unwrap
+    the single entry and keep the named paths.
+    """
+    pb = getattr(resource, "_pb", resource)
+    try:
+        payload = MessageToDict(pb, preserving_proto_field_name=True)
+    except Exception:
+        return {}
+    flat: dict[str, Any] = {}
+    for wrapped in payload.values():
+        if isinstance(wrapped, dict):
+            flat.update(wrapped)
+    # changed_fields paths are dotted ("keyword.text"), so walk them rather
+    # than doing a flat lookup — a flat lookup silently drops every nested
+    # field, which is most of what makes a keyword change readable.
+    out: dict[str, Any] = {}
+    for path in paths:
+        cursor: Any = flat
+        for part in path.split("."):
+            if isinstance(cursor, dict) and part in cursor:
+                cursor = cursor[part]
+            else:
+                cursor = _MISSING
+                break
+        if cursor is not _MISSING:
+            out[path] = cursor
+    return out
+
+
+@mcp.tool()
+def query_change_history(location: str, days: int = 14, limit: int = 200,
+                         resource_type: str = "") -> dict[str, Any]:
+    """Who changed what in the account, and when — the UI's Change History.
+
+    Reads the `change_event` resource and returns, per change: the acting
+    user's email, the client used (GOOGLE_ADS_UI, GOOGLE_ADS_API,
+    GOOGLE_ADS_EDITOR, GOOGLE_ADS_AUTOMATED_RULE, ...), the resource touched,
+    the operation, which fields changed, and their old -> new values.
+
+    Use this to attribute a budget/status/keyword change to a person or tool
+    rather than inferring it from a before/after snapshot.
+
+    Google retains change history for 30 DAYS ONLY, so `days` is clamped to 30
+    and anything older is unrecoverable here.
+
+    resource_type: optional filter, e.g. 'CAMPAIGN', 'CAMPAIGN_BUDGET',
+    'AD_GROUP', 'AD_GROUP_CRITERION', 'AD_GROUP_AD', 'CAMPAIGN_CRITERION'.
+    Empty returns every type.
+    """
+    customer_id = _resolve(location)
+    days = max(1, min(days, 30))
+    limit = max(1, min(limit, 10_000))
+
+    start = date.today() - timedelta(days=days)
+    end = date.today() + timedelta(days=1)
+    where = [
+        f"change_event.change_date_time >= '{start.isoformat()} 00:00:00'",
+        f"change_event.change_date_time <= '{end.isoformat()} 00:00:00'",
+    ]
+    if resource_type:
+        where.append(f"change_event.change_resource_type = '{resource_type.upper()}'")
+
+    # change_event REQUIRES an explicit LIMIT and does not support search_stream.
+    query = f"""
+    SELECT
+      change_event.change_date_time,
+      change_event.user_email,
+      change_event.client_type,
+      change_event.change_resource_type,
+      change_event.change_resource_name,
+      change_event.resource_change_operation,
+      change_event.changed_fields,
+      change_event.old_resource,
+      change_event.new_resource,
+      campaign.name,
+      ad_group.name
+    FROM change_event
+    WHERE {' AND '.join(where)}
+    ORDER BY change_event.change_date_time DESC
+    LIMIT {limit}
+    """
+
+    client = _ads_client()
+    ga = client.get_service("GoogleAdsService")
+    rows: list[dict[str, Any]] = []
+    for r in ga.search(customer_id=customer_id, query=query):
+        ce = r.change_event
+        paths = list(ce.changed_fields.paths)
+        rows.append({
+            "changed_at": str(ce.change_date_time),
+            "user_email": ce.user_email,
+            "client_type": _enum_name(ce.client_type),
+            "resource_type": _enum_name(ce.change_resource_type),
+            "operation": _enum_name(ce.resource_change_operation),
+            "campaign": r.campaign.name or None,
+            "ad_group": r.ad_group.name or None,
+            "changed_fields": paths,
+            "old": _changed_values(ce.old_resource, paths),
+            "new": _changed_values(ce.new_resource, paths),
+        })
+
+    editors = sorted({row["user_email"] for row in rows if row["user_email"]})
+    return {
+        "location": location,
+        "days": days,
+        "window_start": start.isoformat(),
+        "rows": rows,
+        "count": len(rows),
+        "editors": editors,
+        "note": "Google retains change history for 30 days; older changes are unrecoverable.",
+    }
 
 
 LSA_BASE = "https://localservices.googleapis.com/v1"

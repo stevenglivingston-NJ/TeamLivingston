@@ -12,7 +12,7 @@ This environment manages operations for two business groups:
 
 | Server | Type | Tools | Auth |
 |--------|------|-------|------|
-| google-ads | stdio (Python) | Campaigns, keywords, search terms, geo performance, LSA | OAuth2 (Desktop client) |
+| google-ads | stdio (Python) | Campaigns, keywords, search terms, geo performance, LSA, **change history** (`query_change_history` — who changed what, 30-day retention) | OAuth2 (Desktop client) |
 | gmb | stdio (Python) | Reviews, metrics, search keywords, location info, hours | OAuth2 (shared with google-ads) |
 | google-analytics | stdio (Python) | GA4 Data API direct — channel/landing-page performance, generate_lead events | ✅ LIVE (2026-08-21). Own `GA4_REFRESH_TOKEN` (scope `.../auth/analytics`; the google-ads token 403s here). Properties: KTU 453600017, BTU 487870392. **Filter by `hostName`** — the two properties are cross-contaminated |
 | gtm | stdio (Python) | Tag Manager API v2 — tags, triggers, variables, stage container versions (KTU GTM-KLT6WSH4, BTU GTM-PK4HC6SR) | Own `GTM_REFRESH_TOKEN` (scopes `tagmanager.readonly` + `edit.containers` + `edit.containerversions`, NO publish — humans publish in the GTM UI; current token lacks `edit.containerversions`, so `create_container_version` 403s until re-minted). Client id/secret fall back to `GOOGLE_ADS_CLIENT_ID/SECRET` |
@@ -70,7 +70,7 @@ mcp-servers/
 ├── bootstrap.sh          # registers every server below from env-vars
 ├── .env.example          # the full env-var list (names only, no secrets)
 ├── serviceminder/        server.py  # 29 tools (multi-location: KTU + BTU)
-├── google-ads/           server.py  # 11 tools (KTU 2579406186, BTU 4477036900)
+├── google-ads/           server.py  # 12 tools (KTU 2579406186, BTU 4477036900)
 ├── gmb/                  server.py  # 12 tools
 ├── closebot/             server.py  # 15 tools
 ├── companycam/           server.py  # 12 tools
