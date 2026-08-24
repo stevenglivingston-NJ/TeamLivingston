@@ -282,7 +282,7 @@ INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES
 - `owner`: say plainly whether the next action is Claude's (code, SQL, spec) or Steven's (console, secrets, vendor).
 
 ## Rules
-- Never include full customer phone numbers or emails in callouts — first name + last initial + last-4 of phone is enough.
+- **Include the customer's FULL name and FULL phone number** in callouts, plus email where known. (Owner directive, 2026-08-03, reaffirmed 2026-08-24 — this supersedes the earlier masking rule.) The intranet is an internal, authenticated dashboard and the team has to act on these directly; a masked "…7729" forces someone to go re-look up the number before they can call, which is exactly the friction that lets a waiting customer sit another day. Do not abbreviate names or mask digits.
 - Never paste credentials or API keys.
 - Be precise: each callout must say WHO is waiting, HOW LONG, and WHAT to do next.
 - If a tool/connector is unavailable, note it in a single `info` callout ("Goldeneye ran with X unavailable") rather than failing silently.
