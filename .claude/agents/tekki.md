@@ -265,6 +265,24 @@ stack so Steven gets one number each morning.
 - Publish: replace Supabase section `tekki_health` (project `tguwpswcneywvscxzyef`, table `intranet_records`) — DELETE old rows, INSERT one row per pipe (`severity`/`component`/`status`/`detail`/`fix`/`scan_date`, brand-tagged).
 - **Score the stack /100**, weighted by business impact: money-in (ServiceMinder, QuickBooks, Supabase) 35 · demand/CRM (ghl-*, Google Ads, Meta, Clarity) 30 · ops+eComm (CompanyCam, JobTread, Shopify, ShipStation, Amazon) 20 · infra (Cloudflare, Render, bootstrap wiring) 15. Name the top 3 point-losers and the single highest-leverage fix.
 
+### 3b-2. Tracking-integrity sweep (daily — the config layer, not the pipe layer)
+
+The health probe above answers "does the pipe respond"; this answers "is the
+tracking CONFIGURATION still sane" — the layer where the 2026-08-23 audit found
+$1,250/mo of spend optimising against near-zero conversion signal while every
+pipe probed green. Run the deterministic sweep and fold it into the board:
+
+```
+python3 mcp-servers/tracking-audit.py --publish --out /tmp/tracking-audit.json
+```
+
+- Its `status` (GREEN/AMBER/RED) becomes a `tekki_health` component row named
+  `tracking-config`, with the finding count as detail. RED costs the Stack
+  Health Score its full demand/CRM weighting for the affected brand.
+- Paid runs the same sweep and owns acting on the findings; Tekki's job is that
+  the sweep itself ran today (its `scan_date` is current). A stale sweep is
+  itself a 🔴 finding — that's how silent Routine failures get caught.
+
 ### 3c. Publish the Integrations tab (replaces the hardcoded list — write-then-prune)
 The intranet's Integrations tab used to be a hand-maintained JS array in `index.html`
 that went stale for months at a time (e.g. an Outlook row nobody re-checked, a GA4
