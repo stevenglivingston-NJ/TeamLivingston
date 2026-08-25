@@ -337,6 +337,36 @@ anything personal or financial → owner-only sections**, sourced from the
 personal drive via Zapier. Financial doc links live in `docs_finance`, which is
 RLS-locked to `is_admin()`.
 
+## ServiceMinder notes — where they actually live (canonical; verified 2026-08-25)
+
+Every agent that reports a cancellation reason, a call summary, or "what the customer
+said" reads this. **There are three separate places notes live, none of them reliably
+populated, so check all three and merge.** Earlier specs asserted one source was "the
+truth" and another was "always empty" — both claims were over-generalised from single
+samples and were wrong. Report which source each note came from.
+
+| # | Source | How to read it | Reality check |
+|---|---|---|---|
+| 1 | **Appointment free-text** | `find_appointment(location, appointment_id)` → `Notes`, `UpdateNote` | Where a rep's "family situation, must reschedule" lands. **Was null** on the live cancellation checked 2026-08-25. |
+| 2 | **Contact notes** | `find_contact(location, id_search=<ContactId>)` → `Matches[0].Notes[]` — an **array** of `{Id, Title, Body}` | Titles seen live: `Perceptionist Call`, `Form`, hand-written. **Held the real content** on that same cancellation. Read every element; prefer the highest `Id`. |
+| 3 | **Cancel-reason picklist** | `CancelReasonId` on the appointment | Populated on **8 of 57** cancelled KTU appointments over 7 weeks (~14%). Observed ids `3523`, `4279`. |
+
+**Traps that produce false "no reason" reports:**
+- `query_appointments` returns `CancelReasonId` at the **top level** of each appointment.
+  `find_appointment` returns **`CancelReasonId: 0` at the top level** and the real value
+  nested in **`Slots[].CancelReasonId`**. Read the Slot.
+- `query_appointments` returns **`Contact: null`** unless you pass `include_contact=true`
+  — so the contact's notes are never in a bulk pull. You must resolve the contact
+  separately by `ContactId`.
+- **`Status` is numeric**: `1` = scheduled, `3` = completed, `4` = cancelled.
+- **There is no cancel-reason lookup endpoint.** Probed `cancelreasons`,
+  `settings/cancelreasons`, `lookups/cancelreasons`, `appointmentcancelreasons` — all
+  return HTTP 200 with an **empty body**, which is how this API signals "no such
+  endpoint" (it does not 404). Get the id→label map from the cancellation **download**
+  (which carries reason text) or the SM UI; until then pass the id through rather than
+  inventing a label.
+- Never conclude "no notes" from one source. `no_reason_logged` requires all three empty.
+
 ## Environment Requirements
 
 - Python 3.x with pip
