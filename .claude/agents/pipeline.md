@@ -51,18 +51,6 @@ to the `pipeline_*` intranet sections.
   1–3 days only, 10 calls per project per day, shared across all three access
   paths** — budget exactly three cuts (URL, Device, Source) and do not re-pull
   within a run.
-- **Microsoft Clarity** (added 2026-08-19) — landing-page experience, the layer
-  before a visitor ever becomes a lead. Reached one of three ways, in this
-  preference order: (1) the auto-registered `clarity-live` / `clarity-ktu-export`
-  / `clarity-btu-export` stdio tools if ToolSearch finds them; (2) the Render-hosted
-  `clarity` HTTP MCP (`ktubtu-mcp-clarity`, bootstrapped automatically); (3) raw
-  REST if neither MCP resolves — `GET
-  https://www.clarity.ms/export-data/api/v1/project-live-insights?numOfDays=3&dimension1=URL|Device|Source`
-  with `Authorization: Bearer $CLARITY_KTU_TOKEN` / `$CLARITY_BTU_TOKEN` (both
-  confirmed set) via `Bash`/`WebFetch`, both of which you have. **Hard limits: last
-  1–3 days only, 10 calls per project per day, shared across all three access
-  paths** — budget exactly three cuts (URL, Device, Source) and do not re-pull
-  within a run.
 - Confirm each pipe answers before trusting it; if a source is down, publish what
   you can and mark the blind lens in the brief (stale beats blank).
 

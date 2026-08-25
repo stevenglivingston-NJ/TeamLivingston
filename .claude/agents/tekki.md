@@ -157,17 +157,41 @@ No wall of jargon. If a section would only make sense to a developer, rewrite it
 
 **System-specific gotchas the SOW MUST spell out (in the Dependencies + Access
 sections) when you write/refresh these:**
-- **HighLevel** — there are TWO non-interchangeable access paths, and confusing
-  them is the top cause of "HighLevel connection broken" and of agents going
-  blind on KTU. State plainly: (1) the claude.ai **Highlevel OAuth connector is
-  BTU-only** (locked to sub-account `0uWA8M5BzHrrcJftuaDe`, `isAgencySubAccount:
-  false` — it cannot reach KTU); (2) **KTU HighLevel works only via the `ghl-ktu`
-  PIT server**, which needs env var **`GHL_PIT_KTU`** set (BTU's own server is
-  `ghl-btu` / **`GHL_PIT_BTU`**). Dependency line: "if `GHL_PIT_KTU` is unset,
-  bootstrap skips `ghl-ktu` and Goldeneye/Paid/Foreman silently miss all KTU
-  SMS/email/calls while BTU still looks fine." Include the 1-line PIT health check
-  (curl `/locations/{id}` with the token → 200 = token good, wiring issue; 401 =
-  regenerate the PIT). Name the env vars, never their values.
+- **HighLevel** — access flipped primary/fallback on 2026-08-17; make sure the
+  SOW reflects the current direction, not the old one. (1) **The claude.ai OAuth
+  connector — listed as `High Level`** is now primary and **verified
+  agency-scoped**: `list_locations` returns both KTU (`nHLCxHPidnhV1NFzRtZZ`)
+  and BTU (`0uWA8M5BzHrrcJftuaDe`); `execute_operation` reads against both
+  returned correct data, including contact totals (18,488 KTU / 17,586 BTU)
+  matching the PIT servers' counts exactly. It's one connector with generic
+  `search_operations`/`describe_operation`/`execute_operation` tools — pass
+  `locationId` per call rather than expecting per-location tool names. One
+  open item, not yet a red flag: confirm it's enabled for **scheduled Routine**
+  fires specifically (same account-level-connector caveat that already applies
+  to Gmail/Drive), not just interactive sessions — score it 🟡 until an actual
+  Routine-fired agent has called it successfully, then 🟢.
+  (2) **The `ghl-ktu` / `ghl-btu` PIT servers are now the fallback** — still
+  wired in `bootstrap.sh` via `GHL_PIT_KTU`/`GHL_PIT_BTU`/`GHL_PIT_AGENCY`, but
+  those env vars are **currently unset** (removed intentionally once OAuth
+  verified working), so bootstrap skips both servers on a fresh session. That's
+  expected, not broken — don't flag it as an incident unless the OAuth
+  connector's Routine coverage (see above) turns out not to hold, at which
+  point restoring `GHL_PIT_AGENCY` is the fastest recovery. Include the 1-line
+  PIT health check for when it's back in use (curl `/locations/{id}` with the
+  token → 200 = token good; 401 = regenerate). Name the env vars, never their
+  values.
+  Calendar coverage note, RESOLVED via the OAuth connector: the old PIT servers
+  had no list-calendars tool, but `High Level`'s `search_operations` finds
+  `get-calendars` (list) and `get-calendar-events` (by ID) — use those instead
+  of hand-maintained IDs when possible. The consultation calendar IDs in
+  CLAUDE.md were corrected 2026-08-17: KTU `IezEuyUywqr1OL7tjHEk` (verified, 57
+  events) was always right, but the BTU ID Steven originally gave
+  (`15oJxXW4lJZpbYyk6Zca`) turned out to be a **retired, `isActive: false`**
+  calendar — the real one is `k6bokOz0oIicKYu93zhW` (155 events for 2026).
+  **Lesson for any future calendar ID, from Steven or the GHL UI:** check
+  `isActive` via `get-calendars` before trusting an ID that comes back empty —
+  don't assume the pipe is broken; check whether the calendar itself is a
+  fossil first. Appointment truth stays with ServiceMinder.
 
 ### 2a. Internal automations are systems too — keep their SOWs current
 The business now runs on our own automations as much as on vendors, and each

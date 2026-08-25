@@ -76,8 +76,10 @@ Run **every** report through these seven dimensions. Score each 🟢/🟡/🔴 a
   (`SM_KEY_KTU`, `SM_KEY_BTU`; POST `serviceminder.io/api/<endpoint>` with `ApiKey`
   in the JSON body). **Source of truth for money in.**
 - **CRM leads / opportunities / conversations / attribution** → HighLevel via
-  `mcp__ghl-ktu__*` (KTU) + `mcp__ghl-btu__*` (BTU); `mcp__Highlevel__*`
-  connector = BTU as well.
+  `mcp__High_Level__*` (OAuth connector, agency-scoped, verified 2026-08-17):
+  `search_operations`/`execute_operation` with `locationId` per call — KTU
+  `nHLCxHPidnhV1NFzRtZZ`, BTU `0uWA8M5BzHrrcJftuaDe`. Fallback only, currently
+  unregistered: `mcp__ghl-ktu__*`/`mcp__ghl-btu__*`.
 - **Paid search / LSA** → Google Ads MCP (KTU acct 2579406186, BTU acct 4477036900).
 - **Paid social / organic social** → Meta Ads MCP (`Facebook_Ads`).
 - **SEO** → Ahrefs + Semrush (claude.ai connectors).
@@ -93,10 +95,11 @@ Run **every** report through these seven dimensions. Score each 🟢/🟡/🔴 a
 - **Fallback policy** → whenever a direct MCP is absent or failing, check the
   Zapier route (`list_enabled_zapier_actions` / `discover_zapier_actions`) before
   recording a breakage: Google Ads, GA4, GMB, Bing, Facebook Lead Ads, QuickBooks,
-  CompanyCam, and JobTread all have Zapier paths (HighLevel is direct-MCP only —
-  Zapier LeadConnector is write-oriented and can't do reads). A
-  source is only "broken" if the direct MCP AND the Zapier route both fail. (No
-  Zapier app for ServiceMinder or Clarity.)
+  CompanyCam, and JobTread all have Zapier paths. HighLevel has NO Zapier read
+  fallback (LeadConnector is write-oriented) — its chain is `mcp__High_Level__*`
+  (OAuth, primary) → `mcp__ghl-ktu__*`/`mcp__ghl-btu__*` (PIT, currently
+  unregistered) → broken. A source is only "broken" if every route in its
+  fallback chain fails. (No Zapier app for ServiceMinder or Clarity.)
 - **Project photos / job progress** → CompanyCam (KTU). **Project management /
   estimates** → JobTread (org 22PB4XPxGZHK).
 - **Jatalia eCommerce** → Shopify (Earthwise Seed, Shopify Plus), ShipStation,
@@ -123,14 +126,18 @@ call (e.g. HighLevel `locations_get-location`, Shopify `get-shop-info`, JobTread
   integration-registry entry still citing Windsor is stale; the channels moved to
   Zapier. Amazon Ads lost its data path in the retirement — flag it wherever it
   appears until re-sourced.
-- 🟢 **HighLevel label swap RESOLVED — both brands live** (2026-07-03). The old
-  swapped `Highlevel_KTU`/`High_Level_BTU` pair is gone. Now: `mcp__ghl-ktu__*` =
-  Kitchen Tune-Up (`nHLCxHPidnhV1NFzRtZZ`), `mcp__ghl-btu__*` = Bath Tune-Up
-  (`0uWA8M5BzHrrcJftuaDe`) — PIT-scoped HTTP MCP servers registered by
-  `mcp-servers/bootstrap.sh` (`GHL_PIT_KTU`/`GHL_PIT_BTU`); the claude.ai
-  connector `mcp__Highlevel__*` also serves BTU. Still verify by returned
-  location name on first call. Any report row citing the old connector names is
-  a lineage defect.
+- 🟢 **HighLevel now OAuth-primary, agency-scoped** (flipped 2026-08-17 — an
+  earlier state of this file described `mcp__ghl-ktu__*`/`mcp__ghl-btu__*` PIT
+  servers as primary and the claude.ai connector as BTU-only; both parts of that
+  are now superseded). Current state: `mcp__High_Level__*` reaches **both**
+  locations (`nHLCxHPidnhV1NFzRtZZ` KTU, `0uWA8M5BzHrrcJftuaDe` BTU) via
+  `search_operations`/`execute_operation` with `locationId` per call — verified
+  by cross-checking contact totals (18,488 KTU / 17,586 BTU) against the old PIT
+  servers, exact match. The PIT servers are now fallback-only and currently
+  unregistered (env vars removed once OAuth verified). Still verify the served
+  location by name (`get-location`) on first call. Any report row citing
+  `mcp__ghl-ktu__*`/`mcp__ghl-btu__*` as the primary/only path, or the
+  claude.ai connector as BTU-only, is a lineage defect — flag it.
 - 🟡 **Missing custom MCP servers in cloud** — ServiceMinder, Google Ads, GMB,
   CompanyCam, Closebot, ShipStation, Amazon SP-API, and Clarity (the `/root/code`
   Python stdio servers) are not loaded in cloud sessions. Their metrics can only be

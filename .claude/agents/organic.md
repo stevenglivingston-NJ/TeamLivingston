@@ -422,8 +422,12 @@ Every run, in addition to the numbered picture below:
    confirmed causal flag, not two separate footnotes; say so together.
 9. **Social — organic content performance & boost candidates.** Using GMB posts
    (views/clicks — you already have GMB access) and, when authorized, Ahrefs
-   `social-media-*` or HighLevel's social-posting stats
-   (`social-media-posting_get-posts` / `get-social-media-statistics`): identify,
+   `social-media-*` or HighLevel's social-posting data via `mcp__High_Level__*`
+   (`execute_operation` with operationId `get-posts` for the post list and
+   `get-account` for connected accounts — search_operations for a stats/analytics
+   operation each run rather than assuming one exists; none was confirmed as of
+   2026-08-17, so say so plainly if the search turns up nothing rather than
+   inventing engagement numbers): identify,
    per platform (Instagram, Facebook, GMB posts, whatever's live), which **organic**
    posts are over-performing — engagement RATE (normalized by reach/followers,
    not raw likes) meaningfully above that platform's recent average. Name the
@@ -436,7 +440,8 @@ Every run, in addition to the numbered picture below:
 10. **Conversion tie-in** — close the loop from §7's funnel trace: for the same
     money pages, pull how much of that organic traffic actually becomes a lead
     (HighLevel opportunities tagged with an organic/SEO source, same attribution
-    chain Paid uses for paid — `mcp__ghl-ktu__*`/`mcp__ghl-btu__*`). A page with
+    chain Paid uses for paid — `mcp__High_Level__*`, `execute_operation` with
+    operationId `search-opportunities-advanced` and `locationId` per brand). A page with
     great rank + traffic + a clean Clarity read but a weak lead rate points at the
     offer/CTA itself, not technical friction — say which it is.
 
