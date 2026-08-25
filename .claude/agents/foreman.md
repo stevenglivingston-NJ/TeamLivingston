@@ -118,6 +118,25 @@ active job, before judging pace or phase:
    report the JobTread divergence as a `foreman_briefing` row (§2b's sync-integrity
    classes a–d below); never silently average the two or prefer JobTread.
 
+4. **NEVER leave `install_date` silently blank — this rule exists because the
+   board is currently failing it.** Audited 2026-08-21: `install_date` was empty
+   on **29 of 38** board rows, including jobs with `install_started: true` and
+   `pay_pct` of 86–95% — i.e. jobs demonstrably in production with no install
+   date recorded. `est_completion` was blank on the same 29. That is not a
+   plausible real-world state; it means steps 1–2 returned nothing and the run
+   moved on without saying so.
+   Therefore, for every job where you cannot resolve a date:
+   - Write **why** into `install_date_status` on the board row, using exactly one
+     of: `no_sm_appointment` · `no_jobtread_window` · `neither_source` ·
+     `lookup_failed` (the call itself errored/timed out — say which source).
+   - Raise a `foreman_briefing` row at severity `urgent` for any job that is
+     `install_started: true` **or** `pay_pct >= 75` yet has no `install_date`.
+     A job whose install draw is collected but which has no scheduled install is
+     an operational problem, not a data-entry footnote.
+   - The intranet now renders a blank `install_date` as **"⚠ not set"** on
+     exactly those jobs, so the gap is visible to Steven either way. Fill the
+     field or explain it; do not let it read as "pending" when the job is live.
+
 Classify each job by the resulting `install_date` before judging pace:
 - **Install date in the past** → job should be in/through production; measure
   production pace from the install start and infer field phase from photos.
@@ -544,8 +563,34 @@ collapse them into one number:
   `stevenglivingston@gmail.com` inbox). Read firstgentalent through Zapier —
   `mcp__Zapier__execute_zapier_read_action` (`selected_api: "GoogleMailV2CLIAPI"`,
   `tool_name: "gmail_find_email"`, `action: "message"`) — and also check the
-  personal inbox via `mcp__Gmail__search_threads` for co-addressed copies. Same
-  query on both:
+  personal inbox via `mcp__Gmail__search_threads` for co-addressed copies.
+
+  ⚠️ **`gmail_find_email` returns ONE best-match email, not a list** (verified
+  2026-08-21). That is almost certainly why `design_packet` and `design_review`
+  are blank on **37 of 38** board rows while Ben's emails are demonstrably
+  arriving — a single-result search cannot enumerate per-project materials lists.
+  **To enumerate, use `tool_name: "gmail_new_email_matching_search"` (action
+  `search`)**, which returns multiple matches; keep `gmail_find_email` only for
+  fetching one specific known thread. Check how many rows came back before
+  concluding "no materials list for project X" — if you only ever get one, report
+  that as a data-source limitation rather than writing 37 blank `design_packet`
+  fields, which read as "nothing has been sent" and are actively misleading.
+
+  **Mechanics that bite (all verified 2026-08-21):**
+  - The required argument is **`query`**, not `search_string` — the wrong key
+    fails with `Missing argument values for required properties: query`.
+  - Broad queries **exceed the 60s MCP timeout**. Scope every search with
+    `newer_than:45d` or tighter and page, rather than asking for everything.
+  - Results are large (a single 45-day sender query returned ~200KB). Extract
+    subject/date/attachment-name and move on; don't try to hold whole bodies.
+  - **Pass `connection_id` explicitly** rather than relying on the default:
+    `firstgentalent@gmail.com` = `0237bf86-3523-8246-9e93-8b9d0ca71263` ·
+    `ktubtubilling@gmail.com` = `020673a4-fcb8-8499-8027-515ac259c9b4`.
+    Both were verified live and non-stale on 2026-08-21, so "I couldn't reach the
+    inbox" is not an acceptable explanation for a blank field — say what the
+    search actually returned.
+
+  Same query on both:
   `(from:byabra@kitchentuneup.com OR to:firstgentalent@gmail.com) (materials OR "design" OR CAD OR "selection" OR "design brief")`.
   Pull the body **and attachments** — Ben's "Materials UPDATE" emails are often a
   bare signature block with the real content in an attached `*-Materials.xlsx`;
@@ -703,7 +748,20 @@ section — stale beats blank):
   into `stage`, so the intranet can show it as a dedicated column. Include the
   date of the photos it's based on. If a job has install_started=true but no
   CompanyCam photos in the last 5 days, say so plainly here — that's itself the
-  status ("No coverage in 5 days — confirm crew is on site")),
+  status ("No coverage in 5 days — confirm crew is on site")).
+  ⚠️ **CONTRACT VIOLATION — this field is currently null on all 38 board rows**
+  (audited 2026-08-21) despite being required here since it shipped. The Projects
+  tab's "Status Update" column read it directly and therefore rendered blank for
+  every project. The intranet has since been changed to fall back to `pm_comment`
+  → `rag_reason` → `action`, so the column is no longer empty — but that is a
+  workaround, not a fix. **Write this field.** If the CompanyCam pull genuinely
+  returns nothing for a job, write that sentence into the field (as the paragraph
+  above already instructs) rather than leaving it null: "no photos" is a status,
+  null is a silent failure. The same audit found `days_in_phase`,
+  `goal_assessment`, `goal_note`, `scope_budget_review` and `timeline_goal` null
+  on all 38 rows, and `design_packet`/`design_review` null on 37 — treat every
+  one of those as the same class of defect and either populate it or write an
+  explicit reason,
   timeline_status
   (within_timeline|at_risk|overrun, §2b — only for install_started jobs),
   timeline_goal (human-entered, CARRY FORWARD — see below), goal_assessment
@@ -736,7 +794,28 @@ section — stale beats blank):
   merge by project+milestone, never blindly overwrite a human date edit
   (same discipline as `btu_ordering`'s `status`). Sort by `seq` (sort_order).
 - `foreman_vendor` — one row per open order: `{project, vendor, item, status, eta,
-  last_update, flag, scan_date}`.
+  last_update, flag, po_ref, amount, health, age_days, order_date, scan_date}`.
+
+  **Coverage and quality rules — the 2026-08-21 audit found this section thin and
+  duplicated, and the Projects tab now renders it per-project, so gaps show:**
+  - **Cover every project that should have materials on order**, not just the ones
+    with a problem. The audit found **24 rows spanning ~10 of 38 active projects**;
+    the other 28 render as "none tracked." A job past selections with no vendor row
+    is either a real ordering gap (worth flagging) or a coverage gap in this
+    section (worth fixing) — decide which and say so, rather than emitting nothing.
+    Source these from the **materials selection list** (Ben's `*-Materials.xlsx`,
+    §4b) joined to the vendor invoices in `ktubtubilling@gmail.com` — the selection
+    list is what says a vendor *should* have an order; the invoice says they do.
+  - **`eta` is null on 100% of rows.** It is the field the team most needs (when
+    does the material land?). Populate it from the vendor confirmation email where
+    stated, or write `unconfirmed` and flag orders with no ETA past `age_days > 14`.
+  - **Deduplicate before writing.** The audit found the same PO emitted twice
+    (identical vendor+item+po_ref on one project). Dedupe on
+    `project|vendor|item|po_ref`; the intranet now de-dupes defensively on the same
+    key, but it should not have to.
+  - A `flag` should name the blocker and its consequence, as the current Hardware
+    Resources rows correctly do (`account FIR112 on CREDIT HOLD … new orders will
+    not ship until the balance clears`) — that is the standard to match.
 - `foreman_gates` — one row per job with gate exposure: `{project, gate_status,
   missing, owner, age, scan_date}`.
 - `client_status` — the intranet Clients board; one row per active/recent client
