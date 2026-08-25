@@ -38,6 +38,42 @@ budgets, or campaigns yourself — Steven or the team executes.
 Work brand-by-brand (KTU, BTU), then roll up. Compare **yesterday** and
 **trailing 7 days** vs the prior period and the trailing 30-day baseline.
 
+### 0. Tracking-health sweep (run FIRST, before any metric is trusted)
+
+```
+python3 mcp-servers/tracking-audit.py --publish --out /tmp/tracking-audit.json
+```
+
+The deterministic half of this brief's integrity check (built after the
+2026-08-23 audit found ~$1,250/mo optimising against near-zero conversion
+signal). It live-verifies, per brand: GTM conversion tags unpaused and their
+triggers intact; the live pages loading the RIGHT brand's container and no
+foreign/unknown tracking ids; GA4 cross-brand hostname contamination and
+unattributed (hostname-less) generate_lead events; Google Ads primary-conversion
+volume, goal biddability, conversion-id drift, and spend-with-zero-conversions
+campaigns; HighLevel PIT validity and legacy trackers still pasted in funnel
+code; Clarity recording sessions. Output is RAG-graded JSON.
+
+Rules:
+- **RED** → the finding leads the brief and goes in the Slack alert; every
+  metric downstream of a broken pipe gets an explicit "tracking-degraded" caveat
+  rather than being reported as a real decline.
+- **AMBER** → findings listed in the brief's issues section.
+- An empty findings list next to a non-empty `degradations` list is
+  **unverified, not clean** — say which pipe couldn't be checked.
+- `--publish` does the intranet write and the Slack alert itself: it writes
+  every finding to the `tracking_health` section (write-then-prune by
+  `scan_date`, 14 days of history) and queues CRITICAL findings only to the
+  Slack alerts channel. You do NOT need to publish or alert by hand — but DO
+  read the JSON and lead the brief with anything RED.
+- It also covers campaign drift now: ads pointing off the canonical landing
+  host, campaigns losing impression share to budget, POOR/AVERAGE RSAs, and
+  zero-conversion search-term spend. Never auto-negate a search term from
+  that list — a zero can mean broken tracking rather than bad traffic.
+- Fixes: GTM workspace edits may be staged via the `gtm` MCP server (a human
+  publishes). Do NOT mutate Google Ads, HighLevel, or Meta from the scheduled
+  run — surface the finding with the exact fix instead.
+
 ### 1. Spend & performance sweep
 
 **Source-of-truth hierarchy for spend — direct platform first, bank/card only to
@@ -64,12 +100,25 @@ fill the gaps:**
   `query_negative_keywords` (coverage), `query_geo_performance` (town-level ROI),
   `query_lsa_account` + `query_lsa_leads` (Local Services leads and lead quality —
   requires `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (MCC id) in env; if unset both calls
-  error — flag it as an environment gap, don't silently skip LSA). `query_lsa_leads`
-  returns a `status`: `"ok"` means the lead rows are real. `"no_data"` means the
-  endpoint returned nothing while the account report still shows charged leads or
-  calls — read the `note` and `account_report_cross_check`, report LSA lead quality
-  as UNAVAILABLE, and never write "0 LSA leads" off a `no_data` result. Account-level
-  LSA totals from `query_lsa_account` stay trustworthy either way.
+  error — flag it as an environment gap, don't silently skip LSA).
+  `query_lsa_leads` reads the Google Ads `local_services_lead` resource (fixed
+  2026-08-22 — it previously used the Local Services REST `detailedLeadReports`
+  endpoint, which returns zero rows for these accounts; lead detail was reported
+  UNAVAILABLE for months while it was readable all along). It returns per-lead
+  type, status, category, charge flag, credit/dispute state and consumer phone,
+  plus `by_type`/`by_status`/`by_category` tallies. **Consumer name is not
+  available** from this resource — don't promise it in a brief.
+  `status` `"ok"` means the rows are real, including a legitimately empty window
+  when `total_leads_in_account_history` is non-zero. `"no_data"` now means the
+  account has NO lead history at all while the account report still shows charged
+  leads or calls — read the `note`, report lead quality as UNAVAILABLE, and never
+  write "0 LSA leads" off it. Account-level totals from `query_lsa_account` stay
+  trustworthy either way; its `days` window is honored as of the same fix (it was
+  silently pinned to 30 days before, so any past "LSA last 7 days" figure was
+  really 30-day data).
+  **`impressionsLastTwoDays` is not a serving signal** — it reads 0 on accounts
+  that demonstrably served and took leads in the window. Judge serving by the
+  LOCAL_SERVICES campaign's impressions from `query_campaigns`.
 - **Direct GAQL escape hatch — for what the MCP does not expose.** The local
   google-ads MCP is campaign/keyword/search-term level. Several things you are asked
   to report are only reachable over raw GAQL, so use it rather than declaring them
@@ -605,8 +654,30 @@ assets (`asset.type='CALL'`) and the site, and flag any drift:
 | (973) 521-1182 | KTU — legacy, **goes to IVR** | Remove from paid paths |
 | (973) 566-5882 / (973) 528-8654 | KTU tracking lines | Call center |
 | (973) 798-9756 | BTU primary (call-conversion tracked) | Call center |
-| (973) 521-0688 | BTU secondary — removed from public pages | Fallback only |
+| (973) 521-0688 | BTU — **published on BTU's Google profile**; re-pointed to the call center, no IVR (Steven, week of 2026-08-17) | Call center. **Verify call-conversion tracking follows it** — it was previously the untracked fallback |
 | (973) 381-2877 | Stray KTU Google call asset | Confirm or remove |
+
+**Which surface carries which number — verified 2026-08-22.** These are separate
+systems with separate phone settings. Do not infer one from another; an earlier
+audit wrongly read a GBP phone as if it were the LSA phone.
+
+| Surface | KTU | BTU | State |
+|---|---|---|---|
+| **LSA profile** | (973) 521-8442 | (973) 798-9756 | ✅ correct (owner-confirmed) |
+| **Google Ads call assets** (account-level) | (973) 521-8442 ENABLED, 521-1182 PAUSED | (973) 798-9756 ENABLED | ✅ correct |
+| **Google Business Profile** | (973) 521-1182 | (973) 521-0688 | 🔴 **wrong** |
+| **Franchise site** `/bloomfield-nj` | (973) 521-1182 ×4 `tel:` | (973) 521-0688 ×4 `tel:` | 🔴 **wrong** |
+| **ktubloomfield.com** (own domain) | (973) 521-8442 | — | ✅ correct |
+
+**The LSA phone is NOT readable from any API here.** The Local Services API
+exposes no phone field, so never report an LSA phone from tool output — ask, or
+read the LSA console. `get_location_info` returns the *Business Profile* phone.
+
+**Do not use the LSA answered-call ratio as a routing test.** KTU reads 0 of 2
+answered / responsiveness 0.60 against BTU's 1.00, but KTU's LSA number is
+correct, so that gap is unexplained rather than a routing fault — and 2 calls is
+far too small a sample to conclude from. Treat responsiveness as a metric to
+watch, not as evidence about which number is configured where.
 
 ## Standing context — stop re-discovering these
 

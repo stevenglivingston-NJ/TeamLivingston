@@ -301,16 +301,32 @@ Every run, in addition to the numbered picture below:
    | **Address / NAP** | consistency with §6a citations |
    | **Performance metrics** | calls, direction requests, website clicks, discovery vs direct split — with the day/7d/MTD/YTD/YoY windows |
 
-   **Verified state as of 2026-08-21 — re-check each run and report drift.** These are
-   real, currently-broken items, not hypotheticals:
-   - 🔴 **KTU's profile publishes (973) 521-1182** — the number `paid.md` explicitly
-     flags as *"legacy, goes to IVR — remove from paid paths."* The answered,
-     no-IVR number is **(973) 521-8442**. Every call from KTU's Google listing is
-     currently landing in an IVR.
-   - 🔴 **BTU's profile publishes (973) 521-0688** — documented as *"secondary,
-     removed from public pages, fallback only."* BTU's tracked primary is
-     **(973) 798-9756**, so BTU's local calls are both misrouted and **untracked**,
-     which also means BTU call conversions are missing from every report.
+   **Verified state as of 2026-08-22 — re-check each run and report drift.** Both
+   profiles still publish the same numbers, but their routing has diverged, so the
+   published number alone no longer tells you whether a brand is healthy:
+   - ✅ **BTU — resolved.** BTU's profile publishes **(973) 521-0688**, and Steven
+     confirmed (week of 2026-08-17) that the numbers now route **straight to the
+     call center with no IVR**. The LSA data corroborates it: **2 of 2 calls
+     answered, responsiveness 1.00**. Treat this as fixed unless the answered
+     ratio drops. **Still open on BTU:** that number was previously documented as
+     *untracked*, so confirm call-conversion tracking follows it — answered and
+     tracked are different problems, and an untracked line means BTU's call
+     conversions are missing from every report even while the calls connect.
+   - 🔴 **Both GBP listings publish the wrong number** (verified 2026-08-22):
+     KTU **(973) 521-1182**, BTU **(973) 521-0688**. The correct numbers are KTU
+     **(973) 521-8442** and BTU **(973) 798-9756**. The same two wrong numbers
+     are also hard-coded as `tel:` links (×4 each) on the franchise corporate
+     pages the GBP `websiteUri` points at — so the listing sends people to a page
+     that repeats the error. LSA and Google Ads call assets are both correct;
+     this is a **GBP + franchise-site problem only**.
+   - ⚠️ **`get_location_info` returns the Business Profile phone, NOT the LSA
+     phone.** The Local Services API exposes no phone field at all. An earlier
+     audit conflated the two and wrongly concluded KTU's LSA was misrouted —
+     never report an LSA phone from tool output.
+   - **Do not use the answered-call ratio as a routing test.** KTU reads 0 of 2
+     answered / responsiveness 0.60 vs BTU's 1.00, but KTU's LSA number is
+     correct, so that gap is unexplained rather than a routing fault, and 2 calls
+     is far too small a sample to conclude from.
    - 🟡 **Both websites point at franchise corporate URLs over plain `http://`** —
      KTU `kitchentuneup.com/bloomfield-nj`, BTU `bathtune-up.com/bloomfield-nj` —
      not the local sites (`ktubloomfield.com` / `bathtuneupbloomfield.com`) that ads
@@ -424,6 +440,105 @@ Every run, in addition to the numbered picture below:
     great rank + traffic + a clean Clarity read but a weak lead rate points at the
     offer/CTA itself, not technical friction — say which it is.
 
+11. **Local Services Ads (LSA) — daily, on three horizons.** LSA sits directly
+    above the local pack and its rank is driven by the GMB signals you already
+    own (review count, star rating, and call responsiveness), so you report it
+    even though **Paid owns LSA spend decisions**. You surface and diagnose; Paid
+    acts on budget and bids. Never change an LSA budget, category, or bid.
+
+    Pull with **one call per brand**: `mcp__google-ads__query_lsa_periods`
+    (`location` = `KTU` / `BTU`). It returns week-to-date, month-to-date and
+    year-to-date lead counts, charged counts, spend, phone calls and answered
+    calls, plus a prior-year YTD for the YoY column. Weeks start Monday. Lead
+    counts come from the Google Ads `local_services_lead` resource (full account
+    history, so the windows are real, not a trailing-N-days approximation);
+    spend and call answer-rate come from the LSA account report.
+
+    Read it like this:
+    - **Answer rate is the lead indicator, not a vanity metric.** Google demotes
+      non-responsive advertisers, so a falling answered/calls ratio predicts a
+      lead decline before the lead count moves. Below 80% is `urgent` — say so
+      and name the number.
+    - **Charged vs total leads** is the quality signal. Leads arriving but not
+      being charged usually means they are being declined or disputed.
+    - **Do not read `impressionsLastTwoDays` as a serving signal** — it reads 0
+      on accounts that demonstrably served and took leads in the same window.
+      Judge serving by the `LOCAL_SERVICES` campaign's impressions from
+      `query_campaigns`.
+    - **Honor `coverage_note`** on `prior_year_YTD`. When it is present the
+      account's history does not reach back a full year, so the YoY is partial —
+      say that rather than reporting a hollow decline.
+    - If `query_lsa_periods` errors (missing `GOOGLE_ADS_LOGIN_CUSTOMER_ID`, a
+      dead token), write the `organic_lsa` row anyway with `severity:"warn"` and
+      the error in `detail`. A missing card reads as "nothing to report," which
+      is a lie.
+
+12. **Local-health regression check — run every day, report drift only.** The
+    2026-08-22 audit fixed a long list of profile faults. Your job now is to make
+    sure none of them silently come back, and to keep the map-pack picture current.
+    Compare today's pull against these known-good values and raise a `local` row
+    for anything that has moved:
+
+    | Check | Known-good (2026-08-22) | Raise if |
+    |---|---|---|
+    | KTU phone | (973) 521-8442 | anything else |
+    | BTU phone | (973) 798-9756 | anything else |
+    | KTU website | ktubloomfield.com, HTTPS | franchise URL returns, or `http://` |
+    | BTU website | bathtuneupbloomfield.com, HTTPS | same |
+    | UTM on both website fields | `utm_source=google&utm_medium=organic&utm_campaign=gbp` | missing — GBP clicks fall into Direct and the pack loses attribution |
+    | Weekend hours | real hours or Closed | `00:00–24:00` returns on Sat/Sun — LSA then buys calls nobody staffs |
+    | BTU categories | >1 | back to 1 (single-category = the cap on BTU's whole LSA reach) |
+    | KTU structured services | >0 | 0 of 103 again |
+    | Unanswered reviews | 0 | any, and `urgent` if ≤3★ |
+    | LSA insurance / license | all PASSED | any FAILED/CANCELLED, **or expiry <60 days** |
+
+    **The insurance rule is not optional.** A lapsed policy silently suspended KTU's
+    LSA for 16 days (2026-07-25 → 08-09) and cost roughly a month of leads on a
+    $5,488/week account. Query `local_services_verification_artifact` daily; a
+    PASSED artifact inside 60 days of expiry is a `warn`, inside 30 days `urgent`.
+
+13. **Call-path health — the leading indicator.** From `query_lsa_periods`, watch
+    `connected_calls / phone_calls` **and** pull recent
+    `local_services_lead_conversation` rows for `phone_call_details.call_duration_millis`.
+    **A run of 0-second calls means the phone path is broken, not that calls went
+    unanswered** — that exact signature appeared on 2026-07-21 and went unnoticed
+    for a month while the ad served normally. Raise `urgent` on: two or more
+    consecutive 0-second calls, or any 7-day window with clicks but zero
+    PHONE_CALL conversations.
+
+14. **Map pack & competitive position.** Pack rank is proximity × relevance ×
+    prominence. Proximity is fixed, so track the two you can move:
+    - **Relevance** — from `get_search_keywords`, split branded vs unbranded
+      impressions. On 2026-08-22 KTU was almost entirely branded (`kitchen tune up`
+      196, every generic query <15), which is the real reason it is absent from
+      unbranded packs. Report the branded share and its trend; a rising unbranded
+      share is the win condition for the category/service work.
+    - **Prominence** — review count and 90-day velocity against the field. Known
+      competitor positions: **Magnolia Home Remodeling** ~509 reviews / 4.9 (the
+      prominence leader, with dedicated Bloomfield + Montclair pages), **Monk's**
+      ~285 / 4.9, **Mudosi** (Bloomfield showroom, 5.0), **UNO Group** ~91 / 4.9;
+      **Kitchen Magic / TJ's / Strive** own the "cabinet refacing Essex County"
+      organic results, and **Bath Fitter / West Shore Home** own tub-to-shower.
+      KTU sits at 59/4.9 and BTU at 18/4.8. At 2–3 reviews per 90 days the gap
+      widens every month — say so plainly when velocity is under ~4/month.
+    - Flag any BTU surfacing query for a town outside its service area (Wayne NJ
+      was 5 of its top queries on 2026-08-22).
+
+15. **NAP consistency across the citation network.** Yelp, Houzz, Angi,
+    HomeAdvisor, BBB, Facebook, Nextdoor, Apple Maps and Bing Places each hold
+    their own copy of name/address/phone. Mismatches suppress pack rank *and*
+    misroute callers. You cannot read most of these directly — surface it as a
+    standing `gap` row with the last-verified date rather than pretending it is
+    checked.
+
+16. **Clarity scope hygiene before using Clarity at all.** On 2026-08-22 the KTU
+    Clarity project was 83% page-builder traffic — 1,944 of 2,340 sessions
+    referred from `leadgen-vibe-ai-builder.leadconnectorhq.com`, top pages all
+    `vibepreview.com`, 92% desktop / 86% macOS. **Check the referrer and device mix
+    before drawing any landing-page conclusion.** If preview/builder domains lead
+    the referrers, report Clarity as unusable for that brand that day rather than
+    analysing noise.
+
 ## Output — seed the intranet (section `organic_report`)
 
 Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`,
@@ -480,6 +595,34 @@ Finish with a one-screen brief as your final message:
                      the unreconciled organic-share question — or "none new">
 🚦 Sources: <live/degraded — call out if Clarity's shared daily quota was already spent by Paid>
 ```
+
+### Also seed the LSA board (section `organic_lsa`)
+
+One row **per brand** (KTU, BTU), same write-then-prune-by-`scan_date` discipline.
+The intranet renders these as the "Local Services Ads — week / month / year to
+date" card on the Paid & Organic tab, directly under your findings.
+
+```sql
+INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES
+('organic_lsa','KTU',1,'{"severity":"urgent|warn|info","headline":"one-line read, e.g. lead flow stalled - 0 leads WTD","detail":"what changed and the single action to take","account":{"rating":4.9,"reviews":59,"weekly_budget":5488,"responsiveness":0.6},"periods":{"WTD":{"start":"YYYY-MM-DD","end":"YYYY-MM-DD","leads":0,"charged":0,"cost":0,"phone_calls":0,"connected_calls":0},"MTD":{},"YTD":{},"prior_year_YTD":{"leads":0,"charged":0,"coverage_note":null}},"scan_date":"YYYY-MM-DD"}'::jsonb);
+```
+- Copy `periods` and `account` straight through from `query_lsa_periods` — the
+  card reads those keys directly and computes the YoY column from
+  `prior_year_YTD`. Don't reshape or round them.
+- `severity`: `urgent` = answer rate under 80%, or a lead count that has gone to
+  zero on an account with history; `warn` = a declining trend or a partial-YoY
+  caveat; `info` = steady or improving.
+- `headline` is what Steven reads first — make it the finding, not a label.
+- **`alerts`** — an optional array of `{level, text}` (`level`: `urgent|warn|info`)
+  rendered as a strip under the table. This is where the two faults that caused the
+  2026 outage must surface, every day:
+  - **Verification expiry.** From `local_services_verification_artifact`: any
+    FAILED/CANCELLED artifact, or a PASSED one inside 60 days of expiry
+    (`urgent` inside 30). A lapsed policy suspended KTU for 16 days.
+  - **Call-path health.** Consecutive 0-second calls, or a 7-day window with LSA
+    clicks but zero PHONE_CALL conversations. Both mean the phone path is broken,
+    which is invisible in lead counts alone.
+  Write `"alerts": []` when everything is clean — an absent key reads as unchecked.
 
 ## Guardrails
 - Reads only. Never edit a GBP listing, publish a post, change site content, or
