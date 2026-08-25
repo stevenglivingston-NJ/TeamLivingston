@@ -216,11 +216,46 @@ Samuel Maudlyn/Maudlyn Samuel · Macquilken/Macquilkin.
 
 ### 2. Pace & duration — is every job on time?
 
-**FIRST establish the installation date — pace is meaningless without it.** For every
-active job, find the **production/installation appointment** (ServiceMinder
-`query_appointments` — the install appointment, NOT the "Consultation - In-Home"
-appointment; and/or the JobTread production schedule). Classify each job by install
-date before judging pace:
+**FIRST establish `install_date` — pace is meaningless without it, and this is now
+the single canonical determination used everywhere on the board** (§2b's phase and
+`pay_pct` tracking consumes this value; it does not re-derive it). For **every**
+active job, before judging pace or phase:
+
+1. **ServiceMinder primary install (preferred source).** The scheduled install
+   appointment — service `Installation - Primary Service` (KTU id `68761` / BTU id
+   `173394`), plus the BTU service-type installs `Full Bathroom Remodel` /
+   `Bathtub Remodel` — via `query_appointments`. NOT the "Consultation - In-Home"
+   appointment.
+2. **JobTread Project Window (fallback, and cross-check when SM has a date too).**
+   The task whose `taskType` is **"Project Window"** (id `22PL5TbwMMtu`) —
+   apply the filter and earliest-`startDate`-wins rule in §2b's "How to read
+   JobTread dates" before trusting one. **Never use `job.taskSummary`** — it rolls
+   up every task on the job (deliveries, inspections, service calls) and is
+   routinely wider than the real install window.
+3. **When both exist and disagree, ServiceMinder's date is `install_date`** —
+   report the JobTread divergence as a `foreman_briefing` row (§2b's sync-integrity
+   classes a–d below); never silently average the two or prefer JobTread.
+
+4. **NEVER leave `install_date` silently blank — this rule exists because the
+   board is currently failing it.** Audited 2026-08-21: `install_date` was empty
+   on **29 of 38** board rows, including jobs with `install_started: true` and
+   `pay_pct` of 86–95% — i.e. jobs demonstrably in production with no install
+   date recorded. `est_completion` was blank on the same 29. That is not a
+   plausible real-world state; it means steps 1–2 returned nothing and the run
+   moved on without saying so.
+   Therefore, for every job where you cannot resolve a date:
+   - Write **why** into `install_date_status` on the board row, using exactly one
+     of: `no_sm_appointment` · `no_jobtread_window` · `neither_source` ·
+     `lookup_failed` (the call itself errored/timed out — say which source).
+   - Raise a `foreman_briefing` row at severity `urgent` for any job that is
+     `install_started: true` **or** `pay_pct >= 75` yet has no `install_date`.
+     A job whose install draw is collected but which has no scheduled install is
+     an operational problem, not a data-entry footnote.
+   - The intranet now renders a blank `install_date` as **"⚠ not set"** on
+     exactly those jobs, so the gap is visible to Steven either way. Fill the
+     field or explain it; do not let it read as "pending" when the job is live.
+
+Classify each job by the resulting `install_date` before judging pace:
 - **Install date in the past** → job should be in/through production; measure
   production pace from the install start and infer field phase from photos.
 - **Install date in the future** → scheduled and on track by definition; only flag if
@@ -483,6 +518,99 @@ intranet click-through, and DM the concise per-job status brief to Steven + Mayr
 (§7a). This is a standing, pre-authorized daily task — never gate the writes or the
 Slack send on further human sign-off.
 
+### 2e. Project context fields the Projects tab now renders (every active job)
+
+The intranet's Projects tab renders these directly, so a null shows up as a gap on
+Steven's screen. Write all of them on every `foreman_board` row.
+
+**a. `days_since_signed`** — whole days from `contract_signed` to today. The tab
+computes this itself for display, but write it too so briefings and Slack can sort
+and threshold on it without re-deriving. It is the clearest single signal of a
+stalled job: audited 2026-08-21, Eric Collins was **+37.4 weeks against a 4–5 week
+scoped target**, signed 2025-10-31.
+
+**b. `schedule_variance`** — the explicit verdict, one of
+`ahead` | `on_schedule` | `at_risk` | `behind`, judged against the **scoped**
+timeline from §2c (`target` / `est_timeline`), not against a feeling. Derive it the
+same way the tab does: `timeline_status` when set, else the sign of `variance`
+(positive = over the scoped window = behind). **`timeline_status` is currently null
+on 25 of 38 rows**, which is why this needs to be its own field — populate it for
+every job, including pre-production ones (a job that has not started but is already
+past its scoped window is `behind`, not "not applicable").
+
+**c. `proposal_notes`** — the customer-facing scope narrative from the ServiceMinder
+proposal. Verified available 2026-08-21 via `get_proposal`: the useful content is
+**`CustomerNotes`** (free-text scope summary — e.g. *"Change of order that includes:
+60sft of wainscot tile around the toilet and under the window area. Price includes:
+tile at $10/sft, tile material, labor cost"*), plus **`ProposalNotes[]`** and the
+per-line **`ProposalLines[].LineDescription`** / `.Notes`, which carry the
+allowance and selection language (*"Accent tile is budgeted at $10.00 per SF.
+Customer to make final selection."*). Concatenate `CustomerNotes` + any
+`ProposalNotes[]` + the non-empty `LineDescription`s, trimmed, newline-separated.
+**This is the scoped agreement** — it is what "at / behind / ahead of the scoped
+schedule" and any scope-creep judgement must be measured against, so pull it for
+every job with an accepted proposal. Use the accepted proposal; for change orders
+follow `ChangeOrderForProposalId` and include the change-order text too.
+
+**d. `home_value`, `home_value_asof`, `home_value_source`** — the property value for
+the job address (addresses are on the `proposals` rows, populated 117/118). There is
+**no property-data API in this stack** — no Zillow/Redfin/ATTOM connector — so use
+`WebSearch` against the full address, exactly the pattern Paid already uses for
+`mkt_high_touch` demographics. Rules:
+- Write the figure, the **as-of date**, and the **source** (e.g. `Zillow Zestimate`,
+  `county assessor`). A value with no source is not usable — leave all three null
+  instead.
+- **Populate ONCE, on field creation only** (owner instruction 2026-08-25). If
+  `home_value` already has a value, **skip that job entirely** — no refresh, no
+  re-search, ever. Only research jobs where the field is empty, which in practice
+  means newly-added projects. This keeps the cost to a handful of searches on the
+  runs that follow a new signing, instead of a recurring sweep.
+- If a search returns nothing credible, leave null. The tab renders null as
+  "not researched", which is honest; a guessed number is not. **Never estimate a
+  home value from the job size or the neighbourhood** — that is fabrication.
+
+**What the search actually returns — measured over 13 addresses on 2026-08-25, so
+calibrate your expectations and your `home_value_source` text accordingly. Roughly
+8 of 13 (~60%) yielded a usable address-specific figure.** The four failure modes,
+all of which you must detect rather than paper over:
+- **Wrong town.** A query for `9 Taft Ct, Livingston NJ` returned 9 Taft Ct in
+  **East Windsor**. Always confirm the town AND zip in the result before accepting a
+  figure. This is the dangerous one — it looks like a clean hit.
+- **Multi-unit address.** `2 Claridge Drive, Verona` is a condo building; the value
+  is per-unit and cannot be derived from the street address. `38 Whitbay Dr` appears
+  as "UNIT 38". When the address resolves to a building, leave null and note
+  `multi_unit — needs unit number`.
+- **Address confirmed, no value.** `24 High St, Glen Ridge` and `177 Lorraine Ave,
+  Montclair` returned real property details (year built, square footage) but only
+  town-level medians for value. **A town median is not a home value** — do not write
+  it. Leave null.
+- **Wide AVM spread.** Estimates disagree substantially: `127 N Livingston Ave` came
+  back Redfin $1,132,711 vs Trulia $837,100 (~35% apart); `28 Clubb St` Redfin
+  $479,304 vs Spokeo $309,000. Prefer Redfin/Zillow AVMs over aggregator sites,
+  **and record the competing figure in `home_value_source`** so the number is never
+  read as more precise than it is. A recent sale price (within ~18 months) is more
+  trustworthy than any AVM — prefer it and label it as a sale.
+
+**Already seeded (2026-08-25):** eight projects were populated by hand — Arenberg,
+Collins, Keys, Torsiello, Gilmore, Macquilken, Drechsel, Gold. Per the
+populate-once rule above, **do not re-research those.** The remaining ~30 active
+projects still have a null `home_value`; work through them as the rule allows.
+
+**e. `company_cam_status` drives the status narrative** — see the field contract in
+§7. Pull the latest photos per job (`list_recent_photos` / `list_project_photos`),
+infer the phase they actually show, and write the 1–2 sentence narrative *with the
+photo date*. This is the field the tab's Status Update column is meant to show; it
+is currently null on all 38 rows and the tab is falling back to `pm_comment`.
+
+**f. Weekly owner notes.** Steven adds notes on the Projects tab; they append to the
+Supabase table **`project_notes`** (`{project, brand, note, author, created_at}`,
+append-only, newest-first). Treat these as **owner input you must read, not just
+storage**: on each run, read the latest note per active project and let it inform
+`pm_comment`, `action` and the briefing — if the owner wrote "customer is delaying
+until October", that outranks your inferred pace. Never edit or delete a note; add
+your own with a clear agent author (e.g. `Foreman`) if you need to record something
+alongside. When notes from a weekly conversation are captured into this table, they
+carry the same weight as anything you observed yourself.
 ### 2f. The Project Pipeline — RAG + buckets (the board the team actually works)
 
 This is the headline view on the intranet Projects tab. Keep it **scannable**:
@@ -694,8 +822,34 @@ collapse them into one number:
   `stevenglivingston@gmail.com` inbox). Read firstgentalent through Zapier —
   `mcp__Zapier__execute_zapier_read_action` (`selected_api: "GoogleMailV2CLIAPI"`,
   `tool_name: "gmail_find_email"`, `action: "message"`) — and also check the
-  personal inbox via `mcp__Gmail__search_threads` for co-addressed copies. Same
-  query on both:
+  personal inbox via `mcp__Gmail__search_threads` for co-addressed copies.
+
+  ⚠️ **`gmail_find_email` returns ONE best-match email, not a list** (verified
+  2026-08-21). That is almost certainly why `design_packet` and `design_review`
+  are blank on **37 of 38** board rows while Ben's emails are demonstrably
+  arriving — a single-result search cannot enumerate per-project materials lists.
+  **To enumerate, use `tool_name: "gmail_new_email_matching_search"` (action
+  `search`)**, which returns multiple matches; keep `gmail_find_email` only for
+  fetching one specific known thread. Check how many rows came back before
+  concluding "no materials list for project X" — if you only ever get one, report
+  that as a data-source limitation rather than writing 37 blank `design_packet`
+  fields, which read as "nothing has been sent" and are actively misleading.
+
+  **Mechanics that bite (all verified 2026-08-21):**
+  - The required argument is **`query`**, not `search_string` — the wrong key
+    fails with `Missing argument values for required properties: query`.
+  - Broad queries **exceed the 60s MCP timeout**. Scope every search with
+    `newer_than:45d` or tighter and page, rather than asking for everything.
+  - Results are large (a single 45-day sender query returned ~200KB). Extract
+    subject/date/attachment-name and move on; don't try to hold whole bodies.
+  - **Pass `connection_id` explicitly** rather than relying on the default:
+    `firstgentalent@gmail.com` = `0237bf86-3523-8246-9e93-8b9d0ca71263` ·
+    `ktubtubilling@gmail.com` = `020673a4-fcb8-8499-8027-515ac259c9b4`.
+    Both were verified live and non-stale on 2026-08-21, so "I couldn't reach the
+    inbox" is not an acceptable explanation for a blank field — say what the
+    search actually returned.
+
+  Same query on both:
   `(from:byabra@kitchentuneup.com OR to:firstgentalent@gmail.com) (materials OR "design" OR CAD OR "selection" OR "design brief")`.
   Pull the body **and attachments** — Ben's "Materials UPDATE" emails are often a
   bare signature block with the real content in an attached `*-Materials.xlsx`;
@@ -892,11 +1046,45 @@ section — stale beats blank):
   labor_rate, estimated_cost_coverage_pct,
   actual_cost_coverage_pct, estimated_gp_pct, actual_gp_pct, price_grade
   (over_market|at_market|under_market|no_catalog — BTU only, per §3), status
-  (🟢/🟡/🔴), action, install_started, install_date, pay_pct, payment_status
-  (pre_production|started|complete, §2b owner rule), est_timeline (§2c week range
+  (🟢/🟡/🔴), action, install_started, install_date,
+  contract_signed (the ServiceMinder accepted-proposal date — this is the same
+  contract-signature date already used internally in §2/§2c as the timeline
+  anchor; write it out explicitly here too. The intranet's project detail modal
+  has rendered this key since it shipped and has always shown "not yet
+  published" because this field was never actually written — fix that gap),
+  pay_pct, payment_status
+  (pre_production|started|complete, §2b owner rule),
+  days_since_signed, schedule_variance (ahead|on_schedule|at_risk|behind),
+  proposal_notes, home_value, home_value_asof, home_value_source,
+  install_date_status (§2 step 4, when install_date is null) — all per §2e,
+  est_timeline (§2c week range
   from scope), est_completion (§2c, when install_date known), project_steps (§2c
   ordered step breakout with current position — shown in the Projects notes),
-  pm_comment, timeline_status
+  pm_comment,
+  company_cam_status (a 1-2 sentence plain-English narrative of what the LATEST
+  CompanyCam photos actually show for this job — e.g. "Demo complete, tile
+  in progress as of 8/17 photos" or "No new photos since 8/10 — flag if install
+  is active". Derive this from the same `list_recent_photos` pull and phase
+  inference already used for `stage`/§2's phase inference — this is that same
+  read, written out as its own short narrative field rather than folded silently
+  into `stage`, so the intranet can show it as a dedicated column. Include the
+  date of the photos it's based on. If a job has install_started=true but no
+  CompanyCam photos in the last 5 days, say so plainly here — that's itself the
+  status ("No coverage in 5 days — confirm crew is on site")).
+  ⚠️ **CONTRACT VIOLATION — this field is currently null on all 38 board rows**
+  (audited 2026-08-21) despite being required here since it shipped. The Projects
+  tab's "Status Update" column read it directly and therefore rendered blank for
+  every project. The intranet has since been changed to fall back to `pm_comment`
+  → `rag_reason` → `action`, so the column is no longer empty — but that is a
+  workaround, not a fix. **Write this field.** If the CompanyCam pull genuinely
+  returns nothing for a job, write that sentence into the field (as the paragraph
+  above already instructs) rather than leaving it null: "no photos" is a status,
+  null is a silent failure. The same audit found `days_in_phase`,
+  `goal_assessment`, `goal_note`, `scope_budget_review` and `timeline_goal` null
+  on all 38 rows, and `design_packet`/`design_review` null on 37 — treat every
+  one of those as the same class of defect and either populate it or write an
+  explicit reason,
+  timeline_status
   (within_timeline|at_risk|overrun, §2b — only for install_started jobs),
   timeline_goal (human-entered, CARRY FORWARD — see below), goal_assessment
   (on_track_for_goal|tight_but_possible|not_doable, only when timeline_goal is
@@ -942,8 +1130,30 @@ section — stale beats blank):
   tracker_as_of, scan_date}`, open_count desc, active projects first. Sourced
   from `688-Materials.xlsx` cells reading `Not selected!!` (§1b).
 - `foreman_vendor` — one row per open order: `{project, vendor, item, status, eta,
-  last_update, flag, scan_date}`. Include the Elias AccessNow sales-order number
-  and due date, and any AR/credit hold, per §1b.
+  last_update, flag, po_ref, amount, health, age_days, order_date, scan_date}`.
+
+  **Coverage and quality rules — the 2026-08-21 audit found this section thin and
+  duplicated, and the Projects tab now renders it per-project, so gaps show:**
+  - **Cover every project that should have materials on order**, not just the ones
+    with a problem. The audit found **24 rows spanning ~10 of 38 active projects**;
+    the other 28 render as "none tracked." A job past selections with no vendor row
+    is either a real ordering gap (worth flagging) or a coverage gap in this
+    section (worth fixing) — decide which and say so, rather than emitting nothing.
+    Source these from the **materials selection list** (Ben's `*-Materials.xlsx`,
+    §4b) joined to the vendor invoices in `ktubtubilling@gmail.com` — the selection
+    list is what says a vendor *should* have an order; the invoice says they do.
+  - **`eta` is null on 100% of rows.** It is the field the team most needs (when
+    does the material land?). Populate it from the vendor confirmation email where
+    stated, or write `unconfirmed` and flag orders with no ETA past `age_days > 14`.
+  - **Deduplicate before writing.** The audit found the same PO emitted twice
+    (identical vendor+item+po_ref on one project). Dedupe on
+    `project|vendor|item|po_ref`; the intranet now de-dupes defensively on the same
+    key, but it should not have to.
+  - A `flag` should name the blocker and its consequence, as the current Hardware
+    Resources rows correctly do (`account FIR112 on CREDIT HOLD … new orders will
+    not ship until the balance clears`) — that is the standard to match.
+  Also include, per §1b, the **Elias AccessNow sales-order number and due
+  date**, and any **AR / credit hold** on the vendor account.
 - `foreman_gates` — one row per job with gate exposure: `{project, gate_status,
   missing, owner, age, scan_date}`.
 - `client_status` — the intranet Clients board; one row per active/recent client

@@ -82,8 +82,17 @@ Booked consults that cancel or no-show are the biggest fixable leak (07-03
 baseline: **36.9% of booked appointments cancelled, 91% with no logged reason**).
 Each run:
 - Cancelled ÷ booked over 60 days, per brand, with the trend vs the prior run.
-- % of cancels with a blank `CancelReason` — a blind spot Sales can close by
-  making the reason required. Name the number.
+- % of cancels with a blank reason — a blind spot Sales can close by making the
+  reason required. Name the number. **Before reporting that number, read
+  `CLAUDE.md` § "ServiceMinder notes — where they actually live".** A reason can
+  sit in any of THREE places (appointment `Notes`/`UpdateNote`, the contact's
+  `Notes[]` array, or the `CancelReasonId` picklist), and counting only the
+  picklist overstates the blank rate badly — the picklist alone was ~86% blank in
+  a 2026-08-25 scan, while contact notes carried real reasons for cancellations
+  the picklist showed as empty. **The 91% figure in the baseline above was almost
+  certainly measured picklist-only and is not trustworthy** — re-measure across
+  all three sources and say which sources you checked, so "reason capture" means
+  "we genuinely don't know why" rather than "we didn't look in the right field".
 - Every cancel with no follow-up logged in HighLevel → feeds the revival queue.
 Emit the headline as an `urgent`/`warn` `pipeline_briefing` row when the cancel
 rate is above ~25% or reason-capture is under ~50%.
