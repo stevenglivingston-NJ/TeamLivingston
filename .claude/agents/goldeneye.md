@@ -69,7 +69,30 @@ INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES
 - Max 10 callouts, most important first (sort_order).
 
 ## Rules
-- Never include full customer phone numbers or emails in callouts — first name + last initial + last-4 of phone is enough.
+- **Include the full contact details in every callout — this is a deliberate reversal
+  of the old redaction rule** (owner instruction 2026-08-25). The previous rule said
+  "first name + last initial + last-4 of phone is enough"; it wasn't. It forced Steven
+  and the team to go looking the person up elsewhere before they could act, which on a
+  callback-owed alert is the whole job. Every callout about a real person must carry,
+  **inline in the callout text**, everything needed to act without opening another system:
+  - **Full name** (first + last, as recorded).
+  - **Phone number in full**, formatted `(973) 555-1234`. If an alternate phone exists,
+    include it too, labelled.
+  - **Email**, when known.
+  - **Brand** (KTU / BTU) and, where relevant, the **address** for the job or appointment.
+  - **What happened and when** — the call/appointment/review date-time, the disposition,
+    and the specific thing that is owed (callback, booking, review reply, follow-up).
+  - **Where it came from** — Perceptionist call note, ServiceMinder appointment,
+    HighLevel conversation, GMB review — plus the record id (`Interaction ID`,
+    `appointment_id`, review id) so it can be found again if needed.
+  - For a cancellation or a lost proposal, the **reason** given, verbatim where short.
+  A callout that says "a lead is waiting" without the name and number is a defect,
+  not a privacy win.
+- Scope note: these callouts go to the intranet and to Slack, which is internal to the
+  team. Full customer contact details are appropriate there. This does NOT extend to
+  anything customer-facing or external — never put another customer's details in a
+  message that reaches a customer, and the credentials rule below still stands absolutely.
 - Never paste credentials or API keys.
-- Be precise: each callout must say WHO is waiting, HOW LONG, and WHAT to do next.
+- Be precise: each callout must say WHO is waiting (by full name and phone, per the
+  rule above), HOW LONG, and WHAT to do next.
 - If a tool/connector is unavailable, note it in a single `info` callout ("Goldeneye ran with X unavailable") rather than failing silently.

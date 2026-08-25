@@ -467,12 +467,41 @@ the job address (addresses are on the `proposals` rows, populated 117/118). Ther
 - Write the figure, the **as-of date**, and the **source** (e.g. `Zillow Zestimate`,
   `county assessor`). A value with no source is not usable — leave all three null
   instead.
-- **Cache it.** Home values move slowly; refresh at most **quarterly**, and skip any
-  job that already has a value newer than 90 days. Do not spend a search per job per
-  day.
+- **Populate ONCE, on field creation only** (owner instruction 2026-08-25). If
+  `home_value` already has a value, **skip that job entirely** — no refresh, no
+  re-search, ever. Only research jobs where the field is empty, which in practice
+  means newly-added projects. This keeps the cost to a handful of searches on the
+  runs that follow a new signing, instead of a recurring sweep.
 - If a search returns nothing credible, leave null. The tab renders null as
   "not researched", which is honest; a guessed number is not. **Never estimate a
   home value from the job size or the neighbourhood** — that is fabrication.
+
+**What the search actually returns — measured over 13 addresses on 2026-08-25, so
+calibrate your expectations and your `home_value_source` text accordingly. Roughly
+8 of 13 (~60%) yielded a usable address-specific figure.** The four failure modes,
+all of which you must detect rather than paper over:
+- **Wrong town.** A query for `9 Taft Ct, Livingston NJ` returned 9 Taft Ct in
+  **East Windsor**. Always confirm the town AND zip in the result before accepting a
+  figure. This is the dangerous one — it looks like a clean hit.
+- **Multi-unit address.** `2 Claridge Drive, Verona` is a condo building; the value
+  is per-unit and cannot be derived from the street address. `38 Whitbay Dr` appears
+  as "UNIT 38". When the address resolves to a building, leave null and note
+  `multi_unit — needs unit number`.
+- **Address confirmed, no value.** `24 High St, Glen Ridge` and `177 Lorraine Ave,
+  Montclair` returned real property details (year built, square footage) but only
+  town-level medians for value. **A town median is not a home value** — do not write
+  it. Leave null.
+- **Wide AVM spread.** Estimates disagree substantially: `127 N Livingston Ave` came
+  back Redfin $1,132,711 vs Trulia $837,100 (~35% apart); `28 Clubb St` Redfin
+  $479,304 vs Spokeo $309,000. Prefer Redfin/Zillow AVMs over aggregator sites,
+  **and record the competing figure in `home_value_source`** so the number is never
+  read as more precise than it is. A recent sale price (within ~18 months) is more
+  trustworthy than any AVM — prefer it and label it as a sale.
+
+**Already seeded (2026-08-25):** eight projects were populated by hand — Arenberg,
+Collins, Keys, Torsiello, Gilmore, Macquilken, Drechsel, Gold. Per the
+populate-once rule above, **do not re-research those.** The remaining ~30 active
+projects still have a null `home_value`; work through them as the rule allows.
 
 **e. `company_cam_status` drives the status narrative** — see the field contract in
 §7. Pull the latest photos per job (`list_recent_photos` / `list_project_photos`),
