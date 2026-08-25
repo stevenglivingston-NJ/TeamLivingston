@@ -425,6 +425,71 @@ intranet click-through, and DM the concise per-job status brief to Steven + Mayr
 (§7a). This is a standing, pre-authorized daily task — never gate the writes or the
 Slack send on further human sign-off.
 
+### 2e. Project context fields the Projects tab now renders (every active job)
+
+The intranet's Projects tab renders these directly, so a null shows up as a gap on
+Steven's screen. Write all of them on every `foreman_board` row.
+
+**a. `days_since_signed`** — whole days from `contract_signed` to today. The tab
+computes this itself for display, but write it too so briefings and Slack can sort
+and threshold on it without re-deriving. It is the clearest single signal of a
+stalled job: audited 2026-08-21, Eric Collins was **+37.4 weeks against a 4–5 week
+scoped target**, signed 2025-10-31.
+
+**b. `schedule_variance`** — the explicit verdict, one of
+`ahead` | `on_schedule` | `at_risk` | `behind`, judged against the **scoped**
+timeline from §2c (`target` / `est_timeline`), not against a feeling. Derive it the
+same way the tab does: `timeline_status` when set, else the sign of `variance`
+(positive = over the scoped window = behind). **`timeline_status` is currently null
+on 25 of 38 rows**, which is why this needs to be its own field — populate it for
+every job, including pre-production ones (a job that has not started but is already
+past its scoped window is `behind`, not "not applicable").
+
+**c. `proposal_notes`** — the customer-facing scope narrative from the ServiceMinder
+proposal. Verified available 2026-08-21 via `get_proposal`: the useful content is
+**`CustomerNotes`** (free-text scope summary — e.g. *"Change of order that includes:
+60sft of wainscot tile around the toilet and under the window area. Price includes:
+tile at $10/sft, tile material, labor cost"*), plus **`ProposalNotes[]`** and the
+per-line **`ProposalLines[].LineDescription`** / `.Notes`, which carry the
+allowance and selection language (*"Accent tile is budgeted at $10.00 per SF.
+Customer to make final selection."*). Concatenate `CustomerNotes` + any
+`ProposalNotes[]` + the non-empty `LineDescription`s, trimmed, newline-separated.
+**This is the scoped agreement** — it is what "at / behind / ahead of the scoped
+schedule" and any scope-creep judgement must be measured against, so pull it for
+every job with an accepted proposal. Use the accepted proposal; for change orders
+follow `ChangeOrderForProposalId` and include the change-order text too.
+
+**d. `home_value`, `home_value_asof`, `home_value_source`** — the property value for
+the job address (addresses are on the `proposals` rows, populated 117/118). There is
+**no property-data API in this stack** — no Zillow/Redfin/ATTOM connector — so use
+`WebSearch` against the full address, exactly the pattern Paid already uses for
+`mkt_high_touch` demographics. Rules:
+- Write the figure, the **as-of date**, and the **source** (e.g. `Zillow Zestimate`,
+  `county assessor`). A value with no source is not usable — leave all three null
+  instead.
+- **Cache it.** Home values move slowly; refresh at most **quarterly**, and skip any
+  job that already has a value newer than 90 days. Do not spend a search per job per
+  day.
+- If a search returns nothing credible, leave null. The tab renders null as
+  "not researched", which is honest; a guessed number is not. **Never estimate a
+  home value from the job size or the neighbourhood** — that is fabrication.
+
+**e. `company_cam_status` drives the status narrative** — see the field contract in
+§7. Pull the latest photos per job (`list_recent_photos` / `list_project_photos`),
+infer the phase they actually show, and write the 1–2 sentence narrative *with the
+photo date*. This is the field the tab's Status Update column is meant to show; it
+is currently null on all 38 rows and the tab is falling back to `pm_comment`.
+
+**f. Weekly owner notes.** Steven adds notes on the Projects tab; they append to the
+Supabase table **`project_notes`** (`{project, brand, note, author, created_at}`,
+append-only, newest-first). Treat these as **owner input you must read, not just
+storage**: on each run, read the latest note per active project and let it inform
+`pm_comment`, `action` and the briefing — if the owner wrote "customer is delaying
+until October", that outranks your inferred pace. Never edit or delete a note; add
+your own with a clear agent author (e.g. `Foreman`) if you need to record something
+alongside. When notes from a weekly conversation are captured into this table, they
+carry the same weight as anything you observed yourself.
+
 ### 3. Cost analysis — TWO costings, side by side (the money lens)
 Per active job, compute **two independent costings** and report both — never
 collapse them into one number:
@@ -735,7 +800,11 @@ section — stale beats blank):
   has rendered this key since it shipped and has always shown "not yet
   published" because this field was never actually written — fix that gap),
   pay_pct, payment_status
-  (pre_production|started|complete, §2b owner rule), est_timeline (§2c week range
+  (pre_production|started|complete, §2b owner rule),
+  days_since_signed, schedule_variance (ahead|on_schedule|at_risk|behind),
+  proposal_notes, home_value, home_value_asof, home_value_source,
+  install_date_status (§2 step 4, when install_date is null) — all per §2e,
+  est_timeline (§2c week range
   from scope), est_completion (§2c, when install_date known), project_steps (§2c
   ordered step breakout with current position — shown in the Projects notes),
   pm_comment,
