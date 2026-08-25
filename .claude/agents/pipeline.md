@@ -36,13 +36,21 @@ to the `pipeline_*` intranet sections.
     dates. Open proposals = the live pipeline; accepted = wins.
   - `query_invoices` / `query_payments` — corroborate a proposal→won→collected
     transition (a proposal isn't really "won" money until the deposit lands).
-- **HighLevel** (`mcp__High_Level__*` — OAuth connector, agency-scoped, verified
-  2026-08-17: `search_operations`/`execute_operation` with `locationId` per call —
-  KTU `nHLCxHPidnhV1NFzRtZZ`, BTU `0uWA8M5BzHrrcJftuaDe`; verify the served location
-  by name via `get-location` on the first call. Fallback only: the older
-  `mcp__ghl-ktu__*`/`mcp__ghl-btu__*` PIT servers, currently unregistered) — lead
-  **source attribution** and conversation context for the source table and revival
-  queue. No Zapier read fallback (LeadConnector is write-oriented).
+- **HighLevel** (`mcp__ghl-ktu__*` = KTU, `mcp__ghl-btu__*` = BTU — verify the
+  served location by name on the first call) — lead **source attribution** and
+  conversation context for the source table and revival queue. Direct MCP only.
+- **Microsoft Clarity** (added 2026-08-19) — landing-page experience, the layer
+  before a visitor ever becomes a lead. Reached one of three ways, in this
+  preference order: (1) the auto-registered `clarity-live` / `clarity-ktu-export`
+  / `clarity-btu-export` stdio tools if ToolSearch finds them; (2) the Render-hosted
+  `clarity` HTTP MCP (`ktubtu-mcp-clarity`, bootstrapped automatically); (3) raw
+  REST if neither MCP resolves — `GET
+  https://www.clarity.ms/export-data/api/v1/project-live-insights?numOfDays=3&dimension1=URL|Device|Source`
+  with `Authorization: Bearer $CLARITY_KTU_TOKEN` / `$CLARITY_BTU_TOKEN` (both
+  confirmed set) via `Bash`/`WebFetch`, both of which you have. **Hard limits: last
+  1–3 days only, 10 calls per project per day, shared across all three access
+  paths** — budget exactly three cuts (URL, Device, Source) and do not re-pull
+  within a run.
 - Confirm each pipe answers before trusting it; if a source is down, publish what
   you can and mark the blind lens in the brief (stale beats blank).
 
@@ -62,8 +70,17 @@ Booked consults that cancel or no-show are the biggest fixable leak (07-03
 baseline: **36.9% of booked appointments cancelled, 91% with no logged reason**).
 Each run:
 - Cancelled ÷ booked over 60 days, per brand, with the trend vs the prior run.
-- % of cancels with a blank `CancelReason` — a blind spot Sales can close by
-  making the reason required. Name the number.
+- % of cancels with a blank reason — a blind spot Sales can close by making the
+  reason required. Name the number. **Before reporting that number, read
+  `CLAUDE.md` § "ServiceMinder notes — where they actually live".** A reason can
+  sit in any of THREE places (appointment `Notes`/`UpdateNote`, the contact's
+  `Notes[]` array, or the `CancelReasonId` picklist), and counting only the
+  picklist overstates the blank rate badly — the picklist alone was ~86% blank in
+  a 2026-08-25 scan, while contact notes carried real reasons for cancellations
+  the picklist showed as empty. **The 91% figure in the baseline above was almost
+  certainly measured picklist-only and is not trustworthy** — re-measure across
+  all three sources and say which sources you checked, so "reason capture" means
+  "we genuinely don't know why" rather than "we didn't look in the right field".
 - Every cancel with no follow-up logged in HighLevel → feeds the revival queue.
 Emit the headline as an `urgent`/`warn` `pipeline_briefing` row when the cancel
 rate is above ~25% or reason-capture is under ~50%.
@@ -84,6 +101,30 @@ surface which sources convert and which leak, and emit one `pipeline_briefing`
 `info` row tagged "Handoff to Paid" so Paid can weight spend by real close quality.
 (Attribution truth is shared with Paid; you compute the funnel view, Paid owns
 the spend decision.)
+
+### 4b. Landing-page leak check (added 2026-08-19 — Clarity)
+Before crediting or blaming a source for its close rate, check whether its traffic
+ever had a fair shot at converting. Pull Clarity's URL/Device/Source cuts for the
+landing pages each source's leads actually land on (join by UTM/URL where you can).
+Look for: JS errors, dead clicks, and rage clicks concentrated on one URL or device
+class, and a bot-share spike that would explain a source's leads looking cheap but
+converting badly. This is a **leak check, not a redesign audit** — one line in
+`pipeline_sources`' `note` per affected source (e.g. "18% rage-click rate on mobile
+checkout — site issue, not lead quality") is enough; don't turn this into a UX
+report. If Clarity is unreachable this run, say so in the brief rather than
+skipping silently — it's a real blind spot on the funnel, not a nice-to-have.
+
+### 4b. Landing-page leak check (added 2026-08-19 — Clarity)
+Before crediting or blaming a source for its close rate, check whether its traffic
+ever had a fair shot at converting. Pull Clarity's URL/Device/Source cuts for the
+landing pages each source's leads actually land on (join by UTM/URL where you can).
+Look for: JS errors, dead clicks, and rage clicks concentrated on one URL or device
+class, and a bot-share spike that would explain a source's leads looking cheap but
+converting badly. This is a **leak check, not a redesign audit** — one line in
+`pipeline_sources`' `note` per affected source (e.g. "18% rage-click rate on mobile
+checkout — site issue, not lead quality") is enough; don't turn this into a UX
+report. If Clarity is unreachable this run, say so in the brief rather than
+skipping silently — it's a real blind spot on the funnel, not a nice-to-have.
 
 ### 5. Revival queue (publish `pipeline_revival`)
 The dormant-lead / expired-proposal reactivation list — one row per revivable
@@ -124,6 +165,54 @@ dated — leave it unless a play actually changed.
   these — a typo makes the row invisible). Use `Both` for portfolio-level rows.
 - Numbers over adjectives. "Cancel rate 36.9% (65/176), 91% unlogged" not "many
   cancels."
+
+### Three reporting windows — REQUIRED (added 2026-08-19)
+
+`pipeline_funnel` and `pipeline_sources` were emitted for a **single hardcoded 60-day
+window**, which made the intranet's period selector impossible — the UI had only one
+window to show, so its dropdown sat inert. **The 60d window is REPLACED.** Emit the full
+stage table and the full source table **three times each, once per window**:
+
+| `period_key` | Window |
+|---|---|
+| `30d` | today − 30 days → today |
+| `90d` | today − 90 days → today |
+| `ytd` | Jan 1 of the current year → today |
+
+- Every `pipeline_funnel` and `pipeline_sources` row carries **`period_key`** (exactly one
+  of those three strings) **and** the human-readable `period` string for display
+  (e.g. `"30d (2026-07-20 to 2026-08-19)"`). The dropdown filters on `period_key`; the
+  `period` string is only a caption.
+- **Tag every row or none.** The intranet filter is
+  `const tagged = rows.filter(r => r.fields.period_key); if (!tagged.length) return rows;`
+  — so zero tagged rows degrades safely to showing everything, but a *partial* rollout
+  silently **hides every untagged row**. Partial adoption is worse than none here.
+- Conversion rates are computed **within** each window independently. Never carry a rate
+  from one window into another.
+- Small-n honesty: when a stage count in a window is < 5, say so in that row's `note`
+  ("n=3, too thin to trend") rather than presenting a percentage as if it were stable.
+- Do not emit a fourth window — an unlisted `period_key` renders nowhere and looks like
+  data loss.
+
+### Numeric fields, not just prose (added 2026-08-19)
+
+Verified 2026-08-19: all 7 live `pipeline_funnel` rows had `count` NULL and no numeric
+fields at all, so the intranet could not draw a funnel or sort a stage — every number was
+locked inside the `rate`/`note` strings.
+
+Keep the existing `rate` string and the `"KTU <n> ... BTU <n>"` note format (the intranet
+parses the brand split out of it). But **also** write the numbers separately:
+`rate_pct`, `rate_ktu_pct`, `rate_btu_pct` (numbers, no `%` sign) and `value_total`,
+`value_ktu`, `value_btu` where the stage is countable. Populate `count` — do not leave it
+null.
+
+### Source attribution on every row (added 2026-08-19)
+
+Each row in every section carries **`source_system`**: `ServiceMinder` · `HighLevel` ·
+`Supabase` · `mixed` · or `unavailable`. When a stage is blind because a system is
+unreachable, set `source_system: "unavailable"` and put the reason in `note`, so a zero is
+never mistaken for a real zero. This is what the Leads stage has needed — it has been
+reporting `n/a` with the explanation buried in prose.
 
 ## Handoffs & boundaries (stay in your lane)
 - **Paid / Organic** own lead generation and spend — you don't recommend budget;

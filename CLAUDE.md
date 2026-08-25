@@ -12,13 +12,16 @@ This environment manages operations for two business groups:
 
 | Server | Type | Tools | Auth |
 |--------|------|-------|------|
-| google-ads | stdio (Python) | Campaigns, keywords, search terms, geo performance, LSA | OAuth2 (Desktop client) |
+| google-ads | stdio (Python) | Campaigns, keywords, search terms, geo performance, LSA, **change history** (`query_change_history` — who changed what, 30-day retention) | OAuth2 (Desktop client) |
 | gmb | stdio (Python) | Reviews, metrics, search keywords, location info, hours | OAuth2 (shared with google-ads) |
+| google-analytics | stdio (Python) | GA4 Data API direct — channel/landing-page performance, generate_lead events | ✅ LIVE (2026-08-21). Own `GA4_REFRESH_TOKEN` (scope `.../auth/analytics`; the google-ads token 403s here). Properties: KTU 453600017, BTU 487870392. **Filter by `hostName`** — the two properties are cross-contaminated |
+| gtm | stdio (Python) | Tag Manager API v2 — tags, triggers, variables, stage container versions (KTU GTM-KLT6WSH4, BTU GTM-PK4HC6SR) | Own `GTM_REFRESH_TOKEN` (scopes `tagmanager.readonly` + `edit.containers` + `edit.containerversions`, NO publish — humans publish in the GTM UI; current token lacks `edit.containerversions`, so `create_container_version` 403s until re-minted). Client id/secret fall back to `GOOGLE_ADS_CLIENT_ID/SECRET` |
 | closebot | stdio (Python) | Bots, messages, actions, bookings, billing | API key (X-CB-KEY header) |
 | companycam | stdio (Python) | Projects, photos, documents, notes, labels, users | Bearer token |
 | serviceminder | stdio (Python) | Contacts, appointments, invoices, payments, proposals, downloads | Per-location API keys (KTU + BTU) |
+| clarity-live | stdio (Python) | Direct live-insights endpoint (`/api/v1/project-live-insights`) for KTU+BTU — `get_live_insights`, `get_ktu_live_insights`, `get_btu_live_insights`, `test_connection` | `CLARITY_KTU_TOKEN` / `CLARITY_BTU_TOKEN` |
 | clarity | HTTP MCP (bootstrap) | Clarity Data-Export: landing-page experience, traffic-by-channel (KTU+BTU) | Static bearer (`CLARITY_MCP_AUTH_TOKEN`) — Render-hosted `ktubtu-mcp-clarity` |
-| clarity-ktu-export / clarity-btu-export | stdio (npm, optional) | Microsoft Clarity npm server — alternative to the Render `clarity` above | `CLARITY_KTU_TOKEN` / `CLARITY_BTU_TOKEN` |
+| clarity-ktu-export / clarity-btu-export | stdio (npm, optional) | Microsoft Clarity npm server — dashboard, recordings, docs tools per project | `CLARITY_KTU_TOKEN` / `CLARITY_BTU_TOKEN` |
 | ghl-ktu | HTTP MCP (bootstrap) | HighLevel CRM for KTU (location nHLCxHPidnhV1NFzRtZZ) | PIT (`GHL_PIT_KTU` env var) |
 | ghl-btu | HTTP MCP (bootstrap) | HighLevel CRM for BTU (location 0uWA8M5BzHrrcJftuaDe) | PIT (`GHL_PIT_BTU` env var) |
 | jobtread | connector | Project management, estimates, invoices | Bearer token |
@@ -67,18 +70,64 @@ mcp-servers/
 ├── bootstrap.sh          # registers every server below from env-vars
 ├── .env.example          # the full env-var list (names only, no secrets)
 ├── serviceminder/        server.py  # 29 tools (multi-location: KTU + BTU)
-├── google-ads/           server.py  # 11 tools (KTU 2579406186, BTU 4477036900)
+├── google-ads/           server.py  # 12 tools (KTU 2579406186, BTU 4477036900)
 ├── gmb/                  server.py  # 12 tools
 ├── closebot/             server.py  # 15 tools
 ├── companycam/           server.py  # 12 tools
 ├── shipstation/          server.py  # 17 tools (V2 API, Bearer auth)
 ├── amazon-sp/            server.py  # 15 tools (SP-API, LWA OAuth2)
-└── cloudflare/           server.py  # 14 tools (Zones, DNS, Pages, Workers, R2, KV)
+├── cloudflare/           server.py  # 14 tools (Zones, DNS, Pages, Workers, R2, KV)
+├── clarity/              server.py  # 4 tools — direct live-insights (KTU+BTU, Bearer)
+└── gtm/                  server.py  # 12 tools — Tag Manager v2, stage-only (no publish scope)
 
 HTTP-transport servers (registered by bootstrap.sh, no local code):
   ghl-ktu / ghl-btu   → LeadConnector hosted MCP, PIT-scoped per location
   clarity             → Render-hosted ktubtu-mcp-clarity (Data-Export, static bearer)
+
+Direct-access helpers (curl/CLI, NOT registered MCP servers — no bootstrap needed):
+  sb.sh               → Supabase REST/RPC over curl
+  ghl.sh              → HighLevel over curl, same endpoint as ghl-ktu / ghl-btu
+  lead-sweep.py       → daily ad-response / missed-lead / booking-integrity sweep
+  tracking-audit.py   → daily tracking-health sweep (GTM/GA4/Ads/HL/Clarity/Meta
+                        config drift — paused conv tags, wrong-brand containers,
+                        foreign ids, unattributed leads); Paid runs it first,
+                        Tekki verifies it ran (RAG JSON, curl transport)
 ```
+
+**`lead-sweep.py` — the deterministic half of Goldeneye's morning run.** One pass
+over HighLevel + ServiceMinder that emits a RAG-graded JSON document: positive ad
+responses, unanswered customers, missed and abandoned calls broken out **by
+tracking number**, leads never worked, complaints, campaign list damage, and
+bookings that exist in HighLevel or in a Perceptionist note but **not in
+ServiceMinder** (an appointment nobody is scheduled to attend). Goldeneye reads
+the JSON and publishes it — it does not re-derive the analysis.
+
+```
+python3 mcp-servers/lead-sweep.py --days 2 --out /tmp/lead-sweep.json
+```
+
+It self-tests every pipe first and reports failures in `degradations`; an empty
+bucket next to a degradation is **unverified, not clean**. All HTTP goes through
+`curl` on purpose — python-urllib gets a 403 from the session egress proxy and
+would silently return zero rows.
+
+**`ghl.sh` — HighLevel without MCP registration.** `bootstrap.sh` runs from the
+Cloud environment's setup script, so when that step doesn't run (or runs after
+the session's tool list is built) there are no `mcp__ghl-*` tools and an agent
+wrongly reports "HighLevel unavailable" even though both PITs are valid — that
+is exactly what happened on the 2026-08-21 Foreman run. `mcp-servers/ghl.sh`
+calls the same LeadConnector MCP endpoint over curl, reading `GHL_PIT_KTU` /
+`GHL_PIT_BTU` from the environment, so it works with zero dependency on
+registration. Prefer the `mcp__ghl-*` tools when they exist; fall back to this:
+
+```
+bash mcp-servers/ghl.sh KTU tools                              # list tool names
+bash mcp-servers/ghl.sh BTU contacts_get-contacts '{"query_limit":5}'
+```
+
+An agent must NOT report the HighLevel pipe as unreachable until it has tried
+`ghl.sh` — "no MCP tools registered" is not the same finding as "the token is
+dead", and only the latter is a real outage.
 
 > **Tekki owns this.** The `tekki` agent (`.claude/agents/tekki.md`) re-audits the
 > stack daily — maintains the Tech Stack registry + SOWs, live-probes every
@@ -259,6 +308,52 @@ To activate real-time delivery, set function secrets on the `dispatch-notify` fu
 `SLACK_BOT_TOKEN` (scopes `chat:write`, `users:read.email`, `im:write`), optional
 `SLACK_ALERTS_CHANNEL`, and `RESEND_API_KEY` + `NOTIFY_FROM_EMAIL` for email.
 
+### The 09:00–11:20 UTC dead zone (observed 2026-08-22)
+
+Every **enabled** Routine scheduled between 09:00 and 11:20 UTC silently stopped
+writing after 2026-08-19, while every Routine outside that band stayed current.
+Four for four against six for six, with identical environment, no persistent
+session binding, and no config difference between the two groups:
+
+| Fires (UTC) | Routine | Last wrote |
+|---|---|---|
+| 06:00 | Cellar | ✅ current |
+| 07:00 | Goldeneye | ✅ current |
+| 08:00 | Moola | ✅ current |
+| **09:00** | **Tekki** | ❌ stuck at 2026-08-19 |
+| **10:00** | **Organic** | ❌ stuck at 2026-08-19 |
+| **11:00** | **Paid** | ❌ stuck at 2026-08-19 |
+| **11:18** | **Pipeline** | ❌ stuck at 2026-08-19 |
+| 12:00 | Foreman | ✅ current |
+| 13:00 | Ax | ✅ current |
+| 14:00 | Harvest | ✅ current |
+
+**Recommended mitigation — must be done by Steven, an agent cannot do it.** Move
+these four out of the band to slots that demonstrably work, e.g. Tekki 15:00,
+Organic 16:00, Paid 17:00, Pipeline 17:30. `update_trigger` refuses here: these
+Routines were created via `http_api`, and an agent may only update Routines it
+created itself (`update_trigger: this routine was created via "http_api"`). So
+the reschedule has to happen in the Routines UI.
+
+**This is a mitigation, not a root cause** — the mechanism is unconfirmed, and it
+could equally be a capacity/quota window on the CCR side. If the moved Routines
+start writing again, the band is real; if they still fail at the new times, the
+cause is agent-specific and the schedule was a red herring. Re-check
+`max(fields->>'scan_date')` per section before concluding either way.
+
+Note the band is a *correlation across ten Routines*, not a proven mechanism.
+Before spending long on it, rule out the cheap explanation: open one failed run's
+session transcript and read the actual error. A connector that fails to
+authenticate produces exactly this signature — the Routine fires, the agent runs,
+and it writes nothing.
+
+**Why this is hard to notice:** these agents write with *write-then-prune by
+`scan_date`*, so a failed run leaves the last good day's rows in place. The tab
+renders fine and simply shows stale data — there is no error state on screen.
+`last_run` is also empty on every Routine here (they are persistent-session
+bound), so the scheduler's own history cannot be used to spot it. The only
+reliable check is the per-section `scan_date` query above.
+
 ## Scheduled agent runs — model tiers & no-repo-writes policy
 
 Two rules keep the daily fleet cheap and stop the duplicate-PR loop. Agent specs
@@ -297,7 +392,7 @@ brief it degrades. Tekkie audits all of these daily.
 | ServiceMinder (`SM_KEY_KTU/BTU`) | Moola, Foreman, Paid | Revenue/invoice/appointment truth; ROI tie-back |
 | HighLevel `ghl-ktu` / `ghl-btu` | Goldeneye, Paid, Foreman | Customer conversations, lead attribution, HL→SM sync audit |
 | Google Ads + LSA / Meta Ads | Paid | Spend sweep, CPL/CAC/ROAS |
-| Clarity (`clarity`, Render) | Paid | Landing-page-experience check |
+| Clarity (`clarity-live` stdio, `clarity` Render, `clarity-*-export` npm) | Paid, Organic | Landing-page-experience check; live-insights direct feed |
 | QuickBooks / Ramp / Bank_Connection | Moola | P&L, AR/AP, cash flow, card spend |
 | CompanyCam / JobTread | Foreman | Field progress, estimates, PM status |
 | Shopify / ShipStation / Amazon SP | Cellar (fulfillment), Harvest (demand) | Orders, inventory, FBA, ad ROAS |
@@ -327,6 +422,36 @@ Rule of thumb: **business/library docs → direct `ktubloomfield` connector;
 anything personal or financial → owner-only sections**, sourced from the
 personal drive via Zapier. Financial doc links live in `docs_finance`, which is
 RLS-locked to `is_admin()`.
+
+## ServiceMinder notes — where they actually live (canonical; verified 2026-08-25)
+
+Every agent that reports a cancellation reason, a call summary, or "what the customer
+said" reads this. **There are three separate places notes live, none of them reliably
+populated, so check all three and merge.** Earlier specs asserted one source was "the
+truth" and another was "always empty" — both claims were over-generalised from single
+samples and were wrong. Report which source each note came from.
+
+| # | Source | How to read it | Reality check |
+|---|---|---|---|
+| 1 | **Appointment free-text** | `find_appointment(location, appointment_id)` → `Notes`, `UpdateNote` | Where a rep's "family situation, must reschedule" lands. **Was null** on the live cancellation checked 2026-08-25. |
+| 2 | **Contact notes** | `find_contact(location, id_search=<ContactId>)` → `Matches[0].Notes[]` — an **array** of `{Id, Title, Body}` | Titles seen live: `Perceptionist Call`, `Form`, hand-written. **Held the real content** on that same cancellation. Read every element; prefer the highest `Id`. |
+| 3 | **Cancel-reason picklist** | `CancelReasonId` on the appointment | Populated on **8 of 57** cancelled KTU appointments over 7 weeks (~14%). Observed ids `3523`, `4279`. |
+
+**Traps that produce false "no reason" reports:**
+- `query_appointments` returns `CancelReasonId` at the **top level** of each appointment.
+  `find_appointment` returns **`CancelReasonId: 0` at the top level** and the real value
+  nested in **`Slots[].CancelReasonId`**. Read the Slot.
+- `query_appointments` returns **`Contact: null`** unless you pass `include_contact=true`
+  — so the contact's notes are never in a bulk pull. You must resolve the contact
+  separately by `ContactId`.
+- **`Status` is numeric**: `1` = scheduled, `3` = completed, `4` = cancelled.
+- **There is no cancel-reason lookup endpoint.** Probed `cancelreasons`,
+  `settings/cancelreasons`, `lookups/cancelreasons`, `appointmentcancelreasons` — all
+  return HTTP 200 with an **empty body**, which is how this API signals "no such
+  endpoint" (it does not 404). Get the id→label map from the cancellation **download**
+  (which carries reason text) or the SM UI; until then pass the id through rather than
+  inventing a label.
+- Never conclude "no notes" from one source. `no_reason_logged` requires all three empty.
 
 ## Environment Requirements
 
