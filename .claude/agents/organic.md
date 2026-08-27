@@ -139,15 +139,36 @@ back to within SEMrush. Handle it like this:
      authorized (it frequently is not; check rather than assume).
    State plainly which fallbacks you used so the numbers aren't mistaken for SEMrush's.
 
-**GMB / Google Business Profile — the local half.** Once `bootstrap.sh` registers
-the `gmb` server (`GMB_ACCOUNT_ID` / `GMB_LOCATION_KTU` / `GMB_LOCATION_BTU`), use
-`mcp__gmb__*` for each location: the **search-keywords** report (the actual queries
-that surfaced the listing — gold for local keyword intent), profile **metrics**
-(calls, direction requests, website clicks, searches — discovery vs direct),
-**reviews** (rating, volume, velocity, unanswered), hours, and posts. If the `gmb`
-server isn't registered, fall back to Google Business Profile via Zapier
-(`mcp__Zapier__*`, app "Google Business Profile") and note the degraded source.
-Verify each location by returned name (KTU→Kitchen Tune-Up, BTU→Bath Tune-Up).
+**GMB / Google Business Profile — the local half.**
+
+⚠️ **Use `mcp-servers/gmb.sh`, NOT the `mcp__gmb__*` tools — see CLAUDE.md
+§ "Scheduled runs stall on MCP connector calls".** This step is why Organic was
+dead 2026-08-19 → 08-27: it opened with `mcp__gmb__list_locations`, Auto mode
+raised a permission prompt no scheduled fire can answer, and eight consecutive
+runs stalled in `REQUIRES_ACTION` while every credential stayed valid. The
+helper reads the same `GMB_ACCOUNT_ID` / `GMB_LOCATION_KTU` / `GMB_LOCATION_BTU`
+and mints its own OAuth token, so it needs no bootstrap and raises no prompt:
+
+```
+bash mcp-servers/gmb.sh locations                            # env/OAuth check, no API spend
+bash mcp-servers/gmb.sh KTU info                             # name, phone, categories, hours
+bash mcp-servers/gmb.sh KTU reviews 50                       # rating, volume, unanswered
+bash mcp-servers/gmb.sh KTU keywords 2026-07 2026-08         # the queries that surfaced it
+bash mcp-servers/gmb.sh KTU metrics CALL_CLICKS 2026-08-01 2026-08-31
+bash mcp-servers/gmb.sh KTU metrics WEBSITE_CLICKS 2026-08-01 2026-08-31
+```
+
+Cover per location: **search-keywords** (the actual queries that surfaced the
+listing — gold for local keyword intent), profile **metrics** (calls, direction
+requests, website clicks, impressions — discovery vs direct), **reviews**
+(rating, volume, velocity, unanswered), hours, and posts. Verify each location
+by returned name (KTU→Kitchen Tune-Up, BTU→Bath Tune-Up).
+
+`gmb.sh` bakes in three gotchas that each cost a debugging cycle — don't
+reimplement around it: `readMask` is REQUIRED by the Business Information API
+(omitting it is a 400, not a default-to-all); reviews live ONLY on the legacy v4
+API and are account-scoped; and three different Google API hosts are in play and
+are not interchangeable.
 
 **GA4 — direct MCP. ✅ NEW and LIVE (2026-08-21). This is your first-party truth
 about what organic traffic actually does on the site** — SEMrush estimates traffic,

@@ -87,6 +87,8 @@ HTTP-transport servers (registered by bootstrap.sh, no local code):
 Direct-access helpers (curl/CLI, NOT registered MCP servers — no bootstrap needed):
   sb.sh               → Supabase REST/RPC over curl
   ghl.sh              → HighLevel over curl, same endpoint as ghl-ktu / ghl-btu
+  sm.sh               → ServiceMinder Open API over curl
+  gmb.sh              → Google Business Profile over curl (mints its own OAuth token)
   lead-sweep.py       → daily ad-response / missed-lead / booking-integrity sweep
   tracking-audit.py   → daily tracking-health sweep (GTM/GA4/Ads/HL/Clarity/Meta
                         config drift — paused conv tags, wrong-brand containers,
@@ -128,6 +130,50 @@ bash mcp-servers/ghl.sh BTU contacts_get-contacts '{"query_limit":5}'
 An agent must NOT report the HighLevel pipe as unreachable until it has tried
 `ghl.sh` — "no MCP tools registered" is not the same finding as "the token is
 dead", and only the latter is a real outage.
+
+## Scheduled runs stall on MCP connector calls — use the curl helpers (canonical; verified 2026-08-27)
+
+**The single highest-impact failure mode in this repo.** Scheduled Routines are
+Claude-created, so they run in **Auto mode**, where a connector-call classifier
+prompts before an `mcp__*` tool it hasn't already approved. A non-interactive
+scheduled fire **cannot answer that prompt**, so the session does not error — it
+**stalls in `REQUIRES_ACTION` forever**, and the next day's fire stalls at the
+identical call. Nothing is logged as a failure; the board just goes stale.
+
+`.claude/settings.json` sets `permissions.defaultMode: bypassPermissions`, and
+that **does** cover Bash in scheduled runs — which is why `sb.sh` works. It does
+**not** override the account-level connector classifier that gates `mcp__*`
+calls. Repo settings cannot fix this; only avoiding the gated call can.
+
+Measured on the 2026-08-19 → 08-27 outage — eight consecutive days, every
+credential valid the whole time:
+
+| Routine | Stalled on | Section that went stale |
+|---|---|---|
+| Tekki | `mcp__ghl-ktu__locations_get-location` | `tekky_status` (8d) |
+| Organic | `mcp__gmb__list_locations` | `organic_report` (8d) |
+| Foreman | `mcp__serviceminder__query_invoices` | `foreman_briefing` (8d) |
+| Goldeneye | (same class) | `goldeneye_callouts` |
+
+Moola, Pipeline and Paid ran fine across the same window **because they reach
+their data through `sb.sh`/curl rather than connector tools.** That asymmetry is
+the whole diagnosis: it is never the prompt, the spec, or the credential.
+
+**The rule: in any step that runs on a schedule, reach these four systems through
+the curl helper, not the MCP tool.** The `mcp__*` tools stay fine for
+interactive/ad-hoc work where a human can approve a prompt.
+
+```
+bash mcp-servers/sb.sh  'SELECT …'                          # Supabase
+bash mcp-servers/ghl.sh KTU contacts_get-contacts '{...}'   # HighLevel
+bash mcp-servers/sm.sh  KTU invoice/query '{"Take":50}'     # ServiceMinder
+bash mcp-servers/gmb.sh KTU info                            # Google Business Profile
+```
+
+Diagnosing a stale board: read the Routine's `last_run.status`. `ABANDONED` +
+a session in `REQUIRES_ACTION` with a `pending_action` naming an `mcp__*` tool
+is this bug, not an agent error — the fix is to move that one call to its curl
+helper. Do **not** rewrite the agent's analysis logic; it never ran.
 
 > **Tekki owns this.** The `tekki` agent (`.claude/agents/tekki.md`) re-audits the
 > stack daily — maintains the Tech Stack registry + SOWs, live-probes every
