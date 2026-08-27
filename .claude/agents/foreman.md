@@ -1246,11 +1246,30 @@ publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
 
 ## Known breakages / preconditions (verified 2026-07-03 — re-verify each run)
 
-- 🟢 **ServiceMinder reachable from cloud** (network policy fixed 2026-07-03) —
-  `mcp__serviceminder__*` returns for KTU + BTU: contract price, scope, invoices, and
-  GP estimates are live. If it 401s/drops in a given session, fall back to JobTread
-  pace + CompanyCam inference + Gmail vendor watch and mark money columns "blocked —
-  ServiceMinder down this run".
+- 🔴 **ServiceMinder: use `mcp-servers/sm.sh`, NOT `mcp__serviceminder__*`, on any
+  scheduled run — see CLAUDE.md § "Scheduled runs stall on MCP connector calls".**
+  This is why Foreman was dead 2026-08-19 → 08-27: it called
+  `mcp__serviceminder__query_invoices`, Auto mode raised a permission prompt no
+  scheduled fire can answer, and eight consecutive runs stalled in
+  `REQUIRES_ACTION` — `foreman_briefing` went eight days stale while both API
+  keys were valid the entire time. Never diagnose that as "ServiceMinder down":
+  a stalled permission prompt and a dead credential look nothing alike in the
+  Routine's `last_run` (`ABANDONED` + `pending_action` vs. a real error).
+  ```
+  bash mcp-servers/sm.sh KTU invoice/query '{"FromDate":"2026-08-01","Take":200}'
+  bash mcp-servers/sm.sh KTU appointments/query '{"FromDate":"2026-08-01","IncludeContact":true}'
+  bash mcp-servers/sm.sh KTU proposal/query '{"Take":200}'
+  bash mcp-servers/sm.sh KTU payment/query '{"FromDate":"2026-08-01"}'
+  ```
+  Endpoint paths are inconsistently pluralised in ServiceMinder's own API —
+  `appointments/*` is plural, `invoice|payment|proposal/query` are SINGULAR, and a
+  wrong path returns HTTP 200 with an **empty body**, not a 404. The helper flags
+  that explicitly rather than letting it read as "no results". Full path list is
+  in `sm.sh`'s header. Network policy for ServiceMinder itself was fixed
+  2026-07-03 and is fine; contract price, scope, invoices and GP estimates are
+  live. If it genuinely 401s/drops, fall back to JobTread pace + CompanyCam
+  inference + Gmail vendor watch and mark money columns "blocked — ServiceMinder
+  down this run".
 - 🟢 **Vendor invoices**: `ktubtubilling@gmail.com` via the Zapier Gmail connection
   labeled "Claude MCP" (see Vendor watch). Confirm the connection answers for that
   address before relying on it; fall back to the main Gmail connector.
