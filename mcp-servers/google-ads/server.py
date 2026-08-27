@@ -235,6 +235,51 @@ def query_negative_keywords(location: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def add_campaign_negative_keyword(location: str, campaign_id: str, keyword_text: str,
+                                  match_type: str = "PHRASE") -> dict[str, Any]:
+    """Add one campaign-level negative keyword. This is a WRITE - it mutates
+    the live account.
+
+    match_type: 'EXACT', 'PHRASE', or 'BROAD' (default 'PHRASE').
+
+    Returns the resource_name of the created campaign_criterion on success,
+    or the API's rejection (e.g. DUPLICATE_CAMPAIGN_CRITERION if the same
+    negative already exists) rather than raising - so a "no-op, already
+    present" case is distinguishable from an actual write.
+    """
+    customer_id = _resolve(location)
+    client = _ads_client()
+    service = client.get_service("CampaignCriterionService")
+    operation = client.get_type("CampaignCriterionOperation")
+    criterion = operation.create
+    criterion.campaign = f"customers/{customer_id}/campaigns/{campaign_id}"
+    criterion.negative = True
+    criterion.keyword.text = keyword_text
+    criterion.keyword.match_type = client.enums.KeywordMatchTypeEnum[match_type.upper()].value
+
+    try:
+        response = service.mutate_campaign_criteria(
+            customer_id=customer_id, operations=[operation])
+        return {
+            "location": location,
+            "campaign_id": campaign_id,
+            "keyword_text": keyword_text,
+            "match_type": match_type.upper(),
+            "status": "created",
+            "resource_name": response.results[0].resource_name,
+        }
+    except Exception as exc:
+        return {
+            "location": location,
+            "campaign_id": campaign_id,
+            "keyword_text": keyword_text,
+            "match_type": match_type.upper(),
+            "status": "error",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+
+@mcp.tool()
 def query_campaign_status(location: str, campaign_id: str = "") -> dict[str, Any]:
     """Why a campaign isn't serving/converting: campaign.primary_status and
     campaign.primary_status_reasons (PAUSED, PENDING, LIMITED, LOW_ACTIVITY,
@@ -280,13 +325,20 @@ def query_campaign_status(location: str, campaign_id: str = "") -> dict[str, Any
     verification: list[dict[str, Any]] | None = None
     verification_error: str | None = None
     try:
+        # The first version of this query requested `.status` on each of the
+        # three typed sub-messages (background_check_verification_artifact,
+        # license_verification_artifact, insurance_verification_artifact) and
+        # got UNRECOGNIZED_FIELD - those sub-messages don't carry their own
+        # status field. `artifact_type` + the top-level `status` is what's
+        # actually queryable and is enough to tell which artifact (license,
+        # insurance, background check, business registration) is in which
+        # state.
         vquery = """
         SELECT
           local_services_verification_artifact.id,
           local_services_verification_artifact.status,
-          local_services_verification_artifact.background_check_verification_artifact.status,
-          local_services_verification_artifact.license_verification_artifact.status,
-          local_services_verification_artifact.insurance_verification_artifact.status
+          local_services_verification_artifact.artifact_type,
+          local_services_verification_artifact.creation_date_time
         FROM local_services_verification_artifact
         """
         vrows = []
@@ -295,10 +347,8 @@ def query_campaign_status(location: str, campaign_id: str = "") -> dict[str, Any
             vrows.append({
                 "id": str(va.id),
                 "status": _enum_name(va.status),
-                "background_check_status": _enum_name(
-                    va.background_check_verification_artifact.status),
-                "license_status": _enum_name(va.license_verification_artifact.status),
-                "insurance_status": _enum_name(va.insurance_verification_artifact.status),
+                "artifact_type": _enum_name(va.artifact_type),
+                "created": va.creation_date_time or None,
             })
         verification = vrows
     except Exception as exc:
