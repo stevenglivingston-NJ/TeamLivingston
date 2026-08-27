@@ -275,6 +275,143 @@ def query_campaigns(location: str, days: int = 30,
     return {"location": location, "days": days, "rows": rows, "count": len(rows)}
 
 
+@mcp.tool()
+def query_conversion_actions(location: str, days: int = 30,
+                             include_removed: bool = False) -> dict[str, Any]:
+    """Full conversion-action audit: every goal, how it is counted, whether it
+    is bidding-eligible, and whether it has actually recorded anything.
+
+    This is the tool that answers "is my conversion tracking real?". Read these
+    fields together — each hides a different SILENT failure:
+
+    * status REMOVED / enabled False   -> the goal exists but is dead.
+    * primary_for_goal False           -> SECONDARY: observed only, Smart
+      Bidding does NOT optimize toward it. A booking goal sitting secondary
+      while a form-fill sits primary means you bid for the cheaper outcome.
+    * type UPLOAD_CLICKS / UPLOAD_CALLS -> OFFLINE IMPORT. Records nothing
+      unless something actively uploads (CRM workflow, Zapier, a script). An
+      UPLOAD goal with 0 conversions is an unfinished integration, NOT a quiet
+      period — never report it as "no conversions yet".
+    * type WEBPAGE / GOOGLE_ANALYTICS_4_* -> fires from the site/GA4. Zero here
+      usually means the tag or its trigger never fires.
+    * conversions == 0 over the window -> not recording. Report loudly: a goal
+      that never fires is indistinguishable from one that does not exist,
+      except that it silently dilutes bidding.
+    * counting_type EVERY vs ONE       -> EVERY on a lead form inflates volume
+      when one person submits twice.
+
+    days: metrics window. include_removed: also list REMOVED actions.
+    """
+    customer_id = _resolve(location)
+    client = _ads_client()
+    ga = client.get_service("GoogleAdsService")
+
+    # Config first, with NO date segment — an action with zero traffic must
+    # still appear, and segmenting by date would hide exactly those.
+    cfg_query = """
+    SELECT
+      conversion_action.id, conversion_action.name, conversion_action.status,
+      conversion_action.type, conversion_action.category,
+      conversion_action.counting_type, conversion_action.primary_for_goal,
+      conversion_action.include_in_conversions_metric,
+      conversion_action.click_through_lookback_window_days,
+      conversion_action.value_settings.default_value,
+      conversion_action.value_settings.always_use_default_value,
+      conversion_action.origin
+    FROM conversion_action
+    """
+    if not include_removed:
+        cfg_query += " WHERE conversion_action.status != 'REMOVED'"
+
+    actions: dict[int, dict[str, Any]] = {}
+    for batch in ga.search_stream(customer_id=customer_id, query=cfg_query):
+        for r in batch.results:
+            ca = r.conversion_action
+            actions[ca.id] = {
+                "id": ca.id,
+                "name": ca.name,
+                "status": _enum_name(ca.status),
+                "type": _enum_name(ca.type_),
+                "category": _enum_name(ca.category),
+                "counting_type": _enum_name(ca.counting_type),
+                "origin": _enum_name(ca.origin),
+                "primary_for_goal": ca.primary_for_goal,
+                "counts_in_conversions_metric": ca.include_in_conversions_metric,
+                "click_lookback_days": ca.click_through_lookback_window_days,
+                "default_value": ca.value_settings.default_value,
+                "always_use_default_value": ca.value_settings.always_use_default_value,
+                "all_conversions": 0.0,
+                "conversion_value": 0.0,
+            }
+
+    # ONLY all_conversions* is selectable FROM conversion_action. Selecting
+    # metrics.conversions / conversions_value here fails the whole query with
+    # PROHIBITED_METRIC_IN_SELECT_OR_WHERE_CLAUSE (verified 2026-08-27) — the
+    # conversions metric is incompatible with this resource. all_conversions is
+    # the superset (it includes actions not counted in the "Conversions" column),
+    # which is exactly what an audit wants: it reveals goals that are firing but
+    # excluded from bidding.
+    met_query = f"""
+    SELECT
+      conversion_action.id,
+      metrics.all_conversions, metrics.all_conversions_value
+    FROM conversion_action
+    WHERE segments.date DURING LAST_{days}_DAYS
+    """
+    metrics_error = None
+    try:
+        for batch in ga.search_stream(customer_id=customer_id, query=met_query):
+            for r in batch.results:
+                a = actions.get(r.conversion_action.id)
+                if a is not None:
+                    a["all_conversions"] += r.metrics.all_conversions
+                    a["conversion_value"] += r.metrics.all_conversions_value
+    except Exception as exc:  # metrics are a bonus; the config is the point
+        metrics_error = str(exc)[:300]
+
+    rows = sorted(actions.values(), key=lambda a: (-a["all_conversions"], a["name"]))
+
+    # Surface the silent failures rather than making every caller re-derive them.
+    findings: list[str] = []
+    live = [a for a in rows if a["status"] == "ENABLED"]
+    primaries = [a for a in live if a["primary_for_goal"]]
+    uploads = [a for a in live if a["type"].startswith("UPLOAD")]
+    upload_dead = [a for a in uploads if a["all_conversions"] == 0]
+
+    if not primaries:
+        findings.append("NO enabled PRIMARY conversion action — Smart Bidding "
+                        "has nothing to optimize toward.")
+    for a in upload_dead:
+        findings.append(
+            f"'{a['name']}' is an OFFLINE IMPORT ({a['type']}) with 0 conversions "
+            f"in {days}d — nothing is uploading to it. Unfinished integration, "
+            f"not a quiet period.")
+    for a in live:
+        if a["all_conversions"] == 0 and a not in upload_dead:
+            findings.append(
+                f"'{a['name']}' ({a['type']}, "
+                f"{'PRIMARY' if a['primary_for_goal'] else 'secondary'}) recorded "
+                f"0 conversions in {days}d — tag or trigger likely never fires.")
+        if a["primary_for_goal"] and a["counting_type"] == "MANY_PER_CLICK" \
+                and a["category"] in ("SUBMIT_LEAD_FORM", "BOOK_APPOINTMENT",
+                                      "REQUEST_QUOTE", "CONTACT"):
+            findings.append(
+                f"'{a['name']}' is a lead-type PRIMARY goal counting EVERY "
+                f"conversion — one person submitting twice counts twice and "
+                f"inflates the bidding signal. Usually should be ONE.")
+
+    return {
+        "location": location,
+        "days": days,
+        "count": len(rows),
+        "enabled": len(live),
+        "primary_count": len(primaries),
+        "metrics_error": metrics_error,
+        "rows": rows,
+        "findings": findings,
+    }
+
+
 _MISSING = object()
 
 
