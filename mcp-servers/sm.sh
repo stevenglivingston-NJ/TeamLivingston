@@ -91,9 +91,16 @@ if uid and "UserId" not in body:
         pass
 print(json.dumps(body))') || exit 2
 
-RESP=$(curl -sS -X POST "$API_BASE/${ENDPOINT#/}" \
+# Stream the response to a temp file rather than a shell variable. ServiceMinder
+# payloads routinely exceed 700KB (a 90-day invoice/query with Lines[] is several
+# MB), and passing that to python via an env var blows the process argument/env
+# limit — "Argument list too long" — which looked like a helper crash rather than
+# a big-but-healthy response. Found by the 2026-08-27 Foreman run.
+RESP_FILE="$(mktemp)"
+trap 'rm -f "$RESP_FILE"' EXIT
+curl -sS -X POST "$API_BASE/${ENDPOINT#/}" \
   -H "Content-Type: application/json" \
-  --max-time 120 -d "$BODY") || {
+  --max-time 300 -d "$BODY" -o "$RESP_FILE" || {
     echo '{"error":"curl failed reaching serviceminder.io"}' >&2; exit 1; }
 
 # Pretty-print JSON when it is JSON; pass raw text through otherwise (some
@@ -102,9 +109,10 @@ RESP=$(curl -sS -X POST "$API_BASE/${ENDPOINT#/}" \
 # NOTE: ServiceMinder ECHOES the ApiKey back in every response body. Strip it so
 # a live API key never lands in an agent transcript, a Routine log, or a
 # published intranet row.
-RESP="$RESP" python3 <<'PY'
+RESP_FILE="$RESP_FILE" python3 <<'PY'
 import json, os, sys
-raw = os.environ["RESP"]
+with open(os.environ["RESP_FILE"], encoding="utf-8", errors="replace") as fh:
+    raw = fh.read()
 try:
     data = json.loads(raw)
 except json.JSONDecodeError:

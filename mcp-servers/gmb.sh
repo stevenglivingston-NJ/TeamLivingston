@@ -147,10 +147,20 @@ case "$ACTION" in
   *) die "unknown action '$ACTION'; one of: info, hours, reviews, metrics, keywords" 2 ;;
 esac
 
-RESP=$(fetch "$URL") || die "curl failed reaching the Google Business Profile API" 1
-RESP="$RESP" python3 <<'PY'
+# Stream to a temp file, not a shell variable: a reviews or keywords pull is
+# easily multi-MB, and handing that to python via an env var blows the process
+# argument/env limit ("Argument list too long"), which reads as a helper crash
+# rather than a big-but-healthy response. Same defect the 2026-08-27 Foreman run
+# hit in sm.sh.
+RESP_FILE="$(mktemp)"
+trap 'rm -f "$RESP_FILE"' EXIT
+curl -sS --max-time 300 -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  "$URL" -o "$RESP_FILE" || die "curl failed reaching the Google Business Profile API" 1
+
+RESP_FILE="$RESP_FILE" python3 <<'PY'
 import json, os, sys
-raw = os.environ["RESP"]
+with open(os.environ["RESP_FILE"], encoding="utf-8", errors="replace") as fh:
+    raw = fh.read()
 try:
     print(json.dumps(json.loads(raw), indent=1))
 except json.JSONDecodeError:
