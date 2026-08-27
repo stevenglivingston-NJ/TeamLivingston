@@ -235,6 +235,85 @@ def query_negative_keywords(location: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def query_campaign_status(location: str, campaign_id: str = "") -> dict[str, Any]:
+    """Why a campaign isn't serving/converting: campaign.primary_status and
+    campaign.primary_status_reasons (PAUSED, PENDING, LIMITED, LOW_ACTIVITY,
+    MISCONFIGURED, etc.) — not exposed by query_campaigns. Also attempts a
+    local_services_verification_artifact pull (license/insurance/background-
+    check status) for LOCAL_SERVICES (LSA) accounts; that resource isn't
+    documented as generally available, so a failure here is reported in
+    `verification_error` rather than raised.
+
+    campaign_id: optional single-campaign filter (numeric id). Empty = all
+    campaigns on the account.
+
+    This runs through the already-authenticated GoogleAdsClient/SDK used by
+    every other tool in this file - not a raw curl/GAQL call - so it needs no
+    separate network permission and hits the same auth/rate-limit path.
+    """
+    customer_id = _resolve(location)
+    client = _ads_client()
+    ga = client.get_service("GoogleAdsService")
+    where = [f"campaign.id = {int(campaign_id)}"] if campaign_id else []
+    where_clause = f"WHERE {' AND '.join(where)}" if where else ""
+    query = f"""
+    SELECT
+      campaign.id, campaign.name, campaign.status,
+      campaign.primary_status, campaign.primary_status_reasons,
+      campaign.advertising_channel_type
+    FROM campaign
+    {where_clause}
+    """
+    rows = []
+    for batch in ga.search_stream(customer_id=customer_id, query=query):
+        for r in batch.results:
+            rows.append({
+                "id": r.campaign.id,
+                "name": r.campaign.name,
+                "status": str(r.campaign.status),
+                "primary_status": _enum_name(r.campaign.primary_status),
+                "primary_status_reasons": [
+                    _enum_name(x) for x in r.campaign.primary_status_reasons],
+                "channel_type": str(r.campaign.advertising_channel_type),
+            })
+
+    verification: list[dict[str, Any]] | None = None
+    verification_error: str | None = None
+    try:
+        vquery = """
+        SELECT
+          local_services_verification_artifact.id,
+          local_services_verification_artifact.status,
+          local_services_verification_artifact.background_check_verification_artifact.status,
+          local_services_verification_artifact.license_verification_artifact.status,
+          local_services_verification_artifact.insurance_verification_artifact.status
+        FROM local_services_verification_artifact
+        """
+        vrows = []
+        for r in ga.search(customer_id=customer_id, query=vquery):
+            va = r.local_services_verification_artifact
+            vrows.append({
+                "id": str(va.id),
+                "status": _enum_name(va.status),
+                "background_check_status": _enum_name(
+                    va.background_check_verification_artifact.status),
+                "license_status": _enum_name(va.license_verification_artifact.status),
+                "insurance_status": _enum_name(va.insurance_verification_artifact.status),
+            })
+        verification = vrows
+    except Exception as exc:
+        verification_error = f"{type(exc).__name__}: {exc}"
+
+    return {
+        "location": location,
+        "campaigns": rows,
+        "count": len(rows),
+        "verification_artifacts": verification,
+        "verification_error": verification_error,
+    }
+
+
+@mcp.tool()
 def query_campaigns(location: str, days: int = 30,
                     status_filter: str = "") -> dict[str, Any]:
     """Campaign-level performance with budget, status, and metrics.
