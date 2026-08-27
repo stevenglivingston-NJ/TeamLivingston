@@ -105,6 +105,40 @@ def test_connection(location: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def run_gaql(location: str, query: str) -> dict[str, Any]:
+    """Run an arbitrary GAQL query against the account and return raw rows.
+
+    Use this for anything the typed tools in this file don't cover (e.g.
+    shared_set/shared_criterion negative-list attachment, ad/asset-level
+    performance, campaign_criterion detail beyond what query_negative_keywords
+    exposes). Prefer a typed tool when one already exists - this is the
+    escape hatch, not the default.
+
+    Rows come back via MessageToDict on each GoogleAdsRow, so field names are
+    the snake_case proto field names (e.g. "campaign": {"id": ..., "name": ...}),
+    not the dotted GAQL selectors. Runs through the same authenticated
+    GoogleAdsClient/SDK every other tool here uses - no raw HTTP/curl call,
+    no separate network permission needed.
+
+    A malformed query surfaces the API's own error message/reason (e.g.
+    UNRECOGNIZED_FIELD) in `error` rather than raising, so a bad field name
+    is diagnosable without a stack trace.
+    """
+    customer_id = _resolve(location)
+    client = _ads_client()
+    ga = client.get_service("GoogleAdsService")
+    try:
+        rows = []
+        for batch in ga.search_stream(customer_id=customer_id, query=query):
+            for r in batch.results:
+                rows.append(MessageToDict(r._pb, preserving_proto_field_name=True))
+        return {"location": location, "query": query, "rows": rows, "count": len(rows)}
+    except Exception as exc:
+        return {"location": location, "query": query, "rows": None,
+                "error": f"{type(exc).__name__}: {exc}"}
+
+
+@mcp.tool()
 def query_keywords(location: str, days: int = 30, min_spend: float = 0,
                    limit: int = 100) -> dict[str, Any]:
     """Top keywords by spend. Returns keyword text, match type, ad group,
