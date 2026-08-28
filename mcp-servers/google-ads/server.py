@@ -900,5 +900,221 @@ def query_lsa_periods(location: str, include_cost: bool = True) -> dict[str, Any
     return out
 
 
+# =============================================================================
+# Conversion-action mutation
+# -----------------------------------------------------------------------------
+# Why this exists: the goal-based Google Ads UI HIDES several conversion-action
+# settings that still matter enormously for bidding, and offers no workaround:
+#   * "Include in Conversions" is not exposed at all for Import-from-clicks
+#     (offline upload) actions — verified blocked in the UI 2026-08-28 on
+#     'Scheduled Appointment (GHL)' (7065860044), which sits primary_for_goal
+#     TRUE but counts_in_conversions_metric FALSE: optimized against nothing
+#     and reported nowhere.
+#   * Google-hosted actions (Local actions - Directions, 6653504530) show
+#     "Not editable" for Action optimization in both view and edit mode.
+# The API has no such restriction. This tool reaches past the UI.
+#
+# It ALWAYS reads the action's current state first and returns before/after, so
+# a mutation on a live ad account is never a blind write.
+#
+# NOTE ON include_in_conversions_metric: Google has been migrating this field's
+# role to primary_for_goal. On some API versions it is output-only and the
+# mutate is rejected with a FieldError. The error is surfaced verbatim rather
+# than swallowed — if it comes back read-only, primary_for_goal is the lever.
+# =============================================================================
+
+_CV_FIELDS = (
+    "name", "status", "primary_for_goal", "include_in_conversions_metric",
+    "counting_type", "default_value", "always_use_default_value",
+    "click_lookback_days",
+)
+
+
+def _cv_snapshot(ga: Any, customer_id: str, action_id: int) -> dict[str, Any]:
+    query = f"""
+        SELECT conversion_action.id, conversion_action.name,
+               conversion_action.status, conversion_action.type,
+               conversion_action.category,
+               conversion_action.primary_for_goal,
+               conversion_action.include_in_conversions_metric,
+               conversion_action.counting_type,
+               conversion_action.click_through_lookback_window_days,
+               conversion_action.value_settings.default_value,
+               conversion_action.value_settings.always_use_default_value
+        FROM conversion_action
+        WHERE conversion_action.id = {int(action_id)}
+    """
+    for batch in ga.search_stream(customer_id=customer_id, query=query):
+        for row in batch.results:
+            c = row.conversion_action
+            return {
+                "id": c.id,
+                "name": c.name,
+                "status": _enum_name(c.status),
+                "type": _enum_name(c.type_),
+                "category": _enum_name(c.category),
+                "primary_for_goal": c.primary_for_goal,
+                "include_in_conversions_metric": c.include_in_conversions_metric,
+                "counting_type": _enum_name(c.counting_type),
+                "click_lookback_days": c.click_through_lookback_window_days,
+                "default_value": c.value_settings.default_value,
+                "always_use_default_value": c.value_settings.always_use_default_value,
+            }
+    return {}
+
+
+@mcp.tool()
+def mutate_conversion_action(
+    location: str,
+    action_id: int,
+    name: str | None = None,
+    status: str | None = None,
+    primary_for_goal: bool | None = None,
+    include_in_conversions_metric: bool | None = None,
+    counting_type: str | None = None,
+    default_value: float | None = None,
+    always_use_default_value: bool | None = None,
+    click_lookback_days: int | None = None,
+    validate_only: bool = False,
+) -> dict[str, Any]:
+    """Update one conversion action's settings — including the fields the
+    goal-based Google Ads UI refuses to expose.
+
+    Pass ONLY the fields you intend to change; everything omitted is left
+    untouched. Returns {"before": {...}, "after": {...}, "changed": [...]} so
+    the effect on a live account is always visible.
+
+    Field notes — each of these silently changes how money is spent:
+      primary_for_goal            True = Smart Bidding optimizes toward it.
+                                  False = observed only. Demoting a goal that
+                                  campaigns currently bid on will change
+                                  delivery immediately.
+      include_in_conversions_metric  Whether it counts in the "Conversions"
+                                  column. An action that is primary but
+                                  excluded is optimized against yet invisible
+                                  in reporting. May be output-only on some API
+                                  versions; the API error is returned verbatim.
+      counting_type               "ONE" (ONE_PER_CLICK) or "EVERY"
+                                  (MANY_PER_CLICK). EVERY on a lead form
+                                  double-counts repeat submitters and inflates
+                                  the bidding signal.
+      status                      "ENABLED", "REMOVED", or "HIDDEN". REMOVED is
+                                  how you retire a stale GA4 import or UA goal.
+      default_value /             Conversion value used when none is supplied.
+        always_use_default_value  A wrong default here misprices every bid.
+
+    validate_only: run Google's validation and report what WOULD change without
+    writing. Use it first on anything primary or currently spending.
+    """
+    ok, missing = _check_env()
+    if not ok:
+        return {"error": f"Missing env vars: {', '.join(missing)}"}
+
+    customer_id = _resolve(location)
+    client = _ads_client()
+    ga = client.get_service("GoogleAdsService")
+
+    before = _cv_snapshot(ga, customer_id, action_id)
+    if not before:
+        return {"error": f"No conversion action with id {action_id} in {location}. "
+                         "Use query_conversion_actions(include_removed=True) to list ids."}
+
+    service = client.get_service("ConversionActionService")
+    op = client.get_type("ConversionActionOperation")
+    ca = op.update
+    ca.resource_name = service.conversion_action_path(customer_id, action_id)
+
+    requested: dict[str, Any] = {}
+    paths: list[str] = []
+
+    if name is not None:
+        ca.name = name
+        paths.append("name")
+        requested["name"] = name
+    if status is not None:
+        key = status.upper().strip()
+        try:
+            ca.status = client.enums.ConversionActionStatusEnum[key]
+        except KeyError:
+            return {"error": f"Invalid status '{status}'. Use ENABLED, REMOVED or HIDDEN."}
+        paths.append("status")
+        requested["status"] = key
+    if primary_for_goal is not None:
+        ca.primary_for_goal = primary_for_goal
+        paths.append("primary_for_goal")
+        requested["primary_for_goal"] = primary_for_goal
+    if include_in_conversions_metric is not None:
+        ca.include_in_conversions_metric = include_in_conversions_metric
+        paths.append("include_in_conversions_metric")
+        requested["include_in_conversions_metric"] = include_in_conversions_metric
+    if counting_type is not None:
+        alias = {"ONE": "ONE_PER_CLICK", "EVERY": "MANY_PER_CLICK"}
+        key = alias.get(counting_type.upper().strip(), counting_type.upper().strip())
+        try:
+            ca.counting_type = client.enums.ConversionActionCountingTypeEnum[key]
+        except KeyError:
+            return {"error": f"Invalid counting_type '{counting_type}'. "
+                             "Use ONE / ONE_PER_CLICK or EVERY / MANY_PER_CLICK."}
+        paths.append("counting_type")
+        requested["counting_type"] = key
+    if default_value is not None:
+        ca.value_settings.default_value = float(default_value)
+        paths.append("value_settings.default_value")
+        requested["default_value"] = float(default_value)
+    if always_use_default_value is not None:
+        ca.value_settings.always_use_default_value = always_use_default_value
+        paths.append("value_settings.always_use_default_value")
+        requested["always_use_default_value"] = always_use_default_value
+    if click_lookback_days is not None:
+        ca.click_through_lookback_window_days = int(click_lookback_days)
+        paths.append("click_through_lookback_window_days")
+        requested["click_lookback_days"] = int(click_lookback_days)
+
+    if not paths:
+        return {"error": "No fields given to change. Pass at least one of: "
+                         + ", ".join(_CV_FIELDS),
+                "current": before}
+
+    client.copy_from(op.update_mask, client.get_type("FieldMask")(paths=paths))
+
+    try:
+        service.mutate_conversion_actions(
+            customer_id=customer_id, operations=[op],
+            validate_only=validate_only)
+    except Exception as exc:
+        # Surface the API's own message. A read-only field (notably
+        # include_in_conversions_metric on newer versions) reports itself here
+        # and must NOT be reported to the user as "done".
+        detail = str(exc)
+        errors = []
+        for err in getattr(getattr(exc, "failure", None), "errors", []) or []:
+            errors.append({
+                "message": err.message,
+                "field": ".".join(
+                    e.field_name for e in err.location.field_path_elements
+                ) if err.location.field_path_elements else None,
+            })
+        return {"error": "mutate rejected by Google Ads API",
+                "requested": requested, "detail": detail,
+                "errors": errors, "before": before}
+
+    if validate_only:
+        return {"validate_only": True, "valid": True,
+                "would_change": requested, "before": before,
+                "note": "Nothing was written. Re-run with validate_only=False to apply."}
+
+    after = _cv_snapshot(ga, customer_id, action_id)
+    changed = [k for k in before
+               if k in after and before[k] != after[k]]
+    return {"location": location, "action_id": action_id,
+            "requested": requested, "before": before, "after": after,
+            "changed": changed,
+            "warning": None if changed else
+            "The API accepted the mutate but no field actually changed — the "
+            "value was likely already set, or the field is silently ignored "
+            "on this action type."}
+
+
+
 if __name__ == "__main__":
     mcp.run()
