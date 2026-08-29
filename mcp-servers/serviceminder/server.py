@@ -250,20 +250,38 @@ def query_appointments(
 
 @mcp.tool()
 def find_appointment(location: str, appointment_id: int) -> dict[str, Any]:
-    """Fetch a SINGLE appointment's full detail — including its NOTES.
+    """Fetch a single appointment's core detail (schedule, status, contact id,
+    cancel reason id). Does NOT return notes — see below, this was tested
+    and corrected 2026-08-29.
 
-    Why this exists (important): the bulk `query_appointments` and the org
-    appointments download do NOT return the free-text notes staff (e.g. Ben)
-    leave on an appointment — those notes live on the individual appointment
-    object, retrievable only here via the `appointments/find` endpoint. This is
-    the source of cancellation/reschedule reasoning ("family situation, must
-    reschedule", scope details, etc.). The notes are APPOINTMENT-level, not
-    contact-level: `find_contact(...).Notes` is empty for these; the text is on
-    the appointment.
+    CORRECTED 2026-08-29 — this docstring previously claimed the opposite and
+    was wrong. `Notes`/`UpdateNote` on this endpoint's response are WRITE
+    fields being echoed back from the request, not appointment data: sending
+    `{"AppointmentId":51051472,"Notes":"anything"}` returns that exact string
+    unchanged with the appointment still found — a garbage value doesn't
+    filter the result, proving it's pass-through, not a lookup. On a genuine
+    read (no Notes in the request) it is always null. Verified null across 6+
+    appointments (cancelled and completed), with/without IncludeContact,
+    IncludeCompleted, and IncludeNotes (which the API doesn't even recognize —
+    it's silently dropped, absent from the echoed request). Also checked the
+    nested Slots[].Contact.Notes path (where CancelReasonId famously hides) —
+    still null.
+
+    THE OPEN API HAS NO ENDPOINT THAT READS APPOINTMENT NOTES. The only route
+    is ServiceMinder's Liquid notification templates (see
+    serviceminder/liquid/*.liquid), which render server-side against the live
+    object model and are documented to expose appointment.notes /
+    appointment.appointment_notes — a different product surface, not this API.
+    See CLAUDE.md § "ServiceMinder notes — where they actually live" for the
+    full trail (15 candidate endpoints ruled out, the complete
+    downloadappointmentsettings schema has no note field, and a grep of every
+    Output-marked field across the full 52-page API reference is zero for
+    Notes/UpdateNote/CancelReasonId/ProposalNotes/CustomerNotes on any
+    endpoint). Query the `sm_notes` table instead of this tool for notes.
 
     Pass the AppointmentId (the `Id` column in the appointments download, or
-    `AppointmentId` from query_appointments). Returns the full appointment
-    payload; read the `Notes` field (and `UpdateNote`) for the free-text.
+    `AppointmentId` from query_appointments). CancelReasonId is nested in
+    `Slots[].CancelReasonId`, not at the top level (which returns 0).
     """
     return _post("appointments/find", location, {"AppointmentId": appointment_id})
 
