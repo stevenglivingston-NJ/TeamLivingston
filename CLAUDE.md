@@ -469,7 +469,7 @@ anything personal or financial → owner-only sections**, sourced from the
 personal drive via Zapier. Financial doc links live in `docs_finance`, which is
 RLS-locked to `is_admin()`.
 
-## ServiceMinder notes — where they actually live (canonical; verified 2026-08-25)
+## ServiceMinder notes — where they actually live (canonical; verified 2026-08-29)
 
 Every agent that reports a cancellation reason, a call summary, or "what the customer
 said" reads this. **There are three separate places notes live, none of them reliably
@@ -477,9 +477,49 @@ populated, so check all three and merge.** Earlier specs asserted one source was
 truth" and another was "always empty" — both claims were over-generalised from single
 samples and were wrong. Report which source each note came from.
 
+> ### 🔴 Appointment notes are INVISIBLE to the Open API — read `sm_notes` instead
+>
+> Verified 2026-08-29 on KTU appointment `51051472` (Garret Starr, cancelled 8/20).
+> The SM UI shows a rep note that **is** the cancellation reason —
+> *"Client wrote 'I tried to write in and tell them I wanted it last week. Not this
+> week' and then I both called client with no answer and also texted him advising
+> that we can reschedule if he'd still like. No reply back"* — and every API path
+> is blind to it: `appointments/find` → `Notes: null`, `appointments/query` has no
+> note field, the org download has no Notes column, and the contact carries only
+> the intake blurb.
+>
+> **ServiceMinder's Liquid layer can see them.** `serviceminder/liquid/*.liquid`
+> emit notes as JSON into `inbox_emails`; `intranet/scripts/ingest_sm_notes.py`
+> upserts them into the **`sm_notes`** table (identity `brand, source, sm_note_id`).
+>
+> **So: query `sm_notes` first.** It is the merged, untruncated home for all three
+> note types and it is the only place appointment notes exist at all. Fall back to
+> the API sources below only for what it hasn't mirrored yet.
+>
+> ```sql
+> select source, title, body, private, authored_by, authored_at, ingested_via
+>   from sm_notes where contact_id = <id> order by authored_at desc nulls last;
+> ```
+>
+> Two things to know about it:
+> - **`ingested_via='api'` rows have NO author and NO date.** `contacts/locate`
+>   returns only `{Id, Title, Body, Private}` — no `CreatedBy`/`CreatedOn`. Only
+>   `ingested_via='liquid'` rows carry attribution. Don't report "no date" as
+>   suspicious; it's the API's limit.
+> - **An empty `source='appointment'` group means "not fed yet", not "the rep wrote
+>   nothing."** Until the Liquid templates are installed in the SM UI (once per
+>   brand — it cannot be done via API), appointment notes only exist for events
+>   after install. Never present that absence as silence from the rep.
+>
+> **Never write a contact note into a `cancel_reason` field.** That conflation is
+> what made the Appointment Recovery tab show pre-sale wishlist text under a "why
+> they cancelled" header. `cancel_reason` = the structured label only; blank is a
+> legitimate, informative value (only 13 of 67 Jul–Aug cancellations carry one).
+
 | # | Source | How to read it | Reality check |
 |---|---|---|---|
-| 1 | **Appointment free-text** | `find_appointment(location, appointment_id)` → `Notes`, `UpdateNote` | Where a rep's "family situation, must reschedule" lands. **Was null** on the live cancellation checked 2026-08-25. |
+| 0 | **`sm_notes` (preferred)** | `select … from sm_notes where contact_id = …` | Merged mirror of all three, untruncated. **The only source for appointment notes.** |
+| 1 | **Appointment free-text** | `find_appointment(location, appointment_id)` → `Notes`, `UpdateNote` | **Always null in practice** — null on both live cancellations checked (2026-08-25 and 2026-08-29). Do not rely on it; use `sm_notes`. |
 | 2 | **Contact notes** | `find_contact(location, id_search=<ContactId>)` → `Matches[0].Notes[]` — an **array** of `{Id, Title, Body}` | Titles seen live: `Perceptionist Call`, `Form`, hand-written. **Held the real content** on that same cancellation. Read every element; prefer the highest `Id`. |
 | 3 | **Cancel-reason picklist** | `CancelReasonId` on the appointment | Populated on **8 of 57** cancelled KTU appointments over 7 weeks (~14%). Observed ids `3523`, `4279`. |
 

@@ -1,0 +1,49 @@
+{%- comment -%}
+===============================================================================
+appointment_notes.liquid — mirror an appointment's notes into the intranet
+-------------------------------------------------------------------------------
+The ServiceMinder Open API cannot read appointment notes at all (see
+serviceminder/liquid/README.md for the verification against appt 51051472).
+Liquid can, via appointment.notes / appointment.appointment_notes.
+
+Use this for appointment events OTHER than cancellation — completed visits,
+reschedules — so the rep's write-up ("measured, needs a soffit removed",
+"homeowner's husband wasn't there, revisit") reaches the intranet instead of
+living only in the SM UI. For cancellations use cancellation_notes.liquid,
+which additionally carries the cancel reason.
+
+INSTALL (once per brand — notifications are per-organization):
+  Control Panel -> Notifications -> Appointment Completed
+    body format: PLAIN TEXT (HTML escapes the JSON and breaks the parser)
+    SUBJECT: SM-APPT {{ appointment.id }}
+    deliver to: the intranet ingest address
+
+Private notes are included and flagged. Filtering them out of any
+customer-facing surface is the reader's job, not this template's.
+===============================================================================
+{%- endcomment -%}
+---SM-NOTES-JSON-BEGIN---
+{
+  "source": "appointment",
+  "brand": {{ appointment.organization.name | json }},
+  "contact_id": {{ appointment.contact_id | json }},
+  "appointment_id": {{ appointment.id | json }},
+  "proposal_id": {{ appointment.proposal_id | json }},
+  "subject_label": {{ appointment.contact_name | append: " — " | append: appointment.service.name | json }},
+  "cancel_reason_id": {{ appointment.cancel_reason.id | json }},
+  "cancel_reason": {{ appointment.cancel_reason.name | json }},
+  "cancelled_at": {{ appointment.cancelled_at | json }},
+  "notes": [
+    {%- for n in appointment.notes -%}
+    {
+      "id": {{ n.id | json }},
+      "title": {{ n.title | json }},
+      "body": {{ n.body | json }},
+      "private": {{ n.private | json }},
+      "created_at": {{ n.created_at | json }},
+      "created_by": {{ n.created_by.name | json }}
+    }{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  ]
+}
+---SM-NOTES-JSON-END---

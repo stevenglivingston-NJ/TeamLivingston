@@ -44,6 +44,8 @@ HOW TO INSTALL (ServiceMinder UI — cannot be done through the API)
     * Paste this template as the BODY. Set the format to plain text, not HTML —
       an HTML body will entity-escape the JSON and break the parser.
     * Subject line, exactly:  SM-CANCEL {{ appointment.id }}
+      (the ingest matches any SM- prefix; SM-CANCEL keeps cancellations
+       distinguishable in inbox_emails at a glance)
 
   Do this once per brand (KTU and BTU) — notifications are per-organization.
 
@@ -62,11 +64,14 @@ Recovery needs. The intranet must not surface a private note to a customer-
 facing view; that filtering is the consumer's job, not this template's.
 ===============================================================================
 {%- endcomment -%}
----SM-CANCEL-JSON-BEGIN---
+---SM-NOTES-JSON-BEGIN---
 {
+  "source": "appointment",
+  "brand": {{ appointment.organization.name | json }},
   "appointment_id": {{ appointment.id | json }},
   "contact_id": {{ appointment.contact_id | json }},
-  "contact_name": {{ appointment.contact_name | json }},
+  "proposal_id": {{ appointment.proposal_id | json }},
+  "subject_label": {{ appointment.contact_name | json }},
   "service": {{ appointment.service.name | json }},
   "scheduled": {{ appointment.scheduled_iso | json }},
   "cancelled_at": {{ appointment.cancelled_at | json }},
@@ -76,7 +81,7 @@ facing view; that filtering is the consumer's job, not this template's.
   "cancel_reason": {{ appointment.cancel_reason.name | json }},
   "notes_summary": {{ appointment.notes_summary | json }},
   "customer_notes": {{ appointment.customer_notes | json }},
-  "appointment_notes": [
+  "notes": [
     {%- for n in appointment.notes -%}
     {
       "id": {{ n.id | json }},
@@ -101,4 +106,4 @@ facing view; that filtering is the consumer's job, not this template's.
     {%- endfor -%}
   ]
 }
----SM-CANCEL-JSON-END---
+---SM-NOTES-JSON-END---
