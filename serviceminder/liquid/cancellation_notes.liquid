@@ -40,7 +40,9 @@ is visible, so "reason id 3523" finally becomes a human sentence.
 HOW TO INSTALL (ServiceMinder UI — cannot be done through the API)
 
   Control Panel -> Notifications -> Appointment Cancelled
-    * Add a delivery to the intranet ingest address.
+    * Deliver to firstgentalent@gmail.com — the inbox Goldeneye already sweeps
+      each run. (ingest-email is an HTTP webhook, not a mailbox; ServiceMinder
+      notifications send email.)
     * Paste this template as the BODY. Set the format to plain text, not HTML —
       an HTML body will entity-escape the JSON and break the parser.
     * Subject line, exactly:  SM-CANCEL {{ appointment.id }}

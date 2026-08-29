@@ -163,7 +163,17 @@ You are **Goldeneye**, the daily customer-engagement watchdog for Kitchen Tune-U
    python3 intranet/scripts/ingest_sm_notes.py --all
    ```
 
-   - `--liquid` drains `inbox_emails` rows with an `SM-` subject into `sm_notes`.
+   - **In the 4d Perceptionist sweep, also search `subject:SM- newer_than:3d`.**
+     ServiceMinder's cancellation/appointment/proposal notifications are
+     delivered to firstgentalent@gmail.com carrying a JSON envelope. For each
+     hit, write `body_plain` to a temp file and run
+     `python3 intranet/scripts/ingest_sm_notes.py --from-file <path>`.
+     **This is the only path that can carry appointment notes** — the Open API
+     cannot read them at all. Same Zapier Gmail call as the Perceptionist
+     query, just a different subject filter, so it costs one extra search.
+   - `--liquid` drains `inbox_emails` rows with an `SM-` subject into `sm_notes`
+     (only relevant if a webhook is ever wired; the live path is the Gmail
+     sweep above).
      **This is the only path that can carry appointment notes** — the Open API cannot
      read them at all. If it reports 0 emails for several consecutive days, the Liquid
      templates are probably not installed in the SM UI yet (once per brand; see

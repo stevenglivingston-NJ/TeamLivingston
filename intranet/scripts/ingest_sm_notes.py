@@ -104,18 +104,51 @@ def normalise_brand(raw):
 
 
 def extract_envelope(body):
+    """Slice the JSON out of a notification email and parse it.
+
+    ORDER MATTERS. Parse the chunk AS-IS first, and only attempt repairs if
+    that fails. The earlier version repaired first, which broke the exact case
+    this whole feature exists for: curly quotes inside a note body are valid
+    JSON (just Unicode), and blanket-replacing them with straight quotes turns
+    a legitimate body into a syntax error. Ben Yabra's cancellation note —
+    Client wrote "I tried to write in..." — contains three of them, so the
+    repair-first version failed on the very note we are trying to capture.
+
+    Repairs are therefore a fallback for genuinely mangled mail (a client that
+    smart-quoted the STRUCTURAL quotes, or quoted-printable soft line breaks),
+    tried one at a time from least to most destructive.
+    """
     if not body or BEGIN not in body:
         return None
     chunk = body.split(BEGIN, 1)[1].split(END, 1)[0]
+
+    attempts = [
+        ("as-is", chunk),
+        # Quoted-printable soft line breaks: safe, they are never real content.
+        ("unwrap soft line breaks", chunk.replace("=\r\n", "").replace("=\n", "")),
+        # Last resort: the mail client smart-quoted the structure itself. This
+        # also rewrites curly quotes inside bodies, so only reach for it when
+        # nothing else parses.
+        ("straighten quotes", _straighten(chunk)),
+    ]
+    last = None
+    for label, candidate in attempts:
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError as exc:
+            last = (label, exc)
+            continue
+        if label != "as-is":
+            print(f"    envelope parsed after repair: {label}", file=sys.stderr)
+        return parsed
+    print(f"    envelope present but unparseable ({last[0]}): {last[1]}", file=sys.stderr)
+    return None
+
+
+def _straighten(text):
     for bad, good in SMART_QUOTES.items():
-        chunk = chunk.replace(bad, good)
-    # Quoted-printable soft line breaks survive some gateways.
-    chunk = chunk.replace("=\r\n", "").replace("=\n", "")
-    try:
-        return json.loads(chunk)
-    except json.JSONDecodeError as exc:
-        print(f"    envelope present but unparseable: {exc}", file=sys.stderr)
-        return None
+        text = text.replace(bad, good)
+    return text
 
 
 def upsert_note(brand, source, note, *, contact_id=None, appointment_id=None,
@@ -215,6 +248,46 @@ PRIORITY_SECTIONS = (
 )
 
 
+def run_from_file(path, dry):
+    """Parse ONE raw ServiceMinder notification email saved to a file.
+
+    Why this exists: `ingest-email` is an HTTP webhook, not a mailbox, and
+    ServiceMinder notifications send EMAIL. The live inbound-mail path in this
+    org is the Gmail pull that Goldeneye already runs against
+    firstgentalent@gmail.com (via the Zapier Gmail connection). So the practical
+    wiring is: SM notification -> firstgentalent -> Goldeneye's existing sweep
+    picks up `subject:SM-` -> it writes each body_plain to a temp file and calls
+    this. No new plumbing, no webhook SM may not support.
+
+    (If ServiceMinder does turn out to support webhook delivery, point it at
+    the ingest-email function with the dispatch_config ingest_secret token and
+    use --liquid instead; both end up in the same table.)
+    """
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        body = fh.read()
+    env = extract_envelope(body)
+    if not env:
+        print(f"[from-file] {path}: no parseable SM-NOTES envelope", file=sys.stderr)
+        return 1
+    brand = normalise_brand(env.get("brand"))
+    if not brand:
+        print(f"[from-file] {path}: brand {env.get('brand')!r} unrecognised", file=sys.stderr)
+        return 1
+    ids = dict(contact_id=env.get("contact_id"),
+               appointment_id=env.get("appointment_id"),
+               proposal_id=env.get("proposal_id"))
+    src = env.get("source") or "appointment"
+    n = 0
+    for note in env.get("notes") or []:
+        n += upsert_note(brand, src, note, via="liquid", dry=dry, **ids)
+    for note in env.get("contact_notes") or []:
+        n += upsert_note(brand, "contact", note, via="liquid", dry=dry,
+                         contact_id=env.get("contact_id"))
+    print(f"[from-file] {n} notes upserted ({src}, {brand}, appt "
+          f"{env.get('appointment_id')})")
+    return 0
+
+
 def run_api_contacts(dry, limit=400, sections=None):
     """Backfill contact notes, newest and most decision-relevant first.
 
@@ -294,12 +367,16 @@ def main():
     ap.add_argument("--api-contacts", action="store_true")
     ap.add_argument("--api-proposals", action="store_true")
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--from-file", metavar="PATH",
+                    help="parse one raw SM notification email saved to a file")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--limit", type=int, default=400,
                     help="max contacts to backfill per run (0 = no cap, ~50 min)")
     a = ap.parse_args()
+    if a.from_file:
+        sys.exit(run_from_file(a.from_file, a.dry_run))
     if not any((a.liquid, a.api_contacts, a.api_proposals, a.all)):
-        ap.error("pick at least one of --liquid / --api-contacts / --api-proposals / --all")
+        ap.error("pick at least one of --liquid / --api-contacts / --api-proposals / --all / --from-file")
     if a.dry_run:
         print("(dry run — nothing written)\n")
     if a.liquid or a.all:

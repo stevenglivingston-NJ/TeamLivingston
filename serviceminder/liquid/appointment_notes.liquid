@@ -16,7 +16,10 @@ INSTALL (once per brand — notifications are per-organization):
   Control Panel -> Notifications -> Appointment Completed
     body format: PLAIN TEXT (HTML escapes the JSON and breaks the parser)
     SUBJECT: SM-APPT {{ appointment.id }}
-    deliver to: the intranet ingest address
+    deliver to: firstgentalent@gmail.com
+      (NOT the ingest-email edge function — that is an HTTP webhook and
+       ServiceMinder notifications send email. firstgentalent is the inbox
+       Goldeneye already sweeps every run via the Zapier Gmail connection.)
 
 Private notes are included and flagged. Filtering them out of any
 customer-facing surface is the reader's job, not this template's.

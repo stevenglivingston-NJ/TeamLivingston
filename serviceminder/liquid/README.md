@@ -46,7 +46,12 @@ For each template, **once per brand** (KTU and BTU — notifications are
 per-organization):
 
 1. Control Panel → Notifications → pick the event from the table above.
-2. Add a delivery to the intranet ingest address.
+2. Deliver to **firstgentalent@gmail.com**.
+
+   Not the `ingest-email` edge function: that is an HTTP webhook and
+   ServiceMinder notifications send email. firstgentalent is the inbox
+   Goldeneye already sweeps every run through the Zapier Gmail connection, so
+   this reuses a proven path rather than adding one.
 3. Paste the template as the **body**.
 4. Set the body format to **plain text**. An HTML body entity-escapes the JSON
    and breaks the parser.
@@ -54,10 +59,23 @@ per-organization):
 
 ## What consumes them
 
-`intranet/scripts/ingest_sm_notes.py` reads unprocessed `inbox_emails` rows
-whose subject starts with `SM-`, parses the envelope, and upserts into
-`sm_notes` (identity: `brand, source, sm_note_id`). Re-delivery is therefore
-idempotent.
+Goldeneye's daily Gmail sweep picks up `subject:SM-` from firstgentalent,
+writes each `body_plain` to a temp file, and calls:
+
+```
+python3 intranet/scripts/ingest_sm_notes.py --from-file <path>
+```
+
+which parses the envelope and upserts into `sm_notes` (identity:
+`brand, source, sm_note_id`), so re-delivery is idempotent. If a webhook is
+ever wired instead, `--liquid` reads the same envelopes out of `inbox_emails`.
+
+**Parsing note:** the parser tries the sliced chunk **as-is first** and only
+attempts repairs if that fails. Curly quotes inside a note body are valid JSON,
+and an earlier repair-first version corrupted them — which broke on the exact
+note this feature exists to capture (Ben Yabra's cancellation note contains
+three). Verified end-to-end against that note: parsed, stored untruncated,
+attributed to him with a timestamp.
 
 ## A note on `cancel_reason.name`
 
