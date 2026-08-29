@@ -542,6 +542,33 @@ samples and were wrong. Report which source each note came from.
 > `contactnotes`, `activities`, `history` return no DownloadId; the `contacts`
 > download has no note column.
 >
+> #### `cancelreasons/all` EXISTS and is documented — but returns empty objects.
+>
+> Confirmed live 2026-08-29 against KTU, both via `sm.sh` and raw curl (bypassing
+> any local scrubbing/formatting, to rule out a client-side bug):
+>
+> ```
+> POST cancelreasons/all {}
+>   -> {"Id":null,"Matches":[{},{},{},{},{},{},{},{}],"ResultCode":0,
+>       "Message":"Found 8 cancel reasons."}
+> ```
+>
+> `ResultCode` and `Message` confirm the org has exactly 8 cancel reasons (our
+> recovered map has 7 distinct labels + `id 4279`/Duplicate Booking = 8 — this
+> lines up). But every element of `Matches` is a genuinely empty `{}` — not a
+> parsing artefact, the API itself serializes zero fields per match. Passing an
+> `Id` filter (e.g. `3523`) does not narrow or populate the result either. The
+> API PDF references `CancelReason[]` as the Matches type but never defines that
+> object's shape anywhere in the doc (unlike `IdName`/`AppointmentSlot`, which
+> get their own sections) — consistent with a response model that was never
+> fully wired up server-side.
+>
+> **Net effect: still no way to get the label from the API.** The id->label map
+> in `repair_appt_followups.py` (recovered by joining `query_appointments`
+> against the download) remains the only source. Re-test this endpoint if
+> ServiceMinder ships an update — a currently-broken response model is the kind
+> of thing that gets fixed without an announcement.
+
 > **The asymmetry is the point: this API can WRITE notes and cannot READ them
 > back** — except contact notes riding inside `contacts/locate`. Everything else
 > needs Liquid.
