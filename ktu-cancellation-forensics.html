@@ -1,0 +1,342 @@
+<title>The Vanishing Consults</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#F2F4F7; --surface:#FFFFFF; --surface-2:#F8F9FB;
+  --ink:#12161D; --ink-2:#3D4654; --muted:#6B7688; --hair:#DFE3EA; --hair-2:#EDF0F4;
+  --accent:#1C5566; --accent-soft:#E3EEF1;
+  --crit:#A32833; --crit-soft:#FBE9EA;
+  --warn:#9A6410; --warn-soft:#FBF0DE;
+  --ok:#26654C; --ok-soft:#E4F0EA;
+  --shadow:0 1px 2px rgba(18,22,29,.06),0 8px 24px -12px rgba(18,22,29,.14);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0D1116; --surface:#151A21; --surface-2:#1A2029;
+  --ink:#E8ECF2; --ink-2:#B4BECC; --muted:#7F8B9C; --hair:#262E39; --hair-2:#1F262F;
+  --accent:#6FB6C9; --accent-soft:#132B33;
+  --crit:#F08A92; --crit-soft:#2E1518;
+  --warn:#E0AE5F; --warn-soft:#2B2113;
+  --ok:#77C6A2; --ok-soft:#12261E;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px -14px rgba(0,0,0,.7);
+}}
+:root[data-theme="dark"]{
+  --ground:#0D1116; --surface:#151A21; --surface-2:#1A2029;
+  --ink:#E8ECF2; --ink-2:#B4BECC; --muted:#7F8B9C; --hair:#262E39; --hair-2:#1F262F;
+  --accent:#6FB6C9; --accent-soft:#132B33;
+  --crit:#F08A92; --crit-soft:#2E1518;
+  --warn:#E0AE5F; --warn-soft:#2B2113;
+  --ok:#77C6A2; --ok-soft:#12261E;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px -14px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px 96px}
+h1,h2,h3{text-wrap:balance;margin:0}
+.eyebrow{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:500}
+
+/* header */
+header{padding:56px 0 36px;border-bottom:1px solid var(--hair)}
+header h1{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:clamp(38px,6vw,62px);line-height:1.02;letter-spacing:-.01em;margin:14px 0 0}
+header h1 em{font-style:italic;color:var(--accent)}
+.sub{margin-top:16px;max-width:62ch;color:var(--ink-2);font-size:16.5px}
+.meta{margin-top:22px;display:flex;flex-wrap:wrap;gap:8px 22px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted)}
+
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(184px,1fr));gap:1px;background:var(--hair);border:1px solid var(--hair);margin:36px 0 0;border-radius:3px;overflow:hidden}
+.kpi{background:var(--surface);padding:20px 18px}
+.kpi .n{font-family:"Instrument Serif",Georgia,serif;font-size:44px;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi .n.crit{color:var(--crit)} .kpi .n.warn{color:var(--warn)} .kpi .n.ok{color:var(--ok)}
+.kpi .l{margin-top:9px;font-size:12.5px;color:var(--muted);line-height:1.4}
+
+section{margin-top:60px}
+section > .eyebrow{display:block;margin-bottom:10px}
+section h2{font-family:"Instrument Serif",Georgia,serif;font-weight:400;font-size:31px;letter-spacing:-.005em;line-height:1.14}
+section p{max-width:68ch;color:var(--ink-2);font-size:15.5px}
+
+.card{background:var(--surface);border:1px solid var(--hair);border-radius:3px;box-shadow:var(--shadow)}
+.pad{padding:22px 24px}
+
+.finding{display:grid;grid-template-columns:auto 1fr;gap:0 18px;padding:20px 24px;border-top:1px solid var(--hair-2)}
+.finding:first-child{border-top:0}
+.finding .rank{font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600;color:var(--surface);background:var(--ink);width:22px;height:22px;border-radius:2px;display:grid;place-items:center;margin-top:2px}
+.finding h3{font-size:16px;font-weight:600;letter-spacing:-.005em}
+.finding p{margin:7px 0 0;font-size:14.5px}
+.finding .ev{margin-top:10px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);border-left:2px solid var(--hair);padding-left:11px;white-space:pre-line}
+
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--hair-2);vertical-align:top}
+th{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500;border-bottom:1px solid var(--hair);position:sticky;top:0;background:var(--surface);z-index:1}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:"IBM Plex Mono",monospace}
+.scroll{overflow-x:auto}
+tbody tr:hover{background:var(--surface-2)}
+
+.bar{height:7px;background:var(--hair-2);border-radius:2px;overflow:hidden;min-width:74px}
+.bar i{display:block;height:100%;background:var(--crit)}
+.bar i.mid{background:var(--warn)} .bar i.low{background:var(--ok)}
+
+.pill{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.05em;padding:2px 7px;border-radius:2px;white-space:nowrap;font-weight:500}
+.p-crit{background:var(--crit-soft);color:var(--crit)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-ok{background:var(--ok-soft);color:var(--ok)}
+.p-acc{background:var(--accent-soft);color:var(--accent)}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0 14px}
+.chip{font-family:"IBM Plex Mono",monospace;font-size:11.5px;padding:6px 11px;border:1px solid var(--hair);background:var(--surface);color:var(--ink-2);border-radius:2px;cursor:pointer;transition:background .12s,border-color .12s}
+.chip:hover{border-color:var(--accent)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.who{font-weight:600}
+.addr{color:var(--muted);font-size:12.5px;margin-top:2px}
+.rsn{font-size:12.5px;color:var(--ink-2);max-width:38ch}
+.rsn.none{color:var(--crit);font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+
+.batch{padding:14px 24px;border-top:1px solid var(--hair-2);display:grid;grid-template-columns:150px 1fr;gap:4px 18px}
+.batch:first-child{border-top:0}
+.batch time{font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink);font-weight:500}
+.batch .names{font-size:13.5px;color:var(--ink-2)}
+.batch .cnt{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--crit);display:block;margin-top:1px}
+
+.actions{counter-reset:a;display:grid;gap:1px;background:var(--hair)}
+.act{background:var(--surface);padding:18px 24px}
+.act h3{font-size:15.5px;font-weight:600}
+.act h3::before{counter-increment:a;content:counter(a) ". ";font-family:"IBM Plex Mono",monospace;color:var(--accent);font-weight:500}
+.act p{margin:5px 0 0;font-size:14px}
+
+.caveat{background:var(--surface-2);border:1px solid var(--hair);border-left:3px solid var(--warn);padding:16px 20px;border-radius:2px;margin-top:22px}
+.caveat p{font-size:14px;margin:0}
+footer{margin-top:70px;padding-top:22px;border-top:1px solid var(--hair);font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--muted)}
+@media (max-width:640px){.batch{grid-template-columns:1fr}.finding{grid-template-columns:1fr}.finding .rank{display:none}}
+</style>
+
+<div class="wrap">
+<header>
+  <span class="eyebrow">Kitchen Tune-Up Bloomfield · In-home consultation audit · Apr 16 – Aug 28, 2026</span>
+  <h1>126 appointments booked.<br>Nobody <em>ever said why</em> they died.</h1>
+  <p class="sub">Every cancelled consultation in the export, cross-checked against live ServiceMinder contact records, appointment history and call notes. Test records and out-of-area bookings are separated out, repeat bookings are collapsed to the person, and every lead was checked for whether they ever became a customer.</p>
+  <div class="meta">
+    <span>SOURCE · appointments_1.csv (126 rows)</span>
+    <span>VERIFIED AGAINST · ServiceMinder KTU live API</span>
+    <span>PULLED · Aug 29, 2026</span>
+  </div>
+</header>
+
+<div class="kpis">
+  <div class="kpi"><div class="n crit">58%</div><div class="l">of all real in-home consults booked Apr–Dec were cancelled — 128 killed vs 91 attended</div></div>
+  <div class="kpi"><div class="n crit">80%</div><div class="l">of the 86 real cancellations have <strong>no reason recorded anywhere</strong> — not the picklist, not the appointment, not the contact notes</div></div>
+  <div class="kpi"><div class="n crit">45%</div><div class="l">were killed in a <strong>batch</strong> — 39 appointments cancelled within 45 minutes of another one</div></div>
+  <div class="kpi"><div class="n warn">20.5h</div><div class="l">median notice. The typical cancellation lands the afternoon before the appointment</div></div>
+  <div class="kpi"><div class="n crit">1</div><div class="l">of 75 cancelled prospects is a customer today. 69 were never rebooked, never contacted again</div></div>
+  <div class="kpi"><div class="n">32%</div><div class="l">of the export is junk — 40 test bookings inflating the cancellation count</div></div>
+</div>
+
+<section>
+  <span class="eyebrow">What the data says</span>
+  <h2>Six findings, in the order they cost you money</h2>
+  <div class="card" style="margin-top:20px">
+
+    <div class="finding"><div class="rank">1</div><div>
+      <h3>These do not look like customer cancellations. They look like a schedule being cleared.</h3>
+      <p>Real customer cancellations arrive one at a time, at random hours, scattered across the week. These don't. 39 of 86 landed in a tight cluster with at least one other cancellation — five wiped out in six minutes on Fri Jun 12, four in fifteen minutes on Wed Aug 5. They cluster Tuesday–Friday and essentially never happen on Monday (4 of 86). The median lands 20.5 hours before the appointment: late afternoon, the day before.</p>
+      <div class="ev">Cancellation weekday · Thu 23 · Fri 20 · Wed 20 · Tue 18 · Mon 4 · Sat 1 · Sun 0
+Cancellation hour · concentrated 12:00–17:00 and 19:00–20:00</div>
+    </div></div>
+
+    <div class="finding"><div class="rank">2</div><div>
+      <h3>The reason field is empty on 69 of 86, and ServiceMinder has no cancel-reason report to fall back on.</h3>
+      <p>Only 8 cancellations have an actual customer-stated reason anywhere in the system — all 8 came in through Perceptionist call summaries, not from anyone in the office logging it. Another 9 carry a bare "Other" or a data-cleanup note. The picklist was used 25 times out of 126, and 24 of those were "Other". You cannot manage a 58% cancellation rate you have no reasons for.</p>
+      <div class="ev">Customer-stated reason found · 8   |   "Other" / admin note only · 9   |   Nothing at all · 69</div>
+    </div></div>
+
+    <div class="finding"><div class="rank">3</div><div>
+      <h3>The cancel rate tracks the zip code. That is the cherry-picking signal.</h3>
+      <p>In the affluent Essex core the rep attends roughly six of ten booked consults. In the urban and Hudson-county towns he attends almost none. Glen Ridge and West Caldwell run 17% cancelled; East Orange 80%, Hillside 100%, Union 100%, Jersey City 100%, Secaucus 100%. Volume is small in each individual town, but the gradient is consistent across the whole outer ring and it runs the same direction every time.</p>
+      <div class="ev">Inner affluent ring (Glen Ridge, W. Caldwell, W. Orange, Livingston, Verona) · 28 booked · 32% cancelled
+Urban / Hudson (E. Orange, Newark, Hillside, Union, Jersey City, Bayonne, N. Bergen, Secaucus) · 16 booked · 88% cancelled</div>
+    </div></div>
+
+    <div class="finding"><div class="rank">4</div><div>
+      <h3>There is one written admission of disqualifying a lead, and it is still shaping decisions five years later.</h3>
+      <p>Yvette Bailey's contact record carries a 2021 note titled "Cancel Appt": <em>"Prospect can get cabinets for $5200 plus installation… not possible. Did not waste any more time with this lady. Wacky."</em> Her 2026 record then reads: <em>"I'm hesitant to reach back out bc the notes from 2021 states waste of time and 'wacky'."</em> She rebooked in August 2026 with a $30–50k stated budget. That appointment was cancelled three hours before the slot.</p>
+    </div></div>
+
+    <div class="finding"><div class="rank">5</div><div>
+      <h3>A third of the export is test data, and it is hiding in your cancellation rate.</h3>
+      <p>40 of 126 rows are integration tests — "test fallback 1" with phone 22222222222222, "test integration", "Testing123 Please1 - KTU", "Admin Javalogix Test". They were created through the KTUApp API key and by Support, all booked to the Bloomfield office address, all cancelled. Anyone pulling a cancellation report from ServiceMinder without stripping these is reading a number that is 32% fiction.</p>
+      <div class="ev">Created via API key "KTUApp" · 24   |   Created by "Support" · 12   |   Booked to 1285 Broad St · 28</div>
+    </div></div>
+
+    <div class="finding"><div class="rank">6</div><div>
+      <h3>Booking integrity is broken upstream — wrong addresses, double-books, appointments that were never written at all.</h3>
+      <p>Four August leads (Camille Howard, Tanvi Thacker, Sara &amp; Mike Corrigan, Sher Manara) had the <strong>KTU office address</strong> written onto their contact record instead of their home; the real addresses had to be recovered from HighLevel by hand. Marilyn Vargas and Yvette Bailey were both booked into Wed Aug 26 at 10:00 AM. Kerri Palen was told by Perceptionist she had a 2 PM Friday consult that was never written to ServiceMinder at all — nobody showed up. Jackie Giordano's own call summary went to a duplicate record in the <em>BTU</em> organization.</p>
+    </div></div>
+
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Evidence · batch cancellations</span>
+  <h2>Fifteen sittings that account for 39 appointments</h2>
+  <p>Each block below is a group of cancellations recorded within 45 minutes of each other. A customer cancelling their own consult does not do this.</p>
+  <div class="card" style="margin-top:18px">
+    <div class="batch"><time>Fri Jun 12 · 12:35–12:41</time><div class="names"><span class="cnt">5 appointments in 6 min</span>Yvania Aristil (Hillside) · Monidipa Ganguli (Wayne) · Roxsanne Dyssell (Jersey City) · Laurie Albanese (Montclair) · Frank Sahyoun (Hewitt)</div></div>
+    <div class="batch"><time>Wed Aug 5 · 17:33–17:48</time><div class="names"><span class="cnt">4 appointments in 15 min</span>Sara &amp; Mike Corrigan (Montclair) · Darlene Lowry (Bloomfield) · Kathleen O'Rourke (West Orange) · Tania McBee (Bloomfield)</div></div>
+    <div class="batch"><time>Thu Jun 18 · 12:58–13:46</time><div class="names"><span class="cnt">3 appointments</span>Kellie &amp; Michael Formisano (Secaucus) · Hannah Mir (Verona) · Fariha &amp; Naeen Chougle (Maplewood)</div></div>
+    <div class="batch"><time>Thu Jul 16 · 18:46–19:36</time><div class="names"><span class="cnt">3 appointments</span>Agata Michalik (North Bergen) · Alaysia Williams (Dover) · Jackie Giordano (Nutley)</div></div>
+    <div class="batch"><time>Thu Aug 6 · 16:59–17:14</time><div class="names"><span class="cnt">3 appointments</span>Alana Casner (West Orange) · Alise Strauch (Pompton Lakes) · Avnika Mistry (Morris Plains)</div></div>
+    <div class="batch"><time>Tue Aug 11 · 14:07–14:09</time><div class="names"><span class="cnt">3 appointments in 2 min</span>Ines Dubbels (Clifton) · Linda Grossman (Nutley) · Akif Tarique (Pittstown)</div></div>
+    <div class="batch"><time>Wed Jun 10 · 19:20–19:24</time><div class="names"><span class="cnt">2 appointments</span>Sean Lee &amp; Regina Joe (Bloomfield) · Nereyda Naira (Union)</div></div>
+    <div class="batch"><time>Fri Jun 19 · 09:46–09:53</time><div class="names"><span class="cnt">2 appointments</span>Kellie &amp; Michael Formisano (Secaucus) · Nidhi Gaikwad Inkar (Roseland)</div></div>
+    <div class="batch"><time>Thu Jul 9 · 16:24–16:25</time><div class="names"><span class="cnt">2 appointments</span>Jean Rutter (South Orange) · Alex Donadio (Montclair)</div></div>
+    <div class="batch"><time>Wed Jul 29 · 06:22–06:24</time><div class="names"><span class="cnt">2 appointments</span>Audrey Marketta (Freehold) · Gul Rizvi (Montville)</div></div>
+    <div class="batch"><time>Wed Aug 19 · 12:59–13:03</time><div class="names"><span class="cnt">2 appointments</span>Lorraine Derfler (Short Hills) · Jay Mistry (Clifton)</div></div>
+    <div class="batch"><time>Thu Aug 20 · 17:02–17:06</time><div class="names"><span class="cnt">2 appointments</span>Michael Saunders (Jersey City) · Roger Cadillo (Florham Park)</div></div>
+    <div class="batch"><time>Fri Aug 21 · 16:07–16:08</time><div class="names"><span class="cnt">2 appointments</span>Roseann &amp; Irving Martin (Cedar Grove) · Zoraida &amp; Phil Decarlo (West Orange)</div></div>
+    <div class="batch"><time>Wed Aug 26 · 08:56–09:21</time><div class="names"><span class="cnt">2 appointments</span>Marilyn Vargas (Clifton) · Joyce Moore (West Orange)</div></div>
+    <div class="batch"><time>Fri Jun 19 · 16:07</time><div class="names"><span class="cnt">2 appointments — same minute</span>Vlad Bond ×2 (Los Angeles, CA — spam booking)</div></div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Evidence · geography</span>
+  <h2>Cancellation rate by town</h2>
+  <p>All in-home consults booked Apr 1 – Dec 31, 2026, test records removed, both brands' consults excluded. Towns with at least two resolved appointments.</p>
+  <div class="card scroll" style="margin-top:18px">
+    <table id="cities"><thead><tr><th>Town</th><th class="num">Attended</th><th class="num">Cancelled</th><th class="num">Cancel rate</th><th style="width:130px"></th></tr></thead><tbody></tbody></table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">The register</span>
+  <h2>All 86 real cancellations</h2>
+  <p>Test bookings removed. Every row cross-checked against the live ServiceMinder contact record for reason notes, customer status, and any later appointment.</p>
+  <div class="chips" id="chips">
+    <button class="chip" data-f="all" aria-pressed="true">All 86</button>
+    <button class="chip" data-f="noreason" aria-pressed="false">No reason logged · 69</button>
+    <button class="chip" data-f="daybefore" aria-pressed="false">Killed the day before · 40</button>
+    <button class="chip" data-f="outofarea" aria-pressed="false">Out of area · 12</button>
+    <button class="chip" data-f="repeat" aria-pressed="false">Repeat bookings · 11</button>
+  </div>
+  <div class="card scroll">
+    <table id="reg"><thead><tr>
+      <th>Customer &amp; service address</th><th>Phone</th><th>Appointment</th><th>Cancelled</th><th class="num">Notice</th><th>Reason on file</th><th>Status in ServiceMinder</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+  <p style="margin-top:10px;font-size:12.5px;color:var(--muted)">The full register with emails, booking timestamps, channel and campaign is in <strong>ktu-cancellations-analysis.csv</strong>.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Filtered out</span>
+  <h2>Twelve bookings that were never yours to run</h2>
+  <div class="card scroll" style="margin-top:18px">
+    <table><thead><tr><th>Name</th><th>Address</th><th>Distance from Bloomfield</th><th>Appointment</th></tr></thead>
+    <tbody>
+      <tr><td class="who">Vlad Bond</td><td>801 S Olive St, Los Angeles, CA 90014</td><td><span class="pill p-crit">~2,450 mi · spam</span></td><td>Aug 29, 10:00</td></tr>
+      <tr><td class="who">Vlad Bond</td><td>801 S Olive St, Los Angeles, CA 90014</td><td><span class="pill p-crit">~2,450 mi · spam</span></td><td>Aug 29, 12:00</td></tr>
+      <tr><td class="who">Melba Sirianni</td><td>116 Kennedy Mill Rd, Stewartsville, NJ 08886</td><td><span class="pill p-crit">~55 mi · Warren Cty</span></td><td>Aug 28, 16:00</td></tr>
+      <tr><td class="who">Audrey Marketta</td><td>392 Georgia Rd, Freehold, NJ 07728</td><td><span class="pill p-crit">~48 mi · Monmouth</span></td><td>Jul 30, 10:00</td></tr>
+      <tr><td class="who">Akif Tarique</td><td>35 Balmoral Dr, Pittstown, NJ 08867</td><td><span class="pill p-crit">~45 mi · Hunterdon</span></td><td>Aug 12, 16:00</td></tr>
+      <tr><td class="who">Vicky Veltri</td><td>26 Bracken Hill Rd, Hamburg, NJ 07419</td><td><span class="pill p-warn">~38 mi · Sussex</span></td><td>Jun 26, 12:00</td></tr>
+      <tr><td class="who">Binu Thomas</td><td>2 Sirum Ct, Nanuet, NY 10954</td><td><span class="pill p-warn">~32 mi · out of state</span></td><td>Jun 27, 12:00</td></tr>
+      <tr><td class="who">Brooklyn Chuck</td><td>489 Pacific St, Brooklyn, NY 11217</td><td><span class="pill p-warn">out of state</span></td><td>Jul 11, 10:00</td></tr>
+      <tr><td class="who">Frank Sahyoun</td><td>384 Warwick Tpke, Hewitt, NJ 07421</td><td><span class="pill p-warn">~30 mi · N. Passaic</span></td><td>Jun 12, 16:00</td></tr>
+      <tr><td class="who">Kerri Palen</td><td>12 Forge Rd, Hewitt, NJ 07421</td><td><span class="pill p-warn">~30 mi · N. Passaic</span></td><td>Aug 28, 14:00</td></tr>
+      <tr><td class="who">Camille Howard</td><td>125 Kitchell Lake Dr, West Milford, NJ 07480</td><td><span class="pill p-warn">~30 mi</span></td><td>Aug 5, 10:00</td></tr>
+      <tr><td class="who">Tanvi Thacker</td><td>40 Ridge Rd, Green Brook Twp, NJ 08812</td><td><span class="pill p-warn">~28 mi · Somerset</span></td><td>Aug 5, 12:00</td></tr>
+    </tbody></table>
+  </div>
+  <p style="margin-top:12px;font-size:14px">Removing all twelve moves the real cancellation rate from 58% to 55%. It does not explain the problem — and eight of these twelve came from paid ads, which means the geo-targeting is also spending money outside the service area.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Duplication check</span>
+  <h2>Ten people booked more than once. Every attempt was killed.</h2>
+  <p>86 appointments belong to 75 distinct people. Jean Rutter booked three times and was cancelled three times before finally being seen. Alaysia Williams and Vlad Bond each had two appointments cancelled within minutes of booking. Jackie Giordano is the only row in the entire file flagged "Duplicate Booking".</p>
+  <div class="card scroll" style="margin-top:18px">
+    <table><thead><tr><th>Person</th><th class="num">Attempts</th><th>Outcome</th></tr></thead><tbody>
+      <tr><td class="who">Jean Rutter <span class="addr">South Orange</span></td><td class="num">3</td><td><span class="pill p-ok">eventually attended</span> after 3 cancellations</td></tr>
+      <tr><td class="who">Kellie &amp; Michael Formisano <span class="addr">Secaucus</span></td><td class="num">2</td><td><span class="pill p-crit">dead</span></td></tr>
+      <tr><td class="who">Yvania Aristil <span class="addr">Hillside</span></td><td class="num">2</td><td><span class="pill p-crit">dead</span></td></tr>
+      <tr><td class="who">Milton Cordero <span class="addr">Clifton</span></td><td class="num">2</td><td><span class="pill p-crit">dead</span></td></tr>
+      <tr><td class="who">Roseann &amp; Irving Martin <span class="addr">Cedar Grove</span></td><td class="num">2</td><td><span class="pill p-ok">eventually attended</span></td></tr>
+      <tr><td class="who">Gul Rizvi <span class="addr">Montville</span></td><td class="num">2</td><td><span class="pill p-crit">dead</span></td></tr>
+      <tr><td class="who">Angela &amp; Robert Burchell <span class="addr">Essex Fells</span></td><td class="num">2</td><td><span class="pill p-crit">dead</span></td></tr>
+      <tr><td class="who">Jackie Giordano <span class="addr">Nutley</span></td><td class="num">2</td><td><span class="pill p-crit">dead</span> — 1 flagged duplicate</td></tr>
+      <tr><td class="who">Alaysia Williams <span class="addr">Dover</span></td><td class="num">2</td><td><span class="pill p-crit">dead</span> — 2nd killed 6 min after booking</td></tr>
+      <tr><td class="who">Vlad Bond <span class="addr">Los Angeles</span></td><td class="num">2</td><td><span class="pill p-acc">spam, correctly removed</span></td></tr>
+    </tbody></table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">The cost</span>
+  <h2>What 128 cancelled consults are worth</h2>
+  <p>Of the 90 prospects who actually got an in-home consult, 18 are customers today — a 20% close rate off the appointment. Of the 75 who were cancelled, exactly one is a customer, and that one had already completed three earlier consults. Sixty-nine were never rebooked and never contacted again.</p>
+  <div class="kpis" style="margin-top:24px">
+    <div class="kpi"><div class="n ok">20%</div><div class="l">of attended consults convert to customers (18 of 90)</div></div>
+    <div class="kpi"><div class="n crit">1.3%</div><div class="l">of cancelled prospects convert (1 of 75)</div></div>
+    <div class="kpi"><div class="n warn">~14</div><div class="l">customers implied by the 69 dead leads at the attended close rate</div></div>
+    <div class="kpi"><div class="n crit">92%</div><div class="l">of cancelled leads have no follow-up appointment of any kind on the books</div></div>
+  </div>
+  <div class="caveat"><p><strong>On attribution:</strong> ServiceMinder's export and its API expose <em>when</em> an appointment was cancelled but not <em>who</em> cancelled it — there is no user stamp on the cancel action. Every conclusion above about who is doing the cancelling is behavioral inference from timing, batching and geography, not a name in a log. Pulling the ServiceMinder UI activity log for the fifteen batch windows listed above would settle it in an afternoon, and that is the first thing to do before any conversation with the rep.</p></div>
+</section>
+
+<section>
+  <span class="eyebrow">What to do</span>
+  <h2>Next steps, in order</h2>
+  <div class="card actions" style="margin-top:20px">
+    <div class="act"><h3>Pull the ServiceMinder activity log for the 15 batch windows</h3><p>The batch timestamps are listed above to the minute. The UI audit trail names the user. This turns inference into fact before anyone is accused of anything.</p></div>
+    <div class="act"><h3>Make Cancel Reason mandatory, and delete "Other"</h3><p>The picklist was used 25 times in 126 appointments and 24 of those were "Other". Build a real list — customer postponed, customer unreachable, out of area, budget mismatch, duplicate, rep reschedule — and require it on cancel.</p></div>
+    <div class="act"><h3>Take cancel rights away from the sales seat</h3><p>Route every cancellation through the office. A rep who wants out of an appointment files a request with a reason; someone else executes it. This alone would have produced 69 reasons you currently don't have.</p></div>
+    <div class="act"><h3>Work the 69 dead leads this week</h3><p>They are sitting in ServiceMinder as Prospects with nothing scheduled and nothing logged. At the attended close rate they are worth roughly 14 customers. Start with the 40 that were killed the day before — those people still expected a visit.</p></div>
+    <div class="act"><h3>Purge the 40 test bookings and lock down the KTUApp key</h3><p>They corrupt every cancellation report anyone runs. Delete them, and stop integration tests writing live appointments to the Bloomfield office address.</p></div>
+    <div class="act"><h3>Fix the geo-targeting and the address write-back</h3><p>Eight of twelve out-of-area bookings came from paid channels. And four August leads had the office address written to their contact record instead of their home — that is a HighLevel-to-ServiceMinder mapping bug, not a rep problem.</p></div>
+  </div>
+</section>
+
+<footer>Kitchen Tune-Up Bloomfield · Cancellation forensics · Prepared Aug 29, 2026 · Source: appointments_1.csv verified against ServiceMinder KTU live API (contacts/locate, appointments/query)</footer>
+</div>
+
+<script>
+const CITIES=[["Montville",0,3],["Florham Park",0,2],["Wayne",0,2],["Jersey City",0,2],["Hewitt",0,2],["Hillside",0,2],["Union",0,2],["Secaucus",0,2],["Dover",0,2],["Randolph",1,5],["Roseland",1,4],["East Orange",1,4],["Nutley",2,5],["Cedar Grove",2,4],["Essex Fells",1,2],["Clifton",6,11],["Maplewood",3,4],["Summit",4,5],["South Orange",6,7],["Montclair",11,11],["Caldwell",3,3],["Bloomfield",8,7],["West Orange",12,8],["Livingston",4,2],["West Caldwell",5,1],["Glen Ridge",5,1],["Denville",2,0],["Little Falls",2,0]];
+const ct=document.querySelector("#cities tbody");
+CITIES.forEach(([c,done,canc])=>{
+  const t=done+canc, r=canc/t, cls=r>=.7?"":r>=.45?"mid":"low";
+  ct.insertAdjacentHTML("beforeend",`<tr><td>${c}</td><td class="num">${done}</td><td class="num">${canc}</td><td class="num">${Math.round(r*100)}%</td><td><div class="bar"><i class="${cls}" style="width:${r*100}%"></i></div></td></tr>`);
+});
+</script>
+<script>const ROWS=[{"appt":"48421752","name":"Caroline Mikolajczyk","addr":"64 Paterson Ave, Clifton, NJ, 07014","phone":"5512701278","email":"","booked":"2026-05-26 11:22","appt_dt":"2026-06-04 12:00","cancelled":"2026-06-03 19:38","notice_h":16.4,"channel":"Online","campaign":"Google Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"48822005","name":"Sean Lee and Regina Joe","addr":"35 Rawson St, Bloomfield, NJ, 07003","phone":"9735664580","email":"lees@montclair.edu","booked":"2026-06-03 12:52","appt_dt":"2026-06-11 12:00","cancelled":"2026-06-10 19:20","notice_h":16.7,"channel":"Online","campaign":"FORM","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"48894648","name":"Nereyda Naira","addr":"845 Monmouth Rd, Union, NJ, 07083","phone":"9084145119","email":"nnairac1972@yahoo.com","booked":"2026-06-09 09:34","appt_dt":"2026-06-11 14:00","cancelled":"2026-06-10 19:24","notice_h":18.6,"channel":"Online","campaign":"kitchentuneup.com","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"48893500","name":"Yvania Aristil","addr":"549 Harvard Ave, Hillside, NJ, 07205","phone":"9084229553","email":"yvaniaaristil73@gmail.com","booked":"2026-06-09 08:27","appt_dt":"2026-06-13 10:00","cancelled":"2026-06-12 12:35","notice_h":21.4,"channel":"Online","campaign":"Paid Social","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"48815249","name":"Monidipa Ganguli","addr":"115 Spring Hill Cir, Wayne, NJ, 07470","phone":"6462098665","email":"monidipa.ganguli@gmail.com","booked":"2026-06-03 08:10","appt_dt":"2026-06-13 12:00","cancelled":"2026-06-12 12:38","notice_h":23.4,"channel":"Social Media","campaign":"NAF Facebook Paid","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"48869190","name":"Roxsanne Dyssell","addr":"64 Mercer St, Jersey City, NJ, 07302","phone":"2124852259","email":"roxzylok@gmail.com","booked":"2026-06-06 13:15","appt_dt":"2026-06-12 10:00","cancelled":"2026-06-12 12:40","notice_h":-2.7,"channel":"Online","campaign":"Google Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"48817807","name":"Laurie  Albanese","addr":"129 Gordonhurst Ave, Montclair, NJ, 07043","phone":"9734773891","email":"","booked":"2026-06-03 10:22","appt_dt":"2026-06-12 12:00","cancelled":"2026-06-12 12:41","notice_h":-0.7,"channel":"Signage & Local","campaign":"Vehicle Signage","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"48885135","name":"Frank Sahyoun","addr":"384 Warwick Tpke, Hewitt, NJ, 07421","phone":"8622205441","email":"frankie92261@gmail.com","booked":"2026-06-08 14:52","appt_dt":"2026-06-12 16:00","cancelled":"2026-06-12 12:41","notice_h":3.3,"channel":"Online","campaign":"Google Search","far":"Hewitt NJ (far N Passaic) \u2014 ~30 mi","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["outofarea","noreason"]},{"appt":"48936125","name":"John  Plasko","addr":"21 white oak dr, Caldwell, NJ, 07006","phone":"9737682087","email":"","booked":"2026-06-10 09:00","appt_dt":"2026-06-18 10:00","cancelled":"2026-06-18 09:02","notice_h":1.0,"channel":"TV","campaign":"TV","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"49017772","name":"Kellie and Michael Formisano","addr":"126 Huber St, Secaucus, NJ, 07094","phone":"2017076164","email":"michaelformisano@gmail.com","booked":"2026-06-13 09:29","appt_dt":"2026-06-19 00:00","cancelled":"2026-06-18 12:58","notice_h":11.0,"channel":"Online","campaign":"Google Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"49104954","name":"Hannah Mir","addr":"21 Otsego Rd, Verona, NJ, 07044","phone":"2129603461","email":"mirhannah@gmail.com","booked":"2026-06-17 11:03","appt_dt":"2026-06-19 10:00","cancelled":"2026-06-18 13:06","notice_h":20.9,"channel":"Online","campaign":"Google Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"48844014","name":"Fariha and Naeen Chougle","addr":"27 Overlook Ter, Maplewood, NJ, 07040","phone":"9083670985","email":"fariha_85@hotmail.com","booked":"2026-06-04 13:36","appt_dt":"2026-06-18 16:00","cancelled":"2026-06-18 13:46","notice_h":2.2,"channel":"Online","campaign":"Paid Social","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"49343087","name":"Kellie and Michael Formisano","addr":"126 Huber St, Secaucus, NJ, 07094","phone":"2017076164","email":"michaelformisano@gmail.com","booked":"2026-06-18 12:59","appt_dt":"2026-06-19 11:00","cancelled":"2026-06-19 09:46","notice_h":1.2,"channel":"Online","campaign":"Google Search","far":"","dupe":"attempt #2 for this phone","sm_status":"Prospect","later":"","reason":"","tags":["repeat","noreason"]},{"appt":"49038049","name":"Nidhi Gaikwad Inkar","addr":"Roseland NJ, Roseland, NJ, 07068","phone":"9174328994","email":"nidhigaikwad7@gmail.com","booked":"2026-06-15 16:07","appt_dt":"2026-06-19 17:00","cancelled":"2026-06-19 09:53","notice_h":7.1,"channel":"Social Media","campaign":"Franchise Facebook Paid","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"49554627","name":"Vlad Bond","addr":"801 S Olive St, Los Angeles, CA, 90014","phone":"4242797832","email":"vlad@hybrid-reach.com","booked":"2026-06-19 15:59","appt_dt":"2026-08-29 10:00","cancelled":"2026-06-19 16:07","notice_h":1697.9,"channel":"Online","campaign":"","far":"Los Angeles CA \u2014 ~2,450 mi","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["outofarea","noreason"]},{"appt":"49554685","name":"Vlad Bond","addr":"801 S Olive St, Los Angeles, CA, 90014","phone":"4242797832","email":"vlad@hybrid-reach.com","booked":"2026-06-19 16:06","appt_dt":"2026-08-29 12:00","cancelled":"2026-06-19 16:07","notice_h":1699.9,"channel":"Online","campaign":"","far":"Los Angeles CA \u2014 ~2,450 mi","dupe":"attempt #2 for this phone","sm_status":"Prospect","later":"","reason":"","tags":["outofarea","repeat","noreason"]},{"appt":"45383374","name":"Sergio and Andrea Cappellini","addr":"317 Kensington Ln, Livingston, NJ, 07039","phone":"2014860987","email":"cappellini.sergio@gmail.com","booked":"2026-05-02 11:22","appt_dt":"2026-06-20 10:00","cancelled":"2026-06-19 21:48","notice_h":12.2,"channel":"Online","campaign":"Paid Social","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"49684088","name":"Pamela Giannotto","addr":"3305 Tudor Dr, Pompton Plains, NJ, 07444","phone":"9144143859","email":"thegoof1226@aol.com","booked":"2026-06-23 08:10","appt_dt":"2026-06-25 16:00","cancelled":"2026-06-23 08:10","notice_h":55.8,"channel":"Online","campaign":"kitchentuneup.com","far":"","dupe":"","sm_status":"Prospect","later":"COMPLETED a consult later","reason":"","tags":["noreason"]},{"appt":"49550728","name":"Yvania Aristil","addr":"549 Harvard Ave, Hillside, NJ, 07205","phone":"9084229553","email":"yvaniaaristil73@gmail.com","booked":"2026-06-19 12:18","appt_dt":"2026-06-24 16:00","cancelled":"2026-06-24 17:17","notice_h":-1.3,"channel":"Online","campaign":"Paid Social","far":"","dupe":"attempt #2 for this phone","sm_status":"Prospect","later":"","reason":"","tags":["repeat","noreason"]},{"appt":"49668744","name":"Nia Tannis","addr":"1 Chauncey Ave, East Orange, NJ, 07017","phone":"2406206790","email":"rubenstein.jon@gmail.com","booked":"2026-06-22 12:33","appt_dt":"2026-06-26 14:00","cancelled":"2026-06-25 18:08","notice_h":19.9,"channel":"Online","campaign":"Google Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"49550765","name":"Binu  Thomas","addr":"2 Sirum Court, Nanuet, NY, 10954","phone":"9736092753","email":"jonesbinu@gmail.com","booked":"2026-06-19 12:21","appt_dt":"2026-06-27 12:00","cancelled":"2026-06-26 07:14","notice_h":28.8,"channel":"Online","campaign":"FORM","far":"Nanuet NY \u2014 out of state, ~32 mi","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["outofarea","noreason","daybefore"]},{"appt":"49780955","name":"Vicky Veltri","addr":"26 Bracken Hill Road, Hamburg, NJ, 07419","phone":"9732712696","email":"couragern2@hotmail.com","booked":"2026-06-24 22:00","appt_dt":"2026-06-26 12:00","cancelled":"2026-06-26 09:04","notice_h":2.9,"channel":"Online","campaign":"","far":"Hamburg NJ (Sussex) \u2014 ~38 mi","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["outofarea","noreason"]},{"appt":"49341420","name":"Milton Cordero","addr":"214 Grove St, Clifton, NJ, 07013","phone":"9734053438","email":"mcmilt309@aol.com","booked":"2026-06-18 11:59","appt_dt":"2026-06-27 10:00","cancelled":"2026-06-26 15:49","notice_h":18.2,"channel":"Social Media","campaign":"NAF Facebook Paid","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"49782572","name":"Yaghma Naibzada","addr":"55 Midvale Avenue, Lake Hiawatha, NJ, 07034","phone":"9737227303","email":"yaghmanaibzada@gmail.com","booked":"2026-06-25 09:16","appt_dt":"2026-07-01 10:00","cancelled":"2026-06-29 15:04","notice_h":42.9,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"49715092","name":"Dewey Melhado","addr":"287 Forest Dr, Union, NJ, 07083","phone":"9739013993","email":"dewey.melhado@gmail.com","booked":"2026-06-24 12:19","appt_dt":"2026-07-01 16:00","cancelled":"2026-06-30 15:43","notice_h":24.3,"channel":"Online","campaign":"Google Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"49785018","name":"Chris Napierala","addr":"185 Grove St, Montclair, NJ, 07042","phone":"6463389926","email":"chrisnapierala@yahoo.com","booked":"2026-06-25 11:22","appt_dt":"2026-07-01 14:00","cancelled":"2026-06-30 16:59","notice_h":21.0,"channel":"Online","campaign":"kitchentuneup.com","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"49784134","name":"Roseann and Irving Martin","addr":"322 Bowden Rd, Cedar Grove, NJ, 07009","phone":"9738571592","email":"roseannmartin@verizon.net","booked":"2026-06-25 10:34","appt_dt":"2026-07-09 10:00","cancelled":"2026-06-30 17:46","notice_h":208.2,"channel":"Online","campaign":"FORM","far":"","dupe":"","sm_status":"Prospect","later":"COMPLETED a consult later","reason":"","tags":["noreason"]},{"appt":"49995084","name":"Angela and Robert Burchell","addr":"103 Fells Road, Essex Fells, NJ, 07021","phone":"9732166595","email":"agburchell@aol.com","booked":"2026-07-02 11:52","appt_dt":"2026-07-09 14:00","cancelled":"2026-07-02 20:12","notice_h":161.8,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"49979349","name":"Gul Rizvi","addr":"46 Lakeshore Drive, Montville, NJ, 07045","phone":"6093063468","email":"gulrazharr@gmail.com","booked":"2026-07-01 10:06","appt_dt":"2026-07-08 10:00","cancelled":"2026-07-07 20:03","notice_h":13.9,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"49994126","name":"Branden Jones","addr":"151 Irving Ave, South Orange, NJ, 07079","phone":"3475780572","email":"brandenfjones@gmail.com","booked":"2026-07-02 11:00","appt_dt":"2026-07-09 16:00","cancelled":"2026-07-08 17:37","notice_h":22.4,"channel":"Online","campaign":"kitchentuneup.com","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"49893942","name":"Donna McMonagle","addr":"287 Whitford Ave, Nutley, NJ, 07110","phone":"9177514805","email":"donnamcmonagle@hotmail.com","booked":"2026-06-30 12:03","appt_dt":"2026-07-09 12:00","cancelled":"2026-07-08 19:57","notice_h":16.1,"channel":"Online","campaign":"kitchentuneup.com","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"49890440","name":"Brooklyn  Chuck","addr":"489 Pacific Street, Brooklyn, NY, 11217","phone":"6463205657","email":"brooklynchuck@gmail.com","booked":"2026-06-30 09:39","appt_dt":"2026-07-11 10:00","cancelled":"2026-07-09 11:05","notice_h":46.9,"channel":"Online","campaign":"","far":"Brooklyn NY \u2014 out of state","dupe":"","sm_status":"Prospect","later":"","reason":"Perceptionist Call: The caller, Charles Wells, has a 10 o'clock appointment tomorrow with Benyard Yarborough but needs to cancel and potentially reschedule. His phone number is 646-320-5657. He requested to reschedule for Sunday, and the agent will notify the team to reach out to","tags":["outofarea"]},{"appt":"49550504","name":"Jean  Rutter","addr":"Apt 4 B, South Orange Village, NJ, 07110","phone":"9088129958","email":"angela.hyndman@gmail.com","booked":"2026-06-19 12:04","appt_dt":"2026-07-10 12:00","cancelled":"2026-07-09 16:24","notice_h":19.6,"channel":"Online","campaign":"FORM","far":"","dupe":"","sm_status":"Prospect","later":"COMPLETED a consult later","reason":"Perceptionist Call: The caller, Natalie, is canceling her appointment scheduled for next week on the 12th due to a priority issue with her house. The appointment was set for 45 West Main Street. She plans to put a hold on the kitchen project and will reach out again when she is r","tags":["daybefore"]},{"appt":"49996256","name":"Alex Donadio","addr":"230 McCosh Rd, Montclair, NJ, 07043","phone":"9736706699","email":"alexandra.donadio1@gmail.com","booked":"2026-07-02 12:52","appt_dt":"2026-07-10 14:00","cancelled":"2026-07-09 16:25","notice_h":21.6,"channel":"Signage & Local","campaign":"Vehicle Signage","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"50146879","name":"Jackie Giordano","addr":"119 Cedar St, Nutley, NJ, 07110","phone":"2018893025","email":"jacquelinee818@aol.com","booked":"2026-07-11 11:11","appt_dt":"2026-07-17 12:00","cancelled":"2026-07-11 12:07","notice_h":143.9,"channel":"Online","campaign":"Google Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"picklist: Duplicate Booking","tags":[]},{"appt":"49808110","name":"Keisandra Griffith","addr":"245 Midland Ave, East Orange, NJ, 07017","phone":"7187912355","email":"kgriffithrob@aol.com","booked":"2026-06-26 18:51","appt_dt":"2026-07-11 12:00","cancelled":"2026-07-13 08:35","notice_h":-44.6,"channel":"Online","campaign":"kitchentuneup.com","far":"","dupe":"","sm_status":"Prospect","later":"COMPLETED a consult later","reason":"","tags":["noreason"]},{"appt":"49011399","name":"Lindsay Matarazzo","addr":"13 Glenview Rd, Caldwell, NJ, 07006","phone":"6094255207","email":"lindsaylare@gmail.com","booked":"2026-06-12 13:12","appt_dt":"2026-07-15 12:00","cancelled":"2026-07-13 13:01","notice_h":47.0,"channel":"Online","campaign":"Google Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"Perceptionist Call: The caller, Lyndsey, requested to cancel her appointment scheduled for Wednesday at the Glenview road address. The agent confirmed the cancellation and noted that Lyndsey is postponing the project. No rescheduling is needed at this time.","tags":[]},{"appt":"49996439","name":"Laura Haraka","addr":"35 brookdale road, Bloomfield, NJ, 07003","phone":"9736990218","email":"","booked":"2026-07-02 13:01","appt_dt":"2026-07-15 10:00","cancelled":"2026-07-14 12:17","notice_h":21.7,"channel":"Z Default Select Channel","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"50175110","name":"Alaysia Williams","addr":"146 N Sussex St, Dover, NJ, 07081","phone":"5162078936","email":"alaysiawilli@gmail.com","booked":"2026-07-14 13:47","appt_dt":"2026-07-22 16:00","cancelled":"2026-07-14 13:53","notice_h":194.1,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"50180173","name":"Karen  Labagnara","addr":"53 Yantecaw Avenue, Bloomfield, NJ, 07003","phone":"8624412217","email":"sammy1438@msn.com","booked":"2026-07-14 20:03","appt_dt":"2026-07-23 12:00","cancelled":"2026-07-14 20:05","notice_h":207.9,"channel":"Online","campaign":"FORM","far":"","dupe":"","sm_status":"CUSTOMER","later":"COMPLETED a consult later","reason":"","tags":["noreason"]},{"appt":"50152012","name":"Michelle Degen","addr":"69 Terrace Avenue, West Orange, NJ, 07052","phone":"9736661187","email":"elianadegen1@gmail.com","booked":"2026-07-12 18:32","appt_dt":"2026-07-16 12:00","cancelled":"2026-07-16 11:30","notice_h":0.5,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"50145680","name":"Agata Michalik","addr":"4516 Smith Avenue, North Bergen, NJ, 07047","phone":"7185946467","email":"amichalik_2000@yahoo.com","booked":"2026-07-10 20:18","appt_dt":"2026-07-17 10:00","cancelled":"2026-07-16 18:46","notice_h":15.2,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"50175182","name":"Alaysia Williams","addr":"146 N Sussex St, Dover, NJ, 07081","phone":"5162078936","email":"alaysiawilli@gmail.com","booked":"2026-07-14 13:53","appt_dt":"2026-07-17 12:00","cancelled":"2026-07-16 18:56","notice_h":17.1,"channel":"Online","campaign":"","far":"","dupe":"attempt #2 for this phone","sm_status":"Prospect","later":"","reason":"","tags":["repeat","noreason","daybefore"]},{"appt":"50147077","name":"Jackie Giordano","addr":"119 Cedar St, Nutley, NJ, 07110","phone":"2018893025","email":"jacquelinee818@aol.com","booked":"2026-07-11 12:04","appt_dt":"2026-07-17 16:00","cancelled":"2026-07-16 19:36","notice_h":20.4,"channel":"Online","campaign":"Google Search","far":"","dupe":"attempt #2 for this phone","sm_status":"Prospect","later":"","reason":"","tags":["repeat","noreason","daybefore"]},{"appt":"49900858","name":"Milton Cordero","addr":"214 Grove St, Clifton, NJ, 07013","phone":"9734053438","email":"mcmilt309@aol.com","booked":"2026-06-30 17:35","appt_dt":"2026-07-18 10:00","cancelled":"2026-07-17 15:26","notice_h":18.6,"channel":"Social Media","campaign":"NAF Facebook Paid","far":"","dupe":"attempt #2 for this phone","sm_status":"Prospect","later":"","reason":"","tags":["repeat","noreason","daybefore"]},{"appt":"50145745","name":"Sasha Callegari","addr":"23 Devonshire Drive, Clifton, NJ, 07013","phone":"5516970994","email":"swiedinger105@gmail.com","booked":"2026-07-10 21:05","appt_dt":"2026-07-18 12:00","cancelled":"2026-07-20 09:26","notice_h":-45.4,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"COMPLETED a consult later","reason":"picklist: Other","tags":[]},{"appt":"50308760","name":"Berk Torun","addr":"133 Riverwalk Way, Clifton, NJ, 07014","phone":"9175742616","email":"berk-torun@hotmail.com","booked":"2026-07-19 14:46","appt_dt":"2026-07-22 16:00","cancelled":"2026-07-21 20:12","notice_h":19.8,"channel":"Online","campaign":"Google Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"50412521","name":"Nancy","addr":"1285 Broad Street, Bloomfield, NJ, 07003","phone":"8563403223","email":"kittie1030@gmail.com","booked":"2026-07-21 20:01","appt_dt":"2026-07-31 14:00","cancelled":"2026-07-21 22:17","notice_h":231.7,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"50311996","name":"Scott  Lalonde","addr":"10 Watchung Avenue, Montclair, NJ, 07043","phone":"9735176120","email":"sl6120@mac.com","booked":"2026-07-20 09:16","appt_dt":"2026-07-22 12:00","cancelled":"2026-07-22 08:53","notice_h":3.1,"channel":"Online","campaign":"Organic Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"50313049","name":"Miranda Heard","addr":"24 Juniper Ct, Cedar Grove, NJ, 07009","phone":"4073429017","email":"meh155@aol.com","booked":"2026-07-20 09:51","appt_dt":"2026-07-23 16:00","cancelled":"2026-07-23 09:18","notice_h":6.7,"channel":"Online","campaign":"kitchentuneup.com","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"50053403","name":"Angela and Robert Burchell","addr":"103 Fells Road, Essex Fells, NJ, 07021","phone":"9732166595","email":"agburchell@aol.com","booked":"2026-07-08 12:30","appt_dt":"2026-07-23 14:00","cancelled":"2026-07-23 10:28","notice_h":3.5,"channel":"Online","campaign":"","far":"","dupe":"attempt #2 for this phone","sm_status":"Prospect","later":"","reason":"","tags":["repeat","noreason"]},{"appt":"50435824","name":"Maria  Curcio","addr":"44 Duffus Avenue, Totowa, NJ, 07512","phone":"9736268345","email":"mariacurcio@icloud.com","booked":"2026-07-23 16:50","appt_dt":"2026-07-29 14:00","cancelled":"2026-07-28 14:31","notice_h":23.5,"channel":"Online","campaign":"Direct traffic","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"50419114","name":"Audrey  Marketta","addr":"392 Georgia Rd, Freehold, NJ, 07728","phone":"3094432327","email":"audreymarketta@gmail.com","booked":"2026-07-22 13:53","appt_dt":"2026-07-30 10:00","cancelled":"2026-07-29 06:22","notice_h":27.6,"channel":"Online","campaign":"Paid Social","far":"Freehold NJ (Monmouth) \u2014 ~48 mi","dupe":"","sm_status":"Prospect","later":"","reason":"picklist: Other","tags":["outofarea","daybefore"]},{"appt":"50422081","name":"Gul Rizvi","addr":"46 Lakeshore Drive, Montville, NJ, 07045","phone":"6093063468","email":"gulrazharr@gmail.com","booked":"2026-07-22 16:44","appt_dt":"2026-07-30 14:00","cancelled":"2026-07-29 06:24","notice_h":31.6,"channel":"Online","campaign":"","far":"","dupe":"attempt #2 for this phone","sm_status":"Prospect","later":"","reason":"picklist: Other","tags":["repeat"]},{"appt":"50440497","name":"Leslie Kowal","addr":"46 Leonard Ter, Roseland, NJ, 07068","phone":"2013039065","email":"lkowal@comcast.net ","booked":"2026-07-24 11:09","appt_dt":"2026-07-30 16:00","cancelled":"2026-07-29 09:31","notice_h":30.5,"channel":"Online","campaign":"Google Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"50417753","name":"Omar Green","addr":"15 Zabriskie Ave, Bayonne, NJ, 07002","phone":"3472648964","email":"bigo0505@aol.com","booked":"2026-07-22 12:41","appt_dt":"2026-08-01 12:00","cancelled":"2026-07-31 15:25","notice_h":20.6,"channel":"Social Media","campaign":"NAF Facebook Paid","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"50943006","name":"Tanvi Thacker","addr":"40 Ridge Rd, Green Brook Township, NJ, 08812","phone":"4087866357","email":"tanvi.thacker17@gmail.com","booked":"2026-07-31 11:41","appt_dt":"2026-08-05 12:00","cancelled":"2026-07-31 19:59","notice_h":112.0,"channel":"Online","campaign":"","far":"Green Brook Twp (Somerset) \u2014 ~28 mi","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["outofarea","noreason"]},{"appt":"50895920","name":"Camille Howard","addr":"125 Kitchell Lake Dr, West Milford, NJ, 07480","phone":"2404262405","email":"camille@curatedcadenceinteriors.com","booked":"2026-07-30 09:45","appt_dt":"2026-08-05 10:00","cancelled":"2026-08-04 11:50","notice_h":22.2,"channel":"Online","campaign":"","far":"West Milford NJ \u2014 ~30 mi","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["outofarea","noreason","daybefore"]},{"appt":"50958365","name":"Jean  Rutter","addr":"Apt 4 B, South Orange Village, NJ, 07110","phone":"9088129958","email":"angela.hyndman@gmail.com","booked":"2026-08-03 10:00","appt_dt":"2026-08-12 12:00","cancelled":"2026-08-04 12:38","notice_h":191.4,"channel":"Online","campaign":"FORM","far":"","dupe":"attempt #2 for this phone","sm_status":"Prospect","later":"COMPLETED a consult later","reason":"Perceptionist Call: The caller, Natalie, is canceling her appointment scheduled for next week on the 12th due to a priority issue with her house. The appointment was set for 45 West Main Street. She plans to put a hold on the kitchen project and will reach out again when she is r","tags":["repeat"]},{"appt":"50967574","name":"Laura Stoeber","addr":"70 Center Ave, Chatham, NJ, 07928","phone":"9732071958","email":"laura_m_marsh@yahoo.com","booked":"2026-08-03 18:48","appt_dt":"2026-08-06 16:00","cancelled":"2026-08-04 16:11","notice_h":47.8,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"50949353","name":"Sara and Mike Corrigan","addr":"32 Harvard St, Montclair, NJ, 07042","phone":"2015194977","email":"","booked":"2026-07-31 18:17","appt_dt":"2026-08-06 10:00","cancelled":"2026-08-05 17:33","notice_h":16.4,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"50446750","name":"Darlene Lowry","addr":"34 Greenbrook Dr, Bloomfield, NJ, 07003","phone":"2013069647","email":"dlowrylpc@gmail.com","booked":"2026-07-24 16:36","appt_dt":"2026-08-05 14:00","cancelled":"2026-08-05 17:35","notice_h":-3.6,"channel":"Online","campaign":"kitchentuneup.com","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"50938965","name":"Kathleen O'Rourke","addr":"44 Walker Rd, West Orange, NJ, 07052","phone":"3475748400","email":"Kmorourke@gmail.com","booked":"2026-07-30 18:59","appt_dt":"2026-08-05 16:00","cancelled":"2026-08-05 17:36","notice_h":-1.6,"channel":"Social Media","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"50436174","name":"Tania  McBee","addr":"155 Garrabrant Avenue, Bloomfield, NJ, 07003","phone":"2012968959","email":"mcbeetania@gmail.com","booked":"2026-07-23 17:31","appt_dt":"2026-08-06 14:00","cancelled":"2026-08-05 17:48","notice_h":20.2,"channel":"Online","campaign":"Social media","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"50797118","name":"Alana Casner","addr":"87 Forest Hill Road, West Orange, NJ, 07052","phone":"5512657491","email":"acasner@gmail.com","booked":"2026-07-29 21:44","appt_dt":"2026-08-07 10:00","cancelled":"2026-08-06 16:59","notice_h":17.0,"channel":"Z Default Select Channel","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"Perceptionist Call: The caller, Alana Casner, needs to cancel her kitchen console appointment scheduled for tomorrow at 10 AM. Her name is spelled A-L-A-N-A C-A-S-N-E-R, and her contact number is (551) 265-7491. The agent confirmed the cancellation and will notify management acco","tags":["daybefore"]},{"appt":"50448323","name":"Alise Strauch","addr":"309 Midland Ave, Pompton Lakes, NJ, 07442","phone":"2014102592","email":"alise.strauch@gmail.com","booked":"2026-07-24 18:54","appt_dt":"2026-08-07 12:00","cancelled":"2026-08-06 17:08","notice_h":18.9,"channel":"Online","campaign":"kitchentuneup.com","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"50711409","name":"Avnika Mistry","addr":"851 Tabor Rd, Morris Plains, NJ, 07950","phone":"9734626504","email":"avnikamistry@gmail.com","booked":"2026-07-28 18:24","appt_dt":"2026-08-07 14:00","cancelled":"2026-08-06 17:14","notice_h":20.8,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"50955643","name":"Sher Manara","addr":"76 Elm Pl, Nutley, NJ, 07110","phone":"9738180241","email":"shoreican@gmail.com","booked":"2026-08-02 21:29","appt_dt":"2026-08-07 16:00","cancelled":"2026-08-07 15:47","notice_h":0.2,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"CORRECTED SERVICE ADDRESS \u2014 do not use 1285 Broad: Contact address on this record is wrong (it shows the KTU office, 1285 Broad Street). The correct service address, recovered from HighLevel, is:  76 Elm Pl, Nutley, NJ 07110  Use this for the Aug 7 in-home consultation. The contact record itself still needs to","tags":[]},{"appt":"51054930","name":"Ines Dubbels","addr":"1497 Van Houten Ave, Clifton, NJ, 07013","phone":"9175448807","email":"idubbels@gmail.com","booked":"2026-08-05 14:29","appt_dt":"2026-08-12 12:00","cancelled":"2026-08-11 14:07","notice_h":21.9,"channel":"Online","campaign":"kitchentuneup.com","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"50938767","name":"Linda Grossman","addr":"410 prospect st, Nutley, NJ, 07110","phone":"9738189926","email":"lrg104@aol.com","booked":"2026-07-30 18:34","appt_dt":"2026-08-12 10:00","cancelled":"2026-08-11 14:08","notice_h":19.9,"channel":"Online","campaign":"kitchentuneup.com","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"Perceptionist Call: The caller requested to reschedule a follow-up call regarding information from Kitchen Tune-Up due to being unavailable at the moment. The agent provided the callback number: 973-346-9262, and confirmed that any representative can assist. The caller can reach ","tags":["daybefore"]},{"appt":"51536033","name":"Akif tarique","addr":"35 Balmoral Dr, Pittstown, NJ, 08867","phone":"9082296213","email":"akiftari@gmail.com","booked":"2026-08-06 15:13","appt_dt":"2026-08-12 16:00","cancelled":"2026-08-11 14:09","notice_h":25.9,"channel":"Online","campaign":"","far":"Pittstown NJ (Hunterdon) \u2014 ~45 mi","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["outofarea","noreason","daybefore"]},{"appt":"52078050","name":"Jean  Rutter","addr":"Apt 4 B, South Orange Village, NJ, 07110","phone":"9088129958","email":"angela.hyndman@gmail.com","booked":"2026-08-12 12:12","appt_dt":"2026-08-21 14:00","cancelled":"2026-08-12 12:22","notice_h":217.6,"channel":"Online","campaign":"FORM","far":"","dupe":"attempt #3 for this phone","sm_status":"Prospect","later":"COMPLETED a consult later","reason":"picklist: Other","tags":["repeat"]},{"appt":"51956121","name":"Lisette  Nazario","addr":"63 Hawthorne Avenue, 07003, NJ, 07003","phone":"9733384008","email":"nqtribe@gmail.com","booked":"2026-08-10 14:16","appt_dt":"2026-08-14 10:00","cancelled":"2026-08-13 09:35","notice_h":24.4,"channel":"Online","campaign":"Organic Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"52239062","name":"Lorraine  Derfler","addr":"19 Talbot Ct, Short Hills, NJ, 07078","phone":"2014524977","email":"derfy4@aol.com","booked":"2026-08-17 14:02","appt_dt":"2026-08-19 16:00","cancelled":"2026-08-19 12:59","notice_h":3.0,"channel":"Online","campaign":"Google Search","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"52225988","name":"Jay Mistry","addr":"23 Pilgrim Dr, Clifton, NJ, 07013","phone":"8624002658","email":"mistryjn@gmail.com","booked":"2026-08-16 11:24","appt_dt":"2026-08-20 16:00","cancelled":"2026-08-19 13:03","notice_h":26.9,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"52300931","name":"Michael  Saunders","addr":"102 Cherry Street, Jersey City, NJ, 07305","phone":"6463194893","email":"simssaunders@gmail.com","booked":"2026-08-19 09:31","appt_dt":"2026-08-21 16:00","cancelled":"2026-08-20 17:02","notice_h":23.0,"channel":"Online","campaign":"FORM","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"52103584","name":"Roger Cadillo","addr":"10 Rever Dr, Florham Park, NJ, 07932","phone":"9737697866","email":"rocadisa@aol.com","booked":"2026-08-13 21:50","appt_dt":"2026-08-22 10:00","cancelled":"2026-08-20 17:06","notice_h":40.9,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"51051472","name":"Garret Starr","addr":"56 Salter Pl, Maplewood, NJ, 07040","phone":"6464839242","email":"garret.m.starr@gmail.com","booked":"2026-08-05 11:09","appt_dt":"2026-08-21 12:00","cancelled":"2026-08-20 18:09","notice_h":17.9,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason","daybefore"]},{"appt":"50975123","name":"Roseann and Irving Martin","addr":"322 Bowden Rd, Cedar Grove, NJ, 07009","phone":"9738571592","email":"roseannmartin@verizon.net","booked":"2026-08-04 14:06","appt_dt":"2026-08-27 10:00","cancelled":"2026-08-21 16:07","notice_h":137.9,"channel":"Online","campaign":"FORM","far":"","dupe":"attempt #2 for this phone","sm_status":"Prospect","later":"COMPLETED a consult later","reason":"","tags":["repeat","noreason"]},{"appt":"48294088","name":"Zoraida and Phil Decarlo","addr":"5 Brook Way, West Orange, NJ, 07052","phone":"9734413422","email":"zoraidadecatlorealtor@gmail.com","booked":"2026-05-18 09:05","appt_dt":"2026-09-09 10:00","cancelled":"2026-08-21 16:08","notice_h":449.9,"channel":"Online","campaign":"Paid Social","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"52954806","name":"Kerri Palen","addr":"12 Forge Rd, Hewitt, NJ, 07421","phone":"2017876785","email":"kerrilpalen@yahoo.com","booked":"2026-08-22 02:15","appt_dt":"2026-08-28 14:00","cancelled":"2026-08-25 11:43","notice_h":74.3,"channel":"Online","campaign":"","far":"Hewitt NJ (far N Passaic) \u2014 ~30 mi","dupe":"","sm_status":"Prospect","later":"","reason":"picklist: Other","tags":["outofarea"]},{"appt":"52230196","name":"Yvette Bailey","addr":"19 Fells Manor Rd, Caldwell, NJ, 07006","phone":"9737277373","email":"ybailey2238@yahoo.com","booked":"2026-08-17 09:59","appt_dt":"2026-08-26 10:00","cancelled":"2026-08-26 07:02","notice_h":3.0,"channel":"Social Media","campaign":"Franchise Facebook Paid","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"Cancel Appt:  Prospect can get cabinets for $5200 plus installation. Wants the reface number to be at $5000-$6000. not possible. Home Depot quoted $11,000 to reface. Did not waste any more time with this lady. Wacky","tags":[]},{"appt":"52954807","name":"Marilyn Vargas","addr":"233 East 8th Street, Clifton, NJ, 07011","phone":"9733322224","email":"amscdv73@gmail.com","booked":"2026-08-22 03:11","appt_dt":"2026-08-26 12:30","cancelled":"2026-08-26 08:56","notice_h":3.6,"channel":"Online","campaign":"","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"","tags":["noreason"]},{"appt":"52954942","name":"Joyce  Moore","addr":"68 Valley Way, West Orange, NJ, 07052","phone":"2012597970","email":"jksmoore@aol.com","booked":"2026-08-22 09:09","appt_dt":"2026-08-27 16:00","cancelled":"2026-08-26 09:21","notice_h":30.6,"channel":"Online","campaign":"Paid Social","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"Perceptionist Call: The caller, Joyce Moore, needs to reschedule an estimate originally set for Thursday at 10:00 AM due to a dentist appointment at 10:30 AM. Her address is 68 Valley Way, zip code 07052, and her contact numbers are (973) 736-9840 and her cell, 201-259-7970. The ","tags":[]},{"appt":"53000841","name":"Vincent Henrich","addr":"107 Cherry St, West Orange, NJ, 07052","phone":"9732800174","email":"thehat17@gmail.com","booked":"2026-08-24 13:36","appt_dt":"2026-08-28 10:00","cancelled":"2026-08-27 09:29","notice_h":24.5,"channel":"Online","campaign":"Direct traffic","far":"","dupe":"","sm_status":"Prospect","later":"","reason":"Perceptionist Call: The caller, Tina, requested to cancel an appointment scheduled for tomorrow at 10 AM for Vincent at 107 Cherry Street. The appointment was under the phone number (973) 280-0174. Tina mentioned a scheduling conflict and indicated she would call back to reschedu","tags":["daybefore"]},{"appt":"53115911","name":"Melba Sirianni","addr":"116 Kennedy Mill Rd, Stewartsville, NJ, 08886","phone":"2019697958","email":"sfamily070121@yahoo.com","booked":"2026-08-25 11:18","appt_dt":"2026-08-28 16:00","cancelled":"2026-08-28 07:21","notice_h":8.7,"channel":"Online","campaign":"Paid Social","far":"Stewartsville NJ (Warren Cty) \u2014 ~55 mi","dupe":"","sm_status":"?","later":"","reason":"picklist: Other","tags":["outofarea"]}];</script>
+<script>
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const tb=document.querySelector("#reg tbody");
+const fmt=s=>s?s.slice(5,10).replace("-","/")+" "+s.slice(11,16):"—";
+function statusPill(o){
+  if(o.sm_status==="CUSTOMER")return '<span class="pill p-ok">now a customer</span>';
+  if(o.later==="COMPLETED a consult later")return '<span class="pill p-warn">attended a later consult</span>';
+  return '<span class="pill p-crit">prospect · never rebooked</span>';
+}
+function render(f){
+  tb.innerHTML="";
+  ROWS.filter(o=>f==="all"||o.tags.includes(f)).forEach(o=>{
+    const n=o.notice_h;
+    const noticeCls=n===null?"":n<0?"p-crit":n<30?"p-warn":"";
+    const notice=n===null?"—":(n<0?Math.abs(n).toFixed(0)+"h late":n.toFixed(0)+"h");
+    const reason=o.reason?`<div class="rsn">${esc(o.reason.slice(0,190))}${o.reason.length>190?"…":""}</div>`:'<div class="rsn none">NONE LOGGED</div>';
+    const flags=[o.far?`<span class="pill p-crit">out of area</span>`:"",o.dupe?`<span class="pill p-acc">${esc(o.dupe)}</span>`:""].filter(Boolean).join(" ");
+    tb.insertAdjacentHTML("beforeend",`<tr>
+      <td><div class="who">${esc(o.name)}</div><div class="addr">${esc(o.addr)}</div>${flags?`<div style="margin-top:5px">${flags}</div>`:""}</td>
+      <td class="num">${esc(o.phone)}</td>
+      <td class="num">${fmt(o.appt_dt)}</td>
+      <td class="num">${fmt(o.cancelled)}</td>
+      <td class="num">${noticeCls?`<span class="pill ${noticeCls}">${notice}</span>`:notice}</td>
+      <td>${reason}</td>
+      <td>${statusPill(o)}</td></tr>`);
+  });
+}
+render("all");
+document.getElementById("chips").addEventListener("click",e=>{
+  const b=e.target.closest(".chip"); if(!b)return;
+  document.querySelectorAll("#chips .chip").forEach(c=>c.setAttribute("aria-pressed",c===b));
+  render(b.dataset.f);
+});
+</script>
