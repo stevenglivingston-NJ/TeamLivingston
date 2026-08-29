@@ -569,6 +569,21 @@ samples and were wrong. Report which source each note came from.
 > ServiceMinder ships an update — a currently-broken response model is the kind
 > of thing that gets fixed without an announcement.
 
+> #### Confirmed structurally, not just empirically: NO note/reason field in this
+> #### API is ever an output. Full API reference (52-page PDF), grep across every
+> #### endpoint's Direction column: 152 fields marked `Output` total, and every
+> #### single one of them is `ResultCode` or `Message`. Zero `Notes`, `Note`,
+> #### `UpdateNote`, `CancelReasonId`, `ProposalNotes`, or `CustomerNotes` field
+> #### is ever marked Output, on ANY endpoint, anywhere in the document. This is
+> #### not a per-endpoint quirk — it is how the API is designed. Confirms the
+> #### asymmetry below is not a set of individual dead ends but the shape of the
+> #### product.
+>
+> Also found and ruled out in the same pass: `appointments/feedback` (customer-
+> submitted satisfaction score via a hash-key link — a different concept from a
+> rep's cancellation note, and itself a write endpoint) and `appointments/queue`
+> (queue scheduling, not notes).
+
 > **The asymmetry is the point: this API can WRITE notes and cannot READ them
 > back** — except contact notes riding inside `contacts/locate`. Everything else
 > needs Liquid.
