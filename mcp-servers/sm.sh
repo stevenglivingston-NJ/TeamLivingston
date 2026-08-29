@@ -110,7 +110,7 @@ curl -sS -X POST "$API_BASE/${ENDPOINT#/}" \
 # a live API key never lands in an agent transcript, a Routine log, or a
 # published intranet row.
 RESP_FILE="$RESP_FILE" python3 <<'PY'
-import json, os, sys
+import json, os, re, sys
 with open(os.environ["RESP_FILE"], encoding="utf-8", errors="replace") as fh:
     raw = fh.read()
 try:
@@ -122,11 +122,34 @@ except json.JSONDecodeError:
     print(raw)
     sys.exit(0)
 
+# ServiceMinder echoes the ApiKey in TWO places, and the second one is easy to
+# miss: as its own field, AND embedded in error text. A real example (2026-08-29,
+# appointments/slotsearch with missing params):
+#
+#   "Message": "#SlotSearch: ApiKey => f5d5...34a8, could not find ContactId=0"
+#
+# The original scrubber only redacted the FIELD named ApiKey, so that message
+# carried a live key straight into an agent transcript and a Routine log. Scrub
+# the values too: any 32-hex token, and anything following an "ApiKey =>"-style
+# preamble.
+KEY_PATTERNS = [
+    re.compile(r"\b[0-9a-fA-F]{32}\b"),
+    re.compile(r"((?:api[_ ]?key)\s*(?:=>|=|:)\s*)(\S+)", re.I),
+]
+
+
+def scrub_text(t):
+    t = KEY_PATTERNS[0].sub("<redacted>", t)
+    return KEY_PATTERNS[1].sub(lambda m: m.group(1) + "<redacted>", t)
+
+
 def scrub(o):
     if isinstance(o, dict):
         return {k: ("<redacted>" if k == "ApiKey" else scrub(v)) for k, v in o.items()}
     if isinstance(o, list):
         return [scrub(v) for v in o]
+    if isinstance(o, str):
+        return scrub_text(o)
     return o
 
 print(json.dumps(scrub(data), indent=1))
