@@ -515,20 +515,39 @@ def start_download(
     updated_from: str | None = None,
     updated_through: str | None = None,
     user_id: int | None = None,
+    row_id: int | None = None,
     extra_settings: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Start a bulk data download. Returns a DownloadId for polling.
 
-    kind: typically one of "appointments", "contacts", "invoices", "invoicelines",
-          "proposals", "deposits", "payments", "services", "campaignbudgets".
+    kind: one of "appointments", "contacts", "deposits", "invoices", "invoicelines",
+          "proposals", "services", "campaignbudgets", "revenueforecasts",
+          "channelscampaigns" (per the Org-Level Download API reference,
+          2026-08-29 — this is the full set; there is no "notes" kind).
     user_id: REQUIRED by the API. Defaults to SM_USERID_<LOC> from env if unset;
           pass explicitly (any active Owner/Org-Admin UserId from list_users) to override.
+    row_id: PAGINATION — read this before trusting a download as complete.
+          Downloads cap at 25,000 rows per call (verified: KTU proposals sit at
+          22,821 as of 2026-08-29, 91% of the ceiling — this WILL start
+          truncating). A truncated download returns exactly like a complete
+          one; nothing marks it as partial. If a result has 25,000 rows, it is
+          probably not everything.
+          To page: first call omits row_id (or pass 0). If you get back a full
+          page, re-call with row_id = the `Id` field of the LAST row returned.
+          This is NOT a row number / offset — it is the record's own Id. Getting
+          that distinction wrong silently returns the wrong page.
     extra_settings: per-kind options. For appointments, the status flags live under an
           "Appointments" object — cancelled rows are OMITTED unless you opt in, e.g.
           {"Appointments": {"Scheduled": true, "Completed": true, "Canceled": true}}.
-          NOTE: this appointments dataset does NOT include the free-text Notes column;
-          fetch the cancellation reason from the contact via find_contact(id_search=ContactId)
-          -> Notes[] (the activity log), then classify it.
+          NOTE: this appointments dataset does NOT include a free-text Notes
+          column, and no download `kind` does (verified against the full API
+          reference — 10 kinds, none of them notes). Appointment and proposal
+          notes are unreachable via ANY read endpoint in this API; they arrive
+          only through the Liquid feed into the `sm_notes` table (see
+          `serviceminder/liquid/README.md` and CLAUDE.md's ServiceMinder notes
+          section). Contact notes ARE reachable via find_contact(id_search=
+          ContactId) -> Notes[], which is what feeds the `sm_notes` mirror
+          today.
 
     Use poll_download() to wait for completion, then get_download() to retrieve.
     """
@@ -541,6 +560,8 @@ def start_download(
         payload["UpdatedFrom"] = updated_from
     if updated_through:
         payload["UpdatedThrough"] = updated_through
+    if row_id is not None:
+        payload["RowId"] = row_id
     uid = user_id if user_id is not None else _get_userid(location)
     if uid is not None:
         payload["UserId"] = uid
