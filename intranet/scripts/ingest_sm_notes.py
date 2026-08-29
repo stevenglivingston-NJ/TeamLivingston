@@ -270,7 +270,16 @@ def run_api_proposals(dry):
         brand = normalise_brand(row.get("brand")) or "KTU"
         pid = row.get("proposal_id")
         d = sm(brand, "proposal/details", {"ProposalId": int(pid)})
-        notes = d.get("Notes") or (d.get("Proposal") or {}).get("Notes") or []
+        # The keys are ProposalNotes / CustomerNotes, NOT "Notes" — an earlier
+        # version of this looked for "Notes" and would have silently found
+        # nothing even where notes existed. Verified 2026-08-29: both come back
+        # null on every proposal sampled (12 of 12), so proposal notes look as
+        # API-invisible as appointment notes and realistically depend on the
+        # Liquid feed too. Kept anyway: it costs nothing and starts working the
+        # day ServiceMinder populates them.
+        notes = d.get("ProposalNotes") or d.get("CustomerNotes") or []
+        if isinstance(notes, str):          # a single free-text blob, not a list
+            notes = [{"Id": int(pid), "Title": "Proposal note", "Body": notes}]
         for note in notes:
             written += upsert_note(
                 brand, "proposal", note, proposal_id=int(pid),

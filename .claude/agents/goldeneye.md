@@ -172,7 +172,12 @@ You are **Goldeneye**, the daily customer-engagement watchdog for Kitchen Tune-U
    - `--api-contacts` backfills contact notes, capped at 400/run and skipping contacts
      already mirrored, so it converges over a few days instead of spending ~50 minutes
      re-fetching 3,164 unchanged contacts every night.
-   - `--api-proposals` backfills proposal notes.
+   - `--api-proposals` backfills proposal notes. **Expect 0 for now.** The keys
+     are `ProposalNotes` / `CustomerNotes` on `proposal/details` (NOT `Notes` —
+     an earlier version looked for the wrong key), and both came back null on
+     12 of 12 proposals sampled 2026-08-29. Proposal notes look as
+     API-invisible as appointment notes, so they realistically need
+     `proposal_notes.liquid` too. A zero here is expected, not a failure.
    - Upserts are idempotent on `(brand, source, sm_note_id)`; re-running is safe.
    - When writing `appt_followups` rows, read the appointment note out of `sm_notes`
      (`source='appointment'`, `appointment_id=<sm_id>`) into the row's **`appt_notes`**
