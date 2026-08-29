@@ -511,6 +511,41 @@ samples and were wrong. Report which source each note came from.
 >   brand — it cannot be done via API), appointment notes only exist for events
 >   after install. Never present that absence as silence from the rep.
 >
+> #### `appointments/find` DOES show a `Notes` field. It is a WRITE field, not data.
+>
+> This looks like a live lead every time someone re-reads the API, so here is the
+> experiment that settles it (run 2026-08-29):
+>
+> ```
+> POST appointments/find {"AppointmentId":51051472,"Notes":"reschedule"}
+>   -> Slots: 1,  echoed Notes: 'reschedule'
+> POST appointments/find {"AppointmentId":51051472,"Notes":"zzzz-nonexistent-qqqq"}
+>   -> Slots: 1,  echoed Notes: 'zzzz-nonexistent-qqqq'
+> ```
+>
+> Whatever you send comes back verbatim and changes nothing — nonsense text does
+> not filter the appointment out. `Notes` sits in the response beside
+> `IncludeCompleted`, `SearchDate`, `SkipConflictChecks` and `UpdateLines`,
+> because this API echoes the whole REQUEST object back with results appended.
+> It is the field you populate to WRITE a note on a booking/update, mirroring
+> `contacts/addnote`. It is null on every read (6 appointments sampled, cancelled
+> and completed, with and without `IncludeContact`/`IncludeNotes`).
+>
+> `/find` is a POST search but does not behave as a general query: searching by
+> `ContactId` alone returns 0 slots. It effectively only resolves `AppointmentId`.
+>
+> Also probed and non-existent (HTTP 200 + empty body): `appointments/notes`,
+> `appointment/notes`, `appointmentnotes/query`, `notes/query`, `notes/all`,
+> `notes/find`, `appointments/getnotes`, `contacts/notes`, `contacts/getnotes`,
+> `appointments/addnote`, `activity/query`, `history/query`, `note/query`,
+> `appointments/details`. Download kinds `notes`, `appointmentnotes`,
+> `contactnotes`, `activities`, `history` return no DownloadId; the `contacts`
+> download has no note column.
+>
+> **The asymmetry is the point: this API can WRITE notes and cannot READ them
+> back** — except contact notes riding inside `contacts/locate`. Everything else
+> needs Liquid.
+
 > **Never write a contact note into a `cancel_reason` field.** That conflation is
 > what made the Appointment Recovery tab show pre-sale wishlist text under a "why
 > they cancelled" header. `cancel_reason` = the structured label only; blank is a
