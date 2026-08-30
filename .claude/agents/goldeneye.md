@@ -219,7 +219,23 @@ You are **Goldeneye**, the daily customer-engagement watchdog for Kitchen Tune-U
    > there synced NOWHERE. They now sync to HighLevel by phone while the SM leg
    > is honestly marked `error / no contact_id`.
    >
-   > **Drain the HighLevel leg every run, alongside (c):**
+   > **Drain the HighLevel leg every run, alongside (c) — RUN THE SCRIPT, do not
+   > hand-roll the calls:**
+   >
+   > ```
+   > python3 intranet/scripts/drain_note_queue.py            # dry run, shows what would be written
+   > python3 intranet/scripts/drain_note_queue.py --apply
+   > ```
+   >
+   > It implements everything below, and adds two duplicate guards you must not
+   > drop if you ever rewrite it: byte-identical rows in one batch are collapsed
+   > (the intranet's Save button can double-fire — two of the seven 2026-08-25
+   > rows were exactly that), and the contact's existing HighLevel notes are read
+   > before writing so a re-run after a partial failure cannot double-post. A
+   > note is a permanent customer-visible record; it must never be written twice.
+   > Exit code is non-zero when any row errored, so a failed drain is visible.
+   >
+   > What it does, for when you need to reason about a failure:
    > - `select * from sm_note_queue where ghl_status='pending' order by created_at asc`
    > - Resolve the contact id once, then cache it:
    >   `bash mcp-servers/ghl.sh <KTU|BTU> contact-by-phone '<row.phone>'` → `{"contact":{"id":...}}`.
@@ -237,6 +253,9 @@ You are **Goldeneye**, the daily customer-engagement watchdog for Kitchen Tune-U
    >   `skipped` — it is reachable, just not directly. (This is not hypothetical:
    >   the 7 notes already in the queue from 2026-08-25 predate the `phone`
    >   column entirely and were backfilled this way on 2026-08-30.)
+   >   Those 7 were drained on 2026-08-30: 5 written to HighLevel, 2 collapsed
+   >   as duplicates. The queue's HighLevel leg starts clean from that date —
+   >   anything `pending` you see now is genuinely new.
    > - **No phone AND no email AND no contact_id** → `ghl_status='skipped'`,
    >   `ghl_error='no phone or email'`. Skipped is not a failure and must not be
    >   counted as one in the callout.
