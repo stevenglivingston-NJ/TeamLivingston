@@ -24,6 +24,8 @@
 const COOKIE = 'ktu_desk';
 const TTL_DAYS = 30;
 const TABLE = 'recovery_desk';
+const DESK_KEY = 'ktu';               // which row of recovery_desk_config this Worker is
+const CONFIG_TTL_MS = 60_000;     // re-read the passcode at most once a minute
 
 const enc = new TextEncoder();
 const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf)))
@@ -41,6 +43,67 @@ function same(a, b) {
   let out = 0;
   for (let i = 0; i < a.length; i++) out |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return out === 0;
+}
+
+/**
+ * The passcode lives in recovery_desk_config so the owner can change it from
+ * the intranet without a deploy. This Worker only holds the anon key and that
+ * table is owner-only, so it cannot — and should not — read the passcode: both
+ * checks go through SECURITY DEFINER functions, and the salt and hash never
+ * leave the database.
+ *
+ *   desk_gate(desk, passcode) -> (ok, version)   verify a typed passcode
+ *   desk_version(desk)        -> version         current rotation marker
+ *
+ * `version` is the config row's updated_at as epoch seconds. It is not a
+ * secret and cannot forge anything; it is mixed into the cookie signature so
+ * that changing the passcode invalidates every existing session. Cookies are
+ * still signed with this Worker's own secret, which nothing anon-readable
+ * can substitute for.
+ */
+async function rpc(env, fn, body) {
+  const r = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: {
+      apikey: env.SUPABASE_KEY,
+      authorization: `Bearer ${env.SUPABASE_KEY}`,
+      'content-type': 'application/json',
+      'content-profile': 'public',
+      'accept-profile': 'public',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`${fn} ${r.status}`);
+  return r.json();
+}
+
+let versionCache = { at: 0, v: null };
+
+/** Current rotation marker; null when the database cannot be reached. */
+async function deskVersion(env) {
+  if (Date.now() - versionCache.at < CONFIG_TTL_MS) return versionCache.v;
+  try {
+    const v = await rpc(env, 'desk_version', { p_desk: DESK_KEY });
+    versionCache = { at: Date.now(), v: String(v ?? '0') };
+  } catch (_) { /* keep the last known version rather than signing everyone out */ }
+  return versionCache.v;
+}
+
+/** Verify a typed passcode. Returns the version to sign with, or null. */
+async function checkPasscode(typed, env) {
+  try {
+    const rows = await rpc(env, 'desk_gate', { p_desk: DESK_KEY, p_passcode: typed });
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if (row && row.ok) {
+      versionCache = { at: Date.now(), v: String(row.version) };
+      return String(row.version);
+    }
+    return null;
+  } catch (_) {
+    // Database unreachable. Fall back to the build-time secret so a database
+    // outage cannot lock the team out of a list they are working.
+    return (env.DESK_PASSCODE && same(typed, env.DESK_PASSCODE)) ? 'fallback' : null;
+  }
 }
 
 async function makeCookie(secret) {
@@ -129,15 +192,18 @@ export default {
     // the x-robots-tag header and the meta tag on every response instead —
     // and nothing links to it, so nothing discovers it in the first place.
     const secret = env.DESK_PASSCODE;
-    if (!secret) return page('<h1>Not configured</h1><p>DESK_PASSCODE is not set.</p>', { status: '500' });
+    if (!secret) return page('<h1>Not configured</h1><p>This desk has no signing secret.</p>');
 
     // --- sign in ---
     if (request.method === 'POST' && !path.startsWith('/follow-up/api')) {
       const form = await request.formData();
-      if (!same(String(form.get('passcode') || ''), secret)) {
+      const version = await checkPasscode(String(form.get('passcode') || ''), env);
+      if (!version) {
         return gate('That passcode is not right. Check the email and try again.');
       }
-      const cookie = await makeCookie(secret);
+      // The version is signed into the cookie, so a later passcode change
+      // invalidates it — which is the point of changing the passcode.
+      const cookie = await makeCookie(secret + '|' + version);
       return new Response(null, {
         status: 303,
         headers: {
@@ -148,7 +214,11 @@ export default {
       });
     }
 
-    const signedIn = await cookieOk(readCookie(request, COOKIE), secret);
+    const version = await deskVersion(env);
+    const raw = readCookie(request, COOKIE);
+    const signedIn = (await cookieOk(raw, secret + '|' + version))
+      // A session opened during a database outage was signed with 'fallback'.
+      || (version === null && await cookieOk(raw, secret + '|fallback'));
 
     // --- data, server-side only ---
     if (path === '/follow-up/api/state') {
