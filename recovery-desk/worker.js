@@ -123,11 +123,11 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname.replace(/\/+$/, '') || '/';
 
-    if (path === '/robots.txt') {
-      return new Response('User-agent: *\nDisallow: /\n',
-        { headers: { 'content-type': 'text/plain', ...SECURITY } });
-    }
-
+    // No /robots.txt handler here on purpose: the route is scoped to
+    // /follow-up*, so the site's own robots.txt is served by the marketing
+    // origin and is not ours to override. Crawlers are kept off this page by
+    // the x-robots-tag header and the meta tag on every response instead —
+    // and nothing links to it, so nothing discovers it in the first place.
     const secret = env.DESK_PASSCODE;
     if (!secret) return page('<h1>Not configured</h1><p>DESK_PASSCODE is not set.</p>', { status: '500' });
 
@@ -154,10 +154,15 @@ export default {
     if (path === '/follow-up/api/state') {
       if (!signedIn) return new Response('signed out', { status: 401, headers: SECURITY });
       const base = `${env.SUPABASE_URL}/rest/v1/${TABLE}`;
+      // This project's PostgREST defaults to the `api` schema, not `public`,
+      // so the schema has to be named explicitly on every call or the table
+      // reads as missing. (The intranet pins the same thing in supabase-js.)
       const auth = {
         apikey: env.SUPABASE_KEY,
         authorization: `Bearer ${env.SUPABASE_KEY}`,
         'content-type': 'application/json',
+        'accept-profile': 'public',
+        'content-profile': 'public',
       };
 
       if (request.method === 'GET') {

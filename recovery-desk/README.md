@@ -23,7 +23,10 @@ The page carries live customer names, addresses and phone numbers. So:
   next step, date, method and notes — no names, phones or addresses. The
   customer roster is baked into the gated HTML and is never returned by the API,
   which keeps the two blast radii separate.
-- `noindex` / `noarchive` headers and a `robots.txt` that denies everything.
+- `noindex` / `noarchive` on every response, as a header and a meta tag.
+  There is deliberately no `robots.txt` handler: the route is scoped to
+  `/follow-up*`, so the site's own robots.txt belongs to the marketing origin
+  and is not ours to override.
 
 ## Deploy
 
@@ -44,14 +47,14 @@ npm run deploy              # builds dist/worker.js, then wrangler deploy
 nothing else, so the anon key is sufficient and is the least privilege that
 works.
 
-The route is `ktubloomfield.com/follow-up*` (and the `www` form). The apex
-currently 301s to the marketing site; a Worker route intercepts this path ahead
-of that. If the redirect turns out to win — Cloudflare redirect rules run before
-Workers — switch to a Worker custom domain instead:
+## The live URL is the `www` form
 
-```jsonc
-"routes": [{ "pattern": "followup.ktubloomfield.com", "custom_domain": true }]
-```
+**https://www.ktubloomfield.com/follow-up**
+
+Both routes are registered, but the bare apex does not work and cannot be made
+to: `ktubloomfield.com/follow-up` is 301'd to `www` by a redirect that runs
+*before* Workers in Cloudflare's request pipeline, so the Worker never sees it.
+The `www` route serves correctly. Send people the `www` link.
 
 ## Changing the list
 
