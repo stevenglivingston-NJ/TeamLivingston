@@ -4,9 +4,13 @@ cancellation-watch.py — weekly KTU in-home consultation cancellation report.
 
 Measures cancellations against the agreed ceiling: only client-requested,
 out-of-territory, non-cabinet-scope and repair-only cancellations are allowed,
-and together they should be no more than ALLOWED_CEILING of booked consults.
-Anything above that line has to be replaced with paid lead generation, so the
-report prices the overage at the real cost per acquired lead.
+and together they should be no more than 25% of booked consults — the rate
+those categories actually ran at across Jan-Aug 2026 YTD (73 of 308 = 23.7%).
+
+Breaching the ceiling triggers spend throttling: consults lost above the line
+would have to be replaced with bought leads, so the report sizes that at the
+real cost per acquired lead and calls for new-lead spend to be throttled until
+the rate is back under 25%, rather than paying to refill a leaking funnel.
 
 Writes two things and sends nothing itself:
   report_snapshots.cancel_watch   subject + body the scheduler mails out
@@ -49,11 +53,20 @@ LOCATION = "KTU"
 SERVICE = "Consultation - In-Home"
 REPORT_KEY = "cancel_watch"
 
-# The agreed standard. 24% is what the allowed reasons actually came to across
-# Jan-Aug 2026 (73 of 308 booked consults), so it is an observed rate held as a
-# ceiling, not an invented target.
-ALLOWED_CEILING = 0.24
+# The agreed standard, set from the YTD analysis: across Jan-Aug 2026 the
+# allowed reasons came to 73 of 308 booked consults = 23.7%, so 25% is that
+# observed rate rounded up and held as a ceiling. It is what the business
+# already does when cancellations are legitimate, not an invented target.
+#
+# Breaching it has a consequence: consults lost above the line have to be
+# replaced with bought leads, so the response is to throttle new-lead spend
+# until the rate is back under the ceiling rather than keep paying to refill a
+# leaking funnel.
+ALLOWED_CEILING = 0.25
+CEILING_BASIS = ("Jan-Aug 2026 YTD: 73 of 308 booked consults cancelled for "
+                 "allowed reasons = 23.7%, held as a 25% ceiling")
 # KTU Google Ads YTD: $24,939 spend / 119 conversions (paid_brief, 2026-08-30).
+# Used to size the throttle: what the overage costs to replace with paid leads.
 COST_PER_LEAD = 210
 
 STATUS = {0: "Tentative", 1: "Scheduled", 3: "Completed", 4: "Cancelled"}
@@ -261,9 +274,11 @@ def build(days: int, frm: str, thr: str) -> tuple[dict, list[dict]]:
         "allowed_rate_of_booked": round(len(allowed) / booked, 4) if booked else None,
         "breaches": len(breaches), "unlogged": len(unlogged),
         "ceiling": ALLOWED_CEILING, "ceiling_count": ceiling_n,
+        "ceiling_basis": CEILING_BASIS,
         "over_ceiling": over, "spend_impact": over * COST_PER_LEAD,
         "cost_per_lead": COST_PER_LEAD,
         "in_ceiling": n_can <= ceiling_n,
+        "throttle": n_can > ceiling_n,
         "categories": dict(Counter(r["category"] for r in detail)),
     }
     return m, detail
@@ -271,7 +286,7 @@ def build(days: int, frm: str, thr: str) -> tuple[dict, list[dict]]:
 
 def render(m: dict, detail: list[dict]) -> tuple[str, str]:
     pct = lambda x: "—" if x is None else f"{x*100:.0f}%"
-    verdict = "WITHIN CEILING" if m["in_ceiling"] else "OVER CEILING"
+    verdict = "WITHIN CEILING" if m["in_ceiling"] else "OVER CEILING — SPEND THROTTLE"
     subject = (f"[KTU] Cancellation Watch {m['from']} → {m['through']} — "
                f"{m['cancelled']}/{m['booked']} cancelled ({pct(m['cancel_rate'])}), {verdict}")
 
@@ -288,10 +303,17 @@ def render(m: dict, detail: list[dict]) -> tuple[str, str]:
     L.append(f"  STATUS                {verdict}")
     if m["over_ceiling"]:
         L.append(f"  Over by               {m['over_ceiling']} consults")
-        L.append(f"  Replacement cost      ${m['spend_impact']:,} "
+        L.append(f"  Spend throttle        ${m['spend_impact']:,} of new-lead spend "
                  f"({m['over_ceiling']} × ${m['cost_per_lead']}/lead)")
     L.append("")
     L.append("Allowed = client-requested, out of territory, non-cabinet scope, or repair only.")
+    L.append(f"Ceiling basis: {CEILING_BASIS}.")
+    if not m["in_ceiling"]:
+        L.append("")
+        L.append("ACTION — spend throttling is triggered. Cancellations are above 25% of")
+        L.append("booked consults, so new-lead spend is throttled until the rate is back")
+        L.append("under the ceiling. Work the booked and recoverable consults first; we are")
+        L.append("not buying leads to refill a funnel that is leaking at this rate.")
     L.append("")
     L.append("Cancellations by reason")
     L.append("-" * 64)
@@ -356,12 +378,13 @@ def publish(m: dict, detail: list[dict], subject: str, body: str) -> None:
             "severity": "ok" if m["in_ceiling"] else "urgent",
             "title": (f"{m['cancelled']} of {m['booked']} consults cancelled "
                       f"({m['cancel_rate']*100:.0f}%) — "
-                      + ("within the 24% allowed ceiling" if m["in_ceiling"]
-                         else f"{m['over_ceiling']} over the ceiling, "
-                              f"${m['spend_impact']:,} to replace")),
+                      + ("within the 25% allowed ceiling" if m["in_ceiling"]
+                         else f"{m['over_ceiling']} over the 25% ceiling — spend "
+                              f"throttling triggered on ${m['spend_impact']:,} of new-lead spend")),
             "detail": (f"{m['allowed']} cancellations were for allowed reasons "
                        f"({m['allowed_rate_of_booked']*100:.0f}% of booked). "
-                       f"{m['unlogged']} had no reason captured and count against the ceiling."),
+                       f"{m['unlogged']} had no reason captured and count against the ceiling. "
+                       f"Ceiling basis — {CEILING_BASIS}."),
             "window": f"{m['from']} to {m['through']}",
             "source": "ServiceMinder appointments/query + contacts/locate"})
     for i, (cat, n) in enumerate(sorted(m["categories"].items(), key=lambda kv: -kv[1]), 1):

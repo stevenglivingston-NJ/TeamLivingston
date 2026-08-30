@@ -143,7 +143,7 @@ insert into public.report_schedules (key, name, description, tab, frequency, day
 values (
   'cancel_watch',
   'Consultation Cancellation Watch',
-  'Weekly KTU in-home consultation cancellation rate against the 24% allowed ceiling, with every cancellation outside the allowed reasons named and its replacement-lead cost.',
+  'Weekly KTU in-home consultation cancellation rate against the 25% allowed ceiling — set from the Jan-Aug 2026 YTD analysis, where allowed reasons ran 73 of 308 booked consults (23.7%). Names every cancellation outside the allowed reasons and sizes the new-lead spend throttled when the rate goes above the ceiling.',
   'reports', 'weekly', 1, 7,
   array['byabra@kitchentuneup.com','SLivingston@kitchentuneup.com','sonya@goaxyom.com']
 )

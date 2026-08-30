@@ -2674,6 +2674,7 @@ const TAB_TITLES = {
   prospect:'Prospect · Multifamily Leads', prospecting:'Prospecting · Contact Tracker'
 };
 
+
 /* ================================================================
    Reports tab — Cancellation Watch + report scheduling
    ----------------------------------------------------------------
@@ -2681,7 +2682,7 @@ const TAB_TITLES = {
 
    Cancellation Watch  intranet_records/cancel_watch, written by
                        mcp-servers/cancellation-watch.py. Shows the rate
-                       against the agreed 24% allowed ceiling, the reason
+                       against the agreed 25% allowed ceiling, the reason
                        mix, and every cancellation outside the allowed set.
 
    Report schedules    report_schedules — one row per report: how often it
@@ -2741,17 +2742,25 @@ async function renderCancelWatch(){
 
   box.innerHTML='<div class="card">'+
     '<h2 class="sec-title">Consultation Cancellation Watch'+
-      '<span class="chip '+(ok?'ok':'urgent')+'" style="margin-left:10px">'+(ok?'Within ceiling':'Over ceiling')+'</span>'+
+      '<span class="chip '+(ok?'ok':'urgent')+'" style="margin-left:10px">'+
+        (ok?'Within ceiling':'Over ceiling — spend throttle')+'</span>'+
       '<span class="chip '+age.cls+'" style="margin-left:6px">'+esc(age.txt)+'</span></h2>'+
     '<p class="page-sub" style="margin:2px 0 14px">'+esc(head.window||'')+
-      ' · allowed reasons are client-requested, out of territory, non-cabinet scope, or repair only.</p>'+
+      ' · allowed reasons are client-requested, out of territory, non-cabinet scope, or repair only. '+
+      'Ceiling is 25% of booked consults, set from the year-to-date analysis — Jan–Aug 2026 ran 73 of 308 '+
+      '(23.7%) on allowed reasons. Above 25%, new-lead spend is throttled until the rate comes back under.</p>'+
+      (ok?'':'<div class="note" style="margin:0 0 14px;padding:10px 12px;border-left:3px solid #fb923c">'+
+        '<b>Spend throttling triggered.</b> Cancellations are above the 25% ceiling, so new-lead spend is '+
+        'throttled until the rate is back under it — worth about $'+Number(m.spend_impact||0).toLocaleString()+
+        ' at the current $'+(m.cost_per_lead||210)+'/lead. Work the booked and recoverable consults first '+
+        'rather than buying leads to refill the funnel.</div>')+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">'+
       kpi('Booked', m.booked??'—')+
       kpi('Attended', m.attended??'—')+
       kpi('Cancelled', (m.cancelled??'—')+' ('+pc(m.cancel_rate)+')')+
       kpi('Allowed reasons', (m.allowed??'—')+' ('+pc(m.allowed_rate_of_booked)+')', ok?'#4ade80':'')+
       kpi('Ceiling', pc(m.ceiling)+' = '+(m.ceiling_count??'—'))+
-      (m.over_ceiling ? kpi('Replacement cost','$'+Number(m.spend_impact||0).toLocaleString(),'#fb923c') : '')+
+      (m.over_ceiling ? kpi('Spend throttle','$'+Number(m.spend_impact||0).toLocaleString(),'#fb923c') : '')+
     '</div>'+
     '<div style="font-weight:600;margin-bottom:6px">'+esc(head.title||'')+'</div>'+
     '<div class="note" style="margin-bottom:16px">'+esc(head.detail||'')+'</div>'+
