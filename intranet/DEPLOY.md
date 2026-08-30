@@ -78,3 +78,20 @@ copies forked; see RECONCILIATION.md. Treat the diff-against-live step as
 mandatory, not advisory — and prefer automating it (a scheduled curl + diff that
 writes a `system_health` row on mismatch) over relying on memory, since the
 Cloudflare dashboard editor can change production without touching this repo.
+
+## ⚠️ 2026-08-30 — `npm run deploy` is UNSAFE right now
+
+The repo file and live have forked in both directions (nine live-only tabs,
+ten repo-only tabs — see RECONCILIATION.md). Deploying from
+`ktubtuintranet.html` today would remove nine tabs from production.
+
+Until that is reconciled, ship additively:
+
+```bash
+curl -s https://dash.goaxyom.com > /tmp/live.html
+node tools/apply-report-scheduler.mjs /tmp/live.html /tmp/live.patched.html   # or your own patch
+node -e "…build worker.js from /tmp/live.patched.html…"
+npx wrangler deploy
+```
+
+and apply the same patch to `ktubtuintranet.html` so the repo keeps up.
