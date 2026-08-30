@@ -199,7 +199,68 @@ You are **Goldeneye**, the daily customer-engagement watchdog for Kitchen Tune-U
    - For each row with a `contact_id`: call `add_contact_note(location=<row.brand or infer from section>, contact_id=<row.contact_id>, note="[Intranet note, " + row.author + "] " + row.note)`. Prefix so a ServiceMinder viewer can tell it came from the app, not a rep typing directly into SM.
    - On success: `update sm_note_queue set status='synced', synced_at=now() where id=<row.id>`.
    - On failure (bad contact_id, API error): `update sm_note_queue set status='error', attempts=attempts+1, error=<message> where id=<row.id>`. Leave `status='pending'` rows with 3+ attempts as `status='error'` instead of retrying forever, and surface them as a `warn` callout ("N notes failed to sync to ServiceMinder — check sm_note_queue") so they don't silently vanish.
-   - A row with no `contact_id` (the record wasn't linked to ServiceMinder — e.g. a manually-added Contacts-tab entry with no `sm_contact_id`) should never have been queued; if you find one, mark it `status='error'`, `error='no contact_id'` rather than guessing.
+   - A row with no `contact_id` (the record wasn't linked to ServiceMinder — e.g. a manually-added Contacts-tab entry with no `sm_contact_id`) cannot reach ServiceMinder: mark it `status='error'`, `error='no contact_id'` rather than guessing. **It may still have a HighLevel leg to run — see below. Do not skip the row entirely.**
+
+   > 🔁 **TWO DESTINATIONS, TWO INDEPENDENT LEGS (added 2026-08-30).** The same
+   > queue row now syncs to **both** ServiceMinder and HighLevel, because the
+   > team lives in both and a note that reaches only one is invisible to half
+   > the people working the contact. The legs use different identifiers and
+   > fail for different reasons, so they have separate status columns and
+   > **neither blocks the other**:
+   >
+   > | leg | column | needs | how |
+   > |---|---|---|---|
+   > | ServiceMinder | `status` | `contact_id` | `add_contact_note(...)` |
+   > | HighLevel | `ghl_status` | `phone` (or `email`) | `ghl.sh` REST verbs |
+   >
+   > This matters concretely: **Appointments-upcoming rows carry no
+   > ServiceMinder `contact_id` at all** (their fields are sm_id/phone/customer).
+   > Before this change the intranet queued nothing for them, so notes written
+   > there synced NOWHERE. They now sync to HighLevel by phone while the SM leg
+   > is honestly marked `error / no contact_id`.
+   >
+   > **Drain the HighLevel leg every run, alongside (c):**
+   > - `select * from sm_note_queue where ghl_status='pending' order by created_at asc`
+   > - Resolve the contact id once, then cache it:
+   >   `bash mcp-servers/ghl.sh <KTU|BTU> contact-by-phone '<row.phone>'` → `{"contact":{"id":...}}`.
+   >   Write it back to `ghl_contact_id` so a retry or a later note skips the lookup.
+   >   If the row already has `ghl_contact_id`, skip straight to the write.
+   > - `bash mcp-servers/ghl.sh <brand> note-add <ghl_contact_id> "[Intranet note, <author>] <note>"`
+   >   — same prefix as the SM leg, so a HighLevel reader can tell it came from
+   >   the app rather than a rep typing directly into the CRM.
+   > - Success: `update sm_note_queue set ghl_status='synced', ghl_synced_at=now(), ghl_contact_id=<id> where id=<row.id>`
+   > - Failure: `update sm_note_queue set ghl_status='error', ghl_attempts=ghl_attempts+1, ghl_error=<message> where id=<row.id>`.
+   >   Stop retrying at 3 attempts, same as the SM leg.
+   > - **No phone on the row but it HAS a `contact_id`** → resolve one:
+   >   `sm.sh <brand> contacts/locate '{"IdSearch":"<contact_id>"}'` → `Matches[0].Phone`,
+   >   write it back to the row's `phone`, then proceed. Do NOT mark such a row
+   >   `skipped` — it is reachable, just not directly. (This is not hypothetical:
+   >   the 7 notes already in the queue from 2026-08-25 predate the `phone`
+   >   column entirely and were backfilled this way on 2026-08-30.)
+   > - **No phone AND no email AND no contact_id** → `ghl_status='skipped'`,
+   >   `ghl_error='no phone or email'`. Skipped is not a failure and must not be
+   >   counted as one in the callout.
+   > - **Phone format does not matter.** HighLevel normalises on its side:
+   >   `9732076912` and `+19732076912` both resolve to the same contact
+   >   (verified 2026-08-30). ServiceMinder returns bare 10-digit, HighLevel
+   >   stores E.164 — pass whichever you have, do not write normalisation code.
+   > - **Phone present but no HighLevel contact matches it** → that is a real
+   >   finding, not a bug: someone is in ServiceMinder and not in HighLevel.
+   >   Mark `ghl_status='error'`, `ghl_error='no HighLevel contact for <phone>'`,
+   >   and surface it — a booked customer missing from the CRM is a lead-capture
+   >   gap worth naming.
+   >
+   > **Callout wording matters here.** Report the two legs separately — "N notes
+   > failed to reach ServiceMinder" and "N notes failed to reach HighLevel" are
+   > different problems with different fixes. Never collapse them into one
+   > number, and never count `skipped` rows as failures.
+   >
+   > `ghl.sh` gained REST verbs for this (`note-add`, `note-list`, `note-delete`,
+   > `contact-by-phone`, `rest`) because **the PIT MCP surface has no
+   > note-writing tool** — all 36 tools were enumerated 2026-08-30 and the only
+   > note-shaped one is `calendars_get-appointment-notes`, a read. REST API v2
+   > is the only write path, and the same PIT authenticates it, so no new
+   > credential is involved.
 
    **(d) Fill `sm_notes` — the INBOUND half. DAILY, both brands.** (c) pushes our notes
    *into* ServiceMinder. This pulls ServiceMinder's notes *out*, into the `sm_notes`
