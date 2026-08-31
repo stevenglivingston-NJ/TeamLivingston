@@ -35,8 +35,23 @@ proposals sampled (56%), up to 1,164 chars.
 30 rows checked. That one really does need the Liquid feed. Do not conflate
 them: `CustomerNotes` is a string and is the one worth reading.
 
-Merges are shallow jsonb patches (`fields || patch`), so a row's `team_note`,
-`entity_notes` and anything else the team owns survives untouched.
+WHERE IT IS STORED, AND WHY NOT ON THE PROPOSAL ROW
+---------------------------------------------------
+Truth lives in the `proposal_engagement` table (migration 013), keyed by
+`(brand, sm_id)`. It cannot live on `intranet_records.fields` alone, because
+those proposal rows are rebuilt daily by the house write-then-prune pattern —
+insert today's rows, delete every row whose `scan_date` isn't today. Verified
+2026-08-31: all 120 proposal rows carried `created_at = 10:19 UTC` that
+morning, and engagement written at 09:25 was gone by 11:27, forcing a re-fetch
+of 88 `customer_notes` already fetched twice. Anything added to a proposal row
+after the rebuild survives less than a day.
+
+The script ALSO patches `intranet_records.fields` as a same-day convenience
+cache for anything reading those rows directly. That copy is expected to be
+wiped by the next rebuild; the table is what the UI reads. Patches are shallow
+jsonb merges (`fields || patch`), so `team_note` and the rest of the team's own
+keys survive this script — they do not survive the rebuild, which is a separate
+problem and not this script's to fix.
 
 Usage:
   python3 intranet/scripts/sync_proposal_engagement.py            # dry run
@@ -154,12 +169,17 @@ def main():
     print(f"window {since} .. {through}"
           f"{'' if APPLY else '   [DRY RUN — no writes]'}\n")
 
+    # customer_notes is read from proposal_engagement, NOT from the proposal
+    # row: the row's copy is wiped by the daily rebuild, so trusting it means
+    # re-fetching every note from ServiceMinder every single day.
     rows = sb("""
-        select id::text, brand, fields->>'sm_id' as sm_id,
-               fields->>'customer' as customer,
-               fields->>'last_viewed' as last_viewed,
-               fields->>'customer_notes' as customer_notes
-        from intranet_records where section='proposals'
+        select r.id::text, r.brand, r.fields->>'sm_id' as sm_id,
+               r.fields->>'customer' as customer,
+               e.customer_notes as customer_notes
+        from intranet_records r
+        left join proposal_engagement e
+          on e.brand = r.brand and e.sm_id = r.fields->>'sm_id'
+        where r.section='proposals'
     """)
     by_brand = {}
     for r in rows:
@@ -209,13 +229,38 @@ def main():
 
             if not patch:
                 continue
-            if APPLY:
-                sb("update intranet_records set fields = fields || "
-                   f"{q(json.dumps(patch))}::jsonb, updated_at=now() "
-                   f"where id={q(r['id'])}")
-            else:
+
+            if not APPLY:
                 keys = ",".join(sorted(patch))
-                print(f"    would patch {r['customer'][:28]:<28} {keys}")
+                print(f"    would store {r['customer'][:28]:<28} {keys}")
+                continue
+
+            # 1. The durable record. Only the columns this run actually
+            #    carries are written — a run that fetched notes but found no
+            #    download row must not blank the engagement dates, and vice
+            #    versa. Building the column list from `patch` rather than
+            #    listing all of them makes that structural instead of a set of
+            #    coalesce() calls that have to be kept in sync by hand.
+            DATE_COLS = {"sent", "last_viewed", "last_printed", "decline_date"}
+            cols = ["brand", "sm_id"] + sorted(patch)
+            vals = [q(brand), q(r["sm_id"])] + [
+                # "" is how the download spells "never" for a date. Store NULL
+                # so `last_viewed is null` means never in SQL too.
+                ("null" if (k in DATE_COLS and not patch[k]) else q(patch[k]))
+                for k in sorted(patch)
+            ]
+            sets = ", ".join(f"{k}=excluded.{k}" for k in sorted(patch))
+            sb(f"""
+                insert into proposal_engagement ({", ".join(cols)}, synced_at)
+                values ({", ".join(vals)}, now())
+                on conflict (brand, sm_id) do update set {sets}, synced_at=now()""")
+
+            # 2. Same-day cache on the proposal row, for anything reading
+            #    intranet_records directly. Expected to be wiped by the next
+            #    rebuild — the table above is the source of truth.
+            sb("update intranet_records set fields = fields || "
+               f"{q(json.dumps(patch))}::jsonb, updated_at=now() "
+               f"where id={q(r['id'])}")
 
     print(f"\nengagement merged: {total['engagement']}"
           f"   (viewed {total['viewed']} · never viewed {total['never']})")

@@ -173,12 +173,29 @@ You are **Goldeneye**, the daily customer-engagement watchdog for Kitchen Tune-U
    > python3 intranet/scripts/sync_proposal_engagement.py            # dry run
    > python3 intranet/scripts/sync_proposal_engagement.py --apply
    > ```
-   > It pulls the download, merges `last_viewed` / `sent` / `last_printed` /
-   > `accepted_by` (and refreshes `status` / `decline_reason` / `decline_date`,
-   > which change after a row is first written) onto the `proposals` rows in
-   > `intranet_records` by `sm_id`, then fills `customer_notes` from
-   > `proposal/details`. Patches are shallow jsonb merges, so `team_note` and
-   > anything else the team owns survives.
+   > It pulls the download, then writes `last_viewed` / `sent` / `last_printed` /
+   > `accepted_by` / `status` / `decline_reason` / `decline_date` plus
+   > `customer_notes` (from `proposal/details`) into the **`proposal_engagement`
+   > table**, keyed `(brand, sm_id)`. It also patches the same values onto the
+   > `proposals` rows as a same-day cache, but the TABLE is the source of truth
+   > and the UI reads it.
+   >
+   > ⚠️ **Why it cannot live on the proposal row — this is a trap worth
+   > understanding before you "simplify" it back.** The write-then-prune pattern
+   > used for every report section (insert today's rows, delete rows whose
+   > `scan_date` isn't today) deletes and re-creates `proposals` wholesale.
+   > Verified 2026-08-31: all 120 proposal rows carried `created_at = 10:19
+   > UTC` that morning, and engagement written at 09:25 was gone by 11:27 —
+   > the sync re-fetched 88 `customer_notes` it had already fetched twice. With
+   > the table, a re-run now reports `notes fetched: 0`.
+   >
+   > **Same pattern, still unfixed elsewhere:** the rebuild also drops
+   > `team_note` from proposal and `appt_followups` rows, so the inline
+   > "Our note → ServiceMinder" box empties overnight. The note text itself is
+   > safe — `saveEntityNote` writes `entity_notes` and `sm_note_queue`, both
+   > separate tables — so this is a display regression, not data loss. Raised
+   > with Steven 2026-08-31; the fix is to seed that textarea from
+   > `entity_notes` instead of `fields.team_note`.
    >
    > First run, 2026-08-31: 120 rows, **all 120 matched the download**, 92
    > viewed, 28 never opened, 88 notes fetched. Worth knowing what that
