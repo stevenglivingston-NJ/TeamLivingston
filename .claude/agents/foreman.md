@@ -86,6 +86,22 @@ you enforce daily:
     $15,145 sat Open; the job was done.) Duplicates inflate the open-AR total — subtract
     them and say so. Only treat an Open invoice as real AR when its proposal has no paid
     twin.
+  - **Notes on a job, a proposal or a visit: read `sm_notes`, not the appointment.**
+    `find_appointment(...).Notes` is null in practice — the ServiceMinder Open API
+    cannot see appointment notes at all (verified 2026-08-29 on appt `51051472`).
+    They reach us only through the Liquid feed, mirrored into the `sm_notes` table
+    along with contact and proposal notes:
+    ```
+    bash mcp-servers/sb.sh "select source, title, body, private, authored_by, authored_at
+                              from sm_notes
+                             where contact_id = <id> or appointment_id = <id> or proposal_id = <id>
+                             order by authored_at desc nulls last"
+    ```
+    This is where a rep's "measured, needs a soffit removed" or "homeowner's husband
+    wasn't there, revisit" lives — exactly the field intelligence a scope-gap review
+    needs and could not previously reach. `private` notes are mirrored too; use them
+    for your own judgement but never quote one into a customer-facing artefact.
+    See `CLAUDE.md` § "ServiceMinder notes — where they actually live".
 - **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).

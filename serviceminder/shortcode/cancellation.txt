@@ -1,0 +1,34 @@
+---SM-NOTES-JSON-BEGIN---
+{
+"source": "appointment",
+"brand": "{organization.name}",
+"appointment_id": "{appointment.id}",
+"contact_id": "{contact.id}",
+"proposal_id": "{proposal.id}",
+"subject_label": "{contact.name}",
+"service": "{service.name}",
+"scheduled": "{appointment.scheduled_start_date}",
+"owner": "{appointment.owner_name}",
+"service_agent": "{service_agent.name}",
+"phone": "{contact.phone}",
+"email": "{contact.email}"
+}
+---SM-NOTES-JSON-END---
+---SM-TEXT:cancel_reason---
+{appointment.cancel_reason}
+---SM-TEXT-END---
+---SM-TEXT:cancel_reason---
+{appointment.cancelreason}
+---SM-TEXT-END---
+---SM-TEXT:notes_summary---
+{appointment.notes}
+---SM-TEXT-END---
+---SM-TEXT:notes_summary---
+{appointment.notes_summary}
+---SM-TEXT-END---
+---SM-TEXT:notes_summary---
+{appointment.note}
+---SM-TEXT-END---
+---SM-TEXT:contact_notes---
+{contact.notes}
+---SM-TEXT-END---

@@ -250,20 +250,38 @@ def query_appointments(
 
 @mcp.tool()
 def find_appointment(location: str, appointment_id: int) -> dict[str, Any]:
-    """Fetch a SINGLE appointment's full detail — including its NOTES.
+    """Fetch a single appointment's core detail (schedule, status, contact id,
+    cancel reason id). Does NOT return notes — see below, this was tested
+    and corrected 2026-08-29.
 
-    Why this exists (important): the bulk `query_appointments` and the org
-    appointments download do NOT return the free-text notes staff (e.g. Ben)
-    leave on an appointment — those notes live on the individual appointment
-    object, retrievable only here via the `appointments/find` endpoint. This is
-    the source of cancellation/reschedule reasoning ("family situation, must
-    reschedule", scope details, etc.). The notes are APPOINTMENT-level, not
-    contact-level: `find_contact(...).Notes` is empty for these; the text is on
-    the appointment.
+    CORRECTED 2026-08-29 — this docstring previously claimed the opposite and
+    was wrong. `Notes`/`UpdateNote` on this endpoint's response are WRITE
+    fields being echoed back from the request, not appointment data: sending
+    `{"AppointmentId":51051472,"Notes":"anything"}` returns that exact string
+    unchanged with the appointment still found — a garbage value doesn't
+    filter the result, proving it's pass-through, not a lookup. On a genuine
+    read (no Notes in the request) it is always null. Verified null across 6+
+    appointments (cancelled and completed), with/without IncludeContact,
+    IncludeCompleted, and IncludeNotes (which the API doesn't even recognize —
+    it's silently dropped, absent from the echoed request). Also checked the
+    nested Slots[].Contact.Notes path (where CancelReasonId famously hides) —
+    still null.
+
+    THE OPEN API HAS NO ENDPOINT THAT READS APPOINTMENT NOTES. The only route
+    is ServiceMinder's Liquid notification templates (see
+    serviceminder/liquid/*.liquid), which render server-side against the live
+    object model and are documented to expose appointment.notes /
+    appointment.appointment_notes — a different product surface, not this API.
+    See CLAUDE.md § "ServiceMinder notes — where they actually live" for the
+    full trail (15 candidate endpoints ruled out, the complete
+    downloadappointmentsettings schema has no note field, and a grep of every
+    Output-marked field across the full 52-page API reference is zero for
+    Notes/UpdateNote/CancelReasonId/ProposalNotes/CustomerNotes on any
+    endpoint). Query the `sm_notes` table instead of this tool for notes.
 
     Pass the AppointmentId (the `Id` column in the appointments download, or
-    `AppointmentId` from query_appointments). Returns the full appointment
-    payload; read the `Notes` field (and `UpdateNote`) for the free-text.
+    `AppointmentId` from query_appointments). CancelReasonId is nested in
+    `Slots[].CancelReasonId`, not at the top level (which returns 0).
     """
     return _post("appointments/find", location, {"AppointmentId": appointment_id})
 
@@ -515,20 +533,39 @@ def start_download(
     updated_from: str | None = None,
     updated_through: str | None = None,
     user_id: int | None = None,
+    row_id: int | None = None,
     extra_settings: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Start a bulk data download. Returns a DownloadId for polling.
 
-    kind: typically one of "appointments", "contacts", "invoices", "invoicelines",
-          "proposals", "deposits", "payments", "services", "campaignbudgets".
+    kind: one of "appointments", "contacts", "deposits", "invoices", "invoicelines",
+          "proposals", "services", "campaignbudgets", "revenueforecasts",
+          "channelscampaigns" (per the Org-Level Download API reference,
+          2026-08-29 — this is the full set; there is no "notes" kind).
     user_id: REQUIRED by the API. Defaults to SM_USERID_<LOC> from env if unset;
           pass explicitly (any active Owner/Org-Admin UserId from list_users) to override.
+    row_id: PAGINATION — read this before trusting a download as complete.
+          Downloads cap at 25,000 rows per call (verified: KTU proposals sit at
+          22,821 as of 2026-08-29, 91% of the ceiling — this WILL start
+          truncating). A truncated download returns exactly like a complete
+          one; nothing marks it as partial. If a result has 25,000 rows, it is
+          probably not everything.
+          To page: first call omits row_id (or pass 0). If you get back a full
+          page, re-call with row_id = the `Id` field of the LAST row returned.
+          This is NOT a row number / offset — it is the record's own Id. Getting
+          that distinction wrong silently returns the wrong page.
     extra_settings: per-kind options. For appointments, the status flags live under an
           "Appointments" object — cancelled rows are OMITTED unless you opt in, e.g.
           {"Appointments": {"Scheduled": true, "Completed": true, "Canceled": true}}.
-          NOTE: this appointments dataset does NOT include the free-text Notes column;
-          fetch the cancellation reason from the contact via find_contact(id_search=ContactId)
-          -> Notes[] (the activity log), then classify it.
+          NOTE: this appointments dataset does NOT include a free-text Notes
+          column, and no download `kind` does (verified against the full API
+          reference — 10 kinds, none of them notes). Appointment and proposal
+          notes are unreachable via ANY read endpoint in this API; they arrive
+          only through the Liquid feed into the `sm_notes` table (see
+          `serviceminder/liquid/README.md` and CLAUDE.md's ServiceMinder notes
+          section). Contact notes ARE reachable via find_contact(id_search=
+          ContactId) -> Notes[], which is what feeds the `sm_notes` mirror
+          today.
 
     Use poll_download() to wait for completion, then get_download() to retrieve.
     """
@@ -541,6 +578,8 @@ def start_download(
         payload["UpdatedFrom"] = updated_from
     if updated_through:
         payload["UpdatedThrough"] = updated_through
+    if row_id is not None:
+        payload["RowId"] = row_id
     uid = user_id if user_id is not None else _get_userid(location)
     if uid is not None:
         payload["UserId"] = uid
