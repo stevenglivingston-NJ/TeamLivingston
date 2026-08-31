@@ -167,6 +167,27 @@ You are **Goldeneye**, the daily customer-engagement watchdog for Kitchen Tune-U
    >
    > Request it with `{"Kind":"proposals","Proposals":{"IncludeBundled":true,
    > "IncludeTags":true,"IncludeLines":true,"IncludeCustomFields":true}}`.
+   >
+   > **Do not hand-roll this merge — run the script:**
+   > ```
+   > python3 intranet/scripts/sync_proposal_engagement.py            # dry run
+   > python3 intranet/scripts/sync_proposal_engagement.py --apply
+   > ```
+   > It pulls the download, merges `last_viewed` / `sent` / `last_printed` /
+   > `accepted_by` (and refreshes `status` / `decline_reason` / `decline_date`,
+   > which change after a row is first written) onto the `proposals` rows in
+   > `intranet_records` by `sm_id`, then fills `customer_notes` from
+   > `proposal/details`. Patches are shallow jsonb merges, so `team_note` and
+   > anything else the team owns survives.
+   >
+   > First run, 2026-08-31: 120 rows, **all 120 matched the download**, 92
+   > viewed, 28 never opened, 88 notes fetched. Worth knowing what that
+   > surfaced immediately — a **$47,731 open KTU quote with no `Sent` date at
+   > all**, i.e. built on 8/27 and never delivered, sitting behind two smaller
+   > quotes to the same customer that were both sent and opened the same day.
+   > That is the class of thing this column exists to catch: report an unsent
+   > quote as `urgent`, separately from unviewed ones — nothing has been chased
+   > yet because nothing was ever sent.
 
    > ⚠️ **The download caps at 25,000 rows — KTU proposals are at 22,821 (91%).**
    > Per ServiceMinder's DataSubscriber docs the default page is 25,000 records
@@ -311,12 +332,24 @@ You are **Goldeneye**, the daily customer-engagement watchdog for Kitchen Tune-U
    - `--api-contacts` backfills contact notes, capped at 400/run and skipping contacts
      already mirrored, so it converges over a few days instead of spending ~50 minutes
      re-fetching 3,164 unchanged contacts every night.
-   - `--api-proposals` backfills proposal notes. **Expect 0 for now.** The keys
-     are `ProposalNotes` / `CustomerNotes` on `proposal/details` (NOT `Notes` —
-     an earlier version looked for the wrong key), and both came back null on
-     12 of 12 proposals sampled 2026-08-29. Proposal notes look as
-     API-invisible as appointment notes, so they realistically need
-     `proposal_notes.liquid` too. A zero here is expected, not a failure.
+   - `--api-proposals` backfills proposal notes. **CORRECTED 2026-08-31 — the
+     earlier "expect 0" note was wrong, and wrong for a boring reason.**
+     `proposal/details` takes **`Id`**, not `ProposalId`. Passing `ProposalId`
+     returns `{"ResultCode":1,"Message":"Proposal not found","Id":0}` for a
+     proposal that exists — a clean not-found that the 2026-08-29 sweep read as
+     "the notes are null". With `Id`, **`CustomerNotes` comes back populated on
+     224 of 400 KTU proposals (56%), up to 1,164 chars.** Proposal scope text
+     is NOT API-invisible; do not repeat that claim.
+
+     Two different fields, do not conflate them:
+
+     | field | type | reality |
+     |---|---|---|
+     | `CustomerNotes` | string | the scope text on the quote. Populated ~56%. Readable via the API today. |
+     | `ProposalNotes` | **array** | internal notes. Empty on all 30 rows checked — this one really does need `proposal_notes.liquid`. |
+
+     A zero on `ProposalNotes` is still expected. A zero on `CustomerNotes`
+     now means something is broken — check the param name first.
    - Upserts are idempotent on `(brand, source, sm_note_id)`; re-running is safe.
    - When writing `appt_followups` rows, read the appointment note out of `sm_notes`
      (`source='appointment'`, `appointment_id=<sm_id>`) into the row's **`appt_notes`**
