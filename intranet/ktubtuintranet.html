@@ -1050,6 +1050,7 @@
         <div class="nav-item" data-tab="mktspend"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 2v20M17 6H9.5a3 3 0 000 6h5a3 3 0 010 6H6"/></svg></span><span class="lbl">Marketing Spend</span><span class="pin" onclick="event.stopPropagation();togglePin('mktspend','Marketing Spend')">Pin</span></div>
 <div class="nav-item" data-tab="organic"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 22c5-3 8-7 8-12a8 8 0 10-16 0c0 5 3 9 8 12z"/><path d="M12 22V10"/></svg></span><span class="lbl">Paid &amp; Organic</span><span class="pin" onclick="event.stopPropagation();togglePin('organic','Paid &amp; Organic')">Pin</span></div>
         <div class="nav-item" data-tab="recoverydash"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/><path d="M12 8v4l3 2"/></svg></span><span class="lbl">Recovery Dash</span><span class="pin" onclick="event.stopPropagation();togglePin('recoverydash','Recovery Dash')">Pin</span></div>
+        <div class="nav-item" data-tab="activitylog"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg></span><span class="lbl">Activity Log</span><span class="pin" onclick="event.stopPropagation();togglePin('activitylog','Activity Log')">Pin</span></div>
         <div class="nav-item" data-tab="reports"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><rect x="7" y="10" width="3" height="7"/><rect x="12" y="6" width="3" height="11"/><rect x="17" y="13" width="3" height="4"/></svg></span><span class="lbl">Reports</span><span class="pin" onclick="event.stopPropagation();togglePin('reports','Reports')">Pin</span></div>
       </div>
 
@@ -1984,6 +1985,16 @@
       <div id="recoverydash_root" class="loading">Loading…</div>
     </section>
 
+    <section class="panel" id="activitylog">
+      <div class="page-head">
+        <h1 class="page-title">Activity Log</h1>
+        <p class="page-sub">Who has opened the Recovery Desk, when, and roughly how long they stayed. The desk
+          has one shared passcode rather than per-user login, so "who" is the first name each person types into
+          it once per browser — the same name already shown next to their edits there.</p>
+      </div>
+      <div id="activitylog_root" class="loading">Loading…</div>
+    </section>
+
     <section class="panel" id="reports">
       <div class="page-head">
         <h1 class="page-title">Reports &amp; Dashboards</h1>
@@ -2663,7 +2674,7 @@ async function adminDeleteUser(user_id,email){
 /* ================================================================
    Tabs / navigation (sidebar)
    ================================================================ */
-const TAB_TITLES={recoverydash:"Recovery Dash",
+const TAB_TITLES={activitylog:"Activity Log",recoverydash:"Recovery Dash",
   projtimeline:'Project Timeline',
   appointments:'Appointments',
   organic:'Paid & Organic',
@@ -3014,6 +3025,108 @@ async function saveDeskPasscode(desk) {
   setTimeout(() => { RD_SETTING = null; renderRecoveryDash(); }, 6000);
 }
 
+
+/* ================================================================
+   Activity Log — who has opened the Recovery Desk, when, how long
+   ----------------------------------------------------------------
+   Reads recovery_desk_activity directly (RLS: select is_admin()-only).
+   Three event kinds land there: 'view' (page load), 'duration' (time on
+   page, sent via sendBeacon so it lands even on a hard close), 'save'
+   (a row was edited). This aggregates per person and renders a recent
+   feed; it does not write anything.
+   ================================================================ */
+function alFmtMs(ms) {
+  if (!ms || ms < 1000) return '<1m';
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return mins + 'm';
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return h + 'h' + (m ? ' ' + m + 'm' : '');
+}
+function alFmtWhen(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  return sameDay
+    ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+      d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+async function renderActivityLog() {
+  const box = document.getElementById('activitylog_root'); if (!box) return;
+  const admin = (typeof CURRENT_ROLE !== 'undefined' && CURRENT_ROLE === 'admin');
+  const since = new Date(Date.now() - 30 * 86400000).toISOString();
+  const { data: rows, error } = await sb.from('recovery_desk_activity')
+    .select('who,event,row_id,duration_ms,at').gte('at', since)
+    .order('at', { ascending: false }).limit(2000);
+
+  if (error) {
+    // Non-admins are blocked by RLS; that is expected, not a fault.
+    box.innerHTML = '<div class="card"><div class="empty">' +
+      (admin ? 'Could not load activity: ' + esc(error.message)
+             : 'The activity log is owner-only.') +
+      '</div></div>';
+    return;
+  }
+
+  if (!rows || !rows.length) {
+    box.innerHTML = '<div class="card"><div class="empty">No desk activity in the last 30 days yet.</div></div>';
+    return;
+  }
+
+  /* ---- per-person summary ---- */
+  const people = new Map();
+  for (const r of rows) {
+    const who = (r.who || '').trim() || '(unnamed)';
+    if (!people.has(who)) people.set(who, { views: 0, saves: 0, ms: 0, first: r.at, last: r.at });
+    const p = people.get(who);
+    if (r.event === 'view') p.views++;
+    if (r.event === 'save') p.saves++;
+    if (r.event === 'duration') p.ms += (r.duration_ms || 0);
+    if (r.at < p.first) p.first = r.at;
+    if (r.at > p.last) p.last = r.at;
+  }
+  const summary = [...people.entries()].sort((a, b) => b[1].last.localeCompare(a[1].last));
+
+  const summaryRows = summary.map(([who, p]) => {
+    const recentMs = Date.now() - new Date(p.last).getTime();
+    const active = recentMs < 15 * 60000;
+    return '<tr>' +
+      '<td><span class="who"><span class="dot" style="background:' + (active ? 'var(--brass,#cf7a40)' : 'var(--s-prog,#5b7)') + '"></span>' + esc(who) + '</span></td>' +
+      '<td>' + esc(alFmtWhen(p.last)) + (active ? ' <span class="nm-chip own" style="margin-left:6px">active now</span>' : '') + '</td>' +
+      '<td>' + esc(alFmtWhen(p.first)) + '</td>' +
+      '<td class="num">' + p.views + '</td>' +
+      '<td class="num">' + p.saves + '</td>' +
+      '<td class="num">' + esc(alFmtMs(p.ms)) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  const feedRows = rows.slice(0, 80).map(r => {
+    const label = r.event === 'view' ? 'opened the desk'
+      : r.event === 'save' ? 'saved a row' + (r.row_id ? ' (' + esc(r.row_id) + ')' : '')
+      : 'was on the desk for ' + alFmtMs(r.duration_ms);
+    return '<tr><td>' + esc(alFmtWhen(r.at)) + '</td><td>' + esc((r.who || '').trim() || '(unnamed)') +
+      '</td><td>' + label + '</td></tr>';
+  }).join('');
+
+  box.innerHTML =
+    '<div class="card" style="margin-bottom:14px">' +
+      '<h2 class="sec-title">Last 30 days, by person</h2>' +
+      '<div style="overflow-x:auto"><table class="tbl"><thead><tr>' +
+        '<th>Who</th><th>Last seen</th><th>First seen</th><th class="num">Views</th>' +
+        '<th class="num">Saves</th><th class="num">Time on page</th>' +
+      '</tr></thead><tbody>' + summaryRows + '</tbody></table></div>' +
+    '</div>' +
+    '<div class="card">' +
+      '<h2 class="sec-title">Recent activity</h2>' +
+      '<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>' +
+        '<tbody>' + feedRows + '</tbody></table></div>' +
+      '<div class="note" style="margin-top:10px;opacity:.8">"Who" is a first name typed into the desk once per ' +
+        'browser, not a login — treat it as a strong hint, not an audit-grade identity. Time on page is measured ' +
+        'per visible tab span, so a browser left open in the background does not inflate it.</div>' +
+    '</div>';
+}
+
 function go(tab,push=true){
   if(!document.getElementById(tab)) tab='home';
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
@@ -3044,6 +3157,7 @@ function go(tab,push=true){
   if(tab==='projects'){ renderProjects(); }
   if(tab==='reports'){ renderReportsTab(); }
   if(tab==='recoverydash'){ renderRecoveryDash(); }
+  if(tab==='activitylog'){ renderActivityLog(); }
   if(tab==='techstack'){ renderTechStack(); }
   if(tab==='tasks'){ renderTasks(); }
   if(tab==='ordering'){ renderBtuOrdering(); }

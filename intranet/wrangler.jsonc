@@ -16,7 +16,24 @@
   // no manual dashboard step, and no risk of a deploy silently dropping it.
   "routes": [
     { "pattern": "dash.goaxyom.com", "custom_domain": true }
-  ]
+  ],
+
+  // Recovered 2026-08-31: the live worker actually serves the intranet HTML
+  // as a Workers Asset (env.ASSETS.fetch), with worker.js handling only the
+  // /api/ghl proxy and falling through to ASSETS for everything else. This
+  // repo's wrangler.jsonc had no `assets` stanza and build.mjs produced a
+  // single-file inline-HTML worker with no GHL proxy at all — neither
+  // matches what's live, so `npm run deploy` as documented would have
+  // regressed the GHL proxy and likely broken asset serving. Until build.mjs
+  // and DEPLOY.md are reconciled to this, deploy manually: put the patched
+  // HTML at public/index.html, and worker.js must be the GHL-proxy script
+  // (fetched from the live Worker via the Cloudflare API, not build.mjs's
+  // output) — see the 2026-08-31 Activity Log deploy for the exact bytes.
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  }
 
   // account_id intentionally omitted — wrangler reads it from the
   // CLOUDFLARE_ACCOUNT_ID env var (see mcp-servers/.env.example), so this
