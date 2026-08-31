@@ -201,6 +201,40 @@ The 50/40/10 model only works if every tranche fires on time. Cross-check Servic
 
 Don't just police overdue tranches — **forecast the inflows before they land**. The install calendar IS the cash calendar under 50/40/10:
 - From ServiceMinder (`query_appointments` install/start appointments + accepted proposals + open invoices), build the dated inflow schedule: every job with an install/start date in the next **7 / 14 / 30 / 90 days** → expected **40% draw** (contract × 40%, per linked invoice), and every projected completion → expected **10% draw**.
+🔴 **THE CASH FLOW VIEW IS NOW LIVE — and two of your inputs are letting it down.**
+`moola_cashledger`, `moola_runway` and `moola_balances` were being written every
+morning and **rendered nowhere**; as of 2026-08-31 they drive the **Cash Flow**
+card on Financial Reporting (a running weekly balance, past actuals plus
+forward projection). Two gaps in what you feed it, both material:
+
+1. **Forecast the OUTFLOWS as far as you forecast the inflows.** On 2026-08-31
+   the ledger carried outflows only through 09-06 while inflows ran to 10-25.
+   The projection therefore climbed to **+$400k by late October purely because
+   nobody had forecast the bills.** Payroll, rent, royalty and materials do not
+   stop. The UI now detects this and labels those weeks as a forecast gap rather
+   than a surplus — but the honest fix is at your end: every week you project
+   income for, project the recurring outgo too (weekly burn at minimum, plus
+   dated royalty on the 10th, rent on the 1st, payroll on its cycle).
+
+2. **Date the receivable tranches.** All 41 `moola_ar` rows carry
+   `tranche` ("40% start", "10% completion", "balance due") and `amount` — a
+   real $564k of it — with **`expected_date` NULL on every single row.** An
+   undated receivable cannot be placed on a cash timeline, which is exactly what
+   Steven asked for: *when* the money lands, driven by project timing.
+   Set `expected_date` from the job's schedule:
+   - **deposit / 40% start** → the primary install start date
+   - **completion / balance due** → the final walkthrough date
+   - fall back to the proposal's accepted date + the brand's typical cycle only
+     when no appointment exists, and say in the note that it is a fallback.
+
+   ⚠️ The `appointments` table cannot support this yet: on 2026-08-31 it held
+   **one** future row (a 09-09 consultation) and no installs or walkthroughs at
+   all. So step 5c's appointment sync needs to carry install and walkthrough
+   appointments, not just consultations, before tranche dating can be anything
+   better than a guess. Raise that as a `warn` rather than silently dating
+   tranches from thin air — a confident wrong date on a cash timeline is worse
+   than an honest gap.
+
 - Report the totals per window ("next 14 days: $X expected across N jobs") and net them against known outflows in the same window (payroll incl. commission liability below, HFC royalty on the 10th, rent, debt service, vendor bills due from the Gmail sweep). **A projected shortfall gets a dated URGENT row weeks before it happens.**
 - **13-week rolling weekly cash forecast — the core CFO deliverable; produce it every scan, per entity (KTU, BTU) plus a portfolio line.** A week-by-week ladder for the next 13 weeks; each week: **opening balance → + expected AR draws landing that week (40%/10% tranches keyed to the install calendar + open invoices) − outflows (payroll incl. the commission accrual below, AP due that week, HFC royalty on the 10th, rent, debt service) = projected closing balance**, and each week's closing carries into the next week's opening. Flag the **first week the projected closing dips below the 8-week fixed-cost buffer** (warn) or **below zero** (urgent) — by name, dollar, and week, as early as you can see it. The 7/14/30/90 buckets above stay as the summary; the weekly ladder is the actionable artifact. Emit the tightest 4–6 weeks (or any breach week) as `moola_briefing` rows; the full 13-week table can go to a dedicated Finance sub-section if one exists.
 - A job with an install date but **no invoice staged for the 40%** is a process break — flag it by name (it will trip the T-2 trigger above, then the day-2 alert, if unfixed).
