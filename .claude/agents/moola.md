@@ -216,7 +216,53 @@ forward projection). Two gaps in what you feed it, both material:
    income for, project the recurring outgo too (weekly burn at minimum, plus
    dated royalty on the 10th, rent on the 1st, payroll on its cycle).
 
-2. **Date the receivable tranches.** All 41 `moola_ar` rows carry
+2. **Date the receivable tranches — the plumbing now exists, USE it.**
+   `project_schedule` + the `ar_tranche_dates` view (migration 016) implement
+   Steven's rule directly: **40%/deposit → install start, 10%/balance →
+   walkthrough**. Read `expected_date` off that view and write it onto the
+   `moola_ar` rows each run; also honour `date_basis`, which says whether the
+   date came from a scheduled appointment or a window proxy.
+
+   Refresh `project_schedule` every run:
+   - **ServiceMinder (stronger — carries `contact_id`):** `appointments/query`
+     over a forward window, keep `ServiceName` in
+     {`Installation - Primary Service `, `Installation`, `Final Walkthrough`}.
+     ⚠️ `DateTime` comes back as **US `M/D/YYYY h:mm AM`**, not ISO. Slicing the
+     first 10 characters yields `6/8/2026 9` and Postgres rejects it — parse the
+     M/D/YYYY properly.
+   - **JobTread (proxy):** `job.taskSummary.startDate` / `.endDate`. **JobTread
+     is MCP-only — there is no curl helper — so a cron script cannot reach it;
+     this half must be done by an agent run.**
+
+   Three things learned loading it live on 2026-08-31, all of which change what
+   you should report:
+
+   - **Nobody schedules the Final Walkthrough.** The service exists in
+     ServiceMinder (id 30444) and across 216 KTU appointments Jun–Dec there are
+     **zero** of them. So every `10% completion` / `balance due` tranche is
+     undatable from the appointment book — 8 rows matched a scheduled customer
+     and still got no date. From JobTread the **end of the project window** is
+     the only available proxy, recorded as `confidence='window_proxy'` rather
+     than dressed up as a booked walkthrough. **Report the missing walkthroughs
+     as an ops gap**, not as a data problem: booking them fixes the cash
+     timeline and the customer experience at once.
+   - **JobTread task names cannot be pattern-matched.** Across 366 scheduled
+     tasks the naming is free text — "Arenberg-Project window", "Mycka- Full
+     Kitchen (full team)", "Primary Install", "DeFranco install tentative" —
+     with trade tasks mixed in at the same level. Use `taskSummary`, not task
+     names.
+   - **The AR↔schedule join is WEAK and must stay labelled as such.**
+     `moola_ar` redacts customers to first name + last initial ("Maureen M.")
+     while both sources hold full names, so the view matches on that. Two
+     customers called Maureen M. would both match. `moola_ar` rows should carry
+     `contact_id` — the table is already indexed for it — and when they do,
+     switch the view to the id join.
+
+   Live result on 2026-08-31: **5 of 41 tranches dated ($65,081 of $568,466)**.
+   That is not a failure of the mechanism, it is the measurement — the other 36
+   have no install booked in either system.
+
+3. **(superseded)** All 41 `moola_ar` rows carry
    `tranche` ("40% start", "10% completion", "balance due") and `amount` — a
    real $564k of it — with **`expected_date` NULL on every single row.** An
    undated receivable cannot be placed on a cash timeline, which is exactly what
