@@ -44,6 +44,15 @@ SM = os.path.join(REPO, "mcp-servers", "sm.sh")
 BEGIN = "---SM-NOTES-JSON-BEGIN---"
 END = "---SM-NOTES-JSON-END---"
 
+# Free-text blocks, carried OUTSIDE the JSON. See TEXT BLOCKS in the module
+# docstring: ServiceMinder's notification body is shortcode substitution, not
+# Liquid, so there is no filter to escape a value with. A note body pasted
+# inside a JSON string breaks the JSON on the first straight quote or newline
+# the rep typed — which is every long note worth capturing. Outside the JSON,
+# nothing needs escaping at all.
+TEXT_OPEN = re.compile(r"^---SM-TEXT:([a-z_]+)---$", re.M)
+TEXT_CLOSE = "---SM-TEXT-END---"
+
 # Mail gateways rewrite quotes and wrap long lines. Both corrupt JSON, and both
 # are cheap to undo before parsing.
 SMART_QUOTES = {"“": '"', "”": '"', "‘": "'", "’": "'"}
@@ -121,6 +130,7 @@ def extract_envelope(body):
     if not body or BEGIN not in body:
         return None
     chunk = body.split(BEGIN, 1)[1].split(END, 1)[0]
+    texts = extract_text_blocks(body)
 
     attempts = [
         ("as-is", chunk),
@@ -140,9 +150,74 @@ def extract_envelope(body):
             continue
         if label != "as-is":
             print(f"    envelope parsed after repair: {label}", file=sys.stderr)
+        # Text blocks win over any same-named JSON key: the JSON copy is the
+        # one that could have been truncated by a stray quote, the text block
+        # cannot be.
+        if isinstance(parsed, dict):
+            parsed.update(texts)
         return parsed
     print(f"    envelope present but unparseable ({last[0]}): {last[1]}", file=sys.stderr)
     return None
+
+
+def extract_text_blocks(body):
+    """Pull `---SM-TEXT:key---` ... `---SM-TEXT-END---` blocks out of the body.
+
+    Values are returned verbatim apart from surrounding whitespace — no quote
+    repair, no escaping, no JSON. That is the whole point: this is where a
+    multi-line note with the rep's own quotation marks in it can travel safely.
+    """
+    out = {}
+    for m in TEXT_OPEN.finditer(body or ""):
+        key = m.group(1)
+        rest = body[m.end():]
+        if TEXT_CLOSE not in rest:
+            print(f"    text block {key!r} has no closing sentinel — skipped",
+                  file=sys.stderr)
+            continue
+        val = rest.split(TEXT_CLOSE, 1)[0].strip()
+        # An unfilled shortcode arrives as the literal shortcode text. Treat it
+        # as empty rather than storing "{appointment.notes_summary}" as a note.
+        if val.startswith("{") and val.endswith("}") and " " not in val:
+            continue
+        if val:
+            out[key] = val
+    return out
+
+
+def synthesize_notes(env):
+    """Build a note list when the feed could only send a flattened string.
+
+    ServiceMinder's shortcode templating has no loop construct, so a
+    notification cannot iterate `appointment.notes` into an array the way the
+    Liquid-based drafts assumed. What it CAN send is a single flattened
+    summary. One synthetic note is better than none — the prose is the value
+    here, and the alternative is an empty Appointment Recovery tab.
+
+    The synthetic id is the NEGATED appointment/proposal id. Real ServiceMinder
+    note ids are positive, so a negative id cannot collide with one, and it is
+    stable across re-delivery so `(brand, source, sm_note_id)` still upserts
+    instead of duplicating. If the real per-note array ever becomes available,
+    those rows land alongside under their own positive ids.
+    """
+    if env.get("notes"):
+        return env["notes"]
+    text = (env.get("notes_summary") or env.get("note_body") or "").strip()
+    if not text:
+        return []
+    anchor_id = env.get("appointment_id") or env.get("proposal_id")
+    try:
+        anchor_id = int(str(anchor_id).strip())
+    except (TypeError, ValueError):
+        return []
+    return [{
+        "id": -abs(anchor_id),
+        "title": "Notes (flattened feed)",
+        "body": text,
+        "private": False,
+        "created_by": env.get("owner"),
+        "created_at": env.get("cancelled_at") or env.get("scheduled"),
+    }]
 
 
 def _straighten(text):
@@ -218,7 +293,7 @@ def run_liquid(dry):
                    proposal_id=env.get("proposal_id"))
         src = env.get("source") or "appointment"
         n = 0
-        for note in env.get("notes") or []:
+        for note in synthesize_notes(env):
             n += upsert_note(brand, src, note, via="liquid", dry=dry, **ids)
         # The cancellation template also ships the contact's notes; store them
         # under their own source so a contact view picks them up too.
@@ -278,7 +353,7 @@ def run_from_file(path, dry):
                proposal_id=env.get("proposal_id"))
     src = env.get("source") or "appointment"
     n = 0
-    for note in env.get("notes") or []:
+    for note in synthesize_notes(env):
         n += upsert_note(brand, src, note, via="liquid", dry=dry, **ids)
     for note in env.get("contact_notes") or []:
         n += upsert_note(brand, "contact", note, via="liquid", dry=dry,

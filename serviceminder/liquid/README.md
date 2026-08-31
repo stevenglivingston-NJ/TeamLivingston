@@ -1,3 +1,15 @@
+> ## ⚠️ SUPERSEDED 2026-08-31 — do not install these
+>
+> ServiceMinder's notification body is **shortcode substitution**, not
+> Liquid: single braces, `{contact.id}`, no filters, no loops. Confirmed
+> from a working trigger in the KTU org. These templates use `{{ }}`,
+> `| json` and `{% for %}`, none of which exist on that surface.
+>
+> **Use `../shortcode/` instead.** These are kept only because the
+> reasoning below — why the API cannot reach appointment notes, and why a
+> push feed is the only path — is still correct and is the justification
+> for the shortcode templates.
+
 # ServiceMinder Liquid feeds
 
 These templates exist for one reason: **the ServiceMinder Open API cannot see
