@@ -309,6 +309,22 @@ function renderPeers() {
   ).join('');
 }
 
+/* ---------- activity log ----------
+   No per-user login on this desk (one shared passcode), so "who" is the same
+   first name already captured above and reused as `updated_by` on saves.
+   'view' fires once per page load; 'duration' fires once via sendBeacon when
+   the tab is closed or backgrounded, so both land even on a hard close. */
+function pingActivity(body) {
+  try {
+    navigator.sendBeacon('/follow-up/api/activity', JSON.stringify(body));
+  } catch (_) {
+    fetch('/follow-up/api/activity', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body), keepalive: true,
+    }).catch(() => {});
+  }
+}
+
 async function boot() {
   try { me = (localStorage.getItem('ktu-desk-name') || '').trim(); } catch (_) { me = ''; }
   if (!me) {
@@ -327,5 +343,20 @@ async function boot() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') pull().then(renderPeers);
   });
+
+  pingActivity({ event: 'view', who: me });
+  // Each visible span (tab open to backgrounded/closed) logs its own
+  // duration, so switching tabs and coming back accumulates correctly
+  // instead of only counting the first span.
+  let segStart = Date.now();
+  const sendDuration = () => {
+    const ms = Date.now() - segStart;
+    if (ms > 500) pingActivity({ event: 'duration', who: me, ms });
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') sendDuration();
+    else segStart = Date.now();
+  });
+  addEventListener('pagehide', sendDuration);
 }
 boot();

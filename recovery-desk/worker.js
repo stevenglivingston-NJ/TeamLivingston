@@ -77,6 +77,35 @@ async function rpc(env, fn, body) {
   return r.json();
 }
 
+/**
+ * Best-effort activity log write. Never blocks or breaks the desk: a failure
+ * here is logged to the console and swallowed rather than surfaced to the
+ * user, since usage telemetry is not something a save or page load should
+ * fail over.
+ */
+async function logActivity(env, { event, who = '', row_id, duration_ms }) {
+  try {
+    const row = { desk: DESK_KEY, event, who };
+    if (row_id !== undefined) row.row_id = row_id;
+    if (duration_ms !== undefined) row.duration_ms = duration_ms;
+    const r = await fetch(`${env.SUPABASE_URL}/rest/v1/recovery_desk_activity`, {
+      method: 'POST',
+      headers: {
+        apikey: env.SUPABASE_KEY,
+        authorization: `Bearer ${env.SUPABASE_KEY}`,
+        'content-type': 'application/json',
+        'accept-profile': 'public',
+        'content-profile': 'public',
+        prefer: 'return=minimal',
+      },
+      body: JSON.stringify(row),
+    });
+    if (!r.ok) console.error('logActivity', r.status, await r.text());
+  } catch (e) {
+    console.error('logActivity', e);
+  }
+}
+
 let versionCache = { at: 0, v: null };
 
 /** Current rotation marker; null when the database cannot be reached. */
@@ -264,10 +293,34 @@ export default {
           body: JSON.stringify(row),
         });
         if (!r.ok) return new Response(await r.text(), { status: 502, headers: SECURITY });
+        await logActivity(env, { event: 'save', who: row.updated_by, row_id: row.id });
         return new Response('{"ok":true}',
           { headers: { 'content-type': 'application/json', ...SECURITY } });
       }
       return new Response('method not allowed', { status: 405, headers: SECURITY });
+    }
+
+    // --- activity beacon: page views and time-on-page, no customer data ---
+    // There is no per-user login on this desk (one shared passcode), so "who"
+    // is the first name each person types into the desk once per browser —
+    // already stored client-side and reused as `updated_by` on saves. This
+    // just also logs it on page loads and session length.
+    if (path === '/follow-up/api/activity') {
+      if (!signedIn) return new Response('signed out', { status: 401, headers: SECURITY });
+      if (request.method !== 'POST') return new Response('method not allowed', { status: 405, headers: SECURITY });
+      let b;
+      try { b = await request.json(); } catch (_) { b = null; }
+      if (!b || (b.event !== 'view' && b.event !== 'duration')) {
+        return new Response('bad event', { status: 400, headers: SECURITY });
+      }
+      await logActivity(env, {
+        event: b.event,
+        who: String(b.who || '').slice(0, 40),
+        duration_ms: b.event === 'duration'
+          ? Math.max(0, Math.min(12 * 60 * 60 * 1000, Number(b.ms) || 0))
+          : undefined,
+      });
+      return new Response('{"ok":true}', { headers: { 'content-type': 'application/json', ...SECURITY } });
     }
 
     // --- the desk ---
