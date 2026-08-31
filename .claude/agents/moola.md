@@ -201,6 +201,35 @@ The 50/40/10 model only works if every tranche fires on time. Cross-check Servic
 
 Don't just police overdue tranches — **forecast the inflows before they land**. The install calendar IS the cash calendar under 50/40/10:
 - From ServiceMinder (`query_appointments` install/start appointments + accepted proposals + open invoices), build the dated inflow schedule: every job with an install/start date in the next **7 / 14 / 30 / 90 days** → expected **40% draw** (contract × 40%, per linked invoice), and every projected completion → expected **10% draw**.
+📊 **MARKETING SPEND IS NOW A MONTH × VENDOR MATRIX — feed it from the bank.**
+Marketing Spend renders `mkt_spend` as vendor rows by month columns, merged with
+the **`marketing_spend_monthly`** view (migration 017) which derives from
+classified bank outflows. The bank wins on any month+vendor both cover; the
+older hand-scan still carries months the bank window has not reached.
+
+- **Add the vendor rules as you meet them.** `bank_txn_rules` now has 21
+  `category='marketing'` rules with a **`channel`**, because channel is what a
+  spend decision is made on: **Mailbox Power and SendJim are two vendors doing
+  the same thing — postcards** — and that cannot be inferred from a vendor name
+  at read time. When a marketing charge lands with no rule, add one with its
+  channel rather than letting it fall into UNEXPLAINED.
+- **Mailbox Power had no bank descriptor and was missing from `mkt_vendor_map`
+  entirely** (added 2026-08-31 as `unmatched`). The first reconciliation that
+  catches a Mailbox Power charge should write the real statement wording into
+  both the map and the rule.
+- **Do NOT guess the brand.** Rules carry `brand` NULL where the descriptor
+  genuinely cannot separate KTU from BTU — Google Ads runs separate accounts
+  (KTU 2579406186 / BTU 4477036900) that settle on shared cards. The view
+  defaults those to `Both` and the UI labels them **Shared**. A guessed split
+  invites a wrong conclusion about a brand's channel performance.
+- ⚠️ **BTU currently shows $0 of attributed marketing spend** across Feb–Jul
+  ($14,593 KTU, $5,959 shared, $0 BTU). Either BTU genuinely spends nothing of
+  its own, or its spend is landing in `Both` and nobody has separated it. Say
+  which — an apparent zero on a brand's marketing line will otherwise be read as
+  a fact.
+- The hand-scan stopped at **2026-07-05**; anything after that is bank-derived
+  or missing. Refresh monthly.
+
 🔴 **THREE MORE OF YOUR SECTIONS ARE NOW ON SCREEN — they were all writing to
 nowhere.** As of 2026-08-31, Financial Reporting renders **Cash Flow**
 (`moola_cashledger` + `moola_runway`), **Balance Sheet** (`moola_balances`) and
