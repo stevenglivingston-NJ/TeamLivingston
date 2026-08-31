@@ -146,9 +146,7 @@ function rowHTML(p) {
           <span class="chip" style="color:${toneVar(st.tone)}">${esc(st.label)}</span>
           ${w.assignee !== 'Unassigned' ? `<span class="chip" style="color:var(--brass)">${esc(w.assignee)}</span>` : ''}
           ${p.quote_services ? `<span class="chip" style="color:var(--muted)">${esc(p.quote_services)}</span>` : ''}
-          ${p.quote_viewed ? `<span class="chip" style="color:var(--muted)">Last viewed ${esc(p.quote_viewed)}</span>`
-            : (p.quote_delivery_known && p.quote_sent
-                ? `<span class="chip" style="color:var(--s-warn)">No view recorded</span>` : '')}
+          ${p.quote_viewed ? `<span class="chip" style="color:var(--muted)">Last viewed ${esc(p.quote_viewed)}</span>` : ''}
         </div>
         <p class="why">${esc(p.why)}</p>
       </div>
@@ -186,8 +184,8 @@ function rowHTML(p) {
       ${p.sm_notes ? `<div><h4>ServiceMinder contact notes</h4><p>${esc(p.sm_notes)}</p></div>` : ''}
       ${p.hl_notes ? `<div><h4>HighLevel notes</h4><p>${esc(p.hl_notes)}</p></div>` : ''}
       ${p.hl_convo ? `<div><h4>Recent conversation</h4><p>${esc(p.hl_convo)}</p></div>` : ''}
-      ${p.value ? `<div><h4>The quote</h4><p>${money(p.value)} for ${esc(p.quote_services || 'work quoted')}, dated ${esc(p.quote_latest)}${p.quote_count > 1 ? ` (${p.quote_count} quotes)` : ''}.${p.quote_sent ? ` Last sent ${esc(p.quote_sent)}.` : ''}${p.quote_viewed ? ` Last viewed ${esc(p.quote_viewed)}.` : (p.quote_delivery_known ? ' ServiceMinder has no view recorded — check the proposal in ServiceMinder before telling a customer they never opened it, the field is not reliable.' : '')}</p>
-        <p class="note" style="opacity:.75;font-size:12px">ServiceMinder's "Sent" is the <em>last</em> send, not the first — automated re-sends overwrite it, so it often post-dates the view. Treat these as hints, not proof.</p></div>` : ''}
+      ${p.value ? `<div><h4>The quote</h4><p>${money(p.value)} for ${esc(p.quote_services || 'work quoted')}, dated ${esc(p.quote_latest)}${p.quote_count > 1 ? ` (${p.quote_count} quotes)` : ''}.${p.quote_sent ? ` Last sent ${esc(p.quote_sent)}.` : ''}${p.quote_viewed ? ` Last viewed ${esc(p.quote_viewed)}.` : ''}</p>
+        <p class="note" style="opacity:.75;font-size:12px">Open tracking is <em>not</em> shown here and a blank "last viewed" means nothing — ServiceMinder's export leaves that field empty even on quotes the customer opened several times. The real record is the <strong>Audits</strong> panel on the proposal in ServiceMinder. "Last sent" is the most recent send, not the first: automated re-sends overwrite it.</p></div>` : ''}
       ${p.channel ? `<div><h4>Came from</h4><p>${esc([p.channel, p.campaign].filter(Boolean).join(' · '))}</p></div>` : ''}
     </div>` : ''}
   </article>`;
