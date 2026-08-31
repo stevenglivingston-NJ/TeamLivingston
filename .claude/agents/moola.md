@@ -584,6 +584,43 @@ because the two licences are on **different rate schedules** and reconcile separ
    - **A licence's marginal rate stepping down** (e.g. KTU 688 ran 7.0% → 5.5% → 4.0% across 2026 as cumulative volume grew) — call the step when it happens and use the new rate when forecasting the rest of the year.
    - **Duplicate rep records** in the Proposals block (the same person appearing twice with split figures) — flag for a merge in the source system; per-rep close rates are wrong until it's fixed.
 
+3b. 🔴 **RECOMPUTE THE ROYALTY FROM OUR OWN REVENUE — the check that is missing.**
+   Steps 1–4 answer *"did HFC take what they invoiced"*. They do **not** answer
+   *"should the invoice have been that much"* — and that is the question worth
+   money. Reading HFC's workbook and reconciling it to the bank verifies HFC
+   against HFC; if their revenue basis is wrong, both sides agree and the error
+   is invisible.
+
+   So for every period, alongside the workbook figure, compute an **independent
+   basis from our own systems** and compare:
+
+   - **Basis:** ServiceMinder invoices for the period (`invoice/query`), per
+     licence, using the same revenue definition the franchise agreement states —
+     gross revenue (see `franchise_fees`: KTU 5% + NAF 2%; BTU tiered).
+   - Apply the licence's band schedule from `moola_royalty.bands` to that basis.
+   - Write `our_basis`, `our_royalty` and `basis_variance` (= HFC's
+     `revenue_basis` − `our_basis`) onto the `moola_royalty` row.
+   - **A basis variance is a different and more serious finding than a payment
+     variance.** A payment variance is a debit error, recoverable next month. A
+     basis variance means every month is wrong by the same mechanism — jobs
+     billed under the wrong licence, revenue double-counted across 688/824,
+     cancelled work never reversed, or tax included in a basis that should
+     exclude it. Report the DIRECTION plainly: HFC claiming more revenue than we
+     invoiced is an overcharge; less is an under-report that will be trued up
+     later, usually with interest.
+   - When the two bases cannot be compared like-for-like (different period cut,
+     cash vs accrual), **say so and publish neither as authoritative** rather
+     than reporting a variance that is really a definitional difference.
+
+   ⚠️ **Nothing in steps 1–4 has ever run.** As of 2026-08-31 `moola_royalty`
+   and `moola_royalty_jobs` have **0 rows** — the spec has existed and produced
+   nothing. The only royalty data anywhere is three unpaid HFC statement lines in
+   `payables` (BTU199 $19,125.08, BTU200 $11,448.10, convention $250, all dated
+   2026-08-10) whose own note reads *"royalties Mar-Jul $?"* — the amount is
+   unknown to the person who logged it. **KTU royalties (688/824) appear
+   nowhere at all.** Treat starting this as overdue work, not new work, and say
+   in the briefing how many months are unreconciled.
+
 4. **Reconcile what HFC BILLED against what actually LEFT THE BANK — every month, both brands.**
    The workbook is HFC's invoice, not proof of payment. **Never mark a period reconciled off the workbook alone.** HFC auto-debits by the **10th of the following month**, so for period `YYYY-MM` search **Bank Connection** (`mcp__Bank_Connection__get_transactions`, `budgetFlowType:'outflow'`) over roughly the 1st–15th of the *next* month, matching on description (`HFC`, `Home Franchise Concepts`, `royalty`, `NAF`) and on the entity's operating account. Then per licence/brand:
    - `bank_debit` / `bank_debit_date` — the matched debit and when it cleared. `variance` = `bank_debit − (royalty + other_charges)`.
