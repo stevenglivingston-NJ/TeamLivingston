@@ -2,11 +2,19 @@
 ===============================================================================
 proposal_notes.liquid — mirror a proposal's notes into the intranet
 -------------------------------------------------------------------------------
-proposal/details DOES return notes over the API, so this template is a
-convenience rather than a necessity — but it makes proposal notes arrive
-PUSH rather than pull, which matters for the follow-up tabs: a note added the
-hour after a quote goes out ("wants to think it over till payday") is worth
-having before the next daily sync, not after it.
+CORRECTED 2026-08-31 — this template is NOT redundant with the API.
+`proposal/details` (called with `Id`, not `ProposalId`) returns two different
+things and only one of them is readable:
+
+  CustomerNotes  string  the scope text on the quote. Populated ~56%.
+                         Synced by sync_proposal_engagement.py — no Liquid needed.
+  ProposalNotes  array   the internal notes with author + timestamp.
+                         EMPTY on all 30 proposals checked.
+
+So the rep's running commentary on a quote — the part that says why it stalled
+— is only reachable this way, exactly like appointment notes. It also arrives
+PUSH rather than pull: a note added the hour after a quote goes out ("wants to
+think it over till payday") lands before the next daily sync, not after it.
 
 Per the Liquid Objects reference, Proposal exposes both `notes` (List<Note>)
 and `proposal_notes` (List<ProposalNote>); `notes` carries the author and
