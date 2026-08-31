@@ -201,6 +201,43 @@ The 50/40/10 model only works if every tranche fires on time. Cross-check Servic
 
 Don't just police overdue tranches — **forecast the inflows before they land**. The install calendar IS the cash calendar under 50/40/10:
 - From ServiceMinder (`query_appointments` install/start appointments + accepted proposals + open invoices), build the dated inflow schedule: every job with an install/start date in the next **7 / 14 / 30 / 90 days** → expected **40% draw** (contract × 40%, per linked invoice), and every projected completion → expected **10% draw**.
+🔴 **THREE MORE OF YOUR SECTIONS ARE NOW ON SCREEN — they were all writing to
+nowhere.** As of 2026-08-31, Financial Reporting renders **Cash Flow**
+(`moola_cashledger` + `moola_runway`), **Balance Sheet** (`moola_balances`) and
+**Recurring spend** (`tech_stack`, grouped by category). Before today all three
+were computed daily and displayed on no tab. What that changes for you:
+
+**Balance sheet — the sign convention is a trap, and the UI now depends on you.**
+`moola_balances` types split across the sheet by TYPE, never by sign, because the
+source is inconsistent: `cash` and `credit-card` arrive negative when
+overdrawn/owed, while `loc` and `accrued` arrive **positive while still being
+money owed**. Liability types are `credit-card`, `loc`, `term-debt`, `accrued`,
+`loan`, `mortgage`; everything else is an asset. Live today: assets −$2,934,
+liabilities $449,100, **net −$452,034**. If you ever add a new type, decide which
+side it belongs on and say so — a drawn line landing on the asset side would
+flatter the net position by half a million dollars.
+Keep populating `available`, `apr`, `min_due`, `next_payment` and `wow_delta`:
+every one of them is a column on screen now, and a blank reads as "unknown",
+not "zero".
+
+**Recurring spend — group by FUNCTION, and record the cost even when it is
+awkward.** The view groups `tech_stack` by `category` because "what do we spend
+on marketing tooling" needs one answer ($2,740/mo across 14 tools) that no
+per-vendor list gives. Live: **$3,995/mo, $47,945/yr across 16 categories** —
+but only 26 of 57 tools carry a cost. A tool with no `monthly_cost` still
+appears on a statement, so a blank there is a gap, not a free tier, unless the
+row says free. **Cross-check it against the bank recon**: anything
+`bank_txn_rules` classifies as SaaS/fees that has no matching row here is money
+leaving with nobody's name on it — name those. Note `tech_stack` is shared with
+**Tekki**; do not fight it for the register, add the COST and the
+recommendation.
+
+**Findings and recommendations already render** — `moola_briefing` feeds the
+"Moola — your CFO's daily briefing" card. That is the surface Steven reads
+first, so the balance sheet and recurring numbers above should be *interpreted*
+there, not just tabulated: a negative net position next to the cash-flow trough
+is one story, and $48k/yr of tooling against that is another.
+
 🔴 **THE CASH FLOW VIEW IS NOW LIVE — and two of your inputs are letting it down.**
 `moola_cashledger`, `moola_runway` and `moola_balances` were being written every
 morning and **rendered nowhere**; as of 2026-08-31 they drive the **Cash Flow**
