@@ -7,6 +7,8 @@
 -- exceptions queue. Paying an unmapped invoice is a recorded override, never the default.
 -- Applied 2026-09-01.
 
+create extension if not exists pg_trgm;
+
 -- ---------------------------------------------------------------------------
 -- 1) jc_jobs — one row per sold job (the spine both sides join to).
 --    Anchor id: ServiceMinder proposal (Invoice.ProposalId is populated on 100%
@@ -58,7 +60,7 @@ create table if not exists public.jc_forecast_lines (
   cost_code text,                         -- JobTread cost code (K03 ...) when known
   vendor_hint text,                       -- expected vendor (Elias, MSI, crew...) for auto-matching
   is_change_order boolean not null default false,
-  source text not null default 'manual',  -- sm_proposal|sm_change_order|jobtread|catalog|manual
+  source text not null default 'manual',  -- sm_proposal|sm_change_order|jobtread|catalog|foreman_estimate|manual
   source_line_id text,                    -- SM ProposalLine.Id / JT cost item id
   created_at timestamptz not null default now()
 );
@@ -97,7 +99,7 @@ language plpgsql as $$
 begin
   if new.status in ('scheduled','paid') and old.status is distinct from new.status then
     if not (new.mapping_status in ('confirmed','override')
-            or new.jc_category = 'overhead_non_job') then
+            or coalesce(new.jc_category,'') = 'overhead_non_job') then
       raise exception
         'Payment blocked: payable % (% %) is % — map it to a job or record an override first',
         new.id, new.vendor, new.invoice_number, new.mapping_status;
@@ -330,8 +332,79 @@ drop trigger if exists jc_jobs_touch on public.jc_jobs;
 create trigger jc_jobs_touch before update on public.jc_jobs
   for each row execute function public.touch_updated_at();
 
+-- Views must run with the caller's rights so table RLS applies through PostgREST.
+alter view public.jc_exceptions     set (security_invoker = on);
+alter view public.jc_job_pnl        set (security_invoker = on);
+alter view public.jc_job_summary    set (security_invoker = on);
+alter view public.jc_split_mismatch set (security_invoker = on);
+
 -- Realtime for the exceptions queue + mapper UI
 do $$ begin
   begin alter publication supabase_realtime add table public.jc_jobs; exception when duplicate_object then null; end;
   begin alter publication supabase_realtime add table public.jc_actual_costs; exception when duplicate_object then null; end;
 end $$;
+
+-- ---------------------------------------------------------------------------
+-- 8) jc_run_matcher() — the auto-mapper, callable from the intranet page and
+--    from Moola's morning run (select jc_run_matcher();). Processes payables
+--    still 'unmapped': extracts po_hint from notes, trigram-matches against
+--    jc_jobs.customer_name (brand-scoped), auto-maps at >=0.85 with a clear
+--    winner, otherwise holds with the reason. Vendor->category defaults.
+--    Auto-mapped rows are NEVER releasable by themselves — a human confirm is
+--    still required (decision 2026-09-01: threshold 0.85 accepted by Steven).
+-- ---------------------------------------------------------------------------
+create or replace function public.jc_run_matcher() returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare v_auto int; v_held int;
+begin
+  update payables set po_hint = trim(substring(notes from 'PO:\s*([^,;(]+)'))
+  where po_hint is null and notes ~ 'PO:';
+
+  with cand as (
+    select p.id pid, j.id jid,
+           word_similarity(lower(p.po_hint), lower(j.customer_name)) sim
+    from payables p
+    join jc_jobs j on j.brand = p.brand
+    where p.status <> 'paid' and p.mapping_status = 'unmapped' and p.po_hint is not null
+      and word_similarity(lower(p.po_hint), lower(j.customer_name)) >= 0.5
+  ), ranked as (
+    select *, row_number() over (partition by pid order by sim desc) rn,
+           count(*)  over (partition by pid) n,
+           max(sim)  over (partition by pid) topsim,
+           lead(sim) over (partition by pid order by sim desc) sim2
+    from cand
+  )
+  update payables p set
+    job_id = case when r.topsim >= 0.85 and (r.n = 1 or r.topsim - coalesce(r.sim2,0) >= 0.15) then r.jid end,
+    mapping_status = case when r.topsim >= 0.85 and (r.n = 1 or r.topsim - coalesce(r.sim2,0) >= 0.15)
+                          then 'auto_mapped' else 'held' end,
+    mapping_confidence = round(r.topsim::numeric,2),
+    held_reason = case when r.topsim >= 0.85 and (r.n = 1 or r.topsim - coalesce(r.sim2,0) >= 0.15) then null
+                       when r.topsim < 0.85 then 'low-confidence match (best '||round(r.topsim::numeric*100)||'% for "'||p.po_hint||'")'
+                       else 'ambiguous ('||r.n||' candidate jobs for "'||p.po_hint||'")' end,
+    mapped_by='auto', mapped_at=now()
+  from ranked r where r.pid = p.id and r.rn = 1;
+  get diagnostics v_auto = row_count;
+
+  update payables set mapping_status='held',
+    held_reason = case when po_hint is null then 'no PO/customer hint on the invoice'
+                       else 'no matching job for "'||po_hint||'"' end,
+    mapped_by='auto', mapped_at=now()
+  where status <> 'paid' and mapping_status='unmapped';
+  get diagnostics v_held = row_count;
+
+  update payables set jc_category='direct_materials'
+  where jc_category is null and status <> 'paid'
+    and vendor ~* 'elias|hardware resources|richelieu|msi|m\.?s\.? international|wolf|bertch|northern contours|cabinotch|tile shop|floor & decor|home depot|ideal cabinetry|mti|touch of class|masterbrand|classic rock|rf fager';
+  update payables set jc_category='contract_labor'
+  where jc_category is null and status <> 'paid'
+    and vendor ~* 'orozco|bara|yupa|godoy|checo';
+  update payables set jc_category='overhead_non_job', mapping_status='confirmed',
+    mapped_by='auto', mapped_at=now(), held_reason=null
+  where status <> 'paid' and mapping_status in ('unmapped','held') and vendor ~* 'HFC|Home Franchise';
+
+  return jsonb_build_object('matched_or_held', v_auto, 'held_no_candidate', v_held);
+end $$;
+revoke all on function public.jc_run_matcher() from public;
+revoke all on function public.jc_run_matcher() from anon;
+grant execute on function public.jc_run_matcher() to authenticated, service_role;
