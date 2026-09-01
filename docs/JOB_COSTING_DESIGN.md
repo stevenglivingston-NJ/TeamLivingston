@@ -32,7 +32,7 @@ Every source below was probed live on 2026-09-01. "Accepted-as" states the one r
 
 ## 1. Scope — end-to-end flow, invoice arrival → payment release
 
-**Actors:** *Parser* = scheduled agent step (Moola's morning run + an on-demand sweep). *Matcher* = deterministic SQL + trigram matching in Supabase. *Mapper* = whoever works the queue (Mayra day-to-day, Steven for overrides). *Payer* = whoever operates Melio (today: Steven/Mayra).
+**Actors:** *Parser* = scheduled agent step (Moola's morning run + an on-demand sweep). *Matcher* = deterministic SQL + trigram matching in Supabase. *Mapper* = **Sonya** (works the queue and updates job costing; decision 2026-09-01). *Approver* = Steven or Sonya, for both override paths. *Payer* = whoever operates Melio (today: Steven/Sonya).
 
 | # | Step | Who/what | Failure mode & catch |
 |---|---|---|---|
@@ -200,3 +200,111 @@ How the design closes it — money is trapped at the point of payment, not reque
 - Melio cannot be read or blocked programmatically; the gate is upstream (releasable list) with a downstream tripwire (bank/QBO payment with no releasable payable).
 - `intranet_records` write-then-prune is unsuitable for costing; real tables used instead.
 - KTU forecast cost lines built from the catalog CSVs are estimates and labeled as such; coverage % is always displayed next to GM%.
+
+---
+
+# Part 2 — decisions and build of 2026-09-01 (later the same day)
+
+## 10. New decisions recorded
+
+| # | Decision (Steven) | How it is implemented |
+|---|---|---|
+| 5 | **Sonya works the queue and updates job costing.** | She had an admin login but `payables` is RLS-gated to `has_finance_access()` and her flag is **false** — she could not have seen the queue at all. Rather than grant `finance_access` (which also opens owner-only Financial Reporting / Cash Flow, incl. personal financials), a new least-privilege capability `profiles.jc_access` + `has_jc_access()` opens job costing **and nothing else**. Sonya = true; the owner accounts inherit via `finance_access`. Ben and Takia are excluded, and the tab is hidden from them by the same capability so the UI and the RLS agree. |
+| 6 | **Overrides must be creatable.** | Two override paths now exist, both recorded permanently in `jc_override_log` with who + why: `unmapped_override` (pay an invoice with no job mapping) and `margin_escalation` (release a payout on a job below the margin floor). Both are restricted to Steven and Sonya. |
+| 7 | **Anything below 45% gross margin escalates before payout.** | `jc_job_gm(job)` = (revenue − projected cost) / revenue, where projected cost is the **worse** of forecast and actual-to-date, so a job cannot look healthy merely because costs have not landed. The payment gate blocks `scheduled`/`paid` on any job under 45% until a named approver releases it with a reason. `jc_refresh_escalations()` flags them ahead of time so the queue shows them before anyone tries to pay. |
+| 8 | **Map items to the proposal and JobTread breakouts.** | `mcp-servers/jc-forecast-sync.py` — deterministic ETL (curl, no LLM in the financial path). Live result: **1,049 real sold lines across all 48 jobs, $880,446 of charged value**. |
+| 9 | **Flag under/over-priced items and where to focus.** | `jc_item_variance` (same item across jobs → avg charged vs avg actual cost → verdict) and `jc_focus` (open jobs, worst margin first, with coverage). Both rendered on the Job Costing tab. |
+
+## 11. What the ETL proved about our own data
+
+**Sold lines exist; costs do not.** The 1,049 ServiceMinder proposal lines carry
+**$880,446 of price** but only **$39,852 of cost** — KTU proposals ship with
+`UnitCost` null, exactly as the source audit predicted. Consequences, stated
+plainly because they shape how much the numbers can be trusted:
+
+- **JobTread breakouts are empty for these jobs.** The ETL pulled cost items for
+  all 48 active jobs and got **zero**. The "JobTread breakout" half of the
+  mapping does not exist yet for live work; ServiceMinder is the only sold-line
+  truth today. (The BTU catalog *does* hold real costed items — but not attached
+  to these jobs' budgets.)
+- **A sequencing mistake, corrected:** the first ETL run deleted the Foreman
+  category estimates as "superseded" by the new proposal lines. They are not
+  redundant — SM gives line *detail and price*, the estimate gives the only cost
+  *baseline*. The $410,948 cost baseline was restored, and the ETL now only
+  drops an estimate row where a genuinely **costed** line replaces it.
+- **Therefore most margins are estimate-based today.** `jc_job_cost_coverage()`
+  reports 0% on nearly every job, and the KTU estimate anchor (COGS at 30% of
+  sell + labor + 8% commission) lands almost every KTU job at ~41%. So on day one
+  the 45% floor would escalate nearly everything.
+  **This is why every escalation states its basis** — "ESTIMATE-based, 0% cost
+  coverage" vs "measured" — so an approver knows whether they are releasing
+  against evidence or against an assumption. As mapped invoices land, coverage
+  rises and the same gate starts biting on facts.
+  *Open question for Steven (not blocking):* keep the hard block on
+  estimate-based margins, or make estimate-based escalations advisory and hard-block
+  only once coverage ≥ 25%? One line of SQL either way.
+
+## 12. Labor: what Gusto, JobTread and CompanyCam can actually carry
+
+Steven's instruction was to use **Gusto** for the labor dollars and pull
+**CompanyCam** + **JobTread assignments** for the split. All three were audited
+live. The honest position:
+
+| Source | What it really holds | Verdict for allocation |
+|---|---|---|
+| **Gusto** | The connector in this stack exposes **time-off and Plaid banking only** — no payroll runs, no contractor payments, no compensation. No `GUSTO_*` credential exists in the environment either. | **Cannot supply dollars today.** Two ways in: (a) a Gusto API token → a `mcp-servers/gusto.sh` curl helper (the pattern `sm.sh`/`ghl.sh` already use), which would give **per-person** amounts; or (b) QBO, where Gusto already posts — 7 of its 11 recent transactions hit `Install Labor (SubContractors)` (acct 315). QBO gives the weekly **total**, not per person. |
+| **JobTread assignments** | Tasks carry `assignedMemberships{user{name}}`, and all three crew exist as memberships (**Miguel** `22PT3Vk6pQva`, **Oscar Herrera** `22PV9W4Rvpx9`, **Jerson Godoy** `22PV9W9DvUGK`). But: `timeEntries` = **0 rows, ever**; no hourly rates on any membership; crew tasks are multi-week **"Project Window"** spans (5–47 days) with no times; ~50% of 2026 scheduled tasks have no assignee; Oscar and Jerson have **one task each, ever**. | **Coarse presence only** — "Miguel was on job X sometime in this window", and windows overlap, so a *day* cannot be attributed to one job. |
+| **CompanyCam** | A genuinely good signal: photo `creator_id` + `project_id` + `captured_at`, geo-verified to ~10 m of the project with ~0 min upload lag. 1,018 photos across 36 projects in August. | **But the crew is missing from it.** Oscar and Jerson have **no CompanyCam seats at all**; "Miguel O" exists on Steven's BTU email address, unverified. One photographer covers a whole crew (only 4 of 80 project-days had 2+ shooters), and photo bursts (~0.1 h) cannot measure hours. |
+
+**So the design allocates honestly rather than pretending to measure.** The
+weekly crew total (from QBO/Gusto) is split across jobs by **evidenced job-days**
+— CompanyCam activity per project per day, attributed by JobTread assignment
+windows — and every row records its `evidence` grade. That is a defensible
+proportional allocation, materially better than a lump, and it is labelled as an
+allocation, never as measured labor.
+
+**The one change that makes labor real:** JobTread time tracking is *already
+switched on* (`showTime: true`, `costTrackingType: "costItem"`) and nobody has
+ever clocked in. If the three 1099s clock in against a job, `timeEntry` yields
+`user → job → minutes → cost` directly — the exact allocation primitive, no
+inference at all. Second-best: CompanyCam seats for Oscar and Jerson, and the
+"Miguel O" seat renamed and verified.
+
+## 13. Feeding actual costs back into JobTread (plan)
+
+Goal: as invoices are confirmed in the intranet, JobTread stops being
+estimate-only and shows real actuals, so PMs see one truth.
+
+**Verified against the live API** (grant key, `api.jobtread.com/pave`): the
+mutations `createCostItem`, `updateCostItem` and `createDocument` all exist at
+the query root. `createVendorBill` does **not** — a bill is a `createDocument`
+with a vendor-bill type. Exact argument shapes still need one short spike against
+JobTread's Pave docs before implementing; everything below is contingent on that.
+
+**Recommended shape — write a vendor bill, not a budget edit.** JobTread derives
+`job.actualCost` from vendorBill/vendorOrder documents plus time entries. Writing
+documents keeps JobTread's own rollups correct; overwriting `costItem.unitCost`
+would silently corrupt the *estimate* baseline we need for variance.
+
+Flow, once per confirmed invoice (or nightly in batch):
+1. Trigger: a payable reaches `mapping_status='confirmed'` and its job carries a
+   `jobtread_job_id`.
+2. Resolve or create the JobTread vendor (`createVendor` exists; match on name).
+3. `createDocument` type vendorBill on that job — vendor, issue date, our
+   invoice number, amount, and a line per `jc_actual_costs` row, mapped to the
+   JobTread `costItem` where `forecast_line_id` resolves to one and to the job's
+   catch-all cost code where it does not.
+4. Store the returned document id on the payable (`jobtread_doc_id`, new column)
+   so the sync is **idempotent** — never post the same invoice twice.
+5. Reconcile nightly: any confirmed payable with no `jobtread_doc_id` is a failed
+   push and goes on the exceptions queue, exactly like an unmapped invoice.
+
+**Guardrails.** One-way (intranet → JobTread) for actuals; JobTread stays the
+estimate source. Never write to a closed job. Dry-run mode first, on one job,
+compared against the JobTread UI before enabling for all. And the write-back is
+strictly a *mirror* — the payment gate remains in Supabase, because JobTread has
+no held state to enforce it.
+
+**Sequencing note:** this is only worth building once the queue is being worked
+daily — pushing 0 actuals into JobTread achieves nothing. Phase 2, after the
+QBO sync and the labor allocator.

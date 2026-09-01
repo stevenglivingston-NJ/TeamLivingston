@@ -1029,7 +1029,7 @@
         <div class="nav-label">Catalog &amp; Jobs</div>
         <div class="nav-item" data-tab="contacts"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 8h16M9 12h6M9 16h6"/></svg></span><span class="lbl">Contacts</span><span class="pin" onclick="event.stopPropagation();togglePin('contacts','Contacts')">Pin</span></div>
         <div class="nav-item" data-tab="items"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/></svg></span><span class="lbl">Items / Catalog</span><span class="pin" onclick="event.stopPropagation();togglePin('items','Items')">Pin</span></div>
-        <div class="nav-item" data-tab="jobs"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span><span class="lbl">Job Costing</span><span class="pin" onclick="event.stopPropagation();togglePin('jobs','Job Costing')">Pin</span></div>
+        <div class="nav-item" data-scope="jobcost" data-tab="jobs"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span><span class="lbl">Job Costing</span><span class="pin" onclick="event.stopPropagation();togglePin('jobs','Job Costing')">Pin</span></div>
 <div class="nav-item" data-tab="commissions"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></span><span class="lbl">Commissions</span><span class="pin" onclick="event.stopPropagation();togglePin('commissions','Commissions')">Pin</span></div>
       </div>
 
@@ -1320,6 +1320,16 @@
         <h2>✅ Releasable — cleared for Melio</h2>
         <p class="page-sub" style="margin:4px 0 10px">Confirmed (or explicitly overridden / non-job overhead) and unpaid. This list is the <b>only</b> source for scheduling payments in Melio.</p>
         <div id="jcReleasable"></div>
+      </div>
+      <div class="card">
+        <h2>🎯 Focus — where the margin is at risk</h2>
+        <p class="page-sub" style="margin:4px 0 10px">Every open job, worst projected gross margin first, against the <b>45% escalation floor</b>. Coverage says how much of that cost is real: a margin at 0% coverage rests on the forecast anchor, not on invoices.</p>
+        <div id="jcFocus"></div>
+      </div>
+      <div class="card">
+        <h2>🏷 Pricing variance — under- and over-priced items</h2>
+        <p class="page-sub" style="margin:4px 0 10px">The same sold item across every job: what we charge vs what it actually costs. Fills in as mapped invoices accumulate — an item is graded once it has run on 2+ jobs.</p>
+        <div id="jcVariance"></div>
       </div>
       <div class="card">
         <h2>📊 Job board — forecast vs actual (JCA)</h2>
@@ -3249,9 +3259,21 @@ function setWS(k){
   });
   // Goldeneye card shows for every role — brand filtering scopes the callouts
   // (ecommerce sees only Earthwise/marketplace items, team sees only KTU/BTU).
+  // Item-level scope (a single sensitive tab inside a shared group)
+  document.querySelectorAll('.nav-item[data-scope]').forEach(it=>{
+    const sc=it.dataset.scope;
+    let show=true;
+    if(sc==='admin') show = CURRENT_ROLE==='admin';
+    if(sc==='hs')    show = CURRENT_ROLE!=='ecommerce';
+    // job costing: vendor invoices + payout release + margins. Mirrors the
+    // has_jc_access() RLS capability so the tab and the data agree.
+    if(sc==='jobcost') show = !!(CURRENT_PROFILE && (CURRENT_PROFILE.finance_access || CURRENT_PROFILE.jc_access));
+    it.style.display = show ? '' : 'none';
+  });
   // If the active tab just got hidden, bounce home
   const activeNav=document.querySelector('.nav-item.active');
-  if(activeNav && activeNav.closest('.nav-group') && activeNav.closest('.nav-group').style.display==='none') go('home');
+  if(activeNav && ((activeNav.closest('.nav-group') && activeNav.closest('.nav-group').style.display==='none')
+                   || activeNav.style.display==='none')) go('home');
   // Re-render data with new brand filter
   renderAllSections(); renderContacts&&renderContacts(); renderItems&&renderItems(); renderJobs&&renderJobs();
   renderRecent(); renderFavPanel();
@@ -3402,10 +3424,12 @@ function jcCatSel(id,sel){return `<select class="f" id="${id}">`+
   JC_CATS.map(([v,l])=>`<option value="${v}" ${v===sel?'selected':''}>${l}</option>`).join('')+`</select>`;}
 
 async function renderJobs(){
-  const [jobsR,payR,sumR]=await Promise.all([
+  const [jobsR,payR,sumR,focusR,varR]=await Promise.all([
     sb.from('jc_jobs').select('*').order('customer_name'),
     sb.from('payables').select('*').neq('status','paid').order('due_date',{ascending:true,nullsFirst:false}),
-    sb.from('jc_job_summary').select('*')
+    sb.from('jc_job_summary').select('*'),
+    sb.from('jc_focus').select('*'),
+    sb.from('jc_item_variance').select('*').limit(40)
   ]);
   const err=jobsR.error||payR.error||sumR.error;
   if(err){document.getElementById('jcQueue').innerHTML='<div class="empty">Error loading: '+esc(err.message)+'</div>';return}
@@ -3419,8 +3443,10 @@ async function renderJobs(){
     `<div class="kpi" style="padding:10px 12px"><div class="label" style="color:#ef4444">Held</div><div class="value" style="font-size:20px">${money(tot(held))}</div><div class="trend">${held.length} invoice${held.length===1?'':'s'} blocked</div></div>
      <div class="kpi" style="padding:10px 12px"><div class="label" style="color:#f59e0b">Awaiting confirm</div><div class="value" style="font-size:20px">${money(tot(auto))}</div><div class="trend">${auto.length} auto-mapped</div></div>
      <div class="kpi" style="padding:10px 12px"><div class="label" style="color:#22c55e">Releasable</div><div class="value" style="font-size:20px">${money(tot(rel.filter(p=>p.status==='unpaid')))}</div><div class="trend">${rel.filter(p=>p.status==='unpaid').length} cleared for Melio</div></div>
+     <div class="kpi" style="padding:10px 12px"><div class="label" style="color:#ef4444">Margin escalations</div><div class="value" style="font-size:20px">${pays.filter(p=>p.escalation_required&&!p.escalation_approved_by).length}</div><div class="trend">payouts below 45% GM</div></div>
      <div class="kpi" style="padding:10px 12px"><div class="label">Jobs tracked</div><div class="value" style="font-size:20px">${JC_JOBS.length}</div><div class="trend">${JC_JOBS.filter(j=>!['complete','closed'].includes(j.status)).length} open</div></div>`;
   renderJcQueue(queue); renderJcReleasable(rel); renderJcBoard(sums,queue);
+  renderJcFocus(focusR.data||[]); renderJcVariance(varR.data||[]);
 }
 
 function renderJcQueue(queue){
@@ -3482,9 +3508,20 @@ async function jcConfirm(id){
   renderJobs();
 }
 
+async function jcApproveEscalation(id){
+  if(!jcCanOverride()){alert('Only Steven or Sonya can release a payout on a job below the 45% margin floor.');return}
+  const {data:p}=await sb.from('payables').select('vendor,invoice_number,amount,escalation_reason,job_id').eq('id',id).single();
+  const reason=prompt(`MARGIN ESCALATION — releasing this payout is recorded permanently.\n\n${p?p.vendor+' '+(p.invoice_number||''):''}\n${p?p.escalation_reason||'':''}\n\nWhy is this payout approved below the 45% floor?`);
+  if(!reason||!reason.trim())return;
+  const {error}=await sb.from('payables').update({escalation_approved_by:jcWho(),
+    escalation_approved_at:new Date().toISOString(),escalation_reason:(p&&p.escalation_reason?p.escalation_reason+' — approved: ':'')+reason.trim()}).eq('id',id);
+  if(error){alert('Approval failed: '+error.message);return}
+  renderJobs();
+}
 async function jcRunMatcher(){
   const {error}=await sb.rpc('jc_run_matcher');
   if(error){alert('Matcher failed: '+error.message);return}
+  await sb.rpc('jc_refresh_escalations');
   renderJobs();
 }
 async function jcOverride(id){
@@ -3509,7 +3546,8 @@ function renderJcReleasable(rel){
     <th style="padding:6px 8px">Cleared by</th><th style="padding:6px 8px">Status</th><th style="padding:6px 8px"></th></tr></thead><tbody>`;
   for(const p of rel){
     const ov=p.mapping_status==='override';
-    h+=`<tr style="border-bottom:1px solid var(--border)${ov?';background:rgba(245,158,11,0.07)':''}">
+    const escBlocked=p.escalation_required&&!p.escalation_approved_by;
+    h+=`<tr style="border-bottom:1px solid var(--border)${esc?';background:rgba(239,68,68,0.08)':ov?';background:rgba(245,158,11,0.07)':''}">
       <td style="padding:7px 8px"><b>${esc(p.vendor)}</b><br><span style="color:var(--muted)">${esc(p.invoice_number||'—')}</span></td>
       <td style="padding:7px 8px">${brandTag(p.brand)}</td>
       <td style="padding:7px 8px">${p.job_id?esc(jobName(p.job_id)):(ov?'<span style="color:#f59e0b">⚠ override — no job</span>':'—')}</td>
@@ -3517,10 +3555,11 @@ function renderJcReleasable(rel){
       <td style="padding:7px 8px;text-align:right;white-space:nowrap">${money(p.amount)}</td>
       <td style="padding:7px 8px;white-space:nowrap">${esc(p.due_date||'—')}</td>
       <td style="padding:7px 8px;color:var(--muted)">${esc(p.mapped_by||'—')}${ov?' · <span title="'+esc(p.held_reason||'')+'">reason ⓘ</span>':''}</td>
-      <td style="padding:7px 8px"><span class="tag">${esc(p.status)}</span></td>
+      <td style="padding:7px 8px">${esc(p.status)}${escBlocked?`<br><span style="color:#ef4444;font-size:11px;font-weight:600" title="${esc(p.escalation_reason||'')}">\u26a0 margin escalation</span>`:''}${p.escalation_approved_by?`<br><span style="color:#22c55e;font-size:11px">payout approved · ${esc(p.escalation_approved_by)}</span>`:''}</td>
       <td style="padding:7px 8px;white-space:nowrap" class="row-actions">
-        ${p.status==='unpaid'?`<button class="btn sm" onclick="jcSetStatus('${p.id}','scheduled')">Scheduled in Melio</button>`:''}
-        ${p.status!=='paid'?`<button class="btn sm ghost" onclick="jcSetStatus('${p.id}','paid')">Mark paid</button>`:''}
+        ${escBlocked?(jcCanOverride()?`<button class="btn sm danger" onclick="jcApproveEscalation('${p.id}')">Approve payout</button>`:'<span style="color:var(--muted);font-size:11px">needs Steven/Sonya</span>'):''}
+        ${!escBlocked&&p.status==='unpaid'?`<button class="btn sm" onclick="jcSetStatus('${p.id}','scheduled')">Scheduled in Melio</button>`:''}
+        ${!escBlocked&&p.status!=='paid'?`<button class="btn sm ghost" onclick="jcSetStatus('${p.id}','paid')">Mark paid</button>`:''}
       </td></tr>`;
   }
   el.innerHTML=h+'</tbody></table></div>';
@@ -3564,6 +3603,60 @@ function renderJcBoard(sums,queue){
     open.map(row).join('')+
     (done.length?`<tr><td colspan="9" style="padding:10px 8px;color:var(--muted);font-weight:600">Completed / closed</td></tr>`+done.map(row).join(''):'')+
     `</tbody></table></div>`;
+}
+
+function renderJcFocus(rows){
+  const el=document.getElementById('jcFocus'); if(!el) return;
+  if(!rows.length){el.innerHTML='<div class="empty">No open jobs.</div>';return}
+  const gmColor=g=>g==null?'var(--muted)':g<45?'#ef4444':g<55?'#f59e0b':'#22c55e';
+  let h=`<div style="overflow-x:auto"><table class="btable" style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid var(--border)">
+    <th style="padding:6px 8px">Job</th><th style="padding:6px 8px">Brand</th>
+    <th style="padding:6px 8px;text-align:right">Revenue</th>
+    <th style="padding:6px 8px;text-align:right">Projected GM</th>
+    <th style="padding:6px 8px;text-align:right">Cost coverage</th>
+    <th style="padding:6px 8px;text-align:right">Held</th><th style="padding:6px 8px;text-align:right">Escalations</th>
+    <th style="padding:6px 8px;text-align:right">Go-backs</th></tr></thead><tbody>`;
+  for(const r of rows){
+    const below=r.projected_gm_pct!=null&&r.projected_gm_pct<45;
+    h+=`<tr style="border-bottom:1px solid var(--border)${below?';background:rgba(239,68,68,0.05)':''}">
+      <td style="padding:7px 8px;font-weight:600">${esc(r.customer_name)}<br><span style="color:var(--muted);font-weight:400">${esc(r.service_type||'')}</span></td>
+      <td style="padding:7px 8px">${brandTag(r.brand)}</td>
+      <td style="padding:7px 8px;text-align:right;white-space:nowrap">${money(r.revenue)}</td>
+      <td style="padding:7px 8px;text-align:right;font-weight:700;color:${gmColor(r.projected_gm_pct)}">${r.projected_gm_pct!=null?r.projected_gm_pct+'%':'—'}${below?' ⚠':''}</td>
+      <td style="padding:7px 8px;text-align:right;color:${Number(r.cost_coverage_pct)>=25?'var(--fg)':'var(--muted)'}">${r.cost_coverage_pct!=null?r.cost_coverage_pct+'%':'—'}${Number(r.cost_coverage_pct)<25?' <span style="font-size:10px">est</span>':''}</td>
+      <td style="padding:7px 8px;text-align:right">${r.held_invoices||''}</td>
+      <td style="padding:7px 8px;text-align:right;color:#ef4444">${r.pending_escalations||''}</td>
+      <td style="padding:7px 8px;text-align:right;color:#ef4444">${Number(r.unplanned_cost)>0?money(r.unplanned_cost):''}</td></tr>`;
+  }
+  el.innerHTML=h+'</tbody></table></div>';
+}
+
+function renderJcVariance(rows){
+  const el=document.getElementById('jcVariance'); if(!el) return;
+  const withActuals=(rows||[]).filter(r=>r.avg_actual_cost!=null);
+  if(!withActuals.length){
+    el.innerHTML='<div class="ge-clear">No pricing verdicts yet — this board needs mapped vendor invoices. It fills in automatically as the queue is worked: each confirmed invoice attaches a real cost to a sold line, and an item is graded once it has run on 2+ jobs.</div>';
+    return;
+  }
+  const vColor=v=>/underpriced/.test(v)?'#ef4444':/overpriced/.test(v)?'#f59e0b':'#22c55e';
+  let h=`<div style="overflow-x:auto"><table class="btable" style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid var(--border)">
+    <th style="padding:6px 8px">Item</th><th style="padding:6px 8px">Category</th>
+    <th style="padding:6px 8px;text-align:right">Jobs</th>
+    <th style="padding:6px 8px;text-align:right">Avg charged</th><th style="padding:6px 8px;text-align:right">Avg actual cost</th>
+    <th style="padding:6px 8px;text-align:right">Avg margin</th><th style="padding:6px 8px">Verdict</th></tr></thead><tbody>`;
+  for(const r of withActuals){
+    h+=`<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:7px 8px">${esc((r.item||'').slice(0,60))}</td>
+      <td style="padding:7px 8px;color:var(--muted)">${esc(JC_CAT_LBL[r.category]||r.category||'')}</td>
+      <td style="padding:7px 8px;text-align:right">${r.jobs}</td>
+      <td style="padding:7px 8px;text-align:right">${money(r.avg_charged)}</td>
+      <td style="padding:7px 8px;text-align:right">${money(r.avg_actual_cost)}</td>
+      <td style="padding:7px 8px;text-align:right;font-weight:600">${r.avg_margin_pct!=null?r.avg_margin_pct+'%':'—'}</td>
+      <td style="padding:7px 8px;color:${vColor(r.verdict||'')};font-weight:600">${esc(r.verdict||'')}</td></tr>`;
+  }
+  el.innerHTML=h+'</tbody></table></div>';
 }
 
 async function jcExpand(jobId){
