@@ -1,16 +1,20 @@
 # Axyom Intranet (`ktubtuintranet` Cloudflare Worker)
 
-> ## ⚠️ Reconciliation in progress (2026-08-18)
-> `ktubtuintranet.html` has been **reset to match the live worker byte-for-byte**,
-> so **deploying is now safe — it is a no-op against production.**
+> ## ⚠️ Source of truth moved (2026-08-31) — this is now the FALLBACK path
+> The `KTUBTU-Intranet` repo's **Cloudflare Git integration deploys this same
+> worker (`ktubtuintranet`) on every push** to its active branch. That is the
+> primary deploy path. The 2026-08-18 doctrine below ("deploy only from here")
+> is dead: on 2026-08-31 this copy was six days stale and one `npm run deploy`
+> away from rolling production back over a day of shipped finance work.
 >
-> A month of repo-side work is NOT yet in this file. It is preserved in
-> `ktubtuintranet.repo-snapshot-2026-08-18.html` and is being ported back in
-> tab by tab. Read **[RECONCILIATION.md](RECONCILIATION.md)** before editing.
->
-> Until the port completes, deploying ships live's own content back to live —
-> harmless, but it does not yet restore the Cash Flow, Paid, Organic or Library
-> tabs.
+> Rules now:
+> - **Edit in the `KTUBTU-Intranet` repo (`index.html`) and push** — that is
+>   the deploy.
+> - This manual path exists for emergencies only. `build.mjs` refuses to build
+>   if `ktubtuintranet.html` differs from the repo checkout
+>   (`INTRANET_REPO_HTML` overrides the path; `--force` overrides the guard).
+> - After any manual deploy, push the same content to the repo immediately or
+>   the next repo push silently reverts it.
 
 `ktubtuintranet.html` is the full single-file app served at **https://dash.goaxyom.com**.
 It was recovered from live on 2026-07-05, then the two copies forked (see
