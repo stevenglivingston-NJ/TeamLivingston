@@ -105,6 +105,40 @@ def test_connection(location: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def run_gaql(location: str, query: str) -> dict[str, Any]:
+    """Run an arbitrary GAQL query against the account and return raw rows.
+
+    Use this for anything the typed tools in this file don't cover (e.g.
+    shared_set/shared_criterion negative-list attachment, ad/asset-level
+    performance, campaign_criterion detail beyond what query_negative_keywords
+    exposes). Prefer a typed tool when one already exists - this is the
+    escape hatch, not the default.
+
+    Rows come back via MessageToDict on each GoogleAdsRow, so field names are
+    the snake_case proto field names (e.g. "campaign": {"id": ..., "name": ...}),
+    not the dotted GAQL selectors. Runs through the same authenticated
+    GoogleAdsClient/SDK every other tool here uses - no raw HTTP/curl call,
+    no separate network permission needed.
+
+    A malformed query surfaces the API's own error message/reason (e.g.
+    UNRECOGNIZED_FIELD) in `error` rather than raising, so a bad field name
+    is diagnosable without a stack trace.
+    """
+    customer_id = _resolve(location)
+    client = _ads_client()
+    ga = client.get_service("GoogleAdsService")
+    try:
+        rows = []
+        for batch in ga.search_stream(customer_id=customer_id, query=query):
+            for r in batch.results:
+                rows.append(MessageToDict(r._pb, preserving_proto_field_name=True))
+        return {"location": location, "query": query, "rows": rows, "count": len(rows)}
+    except Exception as exc:
+        return {"location": location, "query": query, "rows": None,
+                "error": f"{type(exc).__name__}: {exc}"}
+
+
+@mcp.tool()
 def query_keywords(location: str, days: int = 30, min_spend: float = 0,
                    limit: int = 100) -> dict[str, Any]:
     """Top keywords by spend. Returns keyword text, match type, ad group,
@@ -232,6 +266,135 @@ def query_negative_keywords(location: str) -> dict[str, Any]:
                 "match_type": str(r.ad_group_criterion.keyword.match_type),
             })
     return {"location": location, "rows": rows, "count": len(rows)}
+
+
+@mcp.tool()
+def add_campaign_negative_keyword(location: str, campaign_id: str, keyword_text: str,
+                                  match_type: str = "PHRASE") -> dict[str, Any]:
+    """Add one campaign-level negative keyword. This is a WRITE - it mutates
+    the live account.
+
+    match_type: 'EXACT', 'PHRASE', or 'BROAD' (default 'PHRASE').
+
+    Returns the resource_name of the created campaign_criterion on success,
+    or the API's rejection (e.g. DUPLICATE_CAMPAIGN_CRITERION if the same
+    negative already exists) rather than raising - so a "no-op, already
+    present" case is distinguishable from an actual write.
+    """
+    customer_id = _resolve(location)
+    client = _ads_client()
+    service = client.get_service("CampaignCriterionService")
+    operation = client.get_type("CampaignCriterionOperation")
+    criterion = operation.create
+    criterion.campaign = f"customers/{customer_id}/campaigns/{campaign_id}"
+    criterion.negative = True
+    criterion.keyword.text = keyword_text
+    criterion.keyword.match_type = client.enums.KeywordMatchTypeEnum[match_type.upper()].value
+
+    try:
+        response = service.mutate_campaign_criteria(
+            customer_id=customer_id, operations=[operation])
+        return {
+            "location": location,
+            "campaign_id": campaign_id,
+            "keyword_text": keyword_text,
+            "match_type": match_type.upper(),
+            "status": "created",
+            "resource_name": response.results[0].resource_name,
+        }
+    except Exception as exc:
+        return {
+            "location": location,
+            "campaign_id": campaign_id,
+            "keyword_text": keyword_text,
+            "match_type": match_type.upper(),
+            "status": "error",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+
+
+@mcp.tool()
+def query_campaign_status(location: str, campaign_id: str = "") -> dict[str, Any]:
+    """Why a campaign isn't serving/converting: campaign.primary_status and
+    campaign.primary_status_reasons (PAUSED, PENDING, LIMITED, LOW_ACTIVITY,
+    MISCONFIGURED, etc.) — not exposed by query_campaigns. Also attempts a
+    local_services_verification_artifact pull (license/insurance/background-
+    check status) for LOCAL_SERVICES (LSA) accounts; that resource isn't
+    documented as generally available, so a failure here is reported in
+    `verification_error` rather than raised.
+
+    campaign_id: optional single-campaign filter (numeric id). Empty = all
+    campaigns on the account.
+
+    This runs through the already-authenticated GoogleAdsClient/SDK used by
+    every other tool in this file - not a raw curl/GAQL call - so it needs no
+    separate network permission and hits the same auth/rate-limit path.
+    """
+    customer_id = _resolve(location)
+    client = _ads_client()
+    ga = client.get_service("GoogleAdsService")
+    where = [f"campaign.id = {int(campaign_id)}"] if campaign_id else []
+    where_clause = f"WHERE {' AND '.join(where)}" if where else ""
+    query = f"""
+    SELECT
+      campaign.id, campaign.name, campaign.status,
+      campaign.primary_status, campaign.primary_status_reasons,
+      campaign.advertising_channel_type
+    FROM campaign
+    {where_clause}
+    """
+    rows = []
+    for batch in ga.search_stream(customer_id=customer_id, query=query):
+        for r in batch.results:
+            rows.append({
+                "id": r.campaign.id,
+                "name": r.campaign.name,
+                "status": str(r.campaign.status),
+                "primary_status": _enum_name(r.campaign.primary_status),
+                "primary_status_reasons": [
+                    _enum_name(x) for x in r.campaign.primary_status_reasons],
+                "channel_type": str(r.campaign.advertising_channel_type),
+            })
+
+    verification: list[dict[str, Any]] | None = None
+    verification_error: str | None = None
+    try:
+        # The first version of this query requested `.status` on each of the
+        # three typed sub-messages (background_check_verification_artifact,
+        # license_verification_artifact, insurance_verification_artifact) and
+        # got UNRECOGNIZED_FIELD - those sub-messages don't carry their own
+        # status field. `artifact_type` + the top-level `status` is what's
+        # actually queryable and is enough to tell which artifact (license,
+        # insurance, background check, business registration) is in which
+        # state.
+        vquery = """
+        SELECT
+          local_services_verification_artifact.id,
+          local_services_verification_artifact.status,
+          local_services_verification_artifact.artifact_type,
+          local_services_verification_artifact.creation_date_time
+        FROM local_services_verification_artifact
+        """
+        vrows = []
+        for r in ga.search(customer_id=customer_id, query=vquery):
+            va = r.local_services_verification_artifact
+            vrows.append({
+                "id": str(va.id),
+                "status": _enum_name(va.status),
+                "artifact_type": _enum_name(va.artifact_type),
+                "created": va.creation_date_time or None,
+            })
+        verification = vrows
+    except Exception as exc:
+        verification_error = f"{type(exc).__name__}: {exc}"
+
+    return {
+        "location": location,
+        "campaigns": rows,
+        "count": len(rows),
+        "verification_artifacts": verification,
+        "verification_error": verification_error,
+    }
 
 
 @mcp.tool()

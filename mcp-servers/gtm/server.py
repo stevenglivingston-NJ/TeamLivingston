@@ -223,6 +223,36 @@ def create_hostname_regex_trigger(
 
 
 @mcp.tool()
+def create_tag(
+    brand: str,
+    name: str,
+    tag_type: str,
+    parameters: list[dict[str, Any]],
+    firing_trigger_ids: list[str],
+    workspace_path: Optional[str] = None,
+) -> dict[str, Any]:
+    """Create a new tag in the workspace. Stages only - same publish caveat as
+    every other write tool here (needs a human Submit+Publish in the UI unless
+    the token has edit.containerversions).
+
+    tag_type: GTM tag type code, e.g. "html" (Custom HTML) or "gaawe" (GA4 Event).
+    parameters: the tag's parameter list exactly as the API expects it, e.g.
+    for a Custom HTML tag: [{"type": "template", "key": "html", "value": "<script>...</script>"},
+    {"type": "boolean", "key": "supportDocumentWrite", "value": "false"}].
+    firing_trigger_ids: trigger ids (numeric strings) or built-in ids
+    (All Pages = "2147479553").
+    """
+    ws = workspace_path or _default_workspace_path(brand)
+    body = {
+        "name": name,
+        "type": tag_type,
+        "parameter": parameters,
+        "firingTriggerId": firing_trigger_ids,
+    }
+    return _request("POST", f"{ws}/tags", body=body)
+
+
+@mcp.tool()
 def update_tag_firing_triggers(
     brand: str,
     tag_id: str,
