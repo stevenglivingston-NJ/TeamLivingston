@@ -1,6 +1,22 @@
 # Axyom Intranet (`ktubtuintranet` Cloudflare Worker)
 
-> ## ⚠️ Source of truth moved (2026-08-31) — this is now the FALLBACK path
+> ## ⚠️ CORRECTION (2026-09-01): this path IS what serves production
+> The 2026-08-31 note below had the direction backwards. Fetching
+> dash.goaxyom.com showed it served THIS file byte for byte — the repo's
+> Cloudflare git integration was building, but its output was not what the
+> custom domain returned. Nothing built in KTUBTU-Intranet had ever reached
+> production.
+>
+> Both lineages have now been merged into KTUBTU-Intranet/index.html and this
+> file is a byte-for-byte copy of that merge, so the two paths agree and
+> deploying from here is a no-op against the repo.
+>
+> Until a push to KTUBTU-Intranet main is CONFIRMED to change what
+> dash.goaxyom.com returns — confirmed by fetching it, not by a green build —
+> treat this as the deploy path of record. A successful Cloudflare build says
+> the code compiles, not that anyone can see it.
+
+> ## Superseded (2026-08-31) — kept for the record
 > The `KTUBTU-Intranet` repo's **Cloudflare Git integration deploys this same
 > worker (`ktubtuintranet`) on every push** to its active branch. That is the
 > primary deploy path. The 2026-08-18 doctrine below ("deploy only from here")
