@@ -53,6 +53,7 @@ TODAY = os.environ.get("SWEEP_TODAY") or dt.date.today().isoformat()
 # Builders that must run from HERE so their relative data/ paths resolve.
 BUILDERS = [
     ("shopify_costs.py", 180, False),        # (script, timeout_s, required)
+    ("walmart_pull.py", 180, False),         # returns feed (optional; skips w/o WMT creds)
     ("build_jatalia_data.py", 420, True),
     ("build_ops_data.py", 300, False),
     ("build_latency_data.py", 900, True),
