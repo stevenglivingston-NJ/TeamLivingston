@@ -72,9 +72,9 @@ begin
       v_gm := public.jc_job_gm(new.job_id);
       if v_gm is not null and v_gm < 45
          and coalesce(new.escalation_approved_by,'') = '' then
-        raise exception
-          'Payout escalation required: job projected gross margin is %%% (below the 45%% floor). '
-          'A named approver must release this payment.', v_gm;
+        -- built by concatenation: %-escaping inside RAISE printed "%41.0"
+        raise exception '%', 'Payout escalation required: job projected gross margin is '
+          || v_gm || '% (below the 45% floor). A named approver must release this payment.';
       end if;
     end if;
   end if;
