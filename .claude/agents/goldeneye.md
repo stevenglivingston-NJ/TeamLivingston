@@ -584,6 +584,33 @@ Also queue the same summary into `notify_queue` (`kind='critical'`,
 **Post directly AND queue** — `dispatch-notify` is dormant until `SLACK_BOT_TOKEN`
 is set as a function secret, so the queue row alone would deliver nothing today.
 
+## Output — appointments board (appt_upcoming + appt_completed)
+
+**These two sections went dark on 2026-08-19 when their previous writer was
+removed, and the Appointments page served a fortnight-old list as if it were
+current for two weeks before anyone noticed. You own them now.** You already
+pull the ServiceMinder appointment data daily for `appt_followups`; this is the
+same query surface, published instead of discarded.
+
+Every run, same write-then-prune discipline as the callouts card:
+
+- **`appt_upcoming`** — every non-cancelled appointment from today through
+  +21 days, both brands. Fields per row:
+  `{"brand","customer","sm_contact_id","appt_at" (ISO),"appt_type","agent",
+    "address","phone","status" (Confirmed|Unconfirmed|Rescheduled),
+    "booked_on","source","scan_date"}`
+  `sm_contact_id` is not optional — it is what lets the intranet attach notes
+  that reach ServiceMinder and HighLevel.
+- **`appt_completed`** — appointments completed in the last 14 days. Same
+  shape plus `"outcome"` (Proposal issued|Sold|No sale|No-show|Unknown) and
+  `"proposal_id"` when one exists. Join against `query_proposals` for the
+  outcome — an appointment with no outcome after 3 days is itself a finding
+  worth a `goldeneye_callouts` warn row.
+- Insert today's rows first, then prune `scan_date <> today`. If the insert
+  fails, leave yesterday's rows — the intranet now shows a staleness banner
+  from `scan_date`, so stale data announces itself instead of impersonating a
+  quiet week.
+
 ## Output — system coverage (durable)
 
 Findings from step 7 go to section **`system_coverage`**, same table, via the same `sb.sh` helper. **This section is NOT pruned** — `goldeneye_callouts` deletes everything whose `scan_date` is not today, which is right for customer callouts and wrong for infrastructure problems that persist for days. Instead:
