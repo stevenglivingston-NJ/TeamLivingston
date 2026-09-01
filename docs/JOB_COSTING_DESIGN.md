@@ -177,19 +177,19 @@ Verified this session: JobTread contains **zero** vendor bills and **no KTU Labo
 > Verification note (audited live): Miguel Bara (QBO vendor Id 450) and Jerson Godoy (Id 1187) exist as vendors but were only created in 2026 with zero bills — **the crew is actually paid through Gusto lump payments** (Gusto is the top purchase vendor; 7 of its 11 recent transactions hit `Install Labor (SubContractors)` Id 315). Oscar Yupa Herrera wasn't findable by exact-match vendor search (spelling variant likely). The $215,623 / $201,126 figures could not be re-verified through the Zapier pipe (no query/report API — realm interpolation broken); the accounts they live in exist and are active, and the verification query belongs to the direct Intuit connector's P&L (Phase 3 backfill step).
 
 How the design closes it — money is trapped at the point of payment, not requested afterwards:
-1. **Crew pay cannot leave the building unallocated.** The weekly Gusto contractor payment for Miguel Bara, Oscar Yupa Herrera, Jerson Godoy lands (via the QBO sweep of `Install Labor (SubContractors)` postings) on the **labor-allocation queue** — same posture as a held invoice: the week's amount must be split across the jobs they worked before the next cycle, or it sits red on the queue. If the crew moves to submitting weekly invoices naming jobs (decision #4), those invoices flow through the ordinary payables gate instead — cleaner still.
-2. **Fixed-crew allocation, not lump.** Each crew week splits in `jc_labor_allocations` across the jobs worked, by days-on-site, with evidence recorded (crew invoice naming jobs > install schedule > CompanyCam photo presence > even split, flagged). Bench/shop/warranty weeks go to the non-job buckets — jobs stay honest *and* the fixed cost stays visible; nothing disappears into "overhead".
+1. **Crew pay cannot leave the building unallocated.** The weekly Gusto contractor payment for Miguel Bara, Oscar Yupa Herrera, Jerson Godoy lands (via the QBO sweep of `Install Labor (SubContractors)` postings) on the **labor-allocation queue** — same posture as a held invoice: the week's amount must be split across the jobs they worked before the next cycle, or it sits red on the queue. Per decision #4, the split is made centrally from the JobTread daily worker-assignment calendar, corroborated by CompanyCam photo status.
+2. **Fixed-crew allocation, not lump.** Each crew week splits in `jc_labor_allocations` across the jobs worked, by days-on-site, with evidence recorded (JobTread daily assignment > CompanyCam photo presence > install schedule > even split, flagged). Bench/shop/warranty weeks go to the non-job buckets — jobs stay honest *and* the fixed cost stays visible; nothing disappears into "overhead".
 3. **W2 install labor** allocates the same way from payroll totals (category `employee_labor`), method recorded on every row. (Whether to allocate all W2 install labor or keep W2 in overhead for v1 is Steven's call — in the decision batch.)
 4. **Backfill (Phase 3):** pull the 2025 `Install Labor (SubContractors)` and payroll activity from the direct Intuit P&L (verifying the $215,623 / $201,126 as the first act), then allocate across the 56 jobs by install-window overlap (`project_schedule`), labeled `evidence='allocated-by-window'` — an honest approximation that turns the lump into per-job labor, distinguishable from confirmed rows.
 
 ---
 
-## 8. Decisions for Steven (asked once, as a batch)
+## 8. Decisions — asked as a batch 2026-09-01, answered by Steven
 
-1. **Override authority** — who may release an unmapped invoice, and is there a $ threshold below which Mayra can, above which only Steven?
-2. **Auto-map threshold** — accept the ≥0.85 auto-map + one-click confirm default, or start with everything human-mapped?
-3. **W2 payroll scope** — allocate all install-tech W2 payroll to jobs (full JCA Employee Labor), or v1 = 1099 + materials + commission only?
-4. **Crew process** — require Miguel/Oscar/Jerson to submit weekly invoices naming jobs (process change, cleanest evidence), or allocate centrally from schedule/photos?
+1. **Override authority: Steven or Sonya.** Only those two identities may set `mapping_status='override'`; the UI exposes the override action to their profiles only, and `jc_override_log` records who + why on every use. No dollar threshold.
+2. **Auto-map threshold: ≥0.85 accepted.** Machine pre-fills job+category at strong PO-hint / QBO-CustomerRef confidence; a human one-click-confirm is still required before anything is releasable.
+3. **W2 payroll: allocate to jobs from day one.** Weekly payroll totals split by install-day evidence into `employee_labor`, so the JCA Employee Labor column and the HFC Total-Labor <15% check are real.
+4. **Crew allocation: central, driven by JobTread assignments.** Per Steven: use JobTread to see who's assigned to jobs (the daily worker-assignment calendar/tasks), with CompanyCam photo status corroborating what actually happened. So the evidence hierarchy for `jc_labor_allocations` is: **JobTread daily assignment > CompanyCam presence > install schedule > even split (flagged)** — no crew-invoice process change; the weekly Gusto lump still cannot leave the allocation queue unsplit.
 
 ## 9. Assumptions register
 
