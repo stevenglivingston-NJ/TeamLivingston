@@ -54,6 +54,27 @@ executes.
 
 ## The daily run
 
+### 0. Run the deterministic sweep FIRST (your exact numbers)
+Before anything else, run the deterministic half of your run — the same pattern
+Goldeneye uses with `lead-sweep.py`:
+
+```bash
+python3 mcp-servers/jatalia/jatalia_sweep.py
+```
+
+It pulls ShipStation + the Shopify Admin feed + COGS, computes the exact
+fulfillment / scan-latency / billing / exception numbers, **writes them itself**
+to `intranet_records` (sections `cellar_fulfillment`, `cellar_orders`,
+`cellar_exceptions`, `cellar_billing`; brand `Earthwise`, write-then-prune by
+`scan_date`), and emits a digest at `mcp-servers/jatalia/data/jatalia_sweep.json`.
+
+**Read that digest — do not re-derive those four sections.** They are the
+precise, deterministic figures (2,000+ ShipStation labels, biz-day scan latency,
+per-carrier/SKU attribution). Your job is the judgment layer on top: `cellar_briefing`
+and `exec_summary` (below), plus inventory/vendor/seller-health from the live MCPs.
+If the sweep aborts (a required builder failed), say so in the brief and fall back
+to the live MCPs for orders/fulfillment — a stale sweep section beats a blank one.
+
 ### 1. Orders & fulfillment health
 - **Unshipped / at-risk orders**: Amazon `Unshipped` + past promised-ship-date;
   Shopify unfulfilled aging; anything ShipStation shows stuck (no label, carrier

@@ -1,0 +1,4 @@
+data/*.json
+data/tracking_cache.json
+__pycache__/
+*.pyc

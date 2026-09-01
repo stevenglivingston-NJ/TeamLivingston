@@ -2044,6 +2044,7 @@
         <h1 class="page-title" style="color:#8fdea8">Orders &amp; Fulfillment</h1>
         <p class="page-sub">Every order across every channel, shipped through ShipStation.</p>
       </div>
+      <div id="ewOps"></div>
       <div class="card">
         <div class="grid">
           <div class="kpi earth"><div class="label">Open Amazon orders</div><div class="value" id="ewAmzOpen">—</div><div class="trend">SP-API · Unshipped</div></div>
@@ -4761,11 +4762,59 @@ async function renderBenchmarks(){
   scoreEl.innerHTML=html;
 }
 
+/* Earthwise Orders & Fulfillment — rendered from Cellar's deterministic sweep
+   (mcp-servers/jatalia/jatalia_sweep.py → intranet_records, brand=Earthwise).
+   Sections: cellar_fulfillment, cellar_orders, cellar_exceptions, cellar_billing. */
+async function renderEarthOps(){
+  const el=document.getElementById('ewOps'); if(!el) return;
+  let ful,ord,exc,bil;
+  try{ [ful,ord,exc,bil]=await Promise.all([
+    fetchRecords('cellar_fulfillment'),fetchRecords('cellar_orders'),
+    fetchRecords('cellar_exceptions'),fetchRecords('cellar_billing')]); }
+  catch(e){ console.error('earthOps',e); el.innerHTML=''; return; }
+  const latest=a=>{const ds=[...new Set((a||[]).map(r=>r.fields&&r.fields.scan_date).filter(Boolean))].sort().reverse();
+    return ds.length?(a||[]).filter(r=>r.fields.scan_date===ds[0]):(a||[]);};
+  const F=latest(ful),O=latest(ord),E=latest(exc),B=latest(bil);
+  if(!F.length&&!O.length&&!E.length&&!B.length){
+    el.innerHTML='<div class="card"><div class="build">No fulfillment sweep yet — <code>jatalia_sweep</code> runs on the Cellar Routine and writes here.</div></div>';
+    return;}
+  const ICO={urgent:'🚨',warn:'⚠️',info:'💡'};
+  const sv=s=>({urgent:0,warn:1,info:2}[s]??3);
+  const bysev=a=>a.slice().sort((x,y)=>sv(x.fields.severity)-sv(y.fields.severity));
+  const money=n=>(n==null||n==='')?'—':'$'+Number(n).toLocaleString(undefined,{maximumFractionDigits:0});
+  const scanned=((F[0]||O[0]||E[0]||B[0]||{}).fields||{}).scan_date||'';
+  let html='';
+  const fsum=F.find(r=>r.fields.kind==='summary');
+  if(fsum){const f=fsum.fields;
+    html+='<div class="card"><h2 style="margin:0 0 8px">📦 Fulfillment health '+(ICO[f.severity]||'')+'</h2>'+
+      '<div class="build" style="margin-top:0"><b>'+esc(f.title)+'</b><br>'+esc(f.detail||'')+'</div></div>';}
+  if(O.length){
+    const rows=bysev(O).map(r=>{const f=r.fields;
+      return '<tr><td>'+(ICO[f.severity]||'')+'</td><td>'+esc(f.ref)+'</td><td>'+esc(f.type)+'</td><td>'+
+        esc(f.channel||'')+(f.carrier?' · '+esc(f.carrier):'')+'</td><td>'+esc(f.status||'')+'</td><td>'+
+        money(f.value)+'</td><td>'+esc(f.action||'')+'</td></tr>';}).join('');
+    html+='<div class="card"><h2 style="margin:0 0 8px">🚚 At-risk orders ('+O.length+')</h2>'+
+      '<table><thead><tr><th></th><th>Order</th><th>Type</th><th>Channel</th><th>Status</th><th>Value</th><th>Action</th></tr></thead><tbody>'+
+      rows+'</tbody></table></div>';}
+  if(E.length){
+    const rows=bysev(E).map(r=>{const f=r.fields;
+      return '<div class="list-row"><div class="bullet">'+(ICO[f.severity]||'•')+' <b>'+esc(f.title)+'</b> — '+esc(f.detail||'')+'</div></div>';}).join('');
+    html+='<div class="card"><h2 style="margin:0 0 8px">⚖️ Exceptions ('+E.length+')</h2>'+rows+'</div>';}
+  if(B.length){
+    const rows=B.map(r=>{const f=r.fields;
+      return '<tr><td>'+esc(f.title)+'</td><td>'+money(f.collected)+'</td><td>'+money(f.cost)+
+        '</td><td style="color:'+(f.net<0?'#e5534b':'#8fdea8')+'">'+money(f.net)+'</td></tr>';}).join('');
+    html+='<div class="card"><h2 style="margin:0 0 8px">💵 Shipping P&amp;L</h2>'+
+      '<table><thead><tr><th>Store / period</th><th>Collected</th><th>Cost</th><th>Net</th></tr></thead><tbody>'+rows+'</tbody></table></div>';}
+  if(scanned) html+='<div class="sub" style="margin-top:6px">Sweep scanned '+esc(scanned)+' · deterministic (jatalia_sweep) → Cellar narrates.</div>';
+  el.innerHTML=html;
+}
+
 function renderAll(){
   renderFavNav(); renderFavPanel();
   renderContacts(); renderItems(); renderJobs(); renderDash();
   renderAllSections(); renderIntegrations();
-  renderRecent(); renderHealth(); renderGoldeneye(); renderMoola(); renderBenchmarks();
+  renderRecent(); renderHealth(); renderGoldeneye(); renderMoola(); renderBenchmarks(); renderEarthOps();
 }
 
 /* ================================================================
