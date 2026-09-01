@@ -1029,7 +1029,7 @@
         <div class="nav-label">Catalog &amp; Jobs</div>
         <div class="nav-item" data-tab="contacts"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M4 8h16M9 12h6M9 16h6"/></svg></span><span class="lbl">Contacts</span><span class="pin" onclick="event.stopPropagation();togglePin('contacts','Contacts')">Pin</span></div>
         <div class="nav-item" data-tab="items"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/></svg></span><span class="lbl">Items / Catalog</span><span class="pin" onclick="event.stopPropagation();togglePin('items','Items')">Pin</span></div>
-        <div class="nav-item" data-tab="jobs"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span><span class="lbl">Job Costing</span><span class="pin" onclick="event.stopPropagation();togglePin('jobs','Job Costing')">Pin</span></div>
+        <div class="nav-item" data-scope="jobcost" data-tab="jobs"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></span><span class="lbl">Job Costing</span><span class="pin" onclick="event.stopPropagation();togglePin('jobs','Job Costing')">Pin</span></div>
 <div class="nav-item" data-tab="commissions"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></span><span class="lbl">Commissions</span><span class="pin" onclick="event.stopPropagation();togglePin('commissions','Commissions')">Pin</span></div>
       </div>
 
@@ -1049,6 +1049,8 @@
         <div class="nav-item" data-tab="mktplan"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/><path d="M8 14l2.5 2.5L16 12"/></svg></span><span class="lbl">Marketing Plan</span><span class="pin" onclick="event.stopPropagation();togglePin('mktplan','Marketing Plan')">Pin</span></div>
         <div class="nav-item" data-tab="mktspend"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 2v20M17 6H9.5a3 3 0 000 6h5a3 3 0 010 6H6"/></svg></span><span class="lbl">Marketing Spend</span><span class="pin" onclick="event.stopPropagation();togglePin('mktspend','Marketing Spend')">Pin</span></div>
 <div class="nav-item" data-tab="organic"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 22c5-3 8-7 8-12a8 8 0 10-16 0c0 5 3 9 8 12z"/><path d="M12 22V10"/></svg></span><span class="lbl">Paid &amp; Organic</span><span class="pin" onclick="event.stopPropagation();togglePin('organic','Paid &amp; Organic')">Pin</span></div>
+        <div class="nav-item" data-tab="recoverydash"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/><path d="M12 8v4l3 2"/></svg></span><span class="lbl">Recovery Dash</span><span class="pin" onclick="event.stopPropagation();togglePin('recoverydash','Recovery Dash')">Pin</span></div>
+        <div class="nav-item" data-tab="activitylog"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/></svg></span><span class="lbl">Activity Log</span><span class="pin" onclick="event.stopPropagation();togglePin('activitylog','Activity Log')">Pin</span></div>
         <div class="nav-item" data-tab="reports"><span class="ico"><svg class="sv" viewBox="0 0 24 24"><path d="M4 20V4M4 20h16"/><rect x="7" y="10" width="3" height="7"/><rect x="12" y="6" width="3" height="11"/><rect x="17" y="13" width="3" height="4"/></svg></span><span class="lbl">Reports</span><span class="pin" onclick="event.stopPropagation();togglePin('reports','Reports')">Pin</span></div>
       </div>
 
@@ -1306,23 +1308,39 @@
     <section class="panel" id="jobs">
       <div class="page-head">
         <h1 class="page-title">Job Costing</h1>
-        <p class="page-sub">Create a job, capture cost + price, watch margin. Feeds the pipeline KPI on Home.</p>
+        <p class="page-sub">The payment gate: no vendor invoice is released until it carries a job + category mapping checked against what the job sold for. Unmapped invoices are <b>HELD</b> below. <b>Melio is scheduled only from the Releasable list.</b> Overrides are recorded and limited to Steven &amp; Sonya.</p>
+      </div>
+      <div id="jcKpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px"></div>
+      <div class="card">
+        <h2>🛑 Exceptions queue — held &amp; awaiting confirm <button class="btn sm ghost" style="float:right" onclick="jcRunMatcher()">↻ Run matcher</button></h2>
+        <p class="page-sub" style="margin:4px 0 10px">Every inbound invoice that isn't cleared yet. Auto-mapped rows show the matcher's proposal — confirm or fix it. Held rows say why. Nothing here can be paid.</p>
+        <div id="jcQueue"></div>
       </div>
       <div class="card">
-        <div class="row">
-          <input class="f" id="jName" placeholder="Job / client name" />
-          <select class="f" id="jBrand"><option>KTU</option><option>BTU</option></select>
-          <input class="f" id="jCost" placeholder="Est. cost" type="number" />
-          <input class="f" id="jPrice" placeholder="Est. price" type="number" />
-          <select class="f" id="jStatus">
-            <option>Estimate</option><option>Approved</option>
-            <option>In Progress</option><option>Complete</option>
-          </select>
-          <button class="btn" onclick="addJob()">Add Job</button>
+        <h2>✅ Releasable — cleared for Melio</h2>
+        <p class="page-sub" style="margin:4px 0 10px">Confirmed (or explicitly overridden / non-job overhead) and unpaid. This list is the <b>only</b> source for scheduling payments in Melio.</p>
+        <div id="jcReleasable"></div>
+      </div>
+      <div class="card">
+        <h2>🎯 Focus — where the margin is at risk</h2>
+        <p class="page-sub" style="margin:4px 0 10px">Every open job, worst projected gross margin first, against the <b>45% escalation floor</b>. Coverage says how much of that cost is real: a margin at 0% coverage rests on the forecast anchor, not on invoices.</p>
+        <div id="jcFocus"></div>
+      </div>
+      <div class="card">
+        <h2>🏷 Pricing variance — under- and over-priced items</h2>
+        <p class="page-sub" style="margin:4px 0 10px">The same sold item across every job: what we charge vs what it actually costs. Fills in as mapped invoices accumulate — an item is graded once it has run on 2+ jobs.</p>
+        <div id="jcVariance"></div>
+      </div>
+      <div class="card">
+        <h2>📊 Job board — forecast vs actual (JCA)</h2>
+        <p class="page-sub" style="margin:4px 0 10px">Per-job P&amp;L against the HFC benchmarks: GP 50–55% · Labor &lt;15% · Materials &lt;30% · Commission &lt;8%. GM% is always shown with its coverage — a high margin on thin actuals is missing data, not health. Go-backs/reworks are isolated, never blended in.</p>
+        <div class="row" style="margin-bottom:10px">
+          <input class="f" id="jcName" placeholder="Customer / job name" />
+          <select class="f" id="jcBrand"><option>KTU</option><option>BTU</option></select>
+          <input class="f" id="jcContract" placeholder="Contract $ (forecasted sale)" type="number" />
+          <button class="btn" onclick="jcAddJob()">Add job</button>
         </div>
-        <table><thead><tr><th>Job</th><th>Brand</th><th>Cost</th><th>Price</th><th>Margin</th><th>Status</th><th></th></tr></thead>
-          <tbody id="jBody"></tbody></table>
-        <div class="empty" id="jEmpty">No jobs yet.</div>
+        <div id="jcBoard"></div>
       </div>
     </section>
 
@@ -1973,11 +1991,34 @@
     </section>
 
     <!-- ============ REPORTS ============ -->
+    <section class="panel" id="recoverydash">
+      <div class="page-head">
+        <h1 class="page-title">Recovery Dash</h1>
+        <p class="page-sub">The shared call lists — every cancelled consultation and expired quote, with owner,
+          status, next step and notes. Hosted separately for now and linked from here; it will be folded into
+          this intranet once the two are consolidated.</p>
+      </div>
+      <div id="recoverydash_root" class="loading">Loading…</div>
+    </section>
+
+    <section class="panel" id="activitylog">
+      <div class="page-head">
+        <h1 class="page-title">Activity Log</h1>
+        <p class="page-sub">Who has opened the Recovery Desk, when, and roughly how long they stayed. The desk
+          has one shared passcode rather than per-user login, so "who" is the first name each person types into
+          it once per browser — the same name already shown next to their edits there.</p>
+      </div>
+      <div id="activitylog_root" class="loading">Loading…</div>
+    </section>
+
     <section class="panel" id="reports">
       <div class="page-head">
         <h1 class="page-title">Reports &amp; Dashboards</h1>
         <p class="page-sub">Live analytics dashboards refreshing from ServiceMinder, ad platforms, and finance sources.</p>
       </div>
+      <div id="cancelwatch_root"></div>
+      <div id="repsched_root"></div>
+      <h2 class="sec-title" style="margin-top:26px">Dashboards</h2>
       <div class="card"><div id="reports_root" class="loading">Loading…</div></div>
     </section>
 
@@ -2650,7 +2691,7 @@ async function adminDeleteUser(user_id,email){
 /* ================================================================
    Tabs / navigation (sidebar)
    ================================================================ */
-const TAB_TITLES = {
+const TAB_TITLES={activitylog:"Activity Log",recoverydash:"Recovery Dash",
   projtimeline:'Project Timeline',
   appointments:'Appointments',
   organic:'Paid & Organic',
@@ -2671,6 +2712,438 @@ const TAB_TITLES = {
   'earth-content':'Earthwise · Content', finance:'Financial Reporting',
   prospect:'Prospect · Multifamily Leads', prospecting:'Prospecting · Contact Tracker'
 };
+
+
+/* ================================================================
+   Reports tab — Cancellation Watch + report scheduling
+   ----------------------------------------------------------------
+   Two boards, both fed from Supabase:
+
+   Cancellation Watch  intranet_records/cancel_watch, written by
+                       mcp-servers/cancellation-watch.py. Shows the rate
+                       against the agreed 25% allowed ceiling, the reason
+                       mix, and every cancellation outside the allowed set.
+
+   Report schedules    report_schedules — one row per report: how often it
+                       goes out, at what hour, and to whom. Owner-editable
+                       here; public.enqueue_due_reports() (hourly pg_cron)
+                       does the sending, so a change made here takes effect
+                       on the next tick with no deploy.
+
+   Snapshot age is shown deliberately. The generator and the mailer fail
+   independently, so a stale snapshot has to be visible rather than quietly
+   re-sent as if it were this week's numbers.
+   ================================================================ */
+const RS_FREQ = { daily:'Every day', weekly:'Weekly', monthly:'Monthly', off:'Paused' };
+const RS_DOW  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+let RS_EDITING = null;
+
+function rsHour(h){ const n=Number(h)||0; const ap=n<12?'am':'pm'; const t=n%12||12; return t+ap; }
+function rsWhen(s){
+  if(s.frequency==='off'||!s.enabled) return 'Paused';
+  const at=' at '+rsHour(s.hour_local)+' ET';
+  if(s.frequency==='daily')   return 'Every day'+at;
+  if(s.frequency==='weekly')  return 'Every '+(RS_DOW[s.day_of_week]||'Monday')+at;
+  if(s.frequency==='monthly') return 'Day '+(s.day_of_month||1)+' of the month'+at;
+  return RS_FREQ[s.frequency]||s.frequency;
+}
+function rsAge(iso){
+  if(!iso) return {txt:'never generated', cls:'urgent'};
+  const days=Math.floor((Date.now()-new Date(iso).getTime())/86400000);
+  if(days<=1) return {txt:days===0?'generated today':'generated yesterday', cls:'ok'};
+  if(days<=8) return {txt:'generated '+days+' days ago', cls:'ok'};
+  return {txt:'stale — generated '+days+' days ago', cls:'urgent'};
+}
+
+async function renderCancelWatch(){
+  const box=document.getElementById('cancelwatch_root'); if(!box) return;
+  box.innerHTML='<div class="card"><div class="loading">Loading cancellation watch…</div></div>';
+  const [{data:rows,error}, {data:snaps}] = await Promise.all([
+    sb.from('intranet_records').select('fields,sort_order').eq('section','cancel_watch').order('sort_order'),
+    sb.from('report_snapshots').select('report_key,generated_at,metrics').eq('report_key','cancel_watch')
+  ]);
+  if(error){ box.innerHTML='<div class="card"><div class="empty">Could not load: '+esc(error.message)+'</div></div>'; return; }
+  if(!rows||!rows.length){
+    box.innerHTML='<div class="card"><h2 class="sec-title">Consultation Cancellation Watch</h2>'+
+      '<div class="empty">No scan has run yet. It publishes on the first scheduled run.</div></div>';
+    return;
+  }
+  const head=(rows.find(r=>r.fields.kind==='headline')||{}).fields||{};
+  const reasons=rows.filter(r=>r.fields.kind==='reason').map(r=>r.fields);
+  const breaches=rows.filter(r=>r.fields.kind==='breach').map(r=>r.fields);
+  const m=(snaps&&snaps[0]&&snaps[0].metrics)||{};
+  const age=rsAge(snaps&&snaps[0]&&snaps[0].generated_at);
+  const ok=head.severity==='ok';
+  const pc=v=>v==null?'—':Math.round(v*100)+'%';
+
+  const kpi=(label,value,tone)=>'<div class="kpi" style="padding:12px 14px"><div class="label">'+esc(label)+
+    '</div><div class="value" style="font-size:22px'+(tone?';color:'+tone:'')+'">'+esc(String(value))+'</div></div>';
+
+  box.innerHTML='<div class="card">'+
+    '<h2 class="sec-title">Consultation Cancellation Watch'+
+      '<span class="chip '+(ok?'ok':'urgent')+'" style="margin-left:10px">'+
+        (ok?'Within ceiling':'Over ceiling — spend throttle')+'</span>'+
+      '<span class="chip '+age.cls+'" style="margin-left:6px">'+esc(age.txt)+'</span></h2>'+
+    '<p class="page-sub" style="margin:2px 0 14px">'+esc(head.window||'')+
+      ' · allowed reasons are client-requested, out of territory, non-cabinet scope, or repair only. '+
+      'Ceiling is 25% of booked consults, set from the year-to-date analysis — Jan–Aug 2026 ran 73 of 308 '+
+      '(23.7%) on allowed reasons. Above 25%, new-lead spend is throttled until the rate comes back under.</p>'+
+      (ok?'':'<div class="note" style="margin:0 0 14px;padding:10px 12px;border-left:3px solid #fb923c">'+
+        '<b>Spend throttling triggered.</b> Cancellations are above the 25% ceiling, so new-lead spend is '+
+        'throttled until the rate is back under it — worth about $'+Number(m.spend_impact||0).toLocaleString()+
+        ' at the current $'+(m.cost_per_lead||210)+'/lead. Work the booked and recoverable consults first '+
+        'rather than buying leads to refill the funnel.</div>')+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px">'+
+      kpi('Booked', m.booked??'—')+
+      kpi('Attended', m.attended??'—')+
+      kpi('Cancelled', (m.cancelled??'—')+' ('+pc(m.cancel_rate)+')')+
+      kpi('Allowed reasons', (m.allowed??'—')+' ('+pc(m.allowed_rate_of_booked)+')', ok?'#4ade80':'')+
+      kpi('Ceiling', pc(m.ceiling)+' = '+(m.ceiling_count??'—'))+
+      (m.over_ceiling ? kpi('Spend throttle','$'+Number(m.spend_impact||0).toLocaleString(),'#fb923c') : '')+
+    '</div>'+
+    '<div style="font-weight:600;margin-bottom:6px">'+esc(head.title||'')+'</div>'+
+    '<div class="note" style="margin-bottom:16px">'+esc(head.detail||'')+'</div>'+
+    (reasons.length?'<table class="tbl"><thead><tr><th>Reason</th><th style="width:80px">Count</th>'+
+      '<th style="width:200px">Against the ceiling?</th></tr></thead><tbody>'+
+      reasons.map(f=>'<tr><td>'+esc(f.reason)+'</td><td>'+esc(String(f.count))+'</td>'+
+        '<td><span class="chip '+(f.severity==='ok'?'ok':'warn')+'">'+esc(f.allowed)+'</span></td></tr>').join('')+
+      '</tbody></table>':'')+
+    (breaches.length?'<h3 style="margin:18px 0 8px;font-size:14px">Cancellations counting against the ceiling ('+breaches.length+')</h3>'+
+      '<table class="tbl"><thead><tr><th>Customer</th><th>Town</th><th>Date</th><th>Reason</th><th>What we know</th></tr></thead><tbody>'+
+      breaches.map(f=>'<tr><td>'+esc(f.customer||'(no name)')+'<br><small>'+esc(f.phone||'')+'</small></td>'+
+        '<td>'+esc(f.city||'')+'</td><td>'+esc(f.when||'')+'</td><td>'+esc(f.reason||'')+'</td>'+
+        '<td><small>'+esc((f.note||f.full_note||'').slice(0,240))+'</small></td></tr>').join('')+
+      '</tbody></table>':'')+
+    '<div class="note" style="margin-top:14px;opacity:.75">Reasons are read from the cancel-reason picklist and the '+
+      'contact note log. The free-text note typed on the appointment itself is not readable by any API — only by the '+
+      'manual UI export — so a reason written only there shows here as “no reason captured”. Setting a real '+
+      'cancel reason on the appointment (not “Other”) classifies it automatically.</div>'+
+  '</div>';
+}
+
+async function renderReportSchedules(){
+  const box=document.getElementById('repsched_root'); if(!box) return;
+  const admin=(typeof CURRENT_ROLE!=='undefined' && CURRENT_ROLE==='admin');
+  if(!admin){ box.innerHTML=''; return; }
+  box.innerHTML='<div class="card" style="margin-top:20px"><div class="loading">Loading report schedules…</div></div>';
+  const since=new Date(Date.now()-7*86400000).toISOString();
+  const [{data:rows,error},{data:snaps},{data:recent}]=await Promise.all([
+    sb.from('report_schedules').select('*').order('name'),
+    sb.from('report_snapshots').select('report_key,generated_at'),
+    sb.from('notify_queue').select('recipient_email,sent_at,result').gte('created_at',since).limit(300)
+  ]);
+  if(error){ box.innerHTML='<div class="card" style="margin-top:20px"><div class="empty">Could not load schedules: '+esc(error.message)+'</div></div>'; return; }
+  const snapBy=Object.fromEntries((snaps||[]).map(s=>[s.report_key,s.generated_at]));
+
+  const body=(rows||[]).map(s=>{
+    if(RS_EDITING===s.key){
+      const dow=RS_DOW.map((d,i)=>'<option value="'+i+'"'+(i===s.day_of_week?' selected':'')+'>'+d+'</option>').join('');
+      const hrs=Array.from({length:24},(_,h)=>'<option value="'+h+'"'+(h===s.hour_local?' selected':'')+'>'+rsHour(h)+' ET</option>').join('');
+      const fq=Object.entries(RS_FREQ).map(([k,v])=>'<option value="'+k+'"'+(k===s.frequency?' selected':'')+'>'+v+'</option>').join('');
+      return '<tr><td colspan="5"><div class="edit-form" style="display:grid;gap:8px">'+
+        '<div style="font-weight:600">'+esc(s.name)+'</div>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+          '<label>Frequency<br><select id="rs_freq_'+s.key+'">'+fq+'</select></label>'+
+          '<label>Day<br><select id="rs_dow_'+s.key+'">'+dow+'</select></label>'+
+          '<label>Day of month<br><input id="rs_dom_'+s.key+'" type="number" min="1" max="28" value="'+(s.day_of_month||1)+'" style="width:90px"></label>'+
+          '<label>Send at<br><select id="rs_hour_'+s.key+'">'+hrs+'</select></label>'+
+          '<label>Active<br><select id="rs_on_'+s.key+'"><option value="1"'+(s.enabled?' selected':'')+'>Yes</option><option value="0"'+(!s.enabled?' selected':'')+'>No</option></select></label>'+
+        '</div>'+
+        '<label>Recipients — one email per line<br><textarea id="rs_to_'+s.key+'" rows="4" style="width:100%">'+esc((s.recipients||[]).join('\n'))+'</textarea></label>'+
+        '<div class="rowbtns"><button class="btn sm" onclick="saveReportSchedule('+JSON.stringify(s.key)+')">Save</button>'+
+        '<button class="btn sm ghost" onclick="RS_EDITING=null;renderReportSchedules()">Cancel</button></div>'+
+      '</div></td></tr>';
+    }
+    const age=rsAge(snapBy[s.key]);
+    const to=(s.recipients||[]);
+    return '<tr>'+
+      '<td><b>'+esc(s.name)+'</b><br><small>'+esc(s.description||'')+'</small></td>'+
+      '<td>'+esc(rsWhen(s))+'</td>'+
+      '<td>'+(to.length?to.map(e=>'<div><small>'+esc(e)+'</small></div>').join(''):'<small class="empty">nobody — will not send</small>')+'</td>'+
+      '<td><span class="chip '+age.cls+'">'+esc(age.txt)+'</span>'+
+        (s.last_sent_at?'<br><small>last sent '+esc(new Date(s.last_sent_at).toLocaleDateString())+'</small>':'')+
+        (s.last_result?'<br><small style="opacity:.7">'+esc(s.last_result)+'</small>':'')+'</td>'+
+      '<td class="rowbtns">'+
+        '<button class="btn sm ghost" onclick="RS_EDITING='+JSON.stringify(s.key)+';renderReportSchedules()">Edit</button>'+
+        '<button class="btn sm ghost" onclick="sendReportNow('+JSON.stringify(s.key)+')">Send now</button>'+
+      '</td></tr>';
+  }).join('');
+
+  /* Delivery health. A queue row is marked "sent" when ANY channel delivers,
+     so an email that 401s while Slack succeeds looks like a success. Reports
+     are email-only, so that failure mode has to be surfaced here or a report
+     silently never arrives while the queue claims it did. */
+  const emailFails=(recent||[]).filter(r=>((r.result&&r.result.partial_failures)||[])
+    .some(f=>String(f).toLowerCase().startsWith('email')));
+  const emailOk=(recent||[]).filter(r=>r.recipient_email &&
+    String((r.result&&r.result.via)||'').includes('email'));
+  const health = emailFails.length
+    ? '<div class="note" style="margin:0 0 12px;padding:10px 12px;border-left:3px solid #f87171">'+
+      '<b>Email delivery is failing.</b> '+emailFails.length+' message(s) in the last 7 days could not be '+
+      'emailed — most recently: <code>'+esc(String(emailFails[0].result.partial_failures[0]).slice(0,150))+
+      '</code>. Queue rows still read “sent” because Slack delivered, so this does not show up as an error '+
+      'anywhere else. Reports go out by email only, so they will not arrive until this is fixed.</div>'
+    : (emailOk.length
+       ? '<div class="note" style="margin:0 0 12px;opacity:.75">Email delivery healthy — '+emailOk.length+
+         ' message(s) sent in the last 7 days.</div>'
+       : '<div class="note" style="margin:0 0 12px;opacity:.75">No email has been sent in the last 7 days, '+
+         'so the email path is currently unverified.</div>');
+
+  box.innerHTML='<div class="card" style="margin-top:20px">'+
+    '<h2 class="sec-title">Report schedules</h2>'+
+    '<p class="page-sub" style="margin:2px 0 12px">Who gets each report and how often. Changes take effect on the next '+
+      'hourly dispatch — no deploy needed. A report with no recipients, or set to Paused, is not sent. '+
+      'Numbers are never re-sent from a stale snapshot: if the generator has not run in over a week the dispatcher '+
+      'skips that report and says so here.</p>'+health+
+    '<table class="tbl"><thead><tr><th style="width:28%">Report</th><th style="width:16%">Schedule</th>'+
+      '<th style="width:22%">Recipients</th><th style="width:20%">Data freshness</th><th style="width:14%"></th>'+
+      '</tr></thead><tbody>'+(body||'<tr><td colspan="5" class="empty">No reports registered yet.</td></tr>')+
+    '</tbody></table></div>';
+}
+
+async function saveReportSchedule(key){
+  const v=id=>{const e=document.getElementById(id+key);return e?e.value:null;};
+  const to=(v('rs_to_')||'').split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);
+  const bad=to.filter(e=>!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e));
+  if(bad.length){ alert('These do not look like email addresses:\n'+bad.join('\n')); return; }
+  const patch={
+    frequency:v('rs_freq_'), day_of_week:Number(v('rs_dow_')), day_of_month:Number(v('rs_dom_')),
+    hour_local:Number(v('rs_hour_')), enabled:v('rs_on_')==='1', recipients:to
+  };
+  const {error}=await sb.from('report_schedules').update(patch).eq('key',key);
+  if(error){ alert('Could not save: '+error.message); return; }
+  RS_EDITING=null; renderReportSchedules();
+}
+
+/* Queue the report immediately, outside its schedule. Reads the snapshot the
+   dispatcher would read, so "Send now" can never mail something the generator
+   has not actually produced. */
+async function sendReportNow(key){
+  const {data:s}=await sb.from('report_schedules').select('*').eq('key',key).maybeSingle();
+  const {data:snap}=await sb.from('report_snapshots').select('*').eq('report_key',key).maybeSingle();
+  if(!s) return;
+  const to=(s.recipients||[]);
+  if(!to.length){ alert('No recipients set on this report yet.'); return; }
+  if(!snap){ alert('This report has never been generated, so there is nothing to send yet.'); return; }
+  if(!confirm('Send "'+s.name+'" now to '+to.length+' recipient(s)?\n\n'+to.join('\n')+
+              '\n\nData generated: '+new Date(snap.generated_at).toLocaleString())) return;
+  const stamp='manual:'+key+':'+Date.now();
+  const rows=to.map(e=>({kind:'report', recipient_email:e, subject:snap.subject, body:snap.body, source:stamp+':'+e}));
+  const {error}=await sb.from('notify_queue').insert(rows);
+  if(error){ alert('Could not queue: '+error.message); return; }
+  alert('Queued for '+to.length+' recipient(s). Delivery runs within a minute.');
+  renderReportSchedules();
+}
+
+function renderReportsTab(){ renderCancelWatch(); renderReportSchedules(); renderSection('reports'); }
+
+
+/* ================================================================
+   Recovery Dash — links to the hosted desks + passcode rotation
+   ----------------------------------------------------------------
+   Rows come from recovery_desk_config, one per desk (ktu, btu). A desk
+   with no url or enabled=false renders as "not built yet" rather than a
+   dead link, so the Bath Tune-Up row can sit here before it exists.
+
+   Passcodes are never stored or shown in plaintext. Setting one hashes
+   it in the browser — SHA-256 over "salt:passcode" with a fresh random
+   salt — and writes only the salt and hash. The Worker hashes what a
+   visitor types and compares, so nothing here can reveal a current
+   passcode; whoever sets it is the one who tells the team. Changing it
+   also signs everyone out, because the desk signs its cookies with a key
+   derived from the current hash.
+   ================================================================ */
+let RD_SETTING = null;
+
+async function rdHash(salt, passcode) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ':' + passcode));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function rdSalt() {
+  return [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function renderRecoveryDash() {
+  const box = document.getElementById('recoverydash_root'); if (!box) return;
+  const admin = (typeof CURRENT_ROLE !== 'undefined' && CURRENT_ROLE === 'admin');
+  const { data: rows, error } = await sb.from('recovery_desk_config').select('*').order('desk');
+
+  if (error) {
+    // Non-admins are blocked by RLS; that is expected, not a fault.
+    box.innerHTML = '<div class="card"><div class="empty">' +
+      (admin ? 'Could not load the desks: ' + esc(error.message)
+             : 'The recovery desks are owner-managed. Ask Steven for the link and passcode.') +
+      '</div></div>';
+    return;
+  }
+
+  box.innerHTML = (rows || []).map(d => {
+    const live = d.enabled && d.url;
+    const set = !!d.passcode_hash;
+    if (RD_SETTING === d.desk) {
+      return '<div class="card" style="margin-bottom:14px">' +
+        '<h2 class="sec-title">' + esc(d.label) + ' — set a new passcode</h2>' +
+        '<p class="page-sub" style="margin:2px 0 12px">Everyone currently signed in will be signed out and will ' +
+          'need the new passcode. It is stored one-way, so nobody — including this screen — can read it back. ' +
+          'Write it down before you save.</p>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">' +
+          '<label style="flex:1;min-width:220px">New passcode<br>' +
+            '<input id="rd_pc_' + d.desk + '" type="text" autocomplete="off" style="width:100%;padding:8px 10px;' +
+            'border:1px solid var(--line,#d7dde3);border-radius:7px" placeholder="at least 10 characters"></label>' +
+          '<button class="btn sm" onclick="saveDeskPasscode(' + JSON.stringify(d.desk) + ')">Save passcode</button>' +
+          '<button class="btn sm ghost" onclick="RD_SETTING=null;renderRecoveryDash()">Cancel</button>' +
+        '</div>' +
+        '<div id="rd_msg_' + d.desk + '" class="note" style="margin-top:10px"></div>' +
+      '</div>';
+    }
+    return '<div class="card" style="margin-bottom:14px">' +
+      '<h2 class="sec-title">' + esc(d.label) +
+        '<span class="chip ' + (live ? 'ok' : 'warn') + '" style="margin-left:10px">' +
+        (live ? 'Live' : 'Not built yet') + '</span></h2>' +
+      (live
+        ? '<p class="page-sub" style="margin:2px 0 12px">' +
+            '<a href="' + esc(d.url) + '" target="_blank" rel="noopener" ' +
+            'style="color:var(--accent,#9c6122);font-weight:600;text-decoration:none">' + esc(d.url) + ' ↗</a></p>'
+        : '<p class="page-sub" style="margin:2px 0 12px">No desk for this brand yet. When one is built, add its ' +
+          'URL to this row and it appears here.</p>') +
+      '<div class="note">' +
+        (set ? 'Passcode is set. ' : '<b>No passcode set</b> — the desk will not open until one is. ') +
+        (d.updated_at ? 'Last changed ' + esc(new Date(d.updated_at).toLocaleDateString()) +
+           (d.updated_by ? ' by ' + esc(d.updated_by) : '') + '. ' : '') +
+        'Shared with the team by hand; it is not shown here.</div>' +
+      (admin
+        ? '<div class="rowbtns" style="margin-top:10px">' +
+            '<button class="btn sm ghost" onclick="RD_SETTING=' + JSON.stringify(d.desk) + ';renderRecoveryDash()">' +
+            (set ? 'Change passcode' : 'Set a passcode') + '</button></div>'
+        : '') +
+    '</div>';
+  }).join('') +
+  '<div class="card"><div class="note" style="opacity:.8">These lists carry live customer names, addresses and ' +
+    'phone numbers. Share the link and passcode inside the team only, and change the passcode when someone ' +
+    'leaves.</div></div>';
+}
+
+async function saveDeskPasscode(desk) {
+  const msg = document.getElementById('rd_msg_' + desk);
+  const el = document.getElementById('rd_pc_' + desk);
+  const pc = (el ? el.value : '').trim();
+  const say = (t, bad) => { if (msg) { msg.innerHTML = t; msg.style.color = bad ? '#b3382f' : 'inherit'; } };
+  if (pc.length < 10) { say('Use at least 10 characters — this is the only thing protecting customer data.', true); return; }
+  say('Saving…');
+  const salt = rdSalt();
+  const hash = await rdHash(salt, pc);
+  const who = (typeof CURRENT_PROFILE !== 'undefined' && CURRENT_PROFILE &&
+               (CURRENT_PROFILE.display_name || CURRENT_PROFILE.email)) || 'owner';
+  const { error } = await sb.from('recovery_desk_config')
+    .update({ passcode_salt: salt, passcode_hash: hash, updated_by: who }).eq('desk', desk);
+  if (error) { say('Could not save: ' + esc(error.message), true); return; }
+  say('Saved. It takes up to a minute to take effect, and everyone signed in has been signed out. ' +
+      'Send the team the new passcode now — it cannot be read back.');
+  setTimeout(() => { RD_SETTING = null; renderRecoveryDash(); }, 6000);
+}
+
+
+/* ================================================================
+   Activity Log — who has opened the Recovery Desk, when, how long
+   ----------------------------------------------------------------
+   Reads recovery_desk_activity directly (RLS: select is_admin()-only).
+   Three event kinds land there: 'view' (page load), 'duration' (time on
+   page, sent via sendBeacon so it lands even on a hard close), 'save'
+   (a row was edited). This aggregates per person and renders a recent
+   feed; it does not write anything.
+   ================================================================ */
+function alFmtMs(ms) {
+  if (!ms || ms < 1000) return '<1m';
+  const mins = Math.round(ms / 60000);
+  if (mins < 60) return mins + 'm';
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return h + 'h' + (m ? ' ' + m + 'm' : '');
+}
+function alFmtWhen(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  return sameDay
+    ? d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' +
+      d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+async function renderActivityLog() {
+  const box = document.getElementById('activitylog_root'); if (!box) return;
+  const admin = (typeof CURRENT_ROLE !== 'undefined' && CURRENT_ROLE === 'admin');
+  const since = new Date(Date.now() - 30 * 86400000).toISOString();
+  const { data: rows, error } = await sb.from('recovery_desk_activity')
+    .select('who,event,row_id,duration_ms,at').gte('at', since)
+    .order('at', { ascending: false }).limit(2000);
+
+  if (error) {
+    // Non-admins are blocked by RLS; that is expected, not a fault.
+    box.innerHTML = '<div class="card"><div class="empty">' +
+      (admin ? 'Could not load activity: ' + esc(error.message)
+             : 'The activity log is owner-only.') +
+      '</div></div>';
+    return;
+  }
+
+  if (!rows || !rows.length) {
+    box.innerHTML = '<div class="card"><div class="empty">No desk activity in the last 30 days yet.</div></div>';
+    return;
+  }
+
+  /* ---- per-person summary ---- */
+  const people = new Map();
+  for (const r of rows) {
+    const who = (r.who || '').trim() || '(unnamed)';
+    if (!people.has(who)) people.set(who, { views: 0, saves: 0, ms: 0, first: r.at, last: r.at });
+    const p = people.get(who);
+    if (r.event === 'view') p.views++;
+    if (r.event === 'save') p.saves++;
+    if (r.event === 'duration') p.ms += (r.duration_ms || 0);
+    if (r.at < p.first) p.first = r.at;
+    if (r.at > p.last) p.last = r.at;
+  }
+  const summary = [...people.entries()].sort((a, b) => b[1].last.localeCompare(a[1].last));
+
+  const summaryRows = summary.map(([who, p]) => {
+    const recentMs = Date.now() - new Date(p.last).getTime();
+    const active = recentMs < 15 * 60000;
+    return '<tr>' +
+      '<td><span class="who"><span class="dot" style="background:' + (active ? 'var(--brass,#cf7a40)' : 'var(--s-prog,#5b7)') + '"></span>' + esc(who) + '</span></td>' +
+      '<td>' + esc(alFmtWhen(p.last)) + (active ? ' <span class="nm-chip own" style="margin-left:6px">active now</span>' : '') + '</td>' +
+      '<td>' + esc(alFmtWhen(p.first)) + '</td>' +
+      '<td class="num">' + p.views + '</td>' +
+      '<td class="num">' + p.saves + '</td>' +
+      '<td class="num">' + esc(alFmtMs(p.ms)) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  const feedRows = rows.slice(0, 80).map(r => {
+    const label = r.event === 'view' ? 'opened the desk'
+      : r.event === 'save' ? 'saved a row' + (r.row_id ? ' (' + esc(r.row_id) + ')' : '')
+      : 'was on the desk for ' + alFmtMs(r.duration_ms);
+    return '<tr><td>' + esc(alFmtWhen(r.at)) + '</td><td>' + esc((r.who || '').trim() || '(unnamed)') +
+      '</td><td>' + label + '</td></tr>';
+  }).join('');
+
+  box.innerHTML =
+    '<div class="card" style="margin-bottom:14px">' +
+      '<h2 class="sec-title">Last 30 days, by person</h2>' +
+      '<div style="overflow-x:auto"><table class="tbl"><thead><tr>' +
+        '<th>Who</th><th>Last seen</th><th>First seen</th><th class="num">Views</th>' +
+        '<th class="num">Saves</th><th class="num">Time on page</th>' +
+      '</tr></thead><tbody>' + summaryRows + '</tbody></table></div>' +
+    '</div>' +
+    '<div class="card">' +
+      '<h2 class="sec-title">Recent activity</h2>' +
+      '<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead>' +
+        '<tbody>' + feedRows + '</tbody></table></div>' +
+      '<div class="note" style="margin-top:10px;opacity:.8">"Who" is a first name typed into the desk once per ' +
+        'browser, not a login — treat it as a strong hint, not an audit-grade identity. Time on page is measured ' +
+        'per visible tab span, so a browser left open in the background does not inflate it.</div>' +
+    '</div>';
+}
+
 function go(tab,push=true){
   if(!document.getElementById(tab)) tab='home';
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
@@ -2699,6 +3172,9 @@ function go(tab,push=true){
   if(tab==='team'){ renderTeamDates(); }
   if(tab==='clients'){ renderClients(); }
   if(tab==='projects'){ renderProjects(); }
+  if(tab==='reports'){ renderReportsTab(); }
+  if(tab==='recoverydash'){ renderRecoveryDash(); }
+  if(tab==='activitylog'){ renderActivityLog(); }
   if(tab==='techstack'){ renderTechStack(); }
   if(tab==='tasks'){ renderTasks(); }
   if(tab==='ordering'){ renderBtuOrdering(); }
@@ -2784,9 +3260,21 @@ function setWS(k){
   });
   // Goldeneye card shows for every role — brand filtering scopes the callouts
   // (ecommerce sees only Earthwise/marketplace items, team sees only KTU/BTU).
+  // Item-level scope (a single sensitive tab inside a shared group)
+  document.querySelectorAll('.nav-item[data-scope]').forEach(it=>{
+    const sc=it.dataset.scope;
+    let show=true;
+    if(sc==='admin') show = CURRENT_ROLE==='admin';
+    if(sc==='hs')    show = CURRENT_ROLE!=='ecommerce';
+    // job costing: vendor invoices + payout release + margins. Mirrors the
+    // has_jc_access() RLS capability so the tab and the data agree.
+    if(sc==='jobcost') show = !!(CURRENT_PROFILE && (CURRENT_PROFILE.finance_access || CURRENT_PROFILE.jc_access));
+    it.style.display = show ? '' : 'none';
+  });
   // If the active tab just got hidden, bounce home
   const activeNav=document.querySelector('.nav-item.active');
-  if(activeNav && activeNav.closest('.nav-group') && activeNav.closest('.nav-group').style.display==='none') go('home');
+  if(activeNav && ((activeNav.closest('.nav-group') && activeNav.closest('.nav-group').style.display==='none')
+                   || activeNav.style.display==='none')) go('home');
   // Re-render data with new brand filter
   renderAllSections(); renderContacts&&renderContacts(); renderItems&&renderItems(); renderJobs&&renderJobs();
   renderRecent(); renderFavPanel();
@@ -2915,53 +3403,321 @@ async function renderItems(){
   document.getElementById('iEmpty').style.display=a.length?'none':'block';
 }
 
-async function addJob(){
-  const j={name:val('jName'),brand:val('jBrand'),cost:val('jCost')||null,price:val('jPrice')||null,status:val('jStatus')};
-  if(!j.name){alert('Job name required');return}
-  const {error}=await sb.from('jobs').insert(j);
-  if(error){alert('Save failed: '+error.message);return}
-  ['jName','jCost','jPrice'].forEach(id=>document.getElementById(id).value='');
-  renderJobs(); renderDash();
-}
-async function deleteJob(id){ if(!confirm('Delete this job?'))return; await sb.from('jobs').delete().eq('id',id); renderJobs(); renderDash(); }
-function editJob(id){ editingJobId=id; renderJobs(); }
-async function saveJob(id){
-  const j={name:val('ejName_'+id),cost:val('ejCost_'+id)||null,price:val('ejPrice_'+id)||null,
-    brand:document.getElementById('ejBrand_'+id).value,status:document.getElementById('ejStatus_'+id).value};
-  await sb.from('jobs').update(j).eq('id',id);
-  editingJobId=null; renderJobs();
-}
+/* ================================================================
+   Job Costing — the payment control (Phase 1, 2026-09-01).
+   Tables: jc_jobs / jc_forecast_lines / jc_actual_costs, payables
+   mapping columns, views jc_job_summary / jc_job_pnl. The DB trigger
+   jc_payment_gate blocks status→scheduled/paid unless mapping_status
+   is confirmed/override or the category is overhead_non_job; overrides
+   are logged to jc_override_log and limited here to Steven & Sonya.
+   ================================================================ */
+const JC_OVERRIDE_EMAILS=['slivingston@kitchentuneup.com','stevenglivingston@gmail.com','sonya@goaxyom.com'];
+const JC_CATS=[['direct_materials','Direct Materials'],['contract_labor','Contract Labor'],
+  ['employee_labor','Employee Labor'],['sales_commission','Sales Commission'],
+  ['other','Other (job)'],['overhead_non_job','Overhead — not a job cost']];
+const JC_CAT_LBL=Object.fromEntries(JC_CATS);
+let JC_JOBS=[];
+function jcWho(){return (CURRENT_PROFILE&&(CURRENT_PROFILE.display_name||CURRENT_PROFILE.email))||'unknown';}
+function jcCanOverride(){return !!(CURRENT_PROFILE&&JC_OVERRIDE_EMAILS.includes(String(CURRENT_PROFILE.email||'').toLowerCase()));}
+function jcJobSel(id,sel){return `<select class="f" id="${id}" style="min-width:160px"><option value="">— pick job —</option>`+
+  JC_JOBS.map(j=>`<option value="${j.id}" ${j.id===sel?'selected':''}>${esc(j.customer_name)} (${esc(j.brand)})</option>`).join('')+`</select>`;}
+function jcCatSel(id,sel){return `<select class="f" id="${id}">`+
+  JC_CATS.map(([v,l])=>`<option value="${v}" ${v===sel?'selected':''}>${l}</option>`).join('')+`</select>`;}
+
 async function renderJobs(){
-  const {data,error}=await sb.from('jobs').select('*').order('created_at',{ascending:false});
-  if(error){document.getElementById('jBody').innerHTML='';document.getElementById('jEmpty').textContent='Error loading: '+error.message;document.getElementById('jEmpty').style.display='block';return}
-  const a=data||[];
-  document.getElementById('jBody').innerHTML=a.map(j=>{
-    if(j.id===editingJobId){
-      return `<tr><td><input class="f" id="ejName_${j.id}" value="${esc(j.name)}"></td>
-        <td><select class="f" id="ejBrand_${j.id}">${['KTU','BTU'].map(t=>`<option ${t===j.brand?'selected':''}>${t}</option>`).join('')}</select></td>
-        <td><input class="f" id="ejCost_${j.id}" type="number" value="${esc(j.cost)}"></td>
-        <td><input class="f" id="ejPrice_${j.id}" type="number" value="${esc(j.price)}"></td>
-        <td>${marginPct(j.cost,j.price)}</td>
-        <td><select class="f" id="ejStatus_${j.id}">${['Estimate','Approved','In Progress','Complete'].map(t=>`<option ${t===j.status?'selected':''}>${t}</option>`).join('')}</select></td>
-        <td class="row-actions"><button class="btn sm" onclick="saveJob('${j.id}')">Save</button><button class="btn sm ghost" onclick="editingJobId=null;renderJobs()">Cancel</button></td></tr>`;
+  const [jobsR,payR,sumR,focusR,varR]=await Promise.all([
+    sb.from('jc_jobs').select('*').order('customer_name'),
+    sb.from('payables').select('*').neq('status','paid').order('due_date',{ascending:true,nullsFirst:false}),
+    sb.from('jc_job_summary').select('*'),
+    sb.from('jc_focus').select('*'),
+    sb.from('jc_item_variance').select('*').limit(40)
+  ]);
+  const err=jobsR.error||payR.error||sumR.error;
+  if(err){document.getElementById('jcQueue').innerHTML='<div class="empty">Error loading: '+esc(err.message)+'</div>';return}
+  JC_JOBS=jobsR.data||[];
+  const pays=payR.data||[], sums=sumR.data||[];
+  const queue=pays.filter(p=>['unmapped','held','auto_mapped'].includes(p.mapping_status)&&p.jc_category!=='overhead_non_job');
+  const rel=pays.filter(p=>['confirmed','override'].includes(p.mapping_status));
+  const tot=a=>a.reduce((s,p)=>s+(Number(p.amount)||0),0);
+  const held=queue.filter(p=>p.mapping_status!=='auto_mapped'), auto=queue.filter(p=>p.mapping_status==='auto_mapped');
+  document.getElementById('jcKpis').innerHTML=
+    `<div class="kpi" style="padding:10px 12px"><div class="label" style="color:#ef4444">Held</div><div class="value" style="font-size:20px">${money(tot(held))}</div><div class="trend">${held.length} invoice${held.length===1?'':'s'} blocked</div></div>
+     <div class="kpi" style="padding:10px 12px"><div class="label" style="color:#f59e0b">Awaiting confirm</div><div class="value" style="font-size:20px">${money(tot(auto))}</div><div class="trend">${auto.length} auto-mapped</div></div>
+     <div class="kpi" style="padding:10px 12px"><div class="label" style="color:#22c55e">Releasable</div><div class="value" style="font-size:20px">${money(tot(rel.filter(p=>p.status==='unpaid')))}</div><div class="trend">${rel.filter(p=>p.status==='unpaid').length} cleared for Melio</div></div>
+     <div class="kpi" style="padding:10px 12px"><div class="label" style="color:#ef4444">Margin escalations</div><div class="value" style="font-size:20px">${pays.filter(p=>p.escalation_required&&!p.escalation_approved_by).length}</div><div class="trend">payouts below 45% GM</div></div>
+     <div class="kpi" style="padding:10px 12px"><div class="label">Jobs tracked</div><div class="value" style="font-size:20px">${JC_JOBS.length}</div><div class="trend">${JC_JOBS.filter(j=>!['complete','closed'].includes(j.status)).length} open</div></div>`;
+  renderJcQueue(queue); renderJcReleasable(rel); renderJcBoard(sums,queue);
+  renderJcFocus(focusR.data||[]); renderJcVariance(varR.data||[]);
+}
+
+function renderJcQueue(queue){
+  const el=document.getElementById('jcQueue');
+  if(!queue.length){el.innerHTML='<div class="ge-clear">✅ Queue clear — every inbound invoice is mapped or released.</div>';return}
+  let h=`<div style="overflow-x:auto"><table class="btable" style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid var(--border)">
+    <th style="padding:6px 8px">Vendor / Invoice</th><th style="padding:6px 8px">Brand</th>
+    <th style="padding:6px 8px;text-align:right">Amount</th><th style="padding:6px 8px">Due</th>
+    <th style="padding:6px 8px">Why it's here</th><th style="padding:6px 8px">Job</th>
+    <th style="padding:6px 8px">Category</th><th style="padding:6px 8px">Go-back?</th><th style="padding:6px 8px"></th></tr></thead><tbody>`;
+  for(const p of queue){
+    const heldRow=p.mapping_status!=='auto_mapped';
+    const why=p.mapping_status==='auto_mapped'
+      ? `auto-mapped @ ${Math.round((p.mapping_confidence||0)*100)}% — confirm or fix`
+      : (p.held_reason||'unmapped');
+    h+=`<tr style="border-bottom:1px solid var(--border)${heldRow?';background:rgba(239,68,68,0.05)':''}">
+      <td style="padding:7px 8px"><b>${esc(p.vendor)}</b><br><span style="color:var(--muted)">${esc(p.invoice_number||'—')}${p.po_hint?' · PO: '+esc(p.po_hint):''}</span></td>
+      <td style="padding:7px 8px">${brandTag(p.brand)}</td>
+      <td style="padding:7px 8px;text-align:right;white-space:nowrap">${money(p.amount)}</td>
+      <td style="padding:7px 8px;white-space:nowrap">${esc(p.due_date||'—')}</td>
+      <td style="padding:7px 8px;color:${heldRow?'#ef4444':'#f59e0b'};max-width:220px">${esc(why)}</td>
+      <td style="padding:7px 8px">${jcJobSel('qJob_'+p.id,p.job_id)}</td>
+      <td style="padding:7px 8px">${jcCatSel('qCat_'+p.id,p.jc_category||'direct_materials')}</td>
+      <td style="padding:7px 8px;text-align:center"><input type="checkbox" id="qGb_${p.id}" ${p.is_unplanned?'checked':''}></td>
+      <td style="padding:7px 8px;white-space:nowrap" class="row-actions">
+        <button class="btn sm" onclick="jcConfirm('${p.id}')">Confirm</button>
+        ${jcCanOverride()?`<button class="btn sm danger" onclick="jcOverride('${p.id}')">Override</button>`:''}
+      </td></tr>`;
+  }
+  el.innerHTML=h+'</tbody></table></div>';
+}
+
+async function jcConfirm(id){
+  const job=val('qJob_'+id), cat=document.getElementById('qCat_'+id).value;
+  const gb=document.getElementById('qGb_'+id).checked;
+  if(cat!=='overhead_non_job'&&!job){alert('Pick the job this invoice belongs to (or set category to Overhead).');return}
+  const {data:pay,error:e0}=await sb.from('payables').select('*').eq('id',id).single();
+  if(e0){alert(e0.message);return}
+  const upd={job_id:cat==='overhead_non_job'?null:job,jc_category:cat,mapping_status:'confirmed',
+    mapping_confidence:1,held_reason:null,mapped_by:jcWho(),mapped_at:new Date().toISOString(),
+    is_unplanned:gb,unplanned_kind:gb?'go_back':null};
+  // best-effort sold-line attach: exactly one forecast line in this job+category
+  if(upd.job_id&&cat!=='overhead_non_job'){
+    const {data:fl}=await sb.from('jc_forecast_lines').select('id').eq('job_id',upd.job_id).eq('category',cat);
+    if(fl&&fl.length===1) upd.forecast_line_id=fl[0].id;
+  }
+  const {error:e1}=await sb.from('payables').update(upd).eq('id',id);
+  if(e1){alert('Save failed: '+e1.message);return}
+  if(upd.job_id&&cat!=='overhead_non_job'){
+    const {data:ex}=await sb.from('jc_actual_costs').select('id').eq('payable_id',id);
+    if(!ex||!ex.length){
+      await sb.from('jc_actual_costs').insert({job_id:upd.job_id,category:cat,
+        description:(pay.vendor||'')+' '+(pay.invoice_number||''),vendor:pay.vendor,amount:pay.amount,
+        occurred_on:pay.invoice_date||null,payable_id:id,forecast_line_id:upd.forecast_line_id||null,
+        is_unplanned:gb,unplanned_kind:gb?'go_back':null,source:'payable',created_by:jcWho()});
     }
-    return `<tr><td>${esc(j.name)}</td><td>${brandTag(j.brand)}</td><td>${money(j.cost)}</td>
-     <td>${money(j.price)}</td><td>${marginPct(j.cost,j.price)}</td><td><span class="tag">${esc(j.status)}</span></td>
-     <td class="row-actions"><button class="btn sm ghost" onclick="editJob('${j.id}')">Edit</button><button class="btn sm danger" onclick="deleteJob('${j.id}')">Delete</button></td></tr>`;
-  }).join('');
-  document.getElementById('jEmpty').textContent='No jobs yet.';
-  document.getElementById('jEmpty').style.display=a.length?'none':'block';
+  }
+  renderJobs();
+}
+
+async function jcApproveEscalation(id){
+  if(!jcCanOverride()){alert('Only Steven or Sonya can release a payout on a job below the 45% margin floor.');return}
+  const {data:p}=await sb.from('payables').select('vendor,invoice_number,amount,escalation_reason,job_id').eq('id',id).single();
+  const reason=prompt(`MARGIN ESCALATION — releasing this payout is recorded permanently.\n\n${p?p.vendor+' '+(p.invoice_number||''):''}\n${p?p.escalation_reason||'':''}\n\nWhy is this payout approved below the 45% floor?`);
+  if(!reason||!reason.trim())return;
+  const {error}=await sb.from('payables').update({escalation_approved_by:jcWho(),
+    escalation_approved_at:new Date().toISOString(),escalation_reason:(p&&p.escalation_reason?p.escalation_reason+' — approved: ':'')+reason.trim()}).eq('id',id);
+  if(error){alert('Approval failed: '+error.message);return}
+  renderJobs();
+}
+async function jcRunMatcher(){
+  const {error}=await sb.rpc('jc_run_matcher');
+  if(error){alert('Matcher failed: '+error.message);return}
+  await sb.rpc('jc_refresh_escalations');
+  renderJobs();
+}
+async function jcOverride(id){
+  if(!jcCanOverride()){alert('Only Steven or Sonya can release an unmapped invoice.');return}
+  const reason=prompt('Release WITHOUT a job mapping — this is recorded permanently.\nWhy is this being paid unmapped?');
+  if(!reason||!reason.trim())return;
+  const {error}=await sb.from('payables').update({mapping_status:'override',held_reason:reason.trim(),
+    mapped_by:jcWho(),mapped_at:new Date().toISOString()}).eq('id',id);
+  if(error){alert('Override failed: '+error.message);return}
+  renderJobs();
+}
+
+function renderJcReleasable(rel){
+  const el=document.getElementById('jcReleasable');
+  if(!rel.length){el.innerHTML='<div class="empty">Nothing cleared for payment yet.</div>';return}
+  const jobName=id=>{const j=JC_JOBS.find(x=>x.id===id);return j?j.customer_name:'—';};
+  let h=`<div style="overflow-x:auto"><table class="btable" style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid var(--border)">
+    <th style="padding:6px 8px">Vendor / Invoice</th><th style="padding:6px 8px">Brand</th>
+    <th style="padding:6px 8px">Job</th><th style="padding:6px 8px">Category</th>
+    <th style="padding:6px 8px;text-align:right">Amount</th><th style="padding:6px 8px">Due</th>
+    <th style="padding:6px 8px">Cleared by</th><th style="padding:6px 8px">Status</th><th style="padding:6px 8px"></th></tr></thead><tbody>`;
+  for(const p of rel){
+    const ov=p.mapping_status==='override';
+    const escBlocked=p.escalation_required&&!p.escalation_approved_by;
+    h+=`<tr style="border-bottom:1px solid var(--border)${esc?';background:rgba(239,68,68,0.08)':ov?';background:rgba(245,158,11,0.07)':''}">
+      <td style="padding:7px 8px"><b>${esc(p.vendor)}</b><br><span style="color:var(--muted)">${esc(p.invoice_number||'—')}</span></td>
+      <td style="padding:7px 8px">${brandTag(p.brand)}</td>
+      <td style="padding:7px 8px">${p.job_id?esc(jobName(p.job_id)):(ov?'<span style="color:#f59e0b">⚠ override — no job</span>':'—')}</td>
+      <td style="padding:7px 8px;color:var(--muted)">${esc(JC_CAT_LBL[p.jc_category]||p.jc_category||'—')}${p.is_unplanned?' · <span style="color:#ef4444">go-back</span>':''}</td>
+      <td style="padding:7px 8px;text-align:right;white-space:nowrap">${money(p.amount)}</td>
+      <td style="padding:7px 8px;white-space:nowrap">${esc(p.due_date||'—')}</td>
+      <td style="padding:7px 8px;color:var(--muted)">${esc(p.mapped_by||'—')}${ov?' · <span title="'+esc(p.held_reason||'')+'">reason ⓘ</span>':''}</td>
+      <td style="padding:7px 8px">${esc(p.status)}${escBlocked?`<br><span style="color:#ef4444;font-size:11px;font-weight:600" title="${esc(p.escalation_reason||'')}">\u26a0 margin escalation</span>`:''}${p.escalation_approved_by?`<br><span style="color:#22c55e;font-size:11px">payout approved · ${esc(p.escalation_approved_by)}</span>`:''}</td>
+      <td style="padding:7px 8px;white-space:nowrap" class="row-actions">
+        ${escBlocked?(jcCanOverride()?`<button class="btn sm danger" onclick="jcApproveEscalation('${p.id}')">Approve payout</button>`:'<span style="color:var(--muted);font-size:11px">needs Steven/Sonya</span>'):''}
+        ${!escBlocked&&p.status==='unpaid'?`<button class="btn sm" onclick="jcSetStatus('${p.id}','scheduled')">Scheduled in Melio</button>`:''}
+        ${!escBlocked&&p.status!=='paid'?`<button class="btn sm ghost" onclick="jcSetStatus('${p.id}','paid')">Mark paid</button>`:''}
+      </td></tr>`;
+  }
+  el.innerHTML=h+'</tbody></table></div>';
+}
+
+async function jcSetStatus(id,status){
+  const upd={status}; if(status==='paid') upd.paid_date=new Date().toISOString().slice(0,10);
+  const {error}=await sb.from('payables').update(upd).eq('id',id);
+  if(error){alert('Blocked: '+error.message);return}
+  renderJobs();
+}
+
+function renderJcBoard(sums,queue){
+  const el=document.getElementById('jcBoard');
+  if(!sums.length){el.innerHTML='<div class="empty">No jobs yet.</div>';return}
+  const heldByJob={}; for(const p of queue){ if(p.job_id) heldByJob[p.job_id]=(heldByJob[p.job_id]||0)+1; }
+  const chip=(v,lbl)=>v==null?'':`<span style="display:inline-block;font-size:10px;font-weight:600;padding:1px 7px;border-radius:10px;margin-right:4px;color:${v==='pass'?'#22c55e':'#ef4444'};border:1px solid currentColor">${lbl} ${v==='pass'?'✓':'✗'}</span>`;
+  const open=sums.filter(s=>!['complete','closed'].includes(s.status)), done=sums.filter(s=>['complete','closed'].includes(s.status));
+  const row=s=>{
+    const rev=Number(s.total_revenue)||0;
+    const hasActuals=s.actual_cost!=null&&Number(s.actual_cost)>0;
+    const gmF=rev&&s.forecasted_cost!=null?Math.round(1000*(1-s.forecasted_cost/rev))/10:null;
+    return `<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="jcExpand('${s.job_id}')">
+      <td style="padding:7px 8px"><b>${esc(s.customer_name)}</b><br><span style="color:var(--muted)">${esc(s.service_type||'')}</span></td>
+      <td style="padding:7px 8px">${brandTag(s.brand)}</td>
+      <td style="padding:7px 8px;text-align:right;white-space:nowrap">${money(rev)}${Number(s.added_revenue_post_sale)>0?`<br><span style="color:#22c55e;font-size:11px">+${money(s.added_revenue_post_sale)} post-sale</span>`:''}</td>
+      <td style="padding:7px 8px;text-align:right;white-space:nowrap">${s.forecasted_cost!=null?money(s.forecasted_cost):'—'}${gmF!=null?`<br><span style="color:var(--muted);font-size:11px">est GM ${gmF}%</span>`:''}</td>
+      <td style="padding:7px 8px;text-align:right;white-space:nowrap">${hasActuals?money(s.actual_cost):'<span style="color:var(--muted)">none posted</span>'}</td>
+      <td style="padding:7px 8px;text-align:right;white-space:nowrap">${hasActuals&&s.gross_margin_pct!=null?`<b style="color:${s.gross_margin_pct>=50?'#22c55e':s.gross_margin_pct>=35?'#f59e0b':'#ef4444'}">${s.gross_margin_pct}%</b>`:'—'}</td>
+      <td style="padding:7px 8px">${hasActuals?(chip(s.gp_vs_benchmark,'GP')+chip(s.dm_vs_benchmark,'DM')+chip(s.labor_vs_benchmark,'Lab')+chip(s.commission_vs_benchmark,'Com')):'<span style="color:var(--muted);font-size:11px">awaiting actuals</span>'}</td>
+      <td style="padding:7px 8px;text-align:right">${Number(s.unplanned_cost)>0?`<span style="color:#ef4444">${money(s.unplanned_cost)}</span>`:'—'}</td>
+      <td style="padding:7px 8px;text-align:center">${heldByJob[s.job_id]?`<span style="color:#ef4444">⏸ ${heldByJob[s.job_id]}</span>`:''}</td></tr>
+      <tr id="jcx_${s.job_id}" style="display:none"><td colspan="9" style="padding:0 8px 10px;background:rgba(59,130,246,0.04)" id="jcxc_${s.job_id}"></td></tr>`;
+  };
+  const head=`<thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid var(--border)">
+    <th style="padding:6px 8px">Job</th><th style="padding:6px 8px">Brand</th>
+    <th style="padding:6px 8px;text-align:right">Revenue</th><th style="padding:6px 8px;text-align:right">Forecast cost</th>
+    <th style="padding:6px 8px;text-align:right">Actual cost</th><th style="padding:6px 8px;text-align:right">GM%</th>
+    <th style="padding:6px 8px">vs HFC</th><th style="padding:6px 8px;text-align:right">Go-backs</th><th style="padding:6px 8px">Held</th></tr></thead>`;
+  el.innerHTML=`<div style="overflow-x:auto"><table class="btable" style="width:100%;border-collapse:collapse;font-size:13px">${head}<tbody>`+
+    open.map(row).join('')+
+    (done.length?`<tr><td colspan="9" style="padding:10px 8px;color:var(--muted);font-weight:600">Completed / closed</td></tr>`+done.map(row).join(''):'')+
+    `</tbody></table></div>`;
+}
+
+function renderJcFocus(rows){
+  const el=document.getElementById('jcFocus'); if(!el) return;
+  if(!rows.length){el.innerHTML='<div class="empty">No open jobs.</div>';return}
+  const gmColor=g=>g==null?'var(--muted)':g<45?'#ef4444':g<55?'#f59e0b':'#22c55e';
+  let h=`<div style="overflow-x:auto"><table class="btable" style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid var(--border)">
+    <th style="padding:6px 8px">Job</th><th style="padding:6px 8px">Brand</th>
+    <th style="padding:6px 8px;text-align:right">Revenue</th>
+    <th style="padding:6px 8px;text-align:right">Projected GM</th>
+    <th style="padding:6px 8px;text-align:right">Cost coverage</th>
+    <th style="padding:6px 8px;text-align:right">Held</th><th style="padding:6px 8px;text-align:right">Escalations</th>
+    <th style="padding:6px 8px;text-align:right">Go-backs</th></tr></thead><tbody>`;
+  for(const r of rows){
+    const below=r.projected_gm_pct!=null&&r.projected_gm_pct<45;
+    h+=`<tr style="border-bottom:1px solid var(--border)${below?';background:rgba(239,68,68,0.05)':''}">
+      <td style="padding:7px 8px;font-weight:600">${esc(r.customer_name)}<br><span style="color:var(--muted);font-weight:400">${esc(r.service_type||'')}</span></td>
+      <td style="padding:7px 8px">${brandTag(r.brand)}</td>
+      <td style="padding:7px 8px;text-align:right;white-space:nowrap">${money(r.revenue)}</td>
+      <td style="padding:7px 8px;text-align:right;font-weight:700;color:${gmColor(r.projected_gm_pct)}">${r.projected_gm_pct!=null?r.projected_gm_pct+'%':'—'}${below?' ⚠':''}</td>
+      <td style="padding:7px 8px;text-align:right;color:${Number(r.cost_coverage_pct)>=25?'var(--fg)':'var(--muted)'}">${r.cost_coverage_pct!=null?r.cost_coverage_pct+'%':'—'}${Number(r.cost_coverage_pct)<25?' <span style="font-size:10px">est</span>':''}</td>
+      <td style="padding:7px 8px;text-align:right">${r.held_invoices||''}</td>
+      <td style="padding:7px 8px;text-align:right;color:#ef4444">${r.pending_escalations||''}</td>
+      <td style="padding:7px 8px;text-align:right;color:#ef4444">${Number(r.unplanned_cost)>0?money(r.unplanned_cost):''}</td></tr>`;
+  }
+  el.innerHTML=h+'</tbody></table></div>';
+}
+
+function renderJcVariance(rows){
+  const el=document.getElementById('jcVariance'); if(!el) return;
+  const withActuals=(rows||[]).filter(r=>r.avg_actual_cost!=null);
+  if(!withActuals.length){
+    el.innerHTML='<div class="ge-clear">No pricing verdicts yet — this board needs mapped vendor invoices. It fills in automatically as the queue is worked: each confirmed invoice attaches a real cost to a sold line, and an item is graded once it has run on 2+ jobs.</div>';
+    return;
+  }
+  const vColor=v=>/underpriced/.test(v)?'#ef4444':/overpriced/.test(v)?'#f59e0b':'#22c55e';
+  let h=`<div style="overflow-x:auto"><table class="btable" style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead><tr style="text-align:left;color:var(--muted);border-bottom:1px solid var(--border)">
+    <th style="padding:6px 8px">Item</th><th style="padding:6px 8px">Category</th>
+    <th style="padding:6px 8px;text-align:right">Jobs</th>
+    <th style="padding:6px 8px;text-align:right">Avg charged</th><th style="padding:6px 8px;text-align:right">Avg actual cost</th>
+    <th style="padding:6px 8px;text-align:right">Avg margin</th><th style="padding:6px 8px">Verdict</th></tr></thead><tbody>`;
+  for(const r of withActuals){
+    h+=`<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:7px 8px">${esc((r.item||'').slice(0,60))}</td>
+      <td style="padding:7px 8px;color:var(--muted)">${esc(JC_CAT_LBL[r.category]||r.category||'')}</td>
+      <td style="padding:7px 8px;text-align:right">${r.jobs}</td>
+      <td style="padding:7px 8px;text-align:right">${money(r.avg_charged)}</td>
+      <td style="padding:7px 8px;text-align:right">${money(r.avg_actual_cost)}</td>
+      <td style="padding:7px 8px;text-align:right;font-weight:600">${r.avg_margin_pct!=null?r.avg_margin_pct+'%':'—'}</td>
+      <td style="padding:7px 8px;color:${vColor(r.verdict||'')};font-weight:600">${esc(r.verdict||'')}</td></tr>`;
+  }
+  el.innerHTML=h+'</tbody></table></div>';
+}
+
+async function jcExpand(jobId){
+  const tr=document.getElementById('jcx_'+jobId); if(!tr) return;
+  if(tr.style.display!=='none'){tr.style.display='none';return}
+  tr.style.display=''; const c=document.getElementById('jcxc_'+jobId); c.innerHTML='<div class="empty">Loading…</div>';
+  const [pnlR,actR]=await Promise.all([
+    sb.from('jc_job_pnl').select('*').eq('job_id',jobId),
+    sb.from('jc_actual_costs').select('*').eq('job_id',jobId).order('occurred_on',{ascending:false})
+  ]);
+  const pnl=pnlR.data||[], acts=actR.data||[];
+  let h=`<table style="width:100%;border-collapse:collapse;font-size:12px;margin-top:8px">
+    <thead><tr style="color:var(--muted);text-align:left"><th style="padding:4px 8px">Category</th>
+    <th style="padding:4px 8px;text-align:right">Forecasted</th><th style="padding:4px 8px;text-align:right">Actual</th>
+    <th style="padding:4px 8px;text-align:right">Variance</th><th style="padding:4px 8px;text-align:right">% of revenue</th>
+    <th style="padding:4px 8px;text-align:right">Go-backs</th></tr></thead><tbody>`;
+  for(const r of pnl){
+    const vColor=Number(r.cost_variance)>0?'#ef4444':'#22c55e';
+    h+=`<tr><td style="padding:4px 8px">${esc(JC_CAT_LBL[r.category]||r.category)}</td>
+      <td style="padding:4px 8px;text-align:right">${money(r.forecasted_cost)}</td>
+      <td style="padding:4px 8px;text-align:right">${money(r.actual_cost)}</td>
+      <td style="padding:4px 8px;text-align:right;color:${vColor}">${money(r.cost_variance)}</td>
+      <td style="padding:4px 8px;text-align:right">${r.actual_pct_of_revenue!=null?r.actual_pct_of_revenue+'%':'—'}</td>
+      <td style="padding:4px 8px;text-align:right;color:#ef4444">${Number(r.unplanned_cost)>0?money(r.unplanned_cost):'—'}</td></tr>`;
+  }
+  h+='</tbody></table>';
+  if(acts.length){
+    h+=`<div style="margin-top:8px;color:var(--muted);font-size:11px;font-weight:600">ACTUAL COST LINES</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">`+acts.map(a=>
+      `<tr style="border-top:1px solid var(--border)"><td style="padding:3px 8px">${esc(a.occurred_on||'')}</td>
+       <td style="padding:3px 8px">${esc(a.vendor||'')} ${esc(a.description||'')}</td>
+       <td style="padding:3px 8px;color:var(--muted)">${esc(JC_CAT_LBL[a.category]||a.category)}${a.is_unplanned?' · <span style="color:#ef4444">'+esc(a.unplanned_kind||'unplanned')+'</span>':''}</td>
+       <td style="padding:3px 8px;text-align:right">${money(a.amount)}</td></tr>`).join('')+'</table>';
+  } else h+='<div class="empty" style="padding:8px">No actual costs posted yet — actuals appear when mapped invoices are confirmed.</div>';
+  c.innerHTML=h;
+}
+
+async function jcAddJob(){
+  const name=val('jcName'), brand=val('jcBrand'), contract=val('jcContract')||null;
+  if(!name){alert('Customer / job name required');return}
+  const {data,error}=await sb.from('jc_jobs').insert({customer_name:name,brand,contract_total:contract,
+    status:'approved',commission_pct:0.08,notes:'Added manually by '+jcWho()}).select().single();
+  if(error){alert('Save failed: '+error.message);return}
+  if(contract){
+    await sb.from('jc_forecast_lines').insert({job_id:data.id,description:'Sales commission @ 8% of contract',
+      category:'sales_commission',qty:1,unit_cost:Math.round(contract*8)/100,forecasted_cost:Math.round(contract*8)/100,source:'manual'});
+  }
+  ['jcName','jcContract'].forEach(id=>document.getElementById(id).value='');
+  renderJobs(); renderDash();
 }
 
 async function renderDash(){
   const [{data:contacts},{data:items},{data:jobs}] = await Promise.all([
-    sb.from('contacts').select('id'), sb.from('items').select('id'), sb.from('jobs').select('status,price')
+    sb.from('contacts').select('id'), sb.from('items').select('id'), sb.from('jc_jobs').select('status,contract_total,added_revenue_post_sale')
   ]);
   document.getElementById('kpiContacts').textContent=(contacts||[]).length;
   document.getElementById('kpiItems').textContent=(items||[]).length;
-  const open=(jobs||[]).filter(j=>j.status!=='Complete');
+  const open=(jobs||[]).filter(j=>!['complete','closed'].includes(j.status));
   document.getElementById('kpiJobs').textContent=open.length;
-  document.getElementById('kpiValue').textContent=money(open.reduce((s,j)=>s+(Number(j.price)||0),0));
+  document.getElementById('kpiValue').textContent=money(open.reduce((s,j)=>s+(Number(j.contract_total)||0)+(Number(j.added_revenue_post_sale)||0),0));
 }
 
 /* ================================================================
@@ -5057,6 +5813,19 @@ async function addJobCost(project){
   const {error}=await sb.from('intranet_records').insert({section:'job_costs',brand,sort_order:1,
     fields:{project,date:date||new Date().toISOString().slice(0,10),vendor,category:cat,amount:Number(amt),note:note||null,entered_by,source:'intranet'}});
   if(error){toast('Failed: '+error.message,1);return;}
+  // Mirror into the job-costing actuals ledger (jc_actual_costs) so the Job
+  // Costing tab's forecast-vs-actual and HFC benchmark checks see this entry.
+  try{
+    const custName=project.split(' - ')[0].trim();
+    const {data:jj}=await sb.from('jc_jobs').select('id').ilike('customer_name',custName).limit(1);
+    if(jj&&jj.length){
+      const jcCatMap={'Materials':'direct_materials','Labor':'contract_labor','Other':'other'};
+      await sb.from('jc_actual_costs').insert({job_id:jj[0].id,category:jcCatMap[cat]||'other',
+        description:note||('Projects-tab ledger entry'),vendor,amount:Number(amt),
+        occurred_on:date||new Date().toISOString().slice(0,10),source:'manual',
+        source_ref:'projects_ledger',created_by:entered_by});
+    }
+  }catch(_){/* mirror is best-effort; the section row above is already saved */}
   // Sync outward: structured note lands on the ServiceMinder contact + #intranet-alerts, via Ax's existing machinery.
   const summary=`Job cost — ${cat} — ${vendor} ${fmt$(Number(amt))} (${date||'today'})${note?': '+note:''}`;
   await sb.from('action_queue').insert({kind:'note',brand,client:project,
