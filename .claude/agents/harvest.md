@@ -46,7 +46,9 @@ Steven or the team executes.
   `list-orders`, `search-products`, `get-product`.
 - **Amazon** — Seller Central + **SP-API MCP** (`mcp__amazon-sp__*`: catalog,
   listings, reports, finances) across US / Canada / Mexico / Brazil. **Amazon Ads**
-  acct `1035588453215307`.
+  via `mcp__amazon-ads__*` — **US profile `279048135141375`** (the account also has
+  CA `1314701346820893`, MX `1035588453215307`, BR `180839376309508`; verified live
+  2026-08-31). Use the US profile for US ads — `1035588453215307` is MX, not US.
 - **Walmart Marketplace + Walmart Connect** — *planned*; scout and flag when live.
 - **Google Shopping / PMax** and **Meta** (for Shopify) — DTC paid demand.
 - Live ops truth for spot-checks: the **Jatalia dashboard** (`go.jataliamarketplace.com`).
