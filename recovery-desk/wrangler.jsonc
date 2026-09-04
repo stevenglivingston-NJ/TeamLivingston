@@ -1,0 +1,22 @@
+{
+  "name": "ktu-recovery-desk",
+  "main": "dist/worker.js",
+  "compatibility_date": "2026-01-01",
+
+  // Internal, passcode-gated, and holds customer contact details — so it must
+  // NOT also be reachable at a public *.workers.dev preview URL.
+  "workers_dev": false,
+  "preview_urls": false,
+
+  // Path route rather than a custom domain: the apex already redirects to the
+  // marketing site, and a Worker route intercepts only this path.
+  "routes": [
+    { "pattern": "ktubloomfield.com/follow-up*", "zone_name": "ktubloomfield.com" },
+    { "pattern": "www.ktubloomfield.com/follow-up*", "zone_name": "ktubloomfield.com" }
+  ]
+
+  // Secrets (never in this file):
+  //   DESK_PASSCODE  shared team passcode
+  //   SUPABASE_URL   https://<project>.supabase.co
+  //   SUPABASE_KEY   key used server-side only, scoped by RLS to recovery_desk
+}

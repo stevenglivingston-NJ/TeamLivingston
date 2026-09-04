@@ -1,0 +1,13 @@
+{
+  "name": "ktu-recovery-desk",
+  "private": true,
+  "description": "KTU Recovery Desk — passcode-gated shared call list at ktubloomfield.com/follow-up. See README.md",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "deploy": "npm run build && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

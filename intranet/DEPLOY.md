@@ -1,5 +1,31 @@
 # Axyom Intranet (`ktubtuintranet` Cloudflare Worker)
 
+> ## 🔴 `npm run deploy` does NOT match what's live (found 2026-08-31)
+> The live Worker serves the intranet HTML as a **Workers Asset**
+> (`env.ASSETS.fetch(request)`), and `worker.js` also runs a small `/api/ghl`
+> proxy (GHL contact search, bearer-auth'd against Supabase) in front of it.
+> This repo's `build.mjs` instead produces a single-file worker with the HTML
+> inlined and **no GHL proxy at all** — `npm run deploy` as written would
+> regress the proxy and likely break asset serving, because `wrangler.jsonc`
+> here had no `assets` stanza either. Both are now fixed:
+> - `wrangler.jsonc` gained an `assets` block (`directory: ./public`,
+>   `binding: ASSETS`, SPA fallback) matching what's live.
+> - `worker.js` is **gitignored** (as before) but must be the GHL-proxy
+>   script, not build.mjs's output, until build.mjs is rewritten to produce
+>   it. Fetch the live one with the Cloudflare MCP's `workers_get_worker_code`
+>   (`scriptName: "ktubtuintranet"`) if you don't have a copy — it changes
+>   rarely, only when the GHL proxy itself changes.
+> - Correct deploy, until `npm run deploy` is fixed to do this automatically:
+>   `mkdir -p public && cp ktubtuintranet.html public/index.html && npx wrangler deploy`,
+>   then verify with `node tools/drift-check.mjs` and a manual curl of
+>   `/api/ghl/health` (expect `401 {"error":"unauthorized"}`, not `404`/`500`
+>   — a wrong response there means the proxy didn't deploy).
+>
+> This was discovered adding the Activity Log tab, not caused by it — the
+> drift predates this session. `npm run deploy`/`build.mjs` should be fixed
+> to generate the correct worker.js so this stops being a manual step; that
+> wasn't done here to keep this change to what was asked.
+
 > ## ⚠️ Reconciliation in progress (2026-08-18)
 > `ktubtuintranet.html` has been **reset to match the live worker byte-for-byte**,
 > so **deploying is now safe — it is a no-op against production.**
@@ -78,3 +104,20 @@ copies forked; see RECONCILIATION.md. Treat the diff-against-live step as
 mandatory, not advisory — and prefer automating it (a scheduled curl + diff that
 writes a `system_health` row on mismatch) over relying on memory, since the
 Cloudflare dashboard editor can change production without touching this repo.
+
+## ⚠️ 2026-08-30 — `npm run deploy` is UNSAFE right now
+
+The repo file and live have forked in both directions (nine live-only tabs,
+ten repo-only tabs — see RECONCILIATION.md). Deploying from
+`ktubtuintranet.html` today would remove nine tabs from production.
+
+Until that is reconciled, ship additively:
+
+```bash
+curl -s https://dash.goaxyom.com > /tmp/live.html
+node tools/apply-report-scheduler.mjs /tmp/live.html /tmp/live.patched.html   # or your own patch
+node -e "…build worker.js from /tmp/live.patched.html…"
+npx wrangler deploy
+```
+
+and apply the same patch to `ktubtuintranet.html` so the repo keeps up.
