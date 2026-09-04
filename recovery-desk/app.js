@@ -225,6 +225,17 @@ async function api(path, opts) {
   return r.json();
 }
 
+async function saveRow(id) {
+  clearTimeout(timers[id]);
+  delete timers[id];
+  try {
+    await api('state', { method: 'POST', body: JSON.stringify({ id, ...work[id], by: me || '' }) });
+    flash(id, 'Saved for everyone', true);
+  } catch (e) {
+    flash(id, 'Could not save — check your connection and try again', false);
+  }
+}
+
 function edit(id, key, value) {
   work[id] = { ...rowOf({ id }), ...work[id], [key]: value };
   // Recording an outcome without a date is the commonest slip on a call list.
@@ -232,14 +243,24 @@ function edit(id, key, value) {
   renderStats(); renderTabs(); renderFilters();
   flash(id, 'Saving…', false);
   clearTimeout(timers[id]);
-  timers[id] = setTimeout(async () => {
+  // Debounced while typing so we're not firing a request per keystroke, but
+  // every path off the field (blur, tab switch, page close) flushes right
+  // away below — a save is never left waiting on the debounce alone.
+  timers[id] = setTimeout(() => saveRow(id), 600);
+}
+
+// A pending save must not be lost to a closed tab or a fast navigation —
+// sendBeacon fires even as the page unloads, unlike a normal fetch.
+function flushPendingBeacon() {
+  Object.keys(timers).forEach(id => {
+    clearTimeout(timers[id]);
+    delete timers[id];
+    if (!work[id]) return;
     try {
-      await api('state', { method: 'POST', body: JSON.stringify({ id, ...work[id], by: me || '' }) });
-      flash(id, 'Saved for everyone', true);
-    } catch (e) {
-      flash(id, 'Could not save — check your connection and try again', false);
-    }
-  }, 600);
+      navigator.sendBeacon('/follow-up/api/state', new Blob(
+        [JSON.stringify({ id, ...work[id], by: me || '' })], { type: 'application/json' }));
+    } catch (_) { /* best effort */ }
+  });
 }
 
 function setLive(ok) {
@@ -286,6 +307,17 @@ document.addEventListener('input', e => {
   const f = e.target.closest('[data-k]');
   if (f && (f.tagName === 'TEXTAREA' || f.type === 'text' || f.tagName === 'INPUT' && !f.type.match(/date|select/)))
     edit(f.closest('.row').dataset.id, f.dataset.k, f.value);
+});
+// Leaving a field (click away, tab out) shouldn't wait out the debounce —
+// save whatever's pending for that row right away.
+document.addEventListener('focusout', e => {
+  const f = e.target.closest('[data-k]');
+  const id = f && f.closest('.row') && f.closest('.row').dataset.id;
+  if (id && timers[id]) saveRow(id);
+});
+addEventListener('pagehide', flushPendingBeacon);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') flushPendingBeacon();
 });
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-tab]');
