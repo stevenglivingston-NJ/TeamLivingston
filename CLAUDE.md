@@ -159,9 +159,37 @@ Moola, Pipeline and Paid ran fine across the same window **because they reach
 their data through `sb.sh`/curl rather than connector tools.** That asymmetry is
 the whole diagnosis: it is never the prompt, the spec, or the credential.
 
-**The rule: in any step that runs on a schedule, reach these four systems through
-the curl helper, not the MCP tool.** The `mcp__*` tools stay fine for
-interactive/ad-hoc work where a human can approve a prompt.
+**The rule generalizes beyond four systems: on a schedule, NEVER call a tool
+from a custom project-registered MCP server (stdio or HTTP) — only claude.ai's
+own native connectors (Gmail, Slack, Zapier, QuickBooks, Shopify…) tolerate an
+unattended first call.** Re-confirmed live on 2026-09-04 — three more agents hit
+the identical stall on three more custom servers that have no curl helper yet,
+none of them in the original four:
+
+| Routine | Stalled on | Notes |
+|---|---|---|
+| Goldeneye | `mcp__closebot__test_connection` | speculative health-check call, not even asked for in `goldeneye.md` |
+| Tekki | `mcp__shipstation__list_carriers` | outside Tekki's own documented probe list (§3b) — the model reached for it anyway |
+| Cellar | `mcp__shipstation__test_connection` | same server as Tekki's stall, different call |
+| Organic | `mcp__google-analytics__get_channel_performance` | GA4's own MCP server has no curl fallback |
+
+Two conclusions: (1) **ShipStation is now a two-time repeat offender** — worth a
+`shipstation.sh` curl helper (V2 API, Bearer token, same shape as `sm.sh`) once
+`SHIPSTATION_API_KEY` is set somewhere this can be tested; until then, agents must
+not call it on a schedule at all. (2) an agent doesn't have to be *told* to call a
+risky tool to hit this bug — Goldeneye and Tekki both reached for a connectivity
+check nobody's spec asked for, so "only call what's documented" isn't a safe
+enough guardrail on its own; each agent spec now says explicitly not to call
+these tools on a scheduled fire (see `goldeneye.md` §4c, `cellar.md`, `organic.md`
+GA4 section, `tekki.md` §3b).
+
+**A stall can't be caught and skipped once made.** Earlier wording here said "if
+one of these raises a permission prompt, record 🟡 and move on" — that's not
+how it works. The approval prompt blocks the whole turn with no `tool_result`
+ever coming back; there is no code path in the prompt that runs after a stalled
+call. The only real guard is to never attempt the call in the first place on a
+non-interactive fire — decide from the run's own context (scheduled vs.
+interactive), not from what the last call returned.
 
 ```
 bash mcp-servers/sb.sh  'SELECT …'                          # Supabase
@@ -173,7 +201,25 @@ bash mcp-servers/gmb.sh KTU info                            # Google Business Pr
 Diagnosing a stale board: read the Routine's `last_run.status`. `ABANDONED` +
 a session in `REQUIRES_ACTION` with a `pending_action` naming an `mcp__*` tool
 is this bug, not an agent error — the fix is to move that one call to its curl
-helper. Do **not** rewrite the agent's analysis logic; it never ran.
+helper, or drop it if none exists yet. Do **not** rewrite the agent's analysis
+logic; it never ran.
+
+**A second, unrelated failure mode wears the same "stale board" symptom: the
+account's 5-hour session/usage limit.** Checked live on 2026-09-04 — five
+Routines (KTU LSA Recovery Watch, Tracking Health Sweep, Paid's
+customer-acquisition brief, Agent Performance sync, Harvest) all show
+`session_status: SESSION_STATUS_IDLE` with `status_bucket: FAILED`,
+`post_turn_summary.status_detail: "You've hit your session limit"`, and
+`rate_limit_info: {rateLimitType: "five_hour", status: "rejected"}` — **not**
+`REQUIRES_ACTION`, and no `pending_action` at all. This is capacity exhaustion,
+not a connector stall, and no code fix applies: the account ran out of its
+5-hour usage window before these Routines got their turn, most likely because
+heavy interactive (Opus-tier) usage on the same account consumed it first. Tell
+these two apart by `status_bucket` before touching any agent's tool calls:
+`BLOCKED` + `pending_action` is the connector stall above; `FAILED` +
+`rate_limit_info.status: "rejected"` is capacity, fixed only by using less of
+the shared window (lighter interactive model choice, or spreading Routine fire
+times further apart so they don't all compete for the same 5-hour block).
 
 > **Tekki owns this.** The `tekki` agent (`.claude/agents/tekki.md`) re-audits the
 > stack daily — maintains the Tech Stack registry + SOWs, live-probes every

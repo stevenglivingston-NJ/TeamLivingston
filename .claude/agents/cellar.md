@@ -48,7 +48,16 @@ executes.
 - **Shopify** (DTC) — `list-orders`, `get-order`, `get-inventory-levels`,
   `set-inventory` (read-only use).
 - **ShipStation V2 MCP** (`mcp__shipstation__*`) — cross-channel shipments, rates,
-  fulfillments, carrier status.
+  fulfillments, carrier status. ⚠️ **On a scheduled/Routine fire, never call
+  `mcp__shipstation__*` directly — not even `test_connection`.** ShipStation is a
+  custom stdio MCP server with no curl helper and no account-level pre-approval;
+  the call stalls the whole run in `REQUIRES_ACTION` with no recovery (confirmed
+  live 2026-09-04, same failure Tekki hit on the same server — see CLAUDE.md §
+  "Scheduled runs stall on MCP connector calls"). Get everything you need from
+  `jatalia_sweep.py` in step 0 below instead; if it doesn't cover something,
+  note "ShipStation not probed this run — no curl path for scheduled fires"
+  rather than calling the tool. Only call `mcp__shipstation__*` in an
+  interactive session.
 - **Walmart Marketplace** — *planned*; fold in when live.
 - Live ops truth for spot-checks: the **Jatalia dashboard** (`go.jataliamarketplace.com`).
 
