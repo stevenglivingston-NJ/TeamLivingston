@@ -3,14 +3,25 @@
 Per-municipality and cross-market research sources. Statuses: **stable** (used
 successfully), **verify** (standard/expected URL — confirm on first use), and
 **paid/authorized-only** (use only if the account is authorized).
-Last updated: 2026-08-12.
+Last updated: 2026-09-07.
+
+**2026-09-07 finding:** all four parallel research sweeps this week hit direct
+`WebFetch` 403s across every listing aggregator (LoopNet, CityFeet, Homes.com,
+Crexi, Showcase.com, even Kislak's own property pages) — a broader outage than
+this registry previously documented ("stable" / "sometimes blocks"). TAPinto
+also 403'd on both attempts this run (was "stable"). WebSearch snippets were
+usable as probable-confidence fallback throughout, per the spec's allowance,
+but several genuine active listings (Verona, Cedar Grove, Summit) could not be
+address-resolved this way and were logged as unconfirmed candidates rather
+than CSV rows. Re-verify all "stable" listing sources next run before trusting
+this status; if the pattern repeats, escalate to Tekki as a pipe health issue.
 
 ## Cross-market sources (every scan)
 
 | Source | What it yields | URL / access | Status |
 |---|---|---|---|
-| LoopNet | Active multifamily listings, value-add language, photos | loopnet.com — search "multifamily for sale [town] NJ" | stable (2026-08-12: town search pages fetch OK; filter out "nearby" spillover; individual listing pages sometimes block) |
-| CityFeet / Homes.com | Listing cards corroborating LoopNet; small-multifamily inventory | cityfeet.com, homes.com | stable (2026-08-12: fetched OK) |
+| LoopNet | Active multifamily listings, value-add language, photos | loopnet.com — search "multifamily for sale [town] NJ" | degraded (2026-09-07: 403 on every direct fetch this run, town-search and listing pages alike — was "stable" 2026-08-12; use WebSearch snippets, re-test next run) |
+| CityFeet / Homes.com | Listing cards corroborating LoopNet; small-multifamily inventory | cityfeet.com, homes.com | degraded (2026-09-07: 403 on every direct fetch — was "stable" 2026-08-12) |
 | Crexi | Active listings + some auction/under-contract status | crexi.com | degraded (2026-08-12: 403 on all fetches — manual check only) |
 | Marcus & Millichap | Listings + closed-deal press | marcusmillichap.com | verify |
 | Kislak Company | NJ multifamily listings + sale announcements | kislakrealty.com | verify |
@@ -18,7 +29,8 @@ Last updated: 2026-08-12.
 | CBRE / C&W / JLL NJ | Institutional listings, market reports | firm sites | verify |
 | Jersey Digs | Development news, project stages, developer names (heavy Newark/Essex coverage) | jerseydigs.com | stable |
 | RE-NJ (Real Estate NJ) | NJ CRE transactions, financings, development | re-nj.com | stable |
-| TAPinto (per-town editions) | Planning-board coverage, local development news | tapinto.net/towns/... | stable |
+| TAPinto (per-town editions) | Planning-board coverage, local development news | tapinto.net/towns/... | degraded (2026-09-07: 403 on both attempts this run, Verona/Cedar Grove + Millburn — was "stable"; use search snippets, re-test) |
+| nj21st.com | Summit-area planning/hearing coverage | nj21st.com | stable (2026-09-07: added — clean full-text fetch on a Summit Planning Board item) |
 | Montclair Local | Montclair development + planning coverage | montclairlocal.news | degraded (403 on fetch; headlines/dates via search snippets) |
 | ROI-NJ | NJ deal announcements | roi-nj.com | degraded (403 on fetch; snippets usable) |
 | MyVeronaNJ | Verona council/board coverage | myveronanj.com | degraded (403 on fetch; snippets usable) |
