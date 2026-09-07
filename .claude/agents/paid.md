@@ -643,6 +643,15 @@ and so **Moola can pressure-test your reallocations** (Moola reads section
 2. INSERT today's rows, and only after success prune older `scan_date` rows from
    section `paid_brief`. Never delete first; if the insert fails, yesterday's rows
    stay (stale beats blank). Always ≥1 row.
+   **If the INSERT itself errors, don't silently fall through to step 3 — that
+   turned a same-day, attributable failure into a 4-day-old mystery once
+   (2026-09-03 → 09-07, caught only by the next freshness sweep, by which point
+   the routine had already reported itself SUCCEEDED). Immediately write one row
+   to `system_health` (`{"agent":"paid_brief","severity":"urgent","title":"paid_brief
+   insert failed","detail":"<the curl/PostgREST error>","checked_at":"<now>"}`) and
+   append one line to the Slack digest — e.g. "⚠️ paid_brief write failed this run,
+   yesterday's numbers are showing" — so a bad run is visible same-day, not
+   discovered a week later as unexplained staleness.**
 3. Separately, write back any `mkt_high_touch` rows you researched in step 7d —
    UPDATE in place, never delete-and-reinsert; those rows carry team-entered columns
    you must not lose. This section has no other writer, so if you skip it nothing
