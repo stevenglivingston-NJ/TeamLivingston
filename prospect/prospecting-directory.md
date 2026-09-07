@@ -7,7 +7,17 @@ research record. Business contact channels only (firm websites / office lines);
 no personal contact data. Confidence: **verified** = firm's own site or named
 deal coverage; **probable** = directory-level evidence, confirm before outreach.
 
-## Coverage summary (62 contacts)
+**2026-09-07 update:** the live intranet tab has grown to 84 append-only rows
+(up from the 62 captured at seed time), added incrementally across the
+2026-08-24 and 2026-09-07 runs — named principals recovered this week include
+Mohannad Abbasi (Abbasi Construction, Verona), Ron Beit (RBH Group, Newark),
+Don Baxter and Michael Salomon (The Kislak Company, East Orange), and Michael
+Schofel (Eastman Management Corp, Livingston). This file's per-town tables
+below were not fully re-audited this run — treat the live intranet tab as
+authoritative for the current roster; this snapshot is the last full research
+pass (2026-08-12).
+
+## Coverage summary (62 contacts at 2026-08-12 seed; 84 on the live tab as of 2026-09-07)
 
 | Category | Count | Notes |
 |---|---|---|
