@@ -746,7 +746,7 @@ collapse them into one number:
   postings are NOT exposed by the ServiceMinder public API** (re-verified 2026-07-12:
   `proposal/details` returns no costs/margins array, no cost download kind,
   `get_invoice` has none). So pull the actuals from, in priority:
-  1. the intranet **`job_costs` ledger** (`intranet_records` section `job_costs`:
+  1. the job-costing actuals ledger — **`jc_actual_costs`** (real table, 2026-09-01), fed by confirmed vendor invoices from `payables` (the payment gate) and by the Projects-modal ledger, which mirrors into it. The legacy `intranet_records` section `job_costs` still receives the modal's rows for back-compat but `jc_actual_costs` is canonical; the job spine is `jc_jobs` (SM proposal/contact + JobTread ids + contract totals, seeded from your own foreman_board). Read per-job rollups from `jc_job_summary` / `jc_job_pnl`. (`intranet_records` section `job_costs`:
      dated vendor entries Materials/Labor/Other) — the machine-readable twin of the
      Margins panel; sum its amounts, coverage = 100% of what's entered;
   2. **emailed / integration vendor invoices** (`ktubtubilling@gmail.com`, §4) for
