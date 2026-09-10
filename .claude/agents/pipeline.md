@@ -28,17 +28,53 @@ to the `pipeline_*` intranet sections.
 
 ## Data sources (use ToolSearch to load; skip gracefully what's unavailable)
 
-- **ServiceMinder** (`mcp__serviceminder__*`, both KTU + BTU) — the funnel truth:
-  - `query_appointments` — booked / confirmed / completed / cancelled consults
+- 🔴 **ServiceMinder: use `bash mcp-servers/sm.sh`, NOT `mcp__serviceminder__*`,
+  on any scheduled run — see CLAUDE.md § "Scheduled runs stall on MCP connector
+  calls".** Pipeline runs as a Claude Code Remote Routine in Auto mode; a direct
+  `mcp__serviceminder__*` call raises a connector-permission prompt no
+  non-interactive fire can answer, and the session stalls in `REQUIRES_ACTION`
+  forever — the exact failure that hit Foreman (`query_invoices`), Tekki, Goldeneye
+  and Organic across 2026-08-19→08-27. It shows as a stale `pipeline_*` board, not
+  an error. `mcp__serviceminder__*` stays fine for interactive/ad-hoc runs where a
+  human can click "Allow"; never rely on it for the daily Routine fire.
+  ```
+  bash mcp-servers/sm.sh KTU appointments/query '{"FromDate":"...","IncludeContact":true,"Take":500}'
+  bash mcp-servers/sm.sh KTU proposal/query '{"Take":500}'
+  bash mcp-servers/sm.sh KTU invoice/query '{"FromDate":"...","Take":500}'
+  bash mcp-servers/sm.sh KTU payment/query '{"FromDate":"...","Take":500}'
+  ```
+  (BTU: swap `KTU`→`BTU`.) Endpoint paths are inconsistently pluralised —
+  `appointments/*` is plural, `invoice|payment|proposal/query` are singular — and a
+  wrong path returns HTTP 200 with an **empty body**, not a 404; the helper flags
+  that explicitly. Full path list is in `sm.sh`'s header.
+  - `appointments/query` — booked / confirmed / completed / cancelled consults
     (the "Consultation - In-Home" appointment type is the funnel entry). Pull the
-    trailing 60 days each run; classify by status and capture `CancelReason`.
-  - `query_proposals` — open vs accepted, with contract value and created/decision
-    dates. Open proposals = the live pipeline; accepted = wins.
-  - `query_invoices` / `query_payments` — corroborate a proposal→won→collected
+    trailing 60 days each run; classify by status and capture the cancel reason
+    per CLAUDE.md § "ServiceMinder notes — where they actually live" (check
+    `Slots[].CancelReasonId` via `appointments/find`, not the unreliable top-level
+    field, and merge in contact notes — `contacts/locate` → `Matches[0].Notes[]`).
+  - `proposal/query` — open vs accepted, with contract value and created/decision
+    dates. Open proposals = the live pipeline; accepted = wins. **Do not use this
+    for a full 90-day pipeline reconstruction** — it returns only currently-OPEN
+    records regardless of any status filter passed. When a run needs the complete
+    recent set (not just what's open today), use the bulk export instead:
+    `download/startdownload` (`Kind:"proposals"`) → poll
+    `download/downloadstatus` → `download/getdownload`, then filter the CSV's
+    `Date` column in code.
+  - `invoice/query` / `payment/query` — corroborate a proposal→won→collected
     transition (a proposal isn't really "won" money until the deposit lands).
-- **HighLevel** (`mcp__ghl-ktu__*` = KTU, `mcp__ghl-btu__*` = BTU — verify the
-  served location by name on the first call) — lead **source attribution** and
-  conversation context for the source table and revival queue. Direct MCP only.
+- 🔴 **HighLevel: use `bash mcp-servers/ghl.sh <KTU|BTU> <tool> '<json-args>'`,
+  NOT `mcp__ghl-ktu__*`/`mcp__ghl-btu__*`/`mcp__High_Level__*`, on any scheduled
+  run** — same classifier-gated-connector failure mode as above (this is what
+  stalled Tekki on `mcp__ghl-ktu__locations_get-location`). `bash
+  mcp-servers/ghl.sh <KTU|BTU> tools` lists tool names; the same 36 tools the MCP
+  servers expose are callable this way with zero registration dependency and zero
+  permission prompt. Used for lead **source attribution** and conversation
+  context for the source table and revival queue — pull full contact detail
+  (`contacts_get-contact`, not just the list view) and read both the top-level
+  `source` field and the `attributionSource` object (`sessionSource`, `medium`,
+  `campaign`); the list endpoint and `.source` alone undercount real attribution.
+  Direct `mcp__*` tools stay fine for interactive/ad-hoc work only.
 - **Microsoft Clarity** (added 2026-08-19) — landing-page experience, the layer
   before a visitor ever becomes a lead. Reached one of three ways, in this
   preference order: (1) the auto-registered `clarity-live` / `clarity-ktu-export`

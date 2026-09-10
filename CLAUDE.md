@@ -155,9 +155,20 @@ credential valid the whole time:
 | Foreman | `mcp__serviceminder__query_invoices` | `foreman_briefing` (8d) |
 | Goldeneye | (same class) | `goldeneye_callouts` |
 
-Moola, Pipeline and Paid ran fine across the same window **because they reach
-their data through `sb.sh`/curl rather than connector tools.** That asymmetry is
-the whole diagnosis: it is never the prompt, the spec, or the credential.
+Moola and Paid ran fine across the same window **because they reach their data
+through `sb.sh`/curl rather than connector tools.** That asymmetry is the whole
+diagnosis: it is never the prompt, the spec, or the credential.
+
+**Correction (found 2026-09-10):** Pipeline was NOT actually clean — its spec
+had `mcp__serviceminder__*` as the primary ServiceMinder source and explicitly
+marked HighLevel "Direct MCP only" (`mcp__ghl-ktu__*`/`mcp__ghl-btu__*`), i.e.
+the same classifier-gated calls that killed Foreman/Tekki/Organic. It likely
+only "ran fine" on days its Routine got lucky on prior approvals; it belongs in
+the stalled-Routine table above, not the clean list. Fixed in
+`.claude/agents/pipeline.md` to route both through `sm.sh`/`ghl.sh` like every
+other daily agent. Lesson for Tekki's audit: "no stale-board evidence yet"
+is not the same finding as "the spec avoids gated calls" — read the spec, not
+just the board.
 
 **The rule: in any step that runs on a schedule, reach these four systems through
 the curl helper, not the MCP tool.** The `mcp__*` tools stay fine for
