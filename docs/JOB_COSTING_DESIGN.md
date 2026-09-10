@@ -308,3 +308,58 @@ no held state to enforce it.
 **Sequencing note:** this is only worth building once the queue is being worked
 daily — pushing 0 actuals into JobTread achieves nothing. Phase 2, after the
 QBO sync and the labor allocator.
+
+## 14. Autonomy — what runs itself, and what still needs a human (2026-09-10)
+
+The first build had a hidden dependency: several moving parts only advanced when
+somebody ran them. That is now closed. Nothing below depends on a workstation
+being switched on, and none of it is bound to a device.
+
+| Job | Runs on | Cadence | What it does |
+|---|---|---|---|
+| `jc-match-and-escalate` | **Supabase pg_cron** (in-database) | hourly, :35 | `jc_nightly()` → `jc_run_matcher()` + `jc_refresh_escalations()` |
+| Actuals ledger | **Postgres trigger** `payables_sync_actuals` | on every write | keeps `jc_actual_costs` in step with each payable's mapping |
+| Forecast (SOLD-side) ETL | **CCR Routine**, cloud environment, Haiku | daily 07:00 UTC | `jc-forecast-sync.py --apply`; logs to `jc_sync_runs` |
+
+**The actuals trigger is the important one.** `jc_actual_costs` used to be
+written only by the intranet's `jcConfirm()` handler, so anything that mapped a
+payable another way (the seed script, a future QBO sync, a hand-fix in SQL) left
+the invoice confirmed but absent from `jc_job_pnl`. The trigger makes the ledger
+a function of the payable's mapping state on every path, in both directions: map
+it and the cost lands on the job, un-map it and the cost comes straight back off.
+A human split (several `jc_actual_costs` rows against one payable) is never
+overwritten — the operator's allocation beats a generated one.
+
+**Observability.** `jc_sync_runs` records every ETL run and `jc_sync_health()`
+reports last-good-run, 24h failures, and the stalest job. A failed run is
+therefore visible as a failure rather than as quietly stale data — the exact trap
+described in the scheduling section of CLAUDE.md.
+
+### The serverless upgrade, ready but not wired
+
+`supabase/functions/jc-forecast-sync/index.ts` is a full port of the Python ETL
+to an Edge Function, with its pg_cron schedules written in
+`20260910b_jc_forecast_sync_schedule.sql`. It is the better long-term shape —
+no model, no session, no connector classifier, so it cannot stall — but it needs
+ServiceMinder and JobTread credentials available to Supabase, which the Routine
+does not (the Routine already runs where those keys live).
+
+To switch: set `SM_KEY_KTU`, `SM_KEY_BTU` and `JOBTREAD_GRANT_KEY` as Edge
+Function secrets (Supabase dashboard → Edge Functions → Secrets), deploy the
+function, re-run the schedules at the bottom of `20260910b`, and delete the
+"Job costing — nightly forecast sync" Routine. The function also accepts those
+keys from `dispatch_config` (`jc_sm_key_ktu`, `jc_sm_key_btu`,
+`jc_jobtread_grant_key`) as a fallback — that table is RLS-enabled with zero
+policies, so only the service role can read it. Function secrets take precedence
+where both exist.
+
+Until then the Routine is the live path and the Edge Function is dormant: its
+schedules are deliberately NOT registered, so it will not fire and log failures.
+
+### Still human, by design
+
+Confirming which job an invoice belongs to stays a person's decision — that is
+the control, not an inconvenience. Automation now guarantees the queue is
+current, the matcher has run, margins are recomputed and confirmed costs reach
+the P&L. It does not, and should not, decide that a Richelieu invoice belongs to
+the Mycka kitchen.
