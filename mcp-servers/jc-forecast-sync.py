@@ -15,6 +15,14 @@ rows exist the gate can only check job+category. It also replaces the placeholde
 All HTTP goes through curl on purpose — python-urllib gets a 403 from the session
 egress proxy and would silently return zero rows (see CLAUDE.md).
 
+SCHEDULING (2026-09-10): this script is no longer only run by hand. The CCR
+Routine "Job costing - nightly forecast sync (KTU/BTU)" runs it daily at 07:00
+UTC in the cloud environment, so forecast lines stay current with nobody's
+laptop involved. A TypeScript port of this same logic sits in
+supabase/functions/jc-forecast-sync/ as the eventual serverless replacement --
+if you change the categorisation rules or the line mapping HERE, change them
+THERE too, or the two will drift. See section 14 of docs/JOB_COSTING_DESIGN.md.
+
 Usage:
   python3 mcp-servers/jc-forecast-sync.py --dry-run      # report, write nothing
   python3 mcp-servers/jc-forecast-sync.py --apply        # write jc_forecast_lines
