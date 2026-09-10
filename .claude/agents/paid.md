@@ -161,12 +161,26 @@ fill the gaps:**
   **Hard limits: last 1–3 days only, 10 calls per project per day** — budget exactly
   three cuts (URL, Device, Source) and do not re-pull. Gives sessions, scroll depth,
   dead/rage clicks, engagement, bot share.
-- **Meta Ads MCP**: `ads_insights_performance_trend` (trend by campaign),
-  `ads_insights_anomaly_signal` (spikes/drops you'd otherwise miss),
-  `ads_insights_industry_benchmark` + `ads_insights_auction_ranking_benchmarks`
-  (are we beating the market or buying expensive auctions),
-  `ads_get_opportunity_score` (Meta's own prioritized fixes — triage, don't
-  blindly accept), `ads_get_errors` (delivery blockers).
+- **Meta Ads MCP** (`mcp__Facebook-Ads__*` — direct connector, run every session):
+  Pull in this order every run — do NOT skip:
+  1. `ads_get_ad_accounts` → confirm the active ad account id for KTU/BTU (Meta
+     runs both brands under Steven's Business Manager).
+  2. `ads_insights_performance_trend` — spend, impressions, CPM, CTR, leads by
+     campaign for yesterday + trailing 7d + trailing 30d.
+  3. `ads_insights_anomaly_signal` — any spend spike or drop vs baseline; surface
+     all findings, not just the top one.
+  4. `ads_insights_industry_benchmark` + `ads_insights_auction_ranking_benchmarks`
+     — are we beating the market CPM/CTR or buying expensive auctions?
+  5. `ads_get_opportunity_score` — Meta's own prioritized fixes; triage each,
+     don't blindly accept.
+  6. `ads_get_errors` — delivery blockers on any active ad/ad-set; name the
+     blocked creative and the exact unblock step.
+  7. `ads_get_creatives` + `ads_get_ad_preview` on the top-spending ads — identify
+     fatigue (frequency >3 + falling CTR) and name which creative to pause and
+     which hook to iterate.
+  **If Meta returns an error or empty result, say so explicitly in the brief —
+  do NOT silently omit the Meta section.** A missing Meta section is always a
+  gap to flag, never acceptable as "nothing to report."
 - **GA4 — direct MCP. ✅ LIVE (verified end-to-end 2026-08-21). Use this, not Zapier.**
   `mcp-servers/google-analytics/server.py` calls the GA4 Data API
   (`analyticsdata.googleapis.com`) directly: `run_report`, `get_channel_performance`,
@@ -424,10 +438,10 @@ Every campaign verdict must drill to the ad/creative that's driving it:
 Organic is 84% of pipeline — check it daily so paid decisions don't fly blind:
 - **GMB rankings & queries**: gmb-mcp search-keywords + performance metrics (local
   stdio; Zapier GBP actions as the cloud fallback).
-- **Competitive trends**: Semrush (`organic_research`, `keyword_research`,
-  `tracking_research`) and Ahrefs (`rank-tracker-competitors-domains`) vs the named
+- **Competitive trends**: Ahrefs (`rank-tracker-competitors-domains`) vs the named
   local competitors for "kitchen remodeling / cabinet refacing / bath remodel +
-  Bloomfield/Essex County" terms.
+  Bloomfield/Essex County" terms. Use Meta's `ads_insights_industry_benchmark` and
+  `ads_insights_auction_ranking_benchmarks` for paid competitive benchmarks.
 - Deliver a verdict, not data: **meeting / beating / losing to** each key competitor,
   which terms moved, and whether paid should defend a term organic is losing.
 
@@ -461,62 +475,14 @@ would get free (see the Operating Rules on protecting organic).
 impressions to **budget** vs to **rank**. This turns "we're not showing enough" into
 a specific, correct action.
 
-**f. Coverage vs the market.** Where SEMrush units allow, use `keyword_research` for
-the gap (volume/KD/CPC) and compare our real CPC against market CPC — paying well
-above market signals a quality/relevance problem, not just competition. When SEMrush
-is dark, substitute **GMB `search-keywords`** (first-party query intent, no quota)
-and say that's what you used.
+**f. Coverage vs the market.** Use **GMB `search-keywords`** (first-party query
+intent, no quota) for coverage gaps, and compare our real Google Ads CPC against
+Meta's `ads_insights_auction_ranking_benchmarks` for cross-channel market CPC
+context. Paying well above market on a term signals a quality/relevance problem.
 
 **g. LSA category coverage** — LSA has no keywords, only categories/services; confirm
 the enabled set still matches what we actually sell and want to sell.
 
-### 6b. SEMrush — paid competitive intelligence (weekly, Mondays)
-
-SEMrush is not just Organic's tool; it is the only source that shows **what
-competitors are buying and what they're paying**, which is context no first-party
-platform can give you. Workflow for every SEMrush pull: **discovery tool →
-`get_report_schema` → `execute_report`**, `database='us'`. Tool names are exact —
-`mcp__Semrush__*`:
-
-- **`paid_search_research`** — the highest-value one for you. For each named local
-  competitor domain: the keywords triggering their **Google Ads**, their ad
-  positions, estimated CPCs and paid traffic, **their actual ad copy (titles +
-  descriptions)**, and historical PPC trend. Use it to answer: who else is bidding
-  our money terms, are they escalating or retreating, and what offer/hook is their
-  ad copy leading with vs ours. A competitor newly entering "cabinet refacing +
-  Essex County" explains a rank-lost impression-share spike far better than guessing.
-- **`competitors_research`** — who actually competes in **paid** (not just organic),
-  keyword overlap between us and them, and market rankings. Use it to keep the
-  competitor list evidence-based rather than a hardcoded list that goes stale.
-- **`keyword_research`** — volume, difficulty, intent, CPC benchmarks for terms we
-  buy or are considering. Cross-check our real Google Ads CPC against SEMrush's
-  market CPC: paying well above market on a term is a quality-score/ad-rank tell.
-- **`domain_overview`** — competitor paid keyword/traffic/cost totals and trend; the
-  fastest read on whether a rival is scaling paid up or down.
-- **`traffic_overview`** — competitor total visits, engagement, and **acquisition
-  channel mix** (how much of their demand is paid vs organic vs direct vs social).
-  This is the cleanest way to see whether a rival's growth is bought or earned.
-- **`audience_research`** — competitor visitor demographics (age, income, geography).
-  Feeds §7b's town/demo targeting and §7d high-touch work with real audience data
-  instead of assumption.
-- Skip **`shopping_research`** — PLA/Shopping is ecommerce, i.e. Harvest's, not yours.
-
-Budget it: SEMrush API units are finite and shared with Organic. Run this block
-**weekly (Mondays)**, not daily; on other days reuse Monday's read and say so.
-**Coordinate with Organic** — Organic owns the organic-side SEMrush pulls
-(`organic_research`, `backlinks_research`, `site_audit`, `position_tracking`); you
-own the **paid** side. Don't both spend units on the same report.
-
-⚠️ **KNOWN FAILURE MODE — SEMrush units run out account-wide.** Verified 2026-08-21:
-every SEMrush tool, including cheap discovery calls, returned *"active Semrush
-subscription, but does not have enough API units."* There is no cheaper SEMrush call
-to fall back to. Detect it with your first call, report it as a tracking/coverage gap
-in the brief (top-up: **https://www.semrush.com/mcp-access**), and **keep working** —
-your first-party sources are unaffected and cover most of the competitive question:
-`query_search_terms` (what we're actually matching), `query_geo_performance`,
-`auction_insight`-style rank-lost signal from §1c, and Meta's
-`ads_insights_industry_benchmark` / `ads_insights_auction_ranking_benchmarks`. Say
-which sources produced the read so it isn't mistaken for SEMrush data.
 
 ### 7. Channel expansion scouting (weekly, data-grounded)
 Once a week (or when a signal appears), scan for channels the businesses SHOULD be in,
@@ -552,7 +518,7 @@ Include a close-rate-by-town view so a town that gets clicks but never signs is
 visible (demographics alone — the Territories view — can't show this).
 
 ### 7c. Market landscape (quarterly; ported from CMO Intelligence)
-Once a quarter: zip-level demand pockets (Semrush/Ahrefs keyword volume + observed
+Once a quarter: zip-level demand pockets (Ahrefs keyword volume + observed
 proposal density → opportunity gaps where demand exists but we don't), seasonality
 curve vs our spend pacing, and the keyword landscape tables (volume/difficulty/CPC)
 for both brands. Three verdicts max — where to expand, where we're over-indexed,
@@ -609,7 +575,7 @@ Yesterday: $X spend | Y leads (forms + CALLS + QR) | $Z CPL (Δ vs 7d avg) — p
 💰 REALLOCATION                — move $ from ___ to ___ because ___
 🏆 AUCTION POSITION            — impression share / top / abs-top per Search campaign,
                                  and whether each loss is BUDGET-lost or RANK-lost
-🕵️ COMPETITOR PAID (weekly)    — who's bidding our terms, their ad copy/offer, CPC vs ours
+🕵️ COMPETITOR PAID             — Meta benchmarks vs market; first-party CPC vs market avg
 🎨 CREATIVE                    — winning/fatigued ads by name + delivery blockers
 🧪 LANDING PAGES & FUNNELS     — Clarity findings on paid pages; leads/revenue by funnel
 🗺️ ORGANIC & COMPETITORS       — GMB rank moves; meeting/beating/losing vs key rivals
