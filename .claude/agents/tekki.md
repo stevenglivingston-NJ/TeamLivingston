@@ -372,6 +372,68 @@ and the tab reads them straight from there instead of the hardcoded list.
   (cheap — it's a straight replace) so `d` stays honest and the tab never
   silently goes stale again.
 
+### 3d. Landing pages & phone-line uptime — daily pass (curl only, never `mcp__*`)
+
+Nobody currently checks day-to-day whether the sites customers actually land on
+are up, or whether the phone number printed on them is the number that's
+supposed to be there. This closes that gap. Same rule as §3b: **curl only** — a
+`WebFetch` or browser-tool call here is exactly the kind of confirmation-gated
+action that stalls a scheduled run in `REQUIRES_ACTION` forever (see the
+Goldeneye/Foreman/Organic/Pipeline incidents in CLAUDE.md). `curl` has no such
+gate.
+
+**Sites to check every run** (add to this list as new tools go live — cross-check
+against the intranet's `tools` section for anything added since your last run):
+| Site | Role |
+|---|---|
+| `https://kitchentuneup.com/bloomfield-nj` | KTU franchise landing page |
+| `https://bathtune-up.com/bloomfield-nj` | BTU franchise landing page |
+| `https://ktubloomfield.com` | KTU owned domain |
+| `https://lookbook.ktubtu.com` | Lookbook tool |
+| `https://pricing.ktubtu.com` | Pricing tool |
+| `https://playbook.ktubtu.com` | Playbook tool |
+| `https://finance.ktubloomfield.com` | Finance / loan-app tool |
+
+- **Uptime**: `curl -sS -o /dev/null -w '%{http_code} %{time_total}' --max-time 10 <url>`.
+  2xx/3xx = 🟢. Anything else (including timeout/DNS failure, curl exit ≠ 0) —
+  **retry once** before calling it 🔴 (matches §3b's re-probe rule; a cold
+  Cloudflare edge on the first hit isn't an outage). Record latency; a page that's
+  up but consistently >3s is worth a 🟡 note, not a 🔴.
+- **Phone-number drift**: for the two franchise pages and `ktubloomfield.com`,
+  grep the fetched HTML for `tel:` links and diff against the routing table in
+  `paid.md` § "Phone routing — the truth to check against". Use
+  `curl -sSL <url> | grep -oE 'tel:[^"]*' | sed 's/&#x2B;/+/' | sort -u` —
+  **not** a bare `[0-9+-]+` pattern, which misses real-world markup like
+  `tel:(973) 521-1182` (parens/spaces) and HTML-entity-encoded `+` signs
+  (`&#x2B;`). Verified 2026-09-12: the naive pattern found nothing on any of
+  the three pages; the corrected one found real numbers on the first try,
+  including a live example of the exact drift this check exists to catch —
+  `kitchentuneup.com/bloomfield-nj` is still serving `tel:(973) 521-1182`
+  (the legacy IVR number), not `521-8442`. It also turned up a
+  `tel:+18668188411` toll-free number that isn't in Paid's table at all —
+  flag anything you find that isn't in the table as its own finding, don't
+  just silently ignore it. That table is the source of truth — **read it
+  fresh each run, never hardcode a copy of the numbers here**, since Paid is
+  the one who updates it when a number changes.
+- **Google Business Profile phone**: `bash mcp-servers/gmb.sh KTU info` and `BTU
+  info` (already an established curl-safe helper from §3b) — compare the
+  returned phone against the same table's GBP row. This is the exact check that
+  caught GBP serving the wrong number for both brands on 2026-08-22 — don't let
+  it silently drift back.
+- **Google Ads call-asset ENABLED/PAUSED status is explicitly out of scope
+  here** — no curl helper exists for it yet, and Paid already owns verifying it
+  periodically. Don't reach for `mcp__google-ads__*` to cover the gap; that's
+  the stall risk this whole section exists to avoid. If a curl helper for it
+  ever gets built, fold it in then.
+- **Publish**: one `tekki_health` component row per site (`component:'uptime:<site
+  short-name>'`) plus one row per phone-drift finding (`component:'phone:<surface>'`),
+  same write-then-prune pattern as the rest of `tekki_health`. A page/number pair
+  with nothing wrong still gets a 🟢 row — silence isn't the same as "checked
+  and fine."
+- **Fold one line into the Slack digest**: `✅ Sites & phones OK` when everything
+  above is 🟢, or `⚠️ N site/phone issues — see Tech Health` naming the worst one
+  inline, when anything isn't. This is the OK/issue line the daily report is for.
+
 ### 4. Report
 - **Write the Tech Stack tab's executive summary** — section `exec_summary`,
   write-then-prune per `scan_date`, one row: `{tab:'techstack', owner:'Tekki',
