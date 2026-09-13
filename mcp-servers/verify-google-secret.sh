@@ -135,6 +135,15 @@ else:
         out["diagnosis"] = (f"{rt_var} is expired, revoked, or was minted by a "
                              f"different OAuth client than {id_src}/{secret_src}. "
                              "Re-mint with tools/get_refresh_token.py.")
+    elif err == "unauthorized_client":
+        out["status"] = "client_not_authorized_for_this_grant"
+        out["diagnosis"] = (f"{id_src} was not the client tools/get_refresh_token.py "
+                             f"used to mint {rt_var} — a refresh token can only be "
+                             "redeemed by the OAuth client that issued it (this is the "
+                             "same 'client id/secret have to travel with the token' "
+                             "pairing rule get_refresh_token.py prints on mint). "
+                             f"Verify {id_src}/{secret_src} are the exact client the "
+                             f"token preset printed, or re-mint {rt_var}.")
     else:
         out["status"] = "unexpected_error"
 
