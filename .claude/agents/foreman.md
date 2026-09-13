@@ -1212,8 +1212,11 @@ exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 ve
 
 ### 7a. Daily Slack pacing brief → Steven + Mayra
 After publishing `foreman_pacing`, DM the pacing brief to **Steven**
-(`U017U4G26RY`) and **Mayra** (`U09J3M80YRL`) with `mcp__Slack__slack_send_message`
-(channel_id = each user id — send to both). Keep it **self-contained**: the intranet
+(`U017U4G26RY`) and **Mayra** (`U09J3M80YRL`) with `bash mcp-servers/slack.sh dm
+<user_id> '<text>'` — send to both. **Never use `mcp__Slack__slack_send_message` in
+the scheduled run** (classifier-gated, stalls a non-interactive fire — see "Known
+breakages" below); if `SLACK_BOT_TOKEN` isn't set yet, `slack.sh` fails fast and you
+record that once in `foreman_briefing` instead of hanging. Keep it **self-contained**: the intranet
 holds the full detail and the interactive artifact link is **private** (not viewable
 by anyone with the link), so never rely on a link Mayra can't open. Format — a
 one-line header (today's date + active-job count), then one line per job,
@@ -1246,6 +1249,52 @@ publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
 
 ## Known breakages / preconditions (verified 2026-07-03 — re-verify each run)
 
+**Blanket rule (2026-09-13): never call an `mcp__*` tool in the daily run — reach every
+system through its curl helper.** Every one of Foreman's data sources now has a
+direct-curl path that a scheduled fire can use with zero permission prompts and zero
+MCP-registration dependency (`bash mcp-servers/<helper>.sh ...`):
+
+| System | Helper | Status |
+|---|---|---|
+| ServiceMinder | `sm.sh` | live |
+| HighLevel | `ghl.sh` | live |
+| Supabase (publish) | `sb.sh` | live |
+| Google Business Profile | `gmb.sh` | live |
+| CompanyCam | `companycam.sh` | live (new 2026-09-13 — Bearer `COMPANYCAM_TOKEN`, same auth as the MCP server) |
+| JobTread | `jobtread.sh` | live (new 2026-09-13 — grant-key auth via `JOBTREAD_GRANT_KEY`, same pattern already proven in `jc-forecast-sync.py`) |
+| Gmail (firstgentalent / ktubtubilling) | `gmail.sh` | **built, not yet usable** — needs a one-time human step, see below |
+| Slack (daily pacing DM) | `slack.sh` | **built, not yet usable** — needs a one-time human step, see below |
+
+Use `mcp__*` tools ONLY in an interactive/ad-hoc session where a human can answer a
+permission prompt — never inside the scheduled daily-run instructions below. Where this
+doc still shows an `mcp__ghl-*`/`mcp__Gmail__`/`mcp__CompanyCam__`/`mcp__JobTread__`/
+`mcp__Zapier__`/`mcp__Slack__` call, read it as "use the matching `.sh` helper instead"
+— the tool names are kept in the prose only where the equivalent helper doesn't have a
+1:1 call shape and a translation note is useful.
+
+**Gmail (`gmail.sh`) and Slack (`slack.sh`) close the LAST TWO stall points, but each
+needs one human action first (an agent cannot mint these — they require an interactive
+OAuth consent / a Slack app):**
+- **Gmail**: run once per mailbox, in a browser logged into that Google account:
+  `python3 mcp-servers/tools/get_refresh_token.py --preset gmail-firstgentalent` and
+  `--preset gmail-ktubtubilling`. Paste the two printed values into the Cloud
+  environment's env vars as `GMAIL_REFRESH_TOKEN_FIRSTGENTALENT` /
+  `GMAIL_REFRESH_TOKEN_KTUBTUBILLING` (client id/secret default to the existing
+  `GOOGLE_ADS_CLIENT_ID`/`_SECRET`). This also fixes the SEPARATE bug where Zapier's
+  `gmail_new_email_matching_search` action itself has been returning 0 results on every
+  query for at least two consecutive runs (2026-09-12, 2026-09-13) — `gmail.sh` talks to
+  the real Gmail API directly, sidestepping that broken trigger entirely, not just the
+  permission prompt.
+- **Slack**: set `SLACK_BOT_TOKEN` (scopes `chat:write`, `im:write`) as a plain env var
+  in the Cloud environment config. If one already exists for the `dispatch-notify` Edge
+  Function (see CLAUDE.md), the SAME token works here — it just needs to also be set as
+  a session env var, not only a Supabase function secret.
+Until both are set, `gmail.sh`/`slack.sh` fail fast with a clear `{"error":...}` (no
+hang, no classifier prompt) — treat that as "not configured yet", record it once in
+`foreman_briefing`, and keep going with everything else. Do NOT fall back to
+`mcp__Zapier__*` or `mcp__Slack__*` for these in a scheduled run — that reintroduces the
+exact stall this section exists to prevent.
+
 - 🔴 **ServiceMinder: use `mcp-servers/sm.sh`, NOT `mcp__serviceminder__*`, on any
   scheduled run — see CLAUDE.md § "Scheduled runs stall on MCP connector calls".**
   This is why Foreman was dead 2026-08-19 → 08-27: it called
@@ -1270,11 +1319,22 @@ publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
   live. If it genuinely 401s/drops, fall back to JobTread pace + CompanyCam
   inference + Gmail vendor watch and mark money columns "blocked — ServiceMinder
   down this run".
-- 🟢 **Vendor invoices**: `ktubtubilling@gmail.com` via the Zapier Gmail connection
-  labeled "Claude MCP" (see Vendor watch). Confirm the connection answers for that
-  address before relying on it; fall back to the main Gmail connector.
-- 🟡 **CompanyCam & JobTread stdio MCPs** live at `/root/code` (Steven's Mac) —
-  in cloud, use the Zapier routes above before declaring a gap.
+- 🟢 **Vendor invoices**: `ktubtubilling@gmail.com` via `bash mcp-servers/gmail.sh
+  ktubtubilling search '<query>'` once `GMAIL_REFRESH_TOKEN_KTUBTUBILLING` is set (see
+  the blanket rule above). Until then this is a known gap — say so explicitly in
+  `foreman_briefing` rather than reporting vendor rows as clean.
+- 🟢 **CompanyCam**: `bash mcp-servers/companycam.sh GET /projects '{"query":"<name>"}'`,
+  `.../projects/<id>/photos`, `.../photos '{"modified_since":"..."}'` etc. — no MCP
+  registration needed, same auth (`COMPANYCAM_TOKEN`) as the stdio server.
+- 🟢 **JobTread**: `bash mcp-servers/jobtread.sh '<pave-query-json>'` — same Pave API,
+  authenticated with `JOBTREAD_GRANT_KEY` instead of the OAuth connector. Note: a
+  grant-key query has no `currentGrant` context (that's tied to a logged-in user's
+  session) — query `organization`/`job` directly by known id instead
+  (org `22PB4XPxGZHK`). `costItems`/`documents` sum aggregates return null for every
+  job in this org (verified 2026-09-13, not a query bug) — this org simply has no
+  budget line items attached in JobTread; keep using ServiceMinder `UnitCost` +
+  the labor-rate estimate (§3) as the cost source, and note "no JobTread estimate on
+  file" rather than reporting $0.
 - 🟢 **CompanyCam covers BOTH brands** — the subscription lives under the KTU account,
   but BTU projects are captured in the same CompanyCam account. Do NOT report BTU as
   "unphotographed / undocumented by tool scope." If a BTU job lacks photos, that's a
@@ -1308,13 +1368,17 @@ publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
 - 🟡 **QuickBooks**: Intuit connector = FGUSA books only; Oracabessa/BTU + Jatalia
   via their Zapier QBO connections.
 - 🟢 **Slack + Google Drive required for the daily pacing task** (§2e/§7a). The
-  `job-pacing` skill reads the design packet & Selections from the KTU Google Drive,
-  and the brief is DM'd via Slack (Steven `U017U4G26RY`, Mayra `U09J3M80YRL`). The
-  dedicated **"Foreman — daily job pacing → Slack + intranet"** trigger grants both
-  connectors alongside ServiceMinder/JobTread/CompanyCam/Supabase. If a run lacks
-  Slack, publish `foreman_pacing` anyway and flag the send failure in
-  `foreman_briefing`; if Google Drive is missing, fall back to the ServiceMinder
-  invoice scope for that job and mark the finish specs "Drive unavailable this run".
+  `job-pacing` skill reads the design packet & Selections from the KTU Google Drive
+  (still a connector — `mcp__Google-Drive__*` is read-only and has not been observed
+  stalling a scheduled run the way write/search-heavy connectors have, but treat any
+  future stall there the same way: fall back and say so). The pacing brief itself is
+  sent via `bash mcp-servers/slack.sh dm <user_id> '<text>'` (Steven `U017U4G26RY`,
+  Mayra `U09J3M80YRL`) once `SLACK_BOT_TOKEN` is set — see the blanket rule above.
+  Until then, publish `foreman_pacing` anyway and flag the send as "not sent —
+  SLACK_BOT_TOKEN not configured" in `foreman_briefing`; never call `mcp__Slack__*` in
+  the scheduled run as a substitute. If Google Drive is missing, fall back to the
+  ServiceMinder invoice scope for that job and mark the finish specs "Drive
+  unavailable this run".
 
 ## Guardrails
 

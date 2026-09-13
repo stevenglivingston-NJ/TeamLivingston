@@ -89,6 +89,12 @@ Direct-access helpers (curl/CLI, NOT registered MCP servers — no bootstrap nee
   ghl.sh              → HighLevel over curl, same endpoint as ghl-ktu / ghl-btu
   sm.sh               → ServiceMinder Open API over curl
   gmb.sh              → Google Business Profile over curl (mints its own OAuth token)
+  companycam.sh       → CompanyCam v2 REST API over curl (Bearer COMPANYCAM_TOKEN)
+  jobtread.sh         → JobTread Pave API over curl (JOBTREAD_GRANT_KEY, no OAuth)
+  gmail.sh            → Gmail API over curl for firstgentalent/ktubtubilling (mints
+                        its own OAuth token; needs a one-time human-minted refresh
+                        token per mailbox, see mcp-servers/.env.example)
+  slack.sh            → Slack chat.postMessage/DM over curl (Bearer SLACK_BOT_TOKEN)
   lead-sweep.py       → daily ad-response / missed-lead / booking-integrity sweep
   tracking-audit.py   → daily tracking-health sweep (GTM/GA4/Ads/HL/Clarity/Meta
                         config drift — paused conv tags, wrong-brand containers,
@@ -159,16 +165,52 @@ Moola, Pipeline and Paid ran fine across the same window **because they reach
 their data through `sb.sh`/curl rather than connector tools.** That asymmetry is
 the whole diagnosis: it is never the prompt, the spec, or the credential.
 
-**The rule: in any step that runs on a schedule, reach these four systems through
+**The rule: in any step that runs on a schedule, reach these systems through
 the curl helper, not the MCP tool.** The `mcp__*` tools stay fine for
 interactive/ad-hoc work where a human can approve a prompt.
 
 ```
-bash mcp-servers/sb.sh  'SELECT …'                          # Supabase
-bash mcp-servers/ghl.sh KTU contacts_get-contacts '{...}'   # HighLevel
-bash mcp-servers/sm.sh  KTU invoice/query '{"Take":50}'     # ServiceMinder
-bash mcp-servers/gmb.sh KTU info                            # Google Business Profile
+bash mcp-servers/sb.sh         'SELECT …'                        # Supabase
+bash mcp-servers/ghl.sh        KTU contacts_get-contacts '{...}' # HighLevel
+bash mcp-servers/sm.sh         KTU invoice/query '{"Take":50}'   # ServiceMinder
+bash mcp-servers/gmb.sh        KTU info                          # Google Business Profile
+bash mcp-servers/companycam.sh GET /projects '{"query":"..."}'   # CompanyCam
+bash mcp-servers/jobtread.sh   '{"organization":{"$":{"id":"22PB4XPxGZHK"},...}}'  # JobTread
+bash mcp-servers/gmail.sh      firstgentalent search '<gmail-query>'   # Gmail (firstgentalent/ktubtubilling)
+bash mcp-servers/slack.sh      dm <user_id> '<text>'             # Slack DM
 ```
+
+`companycam.sh` and `jobtread.sh` (added 2026-09-13) close the two remaining
+Foreman stall points that had no curl path before — CompanyCam uses the same
+`COMPANYCAM_TOKEN` Bearer auth as the stdio server, JobTread uses
+`JOBTREAD_GRANT_KEY` (grant-key auth inside the Pave query body, the same
+pattern already proven in `jc-forecast-sync.py`) instead of the OAuth
+connector. Both are live with no further setup — see each script's header.
+
+`gmail.sh` and `slack.sh` (added 2026-09-13) exist to close the remaining two
+stall points (Zapier Gmail search, `mcp__Slack__slack_send_message`) but each
+needs a one-time HUMAN step before they'll actually work — an agent cannot
+mint an OAuth consent or create a Slack app on its own:
+- **Gmail**: run `python3 mcp-servers/tools/get_refresh_token.py --preset
+  gmail-firstgentalent` and `--preset gmail-ktubtubilling` (once each, in a
+  browser logged into that mailbox), then paste the two tokens into
+  `GMAIL_REFRESH_TOKEN_FIRSTGENTALENT` / `GMAIL_REFRESH_TOKEN_KTUBTUBILLING`
+  in the Cloud environment's env vars. This also fixes a SEPARATE bug found
+  2026-09-13: the Zapier `gmail_new_email_matching_search` action itself was
+  returning 0 results on every query (including a bare unfiltered probe)
+  across at least two consecutive runs while the connections showed
+  `is_stale:false` — `gmail.sh` talks to the real Gmail API directly, so it
+  isn't exposed to that failure either.
+- **Slack**: set `SLACK_BOT_TOKEN` (scopes `chat:write`, `im:write`) as a
+  plain env var in the Cloud environment config. If a bot token already
+  exists for the `dispatch-notify` Edge Function (below), the same value
+  works here — it just also needs to be a session env var, not only a
+  Supabase function secret.
+Until those steps are done, `gmail.sh`/`slack.sh` fail fast with a clear
+`{"error":...}` — no hang, no stall — and the calling agent logs that as a
+known gap rather than treating the source as "down". Once both are set,
+**no Foreman data source depends on an `mcp__*` connector call in a scheduled
+run any more.**
 
 Diagnosing a stale board: read the Routine's `last_run.status`. `ABANDONED` +
 a session in `REQUIRES_ACTION` with a `pending_action` naming an `mcp__*` tool
