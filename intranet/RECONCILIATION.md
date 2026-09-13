@@ -1,5 +1,12 @@
 # Intranet reconciliation — repo vs live (opened 2026-08-18)
 
+> ## 🗄️ ARCHIVED 2026-09-13 — superseded, see ../ARCHIVED.md
+> This document's own conclusion ("base adopted, deploying is SAFE") is now
+> false: live moved on via a different repo and this copy fell six weeks
+> behind. Kept as the historical record of how the fork happened the first
+> time. Do not use anything below to justify a deploy from this folder — the
+> deploy path itself has been disabled.
+
 > **Status 2026-08-18: port complete — one source of truth, ready to deploy.**
 > `ktubtuintranet.html` is now **live + every repo-only feature merged in**:
 > 267 functions (all 220 from live, plus 47 ported), 35 sections rendered, no

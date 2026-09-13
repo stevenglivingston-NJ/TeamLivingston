@@ -1,22 +1,21 @@
 {
+  // ARCHIVED 2026-09-13 — do not deploy from here. See ARCHIVED.md.
+  // Renamed off "ktubtuintranet" and stripped of its route on purpose: that
+  // name/domain is a live Cloudflare Worker now built from a different repo
+  // (github.com/stevenglivingston-NJ/KTUBTU-Intranet). This file used to
+  // target the exact same worker + dash.goaxyom.com, which meant a plain
+  // `npm run deploy` here would silently overwrite live with six weeks of
+  // regression. If this ever needs reviving, that is a decision to make on
+  // purpose, not something that should be one accidental `npm run deploy`.
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "ktubtuintranet",
+  "name": "ktubtuintranet-ARCHIVED-do-not-deploy",
   "main": "worker.js",
   "compatibility_date": "2026-01-01",
-
-  // Locked down: the intranet is internal (Supabase-authed), so it should only
-  // be reachable at the custom domain below — not also at a public
-  // *.workers.dev preview URL. Deploying with this config disables that
-  // preview subdomain (a prior manual deploy had left it enabled).
   "workers_dev": false,
-  "preview_urls": false,
+  "preview_urls": false
 
-  // Custom Domain binding (Cloudflare manages the DNS + cert). Declaring it
-  // here means `wrangler deploy` keeps this domain bound on every deploy —
-  // no manual dashboard step, and no risk of a deploy silently dropping it.
-  "routes": [
-    { "pattern": "dash.goaxyom.com", "custom_domain": true }
-  ]
+  // routes intentionally removed — this config can no longer claim
+  // dash.goaxyom.com even if `wrangler deploy` is run by mistake.
 
   // account_id intentionally omitted — wrangler reads it from the
   // CLOUDFLARE_ACCOUNT_ID env var (see mcp-servers/.env.example), so this
