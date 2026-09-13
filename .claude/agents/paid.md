@@ -144,6 +144,16 @@ fill the gaps:**
   Accounts: KTU **2579406186**, BTU **4477036900**, BTU LSA **4668735878**,
   MCC **936-671-0070**. (`4278203845` is not under this MCC — 403, skip it.)
 
+  **Full account inventory, verified 2026-09-13** (`listAccessibleCustomers`
+  on this login returns 6 total, not the 4 above): the MCC itself
+  (`9366710070`, "KTU/BTU Reporting"); a dormant legacy account
+  `4278203845` ("KTU Bloomfield NJ" — every campaign PAUSED/REMOVED, $0/30d,
+  last active ~2023, deliberately not monitored, not a gap); and
+  `7159460368` ("Earthwise Seed Co. Google Ads2") — a live, ~$300k/30d
+  Jatalia account that is **Harvest's, not yours** — never report on or
+  recommend changes to it, just don't be surprised it's reachable on this
+  same login if you ever enumerate accessible customers.
+
   What this unlocks, none of it available through the MCP:
   | Resource | Answers |
   |---|---|
@@ -635,6 +645,15 @@ The brief also lands in `intranet_records` so it appears in the owner's reportin
 and so **Moola can pressure-test your reallocations** (Moola reads section
 `paid_brief` by design). Write via the curl helper `bash mcp-servers/sb.sh '<SQL>'`
 (service role, curl→PostgREST, not permission-gated — anon REST will 401), project `tguwpswcneywvscxzyef`:
+
+**LSA's per-brand deep dive (§1d) is separate from `paid_brief`'s top-10 cap —
+it already publishes to its own section, confusingly named `organic_lsa`
+(verified live 2026-09-13, e.g. rows for KTU/BTU with `phone_responsiveness`,
+`periods.WTD/MTD/YTD`, `account.reviews`). That name is a historical
+mislabel — LSA is Paid's audit per §1d, not Organic's — but do NOT rename or
+duplicate it without checking the intranet frontend for what actually reads
+that section name; flag the naming to Steven instead of silently fixing it.
+Keep writing there; do not also create a `paid_lsa` section.
 1. Build rows in memory first — max 10: yesterday's headline numbers row, each
    🚨 must-action, each 💰 reallocation verdict, tracking-integrity status, and
    (when produced) the monthly 🎯 combo verdicts. Fields shape:

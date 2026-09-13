@@ -1,11 +1,17 @@
 """
-Google Ads + Local Services MCP server for KTU + BTU.
+Google Ads + Local Services MCP server for KTU, BTU, and Jatalia/Earthwise.
 
 Two APIs wrapped in one server:
   - Google Ads API (search, display, brand, cabinet refacing, etc.) via google-ads SDK
   - Local Services API (LSA / "Google Guaranteed") via REST
 
-Both share the same OAuth refresh token (scope: adwords).
+All three brands share the same OAuth refresh token (scope: adwords) and the
+same Google login (firstgenerationusallc@gmail.com, confirmed 2026-09-13) —
+but NOT the same account hierarchy. KTU/BTU sit under the "KTU/BTU Reporting"
+MCC (GOOGLE_ADS_LOGIN_CUSTOMER_ID); Earthwise does not and must be queried
+without a login_customer_id header, or every call 403s. See
+`_MCC_MANAGED_ACCOUNTS` below — this is not optional, it is the fix for a
+real PERMISSION_DENIED verified live on 2026-09-13.
 
 Required env vars (set in ~/.claude/settings.json):
   GOOGLE_ADS_DEVELOPER_TOKEN  - from https://ads.google.com/aw/apicenter
@@ -30,7 +36,31 @@ mcp = FastMCP("google-ads")
 ACCOUNT_MAP: dict[str, str] = {
     "KTU": "2579406186",
     "BTU": "4477036900",
+    # Earthwise Seed Co. (Jatalia) — discovered 2026-09-13 via
+    # listAccessibleCustomers; was never wired in before, despite ~$300k/30d
+    # of live spend. Owned by Harvest, not Paid.
+    "EARTHWISE": "7159460368",
 }
+
+# Accounts that are clients of the "KTU/BTU Reporting" MCC
+# (GOOGLE_ADS_LOGIN_CUSTOMER_ID) and therefore require that MCC's id in the
+# login_customer_id header. Earthwise is NOT a client of this MCC — it is
+# reachable directly on the same OAuth login — so calling it WITH
+# login_customer_id set returns PERMISSION_DENIED (verified live 2026-09-13).
+# Any new brand added to ACCOUNT_MAP must be classified here explicitly;
+# guessing wrong fails loudly (PERMISSION_DENIED), it does not silently
+# return the wrong account's data.
+_MCC_MANAGED_ACCOUNTS: set[str] = {
+    "2579406186",  # KTU
+    "4477036900",  # BTU
+    "4668735878",  # BTU Local Ads (LSA) — also an MCC client, not in ACCOUNT_MAP directly
+}
+
+# 4278203845 ("KTU Bloomfield NJ") is a third account visible to this login —
+# a dormant legacy KTU account (every campaign PAUSED/REMOVED, $0 spend/30d,
+# last active ~2023). Deliberately excluded from ACCOUNT_MAP: it is not a
+# live reporting gap, just old agency scaffolding nobody archived. Revisit
+# only if Steven decides to formally close it out.
 
 LSA_ACCOUNT_MAP: dict[str, str] = {
     "KTU": "2579406186",
@@ -52,7 +82,11 @@ def _check_env() -> tuple[bool, list[str]]:
     return (not missing, missing)
 
 
-def _ads_client() -> GoogleAdsClient:
+def _ads_client(customer_id: str | None = None) -> GoogleAdsClient:
+    """Build a client. `customer_id`, when given, decides whether the KTU/BTU
+    MCC's login_customer_id is attached — see `_MCC_MANAGED_ACCOUNTS` above.
+    Omit it only for calls (like listAccessibleCustomers) that aren't scoped
+    to one customer."""
     config: dict[str, Any] = {
         "developer_token": os.environ["GOOGLE_ADS_DEVELOPER_TOKEN"],
         "refresh_token": os.environ["GOOGLE_ADS_REFRESH_TOKEN"],
@@ -61,7 +95,7 @@ def _ads_client() -> GoogleAdsClient:
         "use_proto_plus": True,
     }
     login_id = os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "").strip()
-    if login_id:
+    if login_id and (customer_id is None or customer_id in _MCC_MANAGED_ACCOUNTS):
         config["login_customer_id"] = login_id.replace("-", "")
     return GoogleAdsClient.load_from_dict(config)
 
@@ -81,7 +115,8 @@ def _oauth_token() -> str:
 
 @mcp.tool()
 def list_locations() -> dict[str, Any]:
-    """List configured locations (KTU, BTU) and their Google Ads account IDs."""
+    """List configured locations (KTU, BTU, EARTHWISE) and their Google Ads
+    account IDs."""
     ok, missing = _check_env()
     return {"locations": list(ACCOUNT_MAP.keys()),
             "accounts": ACCOUNT_MAP,
@@ -93,7 +128,7 @@ def list_locations() -> dict[str, Any]:
 def test_connection(location: str) -> dict[str, Any]:
     """Smoke test: query a trivial campaign list to verify credentials."""
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     query = "SELECT customer.descriptive_name, customer.currency_code FROM customer LIMIT 1"
     for batch in ga.search_stream(customer_id=customer_id, query=query):
@@ -110,7 +145,7 @@ def query_keywords(location: str, days: int = 30, min_spend: float = 0,
     """Top keywords by spend. Returns keyword text, match type, ad group,
     campaign, spend, clicks, impressions, conversions, CTR, CPC, quality score."""
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     query = f"""
     SELECT
@@ -149,7 +184,7 @@ def query_keywords(location: str, days: int = 30, min_spend: float = 0,
 def query_search_terms(location: str, days: int = 30, limit: int = 100) -> dict[str, Any]:
     """Actual user search queries that triggered ads."""
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     query = f"""
     SELECT
@@ -181,7 +216,7 @@ def query_geo_performance(location: str, days: int = 30,
                           limit: int = 100) -> dict[str, Any]:
     """Geographic performance by city, region, country."""
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     query = f"""
     SELECT
@@ -212,7 +247,7 @@ def query_geo_performance(location: str, days: int = 30,
 def query_negative_keywords(location: str) -> dict[str, Any]:
     """List current negative keywords across the account."""
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     query = """
     SELECT
@@ -240,7 +275,7 @@ def query_campaigns(location: str, days: int = 30,
     """Campaign-level performance with budget, status, and metrics.
     status_filter: 'ENABLED', 'PAUSED', or empty for all."""
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     where = [f"segments.date DURING LAST_{days}_DAYS"]
     if status_filter:
@@ -303,7 +338,7 @@ def query_conversion_actions(location: str, days: int = 30,
     days: metrics window. include_removed: also list REMOVED actions.
     """
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
 
     # Config first, with NO date segment — an action with zero traffic must
@@ -510,7 +545,7 @@ def query_change_history(location: str, days: int = 14, limit: int = 200,
     LIMIT {limit}
     """
 
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     rows: list[dict[str, Any]] = []
     for r in ga.search(customer_id=customer_id, query=query):
@@ -709,7 +744,7 @@ def query_lsa_leads(location: str, days: int = 30) -> dict[str, Any]:
     # run unsegmented and be windowed here.
     query = (f"SELECT {LSA_LEAD_FIELDS} FROM local_services_lead "
              "ORDER BY local_services_lead.creation_date_time DESC")
-    service = _ads_client().get_service("GoogleAdsService")
+    service = _ads_client(cid).get_service("GoogleAdsService")
 
     leads: list[dict[str, Any]] = []
     total_in_account = 0
@@ -834,7 +869,7 @@ def query_lsa_periods(location: str, include_cost: bool = True) -> dict[str, Any
     # One unsegmented pull of full history, bucketed locally per window.
     query = (f"SELECT {LSA_LEAD_FIELDS} FROM local_services_lead "
              "ORDER BY local_services_lead.creation_date_time DESC")
-    service = _ads_client().get_service("GoogleAdsService")
+    service = _ads_client(cid).get_service("GoogleAdsService")
     leads: list[dict[str, Any]] = []
     for row in service.search(customer_id=cid, query=query):
         lead = row.local_services_lead

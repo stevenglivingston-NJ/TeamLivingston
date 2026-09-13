@@ -12,7 +12,7 @@ This environment manages operations for two business groups:
 
 | Server | Type | Tools | Auth |
 |--------|------|-------|------|
-| google-ads | stdio (Python) | Campaigns, keywords, search terms, geo performance, LSA, **change history** (`query_change_history` — who changed what, 30-day retention) | OAuth2 (Desktop client) |
+| google-ads | stdio (Python) | Campaigns, keywords, search terms, geo performance, LSA, **change history** (`query_change_history` — who changed what, 30-day retention). Covers KTU (2579406186), BTU (4477036900), and BTU's separate LSA account "Bath Tune-Up Local Ads" (4668735878) — KTU's LSA runs off its main account, BTU's does not, see `LSA_ACCOUNT_MAP` in `mcp-servers/google-ads/server.py`. **Also covers Jatalia/Earthwise** (see Jatalia Servers table below) — same server, same login, different account hierarchy | OAuth2 (Desktop client) |
 | gmb | stdio (Python) | Reviews, metrics, search keywords, location info, hours | OAuth2 (shared with google-ads) |
 | google-analytics | stdio (Python) | GA4 Data API direct — channel/landing-page performance, generate_lead events | ✅ LIVE (2026-08-21). Own `GA4_REFRESH_TOKEN` (scope `.../auth/analytics`; the google-ads token 403s here). Properties: KTU 453600017, BTU 487870392. **Filter by `hostName`** — the two properties are cross-contaminated |
 | gtm | stdio (Python) | Tag Manager API v2 — tags, triggers, variables, stage container versions (KTU GTM-KLT6WSH4, BTU GTM-PK4HC6SR) | Own `GTM_REFRESH_TOKEN` (scopes `tagmanager.readonly` + `edit.containers` + `edit.containerversions`, NO publish — humans publish in the GTM UI; current token lacks `edit.containerversions`, so `create_container_version` 403s until re-minted). Client id/secret fall back to `GOOGLE_ADS_CLIENT_ID/SECRET` |
@@ -41,6 +41,7 @@ This environment manages operations for two business groups:
 | amazon-ads | *(planned)* | Sponsored Products/Brands/Display campaigns, keywords, reports | LWA OAuth2 (Ads API) |
 | walmart-marketplace | *(planned)* | Orders, items, inventory, prices, reports | Walmart API |
 | walmart-ads | *(planned)* | Sponsored Products campaigns, keywords, reports | Walmart Connect API |
+| google-ads (Earthwise) | stdio (Python) — **shared with KTU/BTU server** | Google Shopping/PMax/Search/Demand Gen campaigns for "Earthwise Seed Co." (customer `7159460368`) — discovered 2026-09-13 via `listAccessibleCustomers`, live spend ~$300k/30d, never previously wired into any tool or agent. Owned by **Harvest**, not Paid. Use `mcp__google-ads__query_campaigns` etc. with `location="EARTHWISE"` | OAuth2 (same login as google-ads/KTU-BTU: `firstgenerationusallc@gmail.com`) |
 
 ### Shared / Cross-Group
 
@@ -70,7 +71,11 @@ mcp-servers/
 ├── bootstrap.sh          # registers every server below from env-vars
 ├── .env.example          # the full env-var list (names only, no secrets)
 ├── serviceminder/        server.py  # 29 tools (multi-location: KTU + BTU)
-├── google-ads/           server.py  # 12 tools (KTU 2579406186, BTU 4477036900)
+├── google-ads/           server.py  # 12 tools (KTU 2579406186, BTU 4477036900, BTU-LSA
+│                                    #   4668735878, Earthwise/Jatalia 7159460368 — added
+│                                    #   2026-09-13; NOT under the KTU/BTU MCC, see
+│                                    #   _MCC_MANAGED_ACCOUNTS in server.py before adding
+│                                    #   any new brand to this server)
 ├── gmb/                  server.py  # 12 tools
 ├── closebot/             server.py  # 15 tools
 ├── companycam/           server.py  # 12 tools
@@ -95,6 +100,40 @@ Direct-access helpers (curl/CLI, NOT registered MCP servers — no bootstrap nee
                         foreign ids, unattributed leads); Paid runs it first,
                         Tekki verifies it ran (RAG JSON, curl transport)
 ```
+
+## Google Ads account discovery — 6 accounts, not 2 (canonical; verified 2026-09-13)
+
+`ACCOUNT_MAP` in `mcp-servers/google-ads/server.py` only ever listed KTU and BTU,
+which quietly implied the OAuth login behind `GOOGLE_ADS_REFRESH_TOKEN`
+(`firstgenerationusallc@gmail.com`) had access to nothing else. It doesn't — a
+direct `listAccessibleCustomers` call returns **six** customer ids:
+
+| Customer ID | Name | Status | Wired in? |
+|---|---|---|---|
+| 2579406186 | Kitchen Tune Up JL | Live (KTU) | ✅ `ACCOUNT_MAP["KTU"]` |
+| 4477036900 | Bath Tune-up Bloomfield NJ | Live (BTU) | ✅ `ACCOUNT_MAP["BTU"]` |
+| 4668735878 | Bath Tune-Up Local Ads | Live — BTU's LSA account | ✅ `LSA_ACCOUNT_MAP["BTU"]` (was already correct) |
+| 9366710070 | KTU/BTU Reporting | The MCC itself (manager=True) | N/A — this is `GOOGLE_ADS_LOGIN_CUSTOMER_ID` |
+| 4278203845 | KTU Bloomfield NJ | **Dormant** — every campaign PAUSED/REMOVED, $0/30d, last active ~2023 | ❌ Deliberately excluded — old agency scaffolding, not a live gap |
+| 7159460368 | Earthwise Seed Co. Google Ads2 | **Live, ~$300k/30d spend** | ✅ Added 2026-09-13 as `ACCOUNT_MAP["EARTHWISE"]` |
+
+**The real bug this surfaced:** `_ads_client()` unconditionally attached
+`GOOGLE_ADS_LOGIN_CUSTOMER_ID` (the KTU/BTU MCC) to every call. Earthwise is
+**not** a client of that MCC — querying it with that header set returns
+`PERMISSION_DENIED`, not empty data. Simply adding Earthwise to `ACCOUNT_MAP`
+without also fixing this would have silently broken on first use. Fixed via
+`_MCC_MANAGED_ACCOUNTS` (a set of customer ids that legitimately need the MCC
+header) — every `_ads_client()` call site now passes its resolved
+`customer_id` so the right accounts get the header and Earthwise doesn't.
+**Any future brand added to this server must be classified into
+`_MCC_MANAGED_ACCOUNTS` (or deliberately left out of it) — guessing wrong
+fails loudly, it does not silently return another brand's data.**
+
+Ownership: Earthwise's Google Ads spend belongs to **Harvest** (Jatalia demand
+generation), not Paid — see Connection ownership below. The dormant KTU
+account (4278203845) is not a monitoring gap; it's a decision for Steven on
+whether to formally close it in Google Ads, not something an agent should act
+on.
 
 **`lead-sweep.py` — the deterministic half of Goldeneye's morning run.** One pass
 over HighLevel + ServiceMinder that emits a RAG-graded JSON document: positive ad
@@ -437,7 +476,8 @@ brief it degrades. Tekkie audits all of these daily.
 |---|---|---|
 | ServiceMinder (`SM_KEY_KTU/BTU`) | Moola, Foreman, Paid | Revenue/invoice/appointment truth; ROI tie-back |
 | HighLevel `ghl-ktu` / `ghl-btu` | Goldeneye, Paid, Foreman | Customer conversations, lead attribution, HL→SM sync audit |
-| Google Ads + LSA / Meta Ads | Paid | Spend sweep, CPL/CAC/ROAS |
+| Google Ads + LSA / Meta Ads (KTU/BTU) | Paid | Spend sweep, CPL/CAC/ROAS |
+| Google Ads (Earthwise, customer `7159460368`) | Harvest | Google Shopping/PMax/Search spend for Jatalia — separate account, separate owner from the KTU/BTU row above; do not conflate |
 | Clarity (`clarity-live` stdio, `clarity` Render, `clarity-*-export` npm) | Paid, Organic | Landing-page-experience check; live-insights direct feed |
 | QuickBooks / Ramp / Bank_Connection | Moola | P&L, AR/AP, cash flow, card spend |
 | CompanyCam / JobTread | Foreman | Field progress, estimates, PM status |
