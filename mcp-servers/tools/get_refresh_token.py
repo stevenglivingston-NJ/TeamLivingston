@@ -30,6 +30,18 @@ Presets:
                    container live with no human step. Prefer `tagmanager`.
   analytics        GA4 Data API (matches the existing GA4_REFRESH_TOKEN).
   ads              Google Ads API (matches GOOGLE_ADS_REFRESH_TOKEN).
+  gmail-firstgentalent / gmail-ktubtubilling
+                   Gmail API, read-only, for the two ops mailboxes Foreman/Paid
+                   read via Zapier today. Run this WHILE LOGGED INTO THE
+                   MATCHING GMAIL ACCOUNT in the browser that opens (Zapier's
+                   own "GoogleMailV2CLIAPI" search action has been unreliable
+                   in scheduled runs — see CLAUDE.md — so a direct
+                   mcp-servers/gmail.sh helper using this token is the fix).
+                   Each mailbox needs its OWN refresh token — you cannot reuse
+                   one Google account's consent for the other mailbox. Paste
+                   the result into GMAIL_REFRESH_TOKEN_FIRSTGENTALENT /
+                   GMAIL_REFRESH_TOKEN_KTUBTUBILLING respectively. Client
+                   id/secret default to GOOGLE_ADS_CLIENT_ID/SECRET like GA4/GTM.
 """
 import argparse
 import os
@@ -60,6 +72,14 @@ PRESETS: dict[str, tuple[str, list[str]]] = {
     "ads": (
         "GOOGLE_ADS_REFRESH_TOKEN",
         ["https://www.googleapis.com/auth/adwords"],
+    ),
+    "gmail-firstgentalent": (
+        "GMAIL_REFRESH_TOKEN_FIRSTGENTALENT",
+        ["https://www.googleapis.com/auth/gmail.readonly"],
+    ),
+    "gmail-ktubtubilling": (
+        "GMAIL_REFRESH_TOKEN_KTUBTUBILLING",
+        ["https://www.googleapis.com/auth/gmail.readonly"],
     ),
 }
 
