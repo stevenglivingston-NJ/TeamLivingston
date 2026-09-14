@@ -98,6 +98,11 @@ fill the gaps:**
 - **Google Ads MCP**: `query_campaigns` (spend, CPL, conv), `query_keywords`
   (min_spend filter to focus), `query_search_terms` (wasted-spend hunt),
   `query_negative_keywords` (coverage), `query_geo_performance` (town-level ROI),
+  `query_ads` (ad/creative-level: ad_strength, status, final URLs, RSA headline/
+  description text — see §4), `query_call_assets` (account- and campaign-level
+  call assets, phone number + status — see "Phone routing"),
+  `query_conversion_actions` (goal-by-goal tracking-health audit — see §2/§0),
+  `query_change_history` (who changed what, 30-day window),
   `query_lsa_account` + `query_lsa_leads` (Local Services leads and lead quality —
   requires `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (MCC id) in env; if unset both calls
   error — flag it as an environment gap, don't silently skip LSA).
@@ -154,16 +159,21 @@ fill the gaps:**
   recommend changes to it, just don't be surprised it's reachable on this
   same login if you ever enumerate accessible customers.
 
-  What this unlocks, none of it available through the MCP:
+  What this still unlocks that the MCP does not expose as a tool:
   | Resource | Answers |
   |---|---|
   | `campaign.primary_status` + `primary_status_reasons` | why a campaign served $0 — billing vs paused vs policy, instead of guessing |
-  | `change_event` (30-day max window) | who changed what, with actor email — settles "did the agency touch this?" |
-  | `conversion_action` | category, PRIMARY vs secondary, counting rules — the weekly conversion-signal integrity check |
   | `shared_set` / `shared_criterion` / `campaign_criterion` | negative-keyword coverage across shared lists |
-  | `asset` where `asset.type='CALL'` | call assets, and whether a stray number is still live |
-  | `ad_group_ad` | final URLs + ad_strength for the creative-level pass |
   | `metrics.search_*_impression_share` (on `campaign`) | **top-of-page & absolute-top share** — see §1b |
+
+  Four items formerly in this table now have first-class MCP tools instead —
+  use these, not raw GAQL, and only fall back to the escape hatch if the tool
+  itself errors: `change_event` → `query_change_history` (30-day max window,
+  actor email, old/new values); `conversion_action` → `query_conversion_actions`
+  (category, PRIMARY vs secondary, counting rules, plus pre-built findings);
+  `asset` where `asset.type='CALL'` → `query_call_assets` (account- and
+  campaign-level, added 2026-09-14); `ad_group_ad` → `query_ads` (final URLs,
+  ad_strength, RSA headline/description text, added 2026-09-14).
 
 - **Microsoft Clarity — Data Export API.** Env `CLARITY_KTU_TOKEN`,
   `CLARITY_BTU_TOKEN` (Bearer).
@@ -423,10 +433,13 @@ Every campaign verdict must drill to the ad/creative that's driving it:
   what's actually running; frequency + CTR decay for fatigue; `ads_get_errors` and
   `ads_get_opportunity_score` for delivery **blockers** — name the blocked ad and the
   unblock step. Call winners and losers by creative (hook/format/offer), not campaign.
-- **Google**: the local google-ads MCP is campaign/keyword-level only — **known
-  blocker**: it lacks ad/RSA-asset queries. Route ad-level pulls through Zapier's
-  Google Ads actions; if neither path works, say "creative-level blind on Google" in
-  the brief rather than silently reporting campaign averages.
+- **Google**: `query_ads` (fixed 2026-09-14 — the local google-ads MCP previously had
+  no ad-level tool at all). Per-ad type, `ad_strength` (PENDING/NO_ADS/POOR/AVERAGE/
+  GOOD/EXCELLENT), status, final URLs, and — for RESPONSIVE_SEARCH_AD ads — the
+  headline/description text with pinned slot, plus standard metrics. A POOR/AVERAGE
+  `ad_strength` on a high-spend ad is a direct §6c quality-score/landing-page tie-in —
+  name it. Only fall back to Zapier's Google Ads actions or "creative-level blind on
+  Google" if `query_ads` itself errors.
 - Recommendations must be creative-specific: which ad to pause, which hook to iterate,
   which asset combination the data says to scale.
 
@@ -689,9 +702,12 @@ manager confirms the cutover.
 | KTU | **(973) 521-8442** | All KTU surfaces route here | Verizon carrier-level filter (replaces the call-center IVR) |
 | BTU | **(973) 798-9756** | All BTU surfaces route here | Verizon carrier-level filter (replaces the call-center IVR) |
 
-- **Retire**: (973) 521-1182 (KTU legacy IVR line) and (973) 381-2877 (stray KTU
-  Google call asset) — both should disappear from every paid path once the
-  migration lands.
+- **Retire**: (973) 521-1182 (KTU legacy IVR line, already PAUSED at account level)
+  and (973) 381-2877 — the latter is **not dormant**: live-verified 2026-09-14 as
+  ENABLED on 6 active KTU campaigns at the campaign-asset level (see the
+  pre-migration table below for the exact list). Both must be fully removed from
+  every paid path — including campaign-level overrides, not just account
+  defaults — once the migration lands.
 - **Why Verizon over the IVR**: the call center added an IVR gate after spam-call
   complaints; carrier-level filtering (Verizon Call Filter) blocks likely spam
   before it rings through, without adding a "press 1" step that costs attribution
@@ -704,17 +720,18 @@ manager confirms the cutover.
 
 ## Phone routing — pre-migration state (the truth to check against until cutover)
 
-An unanswered or IVR'd line wastes the whole click. Verify these against live call
-assets (`asset.type='CALL'`) and the site, and flag any drift:
+An unanswered or IVR'd line wastes the whole click. Verify these with `query_call_assets`
+(added 2026-09-14 — account- and campaign-level `asset.type='CALL'` in one call, no
+hand-built GAQL needed) and the site, and flag any drift:
 
 | Number | Role | Must route to (pre-migration) |
 |---|---|---|
 | (973) 521-8442 | KTU — ALL Google paid (site, call asset, LSA) | Answered call center, **no IVR** |
-| (973) 521-1182 | KTU — legacy, **goes to IVR** | Remove from paid paths (retires in the target state above) |
+| (973) 521-1182 | KTU — legacy, **goes to IVR** | Account-level call asset is PAUSED — correctly out of the account default, but retires fully in the target state above |
 | (973) 566-5882 / (973) 528-8654 | KTU tracking lines | Call center |
 | (973) 798-9756 | BTU primary (call-conversion tracked) | Call center |
 | (973) 521-0688 | BTU — **published on BTU's Google profile**; re-pointed to the call center, no IVR (Steven, week of 2026-08-17) | Call center. **Verify call-conversion tracking follows it** — it was previously the untracked fallback. Retires in favor of 798-9756 in the target state above |
-| (973) 381-2877 | Stray KTU Google call asset | Confirm or remove (retires in the target state above) |
+| (973) 381-2877 | **NOT a dormant stray — live-verified 2026-09-14 via `query_call_assets`: ENABLED as a campaign-level call asset on 6 active KTU campaigns** (001/002-S Territory 1/2, both "Search - Territory" campaigns, 004-S-Kitchen Tune Up, 008-S-KTU-December 2025 — PAUSED on 3 others incl. 004-S-Brand, 009-S-Cabinet Refacing) | This is a live paid-traffic path today, not a cleanup item — it may be serving calls to whatever this number currently reaches. Confirm what 381-2877 rings to before the migration; **must** be removed from every one of those 6 campaigns as part of the cutover, not just from account-level settings |
 
 **Which surface carries which number — verified 2026-08-22.** These are separate
 systems with separate phone settings. Do not infer one from another; an earlier
@@ -836,7 +853,11 @@ watch, not as evidence about which number is configured where.
 - 🟡 **HighLevel trigger-link / QR-scan stats** not exposed directly — read contact
   tags/attribution fields; if that yields no scan data, report QR as a tracking gap,
   not zero leads.
-- 🟡 **google-ads MCP has no ad/creative-level queries** (campaign/keyword/geo/LSA
-  only) — use Zapier Google Ads actions for ad-level; otherwise state "creative-level
-  blind on Google" in the brief. Candidate fix: add `query_ads` / RSA asset
-  performance to `/root/code/google-ads-mcp/server.py`.
+- 🟢 **google-ads MCP now has ad/creative-level queries** (`query_ads`,
+  `query_call_assets` — added 2026-09-14 to `mcp-servers/google-ads/server.py`,
+  live-verified against KTU/BTU/EARTHWISE). This closes the "creative-level blind
+  on Google" gap this note used to describe; Zapier is now a fallback only if
+  `query_ads` itself errors. (There is also a **retired**, unmaintained
+  google-ads MCP copy in the separate `ktubtu-mcp-deploy` repo — do not port
+  fixes there or treat its output as current; see that repo's
+  `google-ads/README.md`.)

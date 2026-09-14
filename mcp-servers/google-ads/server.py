@@ -935,5 +935,140 @@ def query_lsa_periods(location: str, include_cost: bool = True) -> dict[str, Any
     return out
 
 
+def _text_assets(assets: Any) -> list[dict[str, Any]]:
+    """Extract text + pinned slot from a repeated AdTextAsset field (RSA
+    headlines/descriptions). `pinned` is None when the asset floats."""
+    out = []
+    for a in assets:
+        pinned = _enum_name(a.pinned_field)
+        out.append({
+            "text": a.text,
+            "pinned": None if pinned in ("UNSPECIFIED", "UNKNOWN") else pinned,
+        })
+    return out
+
+
+@mcp.tool()
+def query_ads(location: str, days: int = 30, limit: int = 100,
+             status_filter: str = "ENABLED") -> dict[str, Any]:
+    """Ad-level (ad_group_ad) performance — the creative detail the other
+    query_* tools don't reach. Closes the standing "creative-level blind on
+    Google" gap (paid.md §4 / Known Breakages) that previously required
+    Zapier or hand-built GAQL.
+
+    Returns per ad: campaign, ad group, ad type, ad_strength (RSA quality
+    signal that ties directly to landing-page-experience findings), status,
+    final URLs, and — for RESPONSIVE_SEARCH_AD ads only — the headline/
+    description text with its pinned slot (empty list for other ad types,
+    not an error). Use ad_strength plus CTR/cost-per-conversion together to
+    name the exact ad to pause or iterate, per §4.
+
+    status_filter: 'ENABLED', 'PAUSED', 'REMOVED', or empty for all.
+    """
+    customer_id = _resolve(location)
+    client = _ads_client(customer_id)
+    ga = client.get_service("GoogleAdsService")
+    where = [f"segments.date DURING LAST_{days}_DAYS"]
+    if status_filter:
+        where.append(f"ad_group_ad.status = '{status_filter.upper()}'")
+    query = f"""
+    SELECT
+      campaign.name, ad_group.name,
+      ad_group_ad.ad.id, ad_group_ad.ad.type,
+      ad_group_ad.ad.final_urls,
+      ad_group_ad.ad.responsive_search_ad.headlines,
+      ad_group_ad.ad.responsive_search_ad.descriptions,
+      ad_group_ad.ad_strength, ad_group_ad.status,
+      metrics.cost_micros, metrics.clicks, metrics.impressions,
+      metrics.conversions, metrics.ctr, metrics.average_cpc
+    FROM ad_group_ad
+    WHERE {' AND '.join(where)}
+    ORDER BY metrics.cost_micros DESC
+    LIMIT {limit}
+    """
+    rows = []
+    for batch in ga.search_stream(customer_id=customer_id, query=query):
+        for r in batch.results:
+            ad = r.ad_group_ad.ad
+            rows.append({
+                "campaign": r.campaign.name,
+                "ad_group": r.ad_group.name,
+                "ad_id": str(ad.id),
+                "ad_type": _enum_name(ad.type_),
+                "ad_strength": _enum_name(r.ad_group_ad.ad_strength),
+                "status": _enum_name(r.ad_group_ad.status),
+                "final_urls": list(ad.final_urls),
+                "headlines": _text_assets(ad.responsive_search_ad.headlines),
+                "descriptions": _text_assets(ad.responsive_search_ad.descriptions),
+                "spend": r.metrics.cost_micros / 1_000_000,
+                "clicks": r.metrics.clicks,
+                "impressions": r.metrics.impressions,
+                "conversions": r.metrics.conversions,
+                "ctr": r.metrics.ctr,
+                "avg_cpc": r.metrics.average_cpc / 1_000_000,
+            })
+    return {"location": location, "days": days, "rows": rows, "count": len(rows)}
+
+
+@mcp.tool()
+def query_call_assets(location: str) -> dict[str, Any]:
+    """Call assets (asset.type = CALL) at both account and campaign level:
+    the phone number, its enabled/paused/removed status, and — at campaign
+    level — which campaign it's linked to.
+
+    This is the tool the phone-routing audit (paid.md "Phone routing")
+    needs to verify a stray or wrong number isn't still live in a paid path,
+    without hand-building GAQL against the `asset` resource each run.
+
+    `country_code` is Google's region code for the number (e.g. 'US'), not a
+    dial prefix.
+    """
+    customer_id = _resolve(location)
+    client = _ads_client(customer_id)
+    ga = client.get_service("GoogleAdsService")
+
+    account_rows = []
+    query_account = """
+    SELECT
+      customer_asset.status,
+      asset.id, asset.call_asset.phone_number, asset.call_asset.country_code
+    FROM customer_asset
+    WHERE asset.type = 'CALL'
+    """
+    for batch in ga.search_stream(customer_id=customer_id, query=query_account):
+        for r in batch.results:
+            account_rows.append({
+                "asset_id": str(r.asset.id),
+                "phone_number": r.asset.call_asset.phone_number,
+                "country_code": r.asset.call_asset.country_code,
+                "status": _enum_name(r.customer_asset.status),
+            })
+
+    campaign_rows = []
+    query_campaign = """
+    SELECT
+      campaign.name, campaign_asset.status,
+      asset.id, asset.call_asset.phone_number, asset.call_asset.country_code
+    FROM campaign_asset
+    WHERE asset.type = 'CALL'
+    """
+    for batch in ga.search_stream(customer_id=customer_id, query=query_campaign):
+        for r in batch.results:
+            campaign_rows.append({
+                "campaign": r.campaign.name,
+                "asset_id": str(r.asset.id),
+                "phone_number": r.asset.call_asset.phone_number,
+                "country_code": r.asset.call_asset.country_code,
+                "status": _enum_name(r.campaign_asset.status),
+            })
+
+    return {
+        "location": location,
+        "account_level": account_rows,
+        "campaign_level": campaign_rows,
+        "count": len(account_rows) + len(campaign_rows),
+    }
+
+
 if __name__ == "__main__":
     mcp.run()
