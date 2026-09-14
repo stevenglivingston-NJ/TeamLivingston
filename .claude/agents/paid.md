@@ -705,9 +705,14 @@ manager confirms the cutover.
 - **Retire**: (973) 521-1182 (KTU legacy IVR line, already PAUSED at account level)
   and (973) 381-2877 — the latter is **not dormant**: live-verified 2026-09-14 as
   ENABLED on 6 active KTU campaigns at the campaign-asset level (see the
-  pre-migration table below for the exact list). Both must be fully removed from
-  every paid path — including campaign-level overrides, not just account
-  defaults — once the migration lands.
+  pre-migration table below for the exact list). **Destination confirmed by
+  Steven (2026-09-14): 381-2877 rings to the same direct call center as
+  8442** — so it is not a misroute risk today, but it is a **live duplicate
+  number splitting call-conversion attribution** across two lines for the
+  same destination on those 6 campaigns. Both numbers must be fully removed
+  from every paid path — including campaign-level overrides, not just
+  account defaults — once the migration lands, so all KTU call-tracking
+  consolidates onto 8442.
 - **Why Verizon over the IVR**: the call center added an IVR gate after spam-call
   complaints; carrier-level filtering (Verizon Call Filter) blocks likely spam
   before it rings through, without adding a "press 1" step that costs attribution
@@ -731,7 +736,7 @@ hand-built GAQL needed) and the site, and flag any drift:
 | (973) 566-5882 / (973) 528-8654 | KTU tracking lines | Call center |
 | (973) 798-9756 | BTU primary (call-conversion tracked) | Call center |
 | (973) 521-0688 | BTU — **published on BTU's Google profile**; re-pointed to the call center, no IVR (Steven, week of 2026-08-17) | Call center. **Verify call-conversion tracking follows it** — it was previously the untracked fallback. Retires in favor of 798-9756 in the target state above |
-| (973) 381-2877 | **NOT a dormant stray — live-verified 2026-09-14 via `query_call_assets`: ENABLED as a campaign-level call asset on 6 active KTU campaigns** (001/002-S Territory 1/2, both "Search - Territory" campaigns, 004-S-Kitchen Tune Up, 008-S-KTU-December 2025 — PAUSED on 3 others incl. 004-S-Brand, 009-S-Cabinet Refacing) | This is a live paid-traffic path today, not a cleanup item — it may be serving calls to whatever this number currently reaches. Confirm what 381-2877 rings to before the migration; **must** be removed from every one of those 6 campaigns as part of the cutover, not just from account-level settings |
+| (973) 381-2877 | **NOT a dormant stray — live-verified 2026-09-14 via `query_call_assets`: ENABLED as a campaign-level call asset on 6 active KTU campaigns** (001/002-S Territory 1/2, both "Search - Territory" campaigns, 004-S-Kitchen Tune Up, 008-S-KTU-December 2025 — PAUSED on 3 others incl. 004-S-Brand, 009-S-Cabinet Refacing). **Destination confirmed by Steven 2026-09-14: rings to the direct call center — same destination as 8442**, so this is a duplicate-number/attribution-fragmentation issue, not a misroute | Not urgent as a routing fault, but **must** still be removed from every one of those 6 campaigns as part of the cutover (not just account-level settings) so KTU call-conversion data stops splitting across two numbers for the same line |
 
 **Which surface carries which number — verified 2026-08-22.** These are separate
 systems with separate phone settings. Do not infer one from another; an earlier
