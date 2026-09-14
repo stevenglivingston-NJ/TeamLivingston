@@ -676,19 +676,45 @@ Keep writing there; do not also create a `paid_lsa` section.
    you must not lose. This section has no other writer, so if you skip it nothing
    else will fill it.
 
-## Phone routing — the truth to check against
+## Phone routing — target end-state (decided 2026-09-13, PENDING PPC implementation)
+
+**Steven's decision: unify each brand onto ONE number across every surface, and
+replace the call-center IVR with Verizon's carrier-level spam filter.** This is
+the target Paid should measure drift against going forward — it is NOT yet live,
+so don't report the pre-migration numbers below as a failure until the PPC
+manager confirms the cutover.
+
+| Brand | Unified number | Every surface (Site, LSA, PPC/Google Ads call assets, GBP) | Spam handling |
+|---|---|---|---|
+| KTU | **(973) 521-8442** | All KTU surfaces route here | Verizon carrier-level filter (replaces the call-center IVR) |
+| BTU | **(973) 798-9756** | All BTU surfaces route here | Verizon carrier-level filter (replaces the call-center IVR) |
+
+- **Retire**: (973) 521-1182 (KTU legacy IVR line) and (973) 381-2877 (stray KTU
+  Google call asset) — both should disappear from every paid path once the
+  migration lands.
+- **Why Verizon over the IVR**: the call center added an IVR gate after spam-call
+  complaints; carrier-level filtering (Verizon Call Filter) blocks likely spam
+  before it rings through, without adding a "press 1" step that costs attribution
+  and adds friction for real customers — unlike the IVR, it doesn't touch calls
+  that get through.
+- **Status: awaiting PPC-manager execution** — no MCP tool changes live phone
+  numbers; this table exists so Paid's daily drift-check has the right target the
+  moment the cutover happens. Until then, keep checking against the pre-migration
+  state below and do not flag the pre-migration numbers as newly broken.
+
+## Phone routing — pre-migration state (the truth to check against until cutover)
 
 An unanswered or IVR'd line wastes the whole click. Verify these against live call
 assets (`asset.type='CALL'`) and the site, and flag any drift:
 
-| Number | Role | Must route to |
+| Number | Role | Must route to (pre-migration) |
 |---|---|---|
 | (973) 521-8442 | KTU — ALL Google paid (site, call asset, LSA) | Answered call center, **no IVR** |
-| (973) 521-1182 | KTU — legacy, **goes to IVR** | Remove from paid paths |
+| (973) 521-1182 | KTU — legacy, **goes to IVR** | Remove from paid paths (retires in the target state above) |
 | (973) 566-5882 / (973) 528-8654 | KTU tracking lines | Call center |
 | (973) 798-9756 | BTU primary (call-conversion tracked) | Call center |
-| (973) 521-0688 | BTU — **published on BTU's Google profile**; re-pointed to the call center, no IVR (Steven, week of 2026-08-17) | Call center. **Verify call-conversion tracking follows it** — it was previously the untracked fallback |
-| (973) 381-2877 | Stray KTU Google call asset | Confirm or remove |
+| (973) 521-0688 | BTU — **published on BTU's Google profile**; re-pointed to the call center, no IVR (Steven, week of 2026-08-17) | Call center. **Verify call-conversion tracking follows it** — it was previously the untracked fallback. Retires in favor of 798-9756 in the target state above |
+| (973) 381-2877 | Stray KTU Google call asset | Confirm or remove (retires in the target state above) |
 
 **Which surface carries which number — verified 2026-08-22.** These are separate
 systems with separate phone settings. Do not infer one from another; an earlier
@@ -698,8 +724,8 @@ audit wrongly read a GBP phone as if it were the LSA phone.
 |---|---|---|---|
 | **LSA profile** | (973) 521-8442 | (973) 798-9756 | ✅ correct (owner-confirmed) |
 | **Google Ads call assets** (account-level) | (973) 521-8442 ENABLED, 521-1182 PAUSED | (973) 798-9756 ENABLED | ✅ correct |
-| **Google Business Profile** | (973) 521-1182 | (973) 521-0688 | 🔴 **wrong** |
-| **Franchise site** `/bloomfield-nj` | (973) 521-1182 ×4 `tel:` | (973) 521-0688 ×4 `tel:` | 🔴 **wrong** |
+| **Google Business Profile** | (973) 521-1182 | (973) 521-0688 | 🔴 **wrong pre-migration; both retire to the unified number above once GBP is updated** |
+| **Franchise site** `/bloomfield-nj` | (973) 521-1182 ×4 `tel:` | (973) 521-0688 ×4 `tel:` | 🔴 **wrong pre-migration; both retire to the unified number above once the site is updated** |
 | **ktubloomfield.com** (own domain) | (973) 521-8442 | — | ✅ correct |
 
 **The LSA phone is NOT readable from any API here.** The Local Services API
