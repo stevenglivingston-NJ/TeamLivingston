@@ -89,6 +89,17 @@ you enforce daily:
 - **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).
+  **Duplicate CompanyCam projects for the same customer/address are a known,
+  recurring failure mode — confirmed live on 2026-09-15 (Mycka, 5 Roosevelt Pl:
+  two projects, both 15 photos, one dormant since 08-10 and one with photos
+  from that same day). A matching photo_count does NOT mean you found the same
+  project twice — it can mean you found a stale duplicate that happens to tie.**
+  If address-matching (or `search_projects`) surfaces more than one live project
+  for a job, do not resolve it by picking the first/only result returned —
+  check every candidate's latest photo timestamp and use the most recent one as
+  the job's `company_cam_status` source. Name the stale duplicate's project_id
+  in the write-up so it can be archived in CompanyCam; otherwise the same wrong
+  project gets re-picked every run.
 - **HighLevel** for appointment/context enrichment. ✅ Both brands live via the
   OAuth connector `mcp__High_Level__*` (verified 2026-08-17, agency-scoped):
   `search_operations`/`execute_operation` with `locationId` per call — KTU
