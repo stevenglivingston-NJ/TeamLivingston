@@ -172,7 +172,14 @@ are not interchangeable.
 
 **GA4 — direct MCP. ✅ NEW and LIVE (2026-08-21). This is your first-party truth
 about what organic traffic actually does on the site** — SEMrush estimates traffic,
-GA4 measures it. Tools: `mcp__google-analytics__*` (`run_report`,
+GA4 measures it. ⚠️ **On a scheduled/Routine fire, never call `mcp__google-analytics__*`
+directly.** It's a custom stdio MCP server with no curl helper and no
+account-level pre-approval; the call stalls the whole run in `REQUIRES_ACTION`
+with no recovery (confirmed live 2026-09-04 — see CLAUDE.md § "Scheduled runs
+stall on MCP connector calls"). On a scheduled fire, skip the GA4 sections below
+and note "GA4 not probed this run — no curl path for scheduled fires" rather
+than calling the tool; run GA4-dependent analysis only in an interactive
+session until a curl helper exists. Tools: `mcp__google-analytics__*` (`run_report`,
 `get_channel_performance`, `get_landing_page_performance`,
 `get_generate_lead_events`, `test_connection`). Properties: KTU **453600017**,
 BTU **487870392**. Use it for:
