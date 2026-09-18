@@ -571,6 +571,72 @@ If a source is unavailable this scan, still write every section you *can* from
 the sources you have; the tab shows a per-section empty state for anything with
 no rows, and a stale banner if the latest `scan_date` is older than today.
 
+## ServiceMinder-vs-bank payment reconciliation — weekly (Mondays only); section `moola_bank_recon`
+
+**Gate: run this block only when today is Monday** (America/New_York). Every other
+scan, skip it entirely — it burns most of the Bank Connection call budget in one
+pass, and week-over-week cadence is enough to catch a real gap before it compounds.
+
+**Purpose:** every SM customer payment is money the P&L already counts as collected.
+This check asks the only question that matters for cash truth — *did it actually land
+in the bank* — and, new as of 2026-09-18, also hunts for **returned/reversed payments**
+and cross-source anomalies (a deposit with no SM record, or vice versa).
+
+**Do NOT 1:1-match by exact amount and call anything short of a match "missing."**
+A same-Monday pilot run on KTU alone found $905k of YTD SM cash-payments with no
+exact-amount bank hit — almost none of it was a real gap. The false-positive sources,
+in order of how much of the gap they explain:
+1. **Service Finance Funding** remits **net of a dealer discount fee** (typically
+   10–25%) — the SM payment amount will *never* equal the deposit. Confirm presence
+   only: a `SERVICE FINANCE COMPANY LLC` (or `REAL TIME PAYMENT CREDIT ... SERVICE
+   FINANCE`) credit landing within 10 business days of the SM-recorded date. No
+   landing at all past that window is the real flag — the financed job's funding
+   never arrived.
+2. **Card charges (Visa/MC/Credit Card) and eChecks (ACH)** batch-settle — several
+   same-day electronic payments land as ONE net-of-fee deposit (labeled generically,
+   e.g. `Kitchen Tune-Up`, or `ORIG CO NAME:BANKCARD DEP...`), sometimes the next
+   business day. Compare **day-bucketed sums** (SM total posted on day N vs bank
+   credits on day N or N+1) rather than matching individual amounts. A batch that's
+   short by more than the plausible processor fee (~3%) is the real flag.
+3. **Checks** may deposit individually or bundled into one teller/mobile deposit —
+   same day-bucketed-sum approach, with a longer window (checks can sit up to ~10
+   business days before deposit).
+4. Only after applying 1–3 does an unexplained SM payment amount become a genuine
+   `missing_deposit` finding.
+
+**Known deposit accounts (verified 2026-09-18 — extend, don't replace, from your own
+runs):** KTU customer payments land in **Chase "Payroll" x6968** (`Kitchen Tune-Up`-
+labeled and `BANKCARD DEP`/`SERVICE FINANCE` credits confirmed there for the full
+2026 YTD pull). **TD Bank Business Simple Checking (x3946) and BCB Checking showed
+NO KTU-labeled deposits** in the same pull — rule those out for KTU before re-scanning
+them. **BTU's deposit account is UNCONFIRMED** — none of the three accounts checked
+2026-09-18 carried a `Bath Tune-Up`-labeled or BTU-matching deposit. Until this is
+resolved, run the reconciliation for KTU only and write a `moola_briefing` `warn` row
+asking Steven which account receives BTU customer payments (Bluevine BTU LOC account,
+a dedicated Chase sub-account, or elsewhere) — do not guess or silently skip BTU.
+
+**Method:**
+1. Pull SM payments for the trailing 8 days (1-day overlap catches late-posting bank
+   lines from last week) via `bash mcp-servers/sm.sh KTU payment/query '{"FromDate":"<8d ago>","ThroughDate":"<today>"}'` (repeat for BTU once its account is confirmed). Exclude `Method` in (`Write Off`, `Credit Memo`) and `Amount <= 0` from the "expect a deposit" set — but keep them in a separate pass for the anomaly hunt below.
+2. Pull `mcp__Bank_Connection_Truthifi__get_transactions` for the confirmed KTU account(s), `budgetFlowType` both `inflow` and `outflow`, over the same 8-day window. **This is an OAuth connector, gated in scheduled Routines per the CLAUDE.md stall warning** — if the call itself stalls or 403s, write `system_health` blind-lens and stop this block rather than guessing; do not fabricate a reconciled status. **Budget: this is at most 1–2 calls given the account count — well inside the 25/day cap already documented for royalty recon**, so there's no need to skip accounts to save budget.
+3. Apply the netting-aware matching in the numbered list above; classify every SM payment as `matched` (bucket-sum or presence check passed), `missing_deposit` (genuinely absent past its expected window), or `pending` (still inside its normal settlement window — not yet a finding).
+4. **Returned/reversed payment hunt (new capability):**
+   - **SM side**: any payment row (including ones normally excluded above) whose `Reference` contains, case-insensitive, `refund|nsf|returned|chargeback|reversal|bounced|insufficient|stop payment|void` — surface every one, regardless of amount sign.
+   - **Bank side**: any `outflow` transaction on the KTU/BTU accounts whose description contains `RETURN|CHARGEBACK|NSF|UNPAID|REVERSAL|R01|R02|R03` (standard ACH return codes) or that exactly reverses a deposit matched in step 3 within 10 days of it landing — this is the classic signature of a bounced check or a card chargeback hitting after the fact.
+   - Every hit here is `urgent` regardless of dollar amount — a returned payment on a job already treated as collected (crew dispatched, commission accrued) is a real loss, not a rounding issue.
+5. **Unrecorded-revenue check (the mirror case)**: any KTU/BTU-labeled bank credit with no SM payment landing in step 3's matching set at all (not explained by 1–4 above) — money arrived that AR doesn't know about. Flag it; do not assume it nets out against something else without checking.
+
+**Write to Supabase, section `moola_bank_recon`** (write-then-prune per `week_ending`,
+keep the trailing 8 weeks so the tab can show a trend rather than only this week):
+`{week_ending, brand, sm_cash_total, bank_confirmed_total, pct_confirmed, missing_deposit_count, missing_deposit_amount, returned_payment_count, returned_payment_amount, unrecorded_revenue_count, unrecorded_revenue_amount, findings:[{type:'missing_deposit'|'returned_payment'|'unrecorded_revenue', customer, invoice_ref, amount, sm_date, note}], blind_lens (bank account(s) not reachable this scan, or null), scan_date}`.
+
+**Escalate to `moola_briefing` (urgent) and `notify_queue` for every**
+`returned_payment` finding (any amount) **and every** `missing_deposit` **or**
+`unrecorded_revenue` finding **over $1,000** — name the customer, invoice, amount,
+and the specific action ("confirm the check cleared with the bank / re-run the card /
+ask Sonya to enter the job in SM"). Findings below $1,000 still populate `moola_bank_recon`
+for the trend view but don't need an urgent ping every week.
+
 ## Rules
 - Never write credentials or full account numbers (last-4 only).
 - This briefing is owner-only — candid about comp, margins, and entity finances is fine, but keep confidential deal matters (e.g., any business-sale process) OUT of the intranet entirely.
