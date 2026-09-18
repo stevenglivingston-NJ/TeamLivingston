@@ -591,48 +591,90 @@ scan, so **the return can only be caught from the bank side**, and only from the
 bank's own transaction-category field — free-text keyword scanning on the
 `description` string is not reliable on its own; a same-day test with a loose
 `R0[1-9]` pattern (hunting ACH return codes) produced a flood of false positives by
-matching ordinary transaction/trace numbers. Anchor on the bank's own categorization
-instead:
+matching ordinary transaction/trace numbers (worse: even a supposedly-safe bare
+`NSF` search matched the substring inside the word "tra**NSF**er" — always require
+the full multi-word phrase and/or `\b` word boundaries, never a bare 2–4 letter
+code against unstructured text). Anchor on the bank's own categorization instead:
 - **A raw bank export/feed that exposes its own category field is authoritative.**
   Chase's activity export (`Details`/`Type` columns) tags actual returns explicitly
-  as `Type=DEPOSIT_RETURN`, with the description carrying the reason (`NSF`,
-  `Dup Presentment`, etc.) and often the original check number. Verified against a
-  full-year 2026 KTU pull: exactly 2 such rows existed, and both were real (one
-  already handled — Rubin/Falkowski; one **not yet corrected** — Sweeney,
-  I16821042, $13,632.44, NSF, returned 4/23/2026, still showing paid in SM as of
-  9/18/2026).
+  as `Type=DEPOSIT_RETURN`; Bluevine's export doesn't have a dedicated type column
+  but reliably labels the description `RTN ITEM` / `Returned Mobile Deposit`.
+  Either way, the description also usually carries the reason (`NSF`,
+  `Dup Presentment`) and sometimes the original check number.
+- **A return label alone does NOT tell you whether money was actually lost —
+  you must walk the account `Balance` column immediately before and after the
+  matching entries to see the real cash effect.** Verified against a full year
+  of KTU (Chase) and BTU (Bluevine) data, 2026-09-18, this split cleanly into two
+  patterns:
+  - **Same-day wash → real loss, money never landed.** A return debit and an
+    offsetting credit (Chase: `RTN ITEM` + `CR Offset`; observed same mechanism
+    on Bluevine) post **on the same day**, and the balance immediately after both
+    entries equals the balance immediately before either of them — i.e. net $0.
+    Confirmed real losses this way: **KTU — Rubin/Falkowski, $10,977.05,
+    8/3/2026** (balance walked $5,345.71 → $16,322.76 → $5,345.71, same day;
+    already handled — deleted and reinvoiced) and **BTU — $1,000.00, 1/5/2026**
+    (same wash pattern; very likely SM invoice **I476111**, $1,000 eCheck,
+    contact 10813101, SM-posted 1/7/2026 — **not yet verified as corrected in SM,
+    flag this to the owner/AR process the same way Rubin/Falkowski was caught**).
+  - **Standalone credit, days later, no same-day offsetting debit → money did
+    arrive, just delayed.** Confirmed real recoveries this way, none of which are
+    losses despite carrying "return"-flavored language: **KTU — Sweeney, invoice
+    I16821042, $13,632.44** (NSF 4/23, a wholly separate `CHECK_DEPOSIT` for the
+    identical amount landed 4/24, nothing further returned all year — SM showing
+    it paid is correct, reversing this repo's earlier draft of this section,
+    which wrongly called it uncorrected without checking for the redeposit);
+    **BTU — invoice I476119, $12,718.80** (returned 1/14, a lone matching credit
+    landed 1/21, seven days later, no accompanying debit that day); **BTU —
+    $11,500.00** (`Returned Mobile Deposit` 7/27, a fresh, separate mobile
+    deposit for the same amount landed 8/5, nothing further since).
+  **Do not classify a hit by label text alone — always do the balance walk**
+  before reporting a finding as a loss or a recovery.
 - **`mcp__Bank_Connection_Truthifi__get_transactions` does not expose an equivalent
   category** — its `transactionType` enum (checked against the live schema) has no
   dedicated NSF/return/chargeback value, and free-text matching against its
-  `description` field is the same fragile fallback described above. Until Truthifi
-  (or whichever aggregator connector is live) exposes a real return/NSF category,
-  treat its output as a **lower-confidence supplement**, not the primary detector:
-  scan `description` for the anchored whole-phrase patterns `DEPOSITED ITEM
-  RETURNED`, `NSF`, `INSUFFICIENT FUNDS`, `CHARGEBACK`, `DUP PRESENTMENT`,
-  `STOP PAYMENT`, `UNPAID ITEM` (require the multi-word phrase, never a bare
-  2-3 character code like `R01` against unstructured text — that's what produced
-  the false-positive flood).
+  `description` field is the same fragile fallback described above, with the added
+  problem that its aggregated `cash_deposit` categorization can silently merge a
+  `CR Offset`-style correction entry into what looks like an ordinary new deposit,
+  hiding the same-day wash entirely (this is exactly what happened when this
+  section's first draft used Truthifi data alone and concluded Rubin/Falkowski's
+  deposit "cleanly matched the bank" — it took the raw Chase export, which
+  preserves the `RTN ITEM`/`CR Offset` pair, to see the wash). Until Truthifi (or
+  whichever aggregator connector is live) exposes both a real return category and
+  itemized non-netted entries, treat its output as a **lower-confidence
+  supplement**, not the primary detector: scan `description` for the anchored
+  whole-phrase patterns `DEPOSITED ITEM RETURNED`, `RTN ITEM`, `NSF` (word-boundary
+  only), `INSUFFICIENT FUNDS`, `CHARGEBACK`, `DUP PRESENTMENT`, `RETURNED MOBILE
+  DEPOSIT`, `STOP PAYMENT`, `UNPAID ITEM`.
 - **Exhaustive pagination is mandatory before concluding "no returns this scan."**
-  A same-day investigation initially missed the Sweeney return because a paginated
-  `get_transactions` outflow page (`hasMore:true`) was left unfetched. Any call
-  returning `hasMore:true`/a `nextCursor` MUST be followed until exhausted before
-  the scan is allowed to report a clean result.
+  A same-day investigation initially missed the Sweeney redeposit (not the return
+  itself — the mistake there was stopping at the return and not searching forward
+  for a fix) because a paginated `get_transactions` outflow page (`hasMore:true`)
+  was left unfetched earlier in the same investigation. Any call returning
+  `hasMore:true`/a `nextCursor` MUST be followed until exhausted before the scan
+  is allowed to report a clean result.
 
 **Method, every scan:**
 1. Pull outflow (returns post as debits) transactions for every confirmed KTU/BTU
    deposit account over a rolling **14-day** window (covers typical NSF turnaround
-   of 2–5 business days with margin), paginating fully per above.
+   of 2–5 business days with margin), paginating fully per above. Also pull the
+   `Balance` field on every row in the window — it's required for step 3.
 2. Flag every row matching the bank's own return category (preferred) or the
    anchored phrase list (fallback).
-3. For each hit, resolve the underlying customer/invoice: match the return amount
-   (and check number, when the description carries one — Chase's format includes
-   `CK#:` directly) against SM payment history for that approximate amount within
-   ~2 weeks prior to the return date.
-4. **Check whether ServiceMinder still shows the payment as applied.** If yes (the
-   Sweeney case), that is itself the headline finding — say explicitly that the
-   invoice currently reads paid but the money isn't there, and that whoever owns
-   the AR process needs to correct it (delete-and-reinvoice per current practice,
-   or apply a formal reversal if the process changes) before it's caught in a
+3. **For each hit, walk the balance before/after.** Look for a same-day
+   offsetting credit/debit that returns the balance to exactly where it was
+   before either posted (→ real loss, go to step 4) versus no same-day offset,
+   with a standalone matching credit landing separately (same day or later) that
+   genuinely raises the balance (→ recovered, still worth a routine `moola_returns`
+   row for the trend log, but NOT an urgent alert or an AR correction ask).
+4. **Real losses only:** resolve the underlying customer/invoice by matching the
+   return amount (and check number, when the description carries one — Chase's
+   format includes `CK#:` directly) against SM payment history for that
+   approximate amount within ~2 weeks prior to the return date, then check
+   whether ServiceMinder still shows the payment as applied. If yes, that is
+   itself the headline finding — say explicitly that the invoice currently reads
+   paid but the money isn't there, and that whoever owns the AR process needs to
+   correct it (delete-and-reinvoice per current practice, or apply a formal
+   reversal if the process changes) before it's caught in a
    collections/commission calculation downstream.
 5. **Do not conflate this with the broader SM-vs-bank amount gap** tracked in
    `moola_bank_recon` below. That gap can have other causes (payment-processing
@@ -645,7 +687,7 @@ instead:
    unexplained one.
 
 **Alert — every hit, every scan, no severity threshold (a return is never "small"):**
-insert into `notify_queue` `{kind:'critical', subject:'[Return] <customer> $<amount> reversed <date>', body:'<customer>, invoice <ref>, $<amount> returned <reason> on <date>. SM currently shows this payment as <applied|already corrected>. Action: <verify AR / re-invoice / confirm correction>.', source:'moola_returns'}` for same-day Slack+email fan-out via `dispatch-notify`, **and** a same-day `moola_briefing` `urgent` row (do not wait for the next Monday `moola_bank_recon` write). Also write one row per hit to `moola_returns` (write-then-prune per `scan_date`, retain 90 days for a trend view): `{customer, brand, invoice_ref, amount, return_reason, return_date, original_payment_date, sm_still_shows_paid (bool), corrected (bool), scan_date}`.
+insert into `notify_queue` `{kind:'critical', subject:'[Return] <customer> $<amount> reversed <date>', body:'<customer>, invoice <ref>, $<amount> returned <reason> on <date>. SM currently shows this payment as <applied|already corrected>. Action: <verify AR / re-invoice / confirm correction>.', source:'moola_returns'}` for same-day Slack+email fan-out via `dispatch-notify`, **and** a same-day `moola_briefing` `urgent` row (do not wait for the next Monday `moola_bank_recon` write) — **only for `resolution_status:'loss'` hits** (per the balance-walk in step 3). A `resolution_status:'recovered'` hit still gets a `moola_returns` row for the trend log but does NOT page Slack/email or add an urgent briefing row — it's informational, the money's already there. Write one row per hit to `moola_returns` (write-then-prune per `scan_date`, retain 90 days for a trend view): `{customer, brand, invoice_ref, amount, return_reason, return_date, resolution_status ('loss'|'recovered'), original_payment_date, recovery_date (null for 'loss'), sm_still_shows_paid (bool), corrected (bool), scan_date}`.
 
 **Zero hits is only reportable as "clean" once step 1's pagination was actually
 exhausted for every confirmed account this scan** — if any account's pull hit a
