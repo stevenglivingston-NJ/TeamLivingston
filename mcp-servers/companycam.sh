@@ -25,15 +25,27 @@
 #
 # TIME TRACKING NOTES (probed live 2026-09-18):
 #   * The time-tracking plan IS active on company 592669 (Kitchen Tune-Up
-#     Bloomfield NJ) — the summary endpoint answers cleanly rather than
-#     returning a plan error. But ZERO hours were logged in the 30 days to
-#     2026-09-18, i.e. the pipe works and nobody is clocking in yet. An empty
-#     result from this helper therefore means "no one clocked in", NOT "the
-#     integration is broken" — do not report it as an outage.
-#   * Time-entry reads require a MANAGER or ADMIN token. A standard-user token
-#     is rejected outright rather than being silently narrowed to that user's
-#     own entries, so an agent can never mistake a partial view for the full
-#     company report. Today only 2 of 11 active users hold admin.
+#     Bloomfield NJ) — read through the MCP connector, the summary endpoint
+#     answers cleanly rather than returning a plan error. But ZERO hours were
+#     logged in the 30 days to 2026-09-18: the feature is on and nobody is
+#     clocking in. An empty result therefore means "no one clocked in", NOT
+#     "the integration is broken" — never report it as an outage.
+#   * THIS HELPER CANNOT READ TIME ENTRIES with the current COMPANYCAM_TOKEN.
+#     /v2/timeentries returns 401 {"error":{"general":"Bad credentials"}} while
+#     the SAME token returns 200 on /v2/projects, /v2/users, /v2/company,
+#     /v2/webhooks, /v2/tags and /v2/groups. So the token is live and the route
+#     is real — the time-tracking surface simply authorizes separately and
+#     rejects this credential. Time tracking is also absent from CompanyCam's
+#     public API docs entirely (checked the documentation index), which fits:
+#     it is a separately-sold, busybusy-backed product rather than part of the
+#     documented v2 REST surface.
+#   * Diagnosing it needs `Accept: application/json`. Without that header the
+#     same request 302s to /users/sign_in and looks like a wrong path — which
+#     is exactly the wrong conclusion drawn on 2026-09-18 before the header was
+#     added. This helper now always sends it.
+#   * The MCP connector's OAuth identity CAN read time entries. It is fine for
+#     interactive work, but must never be used on a schedule (see above), so
+#     jc-labor-sync.py takes --from-json until a curl-usable credential exists.
 #   * CompanyCam returns HOURS, NEVER DOLLARS. There is no pay-rate field
 #     anywhere in the API. Costing dollars come from payroll (jc_payroll_periods);
 #     these hours only decide how those dollars SPLIT across jobs.
@@ -72,8 +84,13 @@ trap 'rm -f "$RESP_FILE"' EXIT
 
 # -w writes the status code after the body so a 401/403 is distinguishable from
 # an empty-but-valid 200. Without this an expired token reads as "no hours".
+# Accept: application/json is NOT optional. Without it the time-tracking routes
+# answer a browser-shaped request with 302 -> /users/sign_in, which reads like a
+# wrong path. With it the same request returns an honest 401 "Bad credentials".
+# That cost a misdiagnosis on 2026-09-18 — the route was real all along.
 HTTP_CODE=$(curl -sS -X GET "$URL" \
   -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
   -H "Content-Type: application/json" \
   --max-time 120 -o "$RESP_FILE" -w '%{http_code}') || {
     echo '{"error":"curl failed reaching api.companycam.com"}' >&2; exit 1; }
@@ -85,7 +102,7 @@ with open(os.environ["RESP_FILE"], encoding="utf-8", errors="replace") as fh:
     raw = fh.read()
 
 if code == "401":
-    print(json.dumps({"error": "CompanyCam returned 401 — COMPANYCAM_TOKEN is invalid or revoked. Regenerate it in CompanyCam and update the env var.", "http": 401}))
+    print(json.dumps({"error": "CompanyCam returned 401 'Bad credentials'. Note this can be PER-ENDPOINT: the same token returns 200 on /v2/projects and /v2/users while the time-tracking routes reject it, because time tracking authorizes separately. So a 401 here does not mean the token is dead — check another endpoint before assuming that.", "http": 401, "body": raw[:300]}))
     sys.exit(1)
 if code == "403":
     print(json.dumps({"error": "CompanyCam returned 403 — the token lacks manager/admin scope. Time-entry reads require it; a standard-user token cannot read them at all.", "http": 403}))

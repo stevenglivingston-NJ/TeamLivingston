@@ -120,17 +120,24 @@ def cc(path, qs=""):
     """CompanyCam GET. Returns None (and degrades) rather than raising, so one
     dead endpoint cannot take down the whole nightly run."""
     url = f"{CC_BASE}/{path.lstrip('/')}" + (f"?{qs}" if qs else "")
+    # Accept: application/json is load-bearing. Without it the time-tracking
+    # routes answer a browser-shaped request with 302 -> /users/sign_in, which
+    # looks like a wrong path; with it they return an honest 401.
     out = curl(["-X", "GET", url,
                 "-H", f"Authorization: Bearer {CC_TOKEN}",
+                "-H", "Accept: application/json",
                 "-H", "Content-Type: application/json",
                 "-w", "\n%{http_code}"])
     body, _, code = out.rpartition("\n")
     code = code.strip()
-    if code == "302":
-        degrade(f"CompanyCam {path} -> 302 /users/sign_in. The static "
-                f"COMPANYCAM_TOKEN lacks scope for this endpoint (time-tracking "
-                f"routes are gated separately). Re-mint the token with "
-                f"time-entry access, or feed entries via --from-json.")
+    if code in ("401", "302"):
+        degrade(f"CompanyCam {path} -> {code}. The route is real and the token is "
+                f"live (it returns 200 on /v2/projects and /v2/users), but the "
+                f"time-tracking surface rejects this credential with 'Bad "
+                f"credentials' — time tracking authorizes separately from the "
+                f"rest of the v2 API and is absent from the public API docs "
+                f"entirely. Supply a credential the time-tracking surface "
+                f"accepts, or feed entries via --from-json.")
         return None
     if code.startswith(("4", "5")):
         degrade(f"CompanyCam {path} -> HTTP {code}")
