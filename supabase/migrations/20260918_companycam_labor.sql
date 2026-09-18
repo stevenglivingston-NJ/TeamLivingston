@@ -28,24 +28,33 @@
 -- So: jc_payroll_periods holds the dollars, jc_cc_time_entries holds the hours,
 -- and jc_allocate_week() divides the former by the latter.
 --
--- WHAT IS NOT WORKING YET (probed live 2026-09-18 — read before debugging)
---   1. ZERO hours are logged company-wide. The time-tracking plan IS active
---      (the summary endpoint answers cleanly), but nobody has clocked in. An
---      empty jc_cc_time_entries means "no adoption yet", not "broken sync".
---   2. The COMPANYCAM_TOKEN cannot read time entries over curl. /v2/projects,
---      /v2/users, /v2/company, /v2/webhooks, /v2/tags, /v2/groups all return
---      200; every time-entry path variant (/v2/timeentries, /v2/time_entries,
---      /v2/timecards, /v2/time-entries, and the summary/report forms) returns
---      302 -> /users/sign_in. A 302-to-sign_in on that token is a SCOPE
---      symptom, not a wrong path.
---   3. Likely why: CompanyCam's time tracking is busybusy-backed — webhook
---      263822 on this company posts photo.* to company-cam-api.busybusy.io.
---      The MCP connector's OAuth identity reads time entries fine; the static
---      API token does not.
---   Consequence: until the token gains time-entry scope, jc-labor-sync.py can
---   ingest from a JSON file (--from-json) but cannot poll on a schedule. Per
---   CLAUDE.md, a scheduled Routine must NOT reach CompanyCam through mcp__*
---   tools — it would stall in REQUIRES_ACTION forever rather than erroring.
+-- WHAT IS NOT WORKING YET (settled 2026-09-18 — read before debugging)
+--   1. ZERO hours are logged company-wide. The time-tracking plan IS active,
+--      but nobody has clocked in. An empty jc_cc_time_entries means "no
+--      adoption yet", NOT "broken sync". Adoption is the open work.
+--   2. CompanyCam time tracking is NOT on its public API, so the scheduled
+--      curl pull cannot work and no credential change will make it. Steven
+--      granted time-tracking permissions to the existing token and nothing
+--      moved. The evidence:
+--        - the token authenticates as user_role ADMIN, active, company 592669
+--          -- so this is not a role problem;
+--        - it returns 200 on /v2/projects, /v2/users, /v2/company,
+--          /v2/webhooks, /v2/tags and /v2/groups, and 401
+--          {"general":"Bad credentials"} on the time-entry routes ONLY -- so
+--          the token is live and the route is real;
+--        - CompanyCam's public API docs contain no time-tracking endpoint;
+--        - its OAuth scopes are read / write / destroy only;
+--        - its webhook catalogue has no time-tracking event.
+--      The MCP connector reads time entries through a NON-PUBLIC surface.
+--      Opening this up is an account request to CompanyCam, not a setting.
+--      (An earlier note here blamed token scope, on the strength of a 302 to
+--      /users/sign_in. That 302 was an artifact of omitting an
+--      `Accept: application/json` header; with it the same route answers 401.
+--      Both helpers now always send the header.)
+--   Consequence: --from-json is the ingest path -- export in an INTERACTIVE
+--   session and feed the file. It cannot simply fall back to the connector
+--   either: per CLAUDE.md a scheduled Routine calling mcp__* stalls in
+--   REQUIRES_ACTION forever rather than erroring.
 -- ===========================================================================
 
 -- ---------------------------------------------------------------------------
