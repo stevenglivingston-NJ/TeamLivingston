@@ -152,6 +152,50 @@ bucket next to a degradation is **unverified, not clean**. All HTTP goes through
 `curl` on purpose — python-urllib gets a 403 from the session egress proxy and
 would silently return zero rows.
 
+**`jc-labor-sync.py` + `companycam.sh` — CompanyCam hours into job costing (2026-09-18).**
+Closes the labor gap in `docs/JOB_COSTING_DESIGN.md` §7, which until now allocated
+crew labor by inference ("no per-job timesheets exist anywhere"). Clocked hours
+become the top evidence tier, above JobTread assignment and CompanyCam photo
+presence.
+
+**The rule, and it is not negotiable: hours are the ALLOCATION KEY, never a dollar
+source.** CompanyCam returns hours and has no pay-rate field anywhere in its API,
+and the QBO/Gusto sweep already books the weekly lump into `jc_actual_costs` — so
+multiplying hours by an invented rate would charge every job for labor **twice**.
+`jc_allocate_week()` instead splits the real payroll pro rata by hours and
+guarantees the week sums to exactly what the person was paid (largest-remainder
+rounding; verified against awkward thirds). Non-job time (bench/shop/warranty)
+keeps its dollars visible but never touches a job's actuals.
+
+```
+python3 mcp-servers/jc-labor-sync.py --dry-run     # report, write nothing
+python3 mcp-servers/jc-labor-sync.py --all         # the nightly run
+bash    mcp-servers/companycam.sh /v2/projects 'per_page=100'
+```
+
+Two live findings to know before debugging a zero-row run (both probed 2026-09-18):
+- **Nobody is clocking in.** The time-tracking plan IS active on company 592669,
+  but zero hours were logged in the 30 days to 2026-09-18. Empty means no
+  adoption, not a broken pipe.
+- **`COMPANYCAM_TOKEN` cannot read time entries.** `/v2/projects`, `/v2/users`,
+  `/v2/company`, `/v2/webhooks`, `/v2/tags`, `/v2/groups` all return 200; every
+  time-entry path variant returns **302 → `/users/sign_in`**. That is a scope
+  symptom on the static token, not a wrong path — CompanyCam time tracking is
+  busybusy-backed (webhook 263822 on this company posts to
+  `company-cam-api.busybusy.io`), and the MCP connector's OAuth identity reads it
+  where the static token does not. Re-mint the token with time-entry scope, or
+  feed entries with `--from-json`.
+
+**ServiceMinder cannot take job costs — confirmed, not inherited.** Re-probed
+2026-09-18 across 15 endpoint spellings (`jobcost`/`cost`/`margin`/
+`purchaseorder`/`vendorinvoice`/`posting`/`expense`/`joblines`, singular and
+plural); every one returns SM's empty-200 "no such endpoint" signature. Custom
+fields are 48 contact-level + 1 appointment-level — none at proposal or job
+level, none cost-related. The **only** write surface is a contact note, so the
+intranet queues one (`jc_sm_note_log`, status `pending`) after a person confirms
+which SM proposal it attaches to, and the sync posts it server-side. The browser
+never holds an SM key — SM authenticates with its ApiKey inside the request body.
+
 **`ghl.sh` — HighLevel without MCP registration.** `bootstrap.sh` runs from the
 Cloud environment's setup script, so when that step doesn't run (or runs after
 the session's tool list is built) there are no `mcp__ghl-*` tools and an agent

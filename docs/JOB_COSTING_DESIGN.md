@@ -170,6 +170,65 @@ Benchmark verdicts use the HFC numbers verbatim (GP 50–55%, Labor <15%, DM <30
 
 ---
 
+## 7a. UPDATE 2026-09-18 — the labor gap closes with real timesheets
+
+§7 below was written when "no per-job timesheets exist anywhere", so every tier of
+its evidence hierarchy (JobTread daily assignment > CompanyCam photo presence >
+install schedule > even split) was an *inference* about who was where. CompanyCam
+time tracking replaces that with clocked hours, which become the new top tier:
+`evidence = 'companycam hours'`, `source = 'companycam'`.
+
+**What did NOT change, and must not.** Hours are the **allocation key**, never a
+dollar source. Decision, Steven 2026-09-18:
+
+* CompanyCam returns hours and has **no pay-rate field anywhere in its API** — any
+  rate table would be our invention and would drift from real pay on the first
+  overtime week or raise.
+* The QBO/Gusto sweep in §7.1 **already** books the weekly lump into
+  `jc_actual_costs`. Hours × rate on top of that charges every job for labor
+  **twice**. Splitting the real payment makes double-counting structurally
+  impossible instead of something a reviewer has to notice.
+* §7.2's own contract — a person's week must sum to what they were actually paid —
+  is satisfied by pro-rata splitting *by construction*. Hours × rate cannot satisfy
+  it at all.
+
+So `jc_payroll_periods` holds the dollars, `jc_cc_time_entries` holds the hours, and
+`jc_allocate_week()` divides one by the other (largest-remainder rounding, so the
+week ties to cash exactly — verified against $1,337.77 across 7.33/11.17/4.50 hours,
+and against an 18%-burden W2 week).
+
+**Migration:** `supabase/migrations/20260918_companycam_labor.sql`.
+**Sync:** `mcp-servers/jc-labor-sync.py` (curl only — a scheduled Routine must never
+reach CompanyCam through an `mcp__*` tool; it would stall in `REQUIRES_ACTION`).
+
+**Two blockers that are real today, neither of them code:**
+1. **Zero hours are logged.** The plan is active on company 592669; nobody has
+   clocked in. Adoption is the project — crew + W2 field staff, per Steven.
+2. **`COMPANYCAM_TOKEN` cannot read time entries** — 302 → `/users/sign_in` on every
+   time-entry path while six other endpoints return 200. Scope, not path.
+
+**ServiceMinder still cannot take costs — re-verified, not inherited from §0.** 15
+endpoint spellings probed 2026-09-18, all returning the empty-200 "no such endpoint"
+signature; custom fields are 48 contact-level + 1 appointment-level, none at proposal
+or job level. The §0 rejection of SM as a cost surface stands. What the intranet now
+does instead: a person confirms *which SM proposal* they are updating, previews the
+exact note, and queues it (`jc_sm_note_log.status='pending'`); the server-side sync
+posts it as a **contact note**. It is visible in SM and names the proposal, but it
+will not appear in the Margins panel and SM will not compute with it. The browser
+never holds an SM key, because SM authenticates with its ApiKey inside the body.
+
+**JobTread now receives actual cost lines**, which §0 correctly said did not exist
+there ("zero vendorBills, zero vendorOrders... no actual-cost data in JobTread at
+all"). `createCostItem` accepts `jobId` + `unitCost` + `hasFinalActualCost`, so
+labor actuals are written to the job budget. Steven chose **auto-write above 0.85
+match confidence** (2026-09-18) over the staged-confirm recommendation; the stated
+risk is that JobTread has no hard key to ServiceMinder and a same-surname collision
+writes real money into the wrong budget unwatched. Mitigation shipped with it:
+`jc_jobtread_cost_log` records the created cost-item id and the confidence every
+line went in at, so a bad match is reversible by query rather than hunted by hand.
+
+---
+
 ## 7. Closing the labor gap (the 56 × $0-labor jobs)
 
 Verified this session: JobTread contains **zero** vendor bills and **no KTU Labor-type cost lines at all** (53 of 207 2025 jobs have labor > $0 — nearly all BTU; KTU budgeted-but-no-labor + item-less KTU imports cover the ~56). Meanwhile QuickBooks carries the real money (~$215,623 subcontractor install labor, ~$201,126 payroll, 2025). The gap exists because **labor is paid from QBO/Melio/payroll, which never asks "which job?"** — and JobTread only ever received estimates.
