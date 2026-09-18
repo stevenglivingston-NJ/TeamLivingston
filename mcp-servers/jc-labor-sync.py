@@ -23,17 +23,22 @@ unapproved mcp__* call; a non-interactive fire cannot answer, so the session
 STALLS in REQUIRES_ACTION forever rather than erroring and the board silently
 goes stale. That cost eight days in August 2026. See CLAUDE.md.
 
-KNOWN BLOCKER (probed 2026-09-18, read before debugging a zero-row run):
-  * CompanyCam time-tracking IS enabled on company 592669, but ZERO hours have
-    been logged by anyone. Empty means no adoption, not a broken pipe.
-  * COMPANYCAM_TOKEN cannot read time entries. /v2/projects, /v2/users,
-    /v2/company, /v2/webhooks, /v2/tags, /v2/groups all return 200; every
-    time-entry path variant returns 302 -> /users/sign_in. That is a scope
-    symptom on a static API token, not a wrong path — CompanyCam's time
-    tracking is busybusy-backed (see webhook 263822 on this company), and the
-    MCP connector's OAuth identity reads it where the static token does not.
-    Until the token is re-minted with time-entry scope, use --from-json to
-    ingest entries exported by an interactive session.
+KNOWN BLOCKER (settled 2026-09-18 — read before debugging a zero-row run):
+  * ZERO hours have been logged by anyone. The time-tracking plan IS active on
+    company 592669. Empty means no adoption, not a broken pipe.
+  * The PULL STEP CANNOT WORK over curl, and no token change fixes it. Steven
+    granted time-tracking permissions to the existing token and the result did
+    not move. The token authenticates as an ADMIN user, returns 200 on six
+    other v2 endpoints, and returns 401 "Bad credentials" on the time-entry
+    routes only. CompanyCam's public API documents no time-tracking endpoint;
+    its OAuth scopes are only read/write/destroy; its webhook catalogue has no
+    time event. Time tracking simply is not on the public API — the MCP
+    connector reaches a non-public surface. Opening it is a request to
+    CompanyCam, not a configuration change.
+  * So: --from-json is the ingest path. Export entries in an INTERACTIVE
+    session (the MCP connector can read them) or from the CompanyCam UI, then
+    feed the file. Never call mcp__* from a scheduled Routine — it would stall
+    in REQUIRES_ACTION forever rather than erroring.
 
 Usage:
   python3 mcp-servers/jc-labor-sync.py --dry-run

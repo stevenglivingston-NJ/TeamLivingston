@@ -30,22 +30,28 @@
 #     logged in the 30 days to 2026-09-18: the feature is on and nobody is
 #     clocking in. An empty result therefore means "no one clocked in", NOT
 #     "the integration is broken" — never report it as an outage.
-#   * THIS HELPER CANNOT READ TIME ENTRIES with the current COMPANYCAM_TOKEN.
-#     /v2/timeentries returns 401 {"error":{"general":"Bad credentials"}} while
-#     the SAME token returns 200 on /v2/projects, /v2/users, /v2/company,
-#     /v2/webhooks, /v2/tags and /v2/groups. So the token is live and the route
-#     is real — the time-tracking surface simply authorizes separately and
-#     rejects this credential. Time tracking is also absent from CompanyCam's
-#     public API docs entirely (checked the documentation index), which fits:
-#     it is a separately-sold, busybusy-backed product rather than part of the
-#     documented v2 REST surface.
+#   * THIS HELPER CANNOT READ TIME ENTRIES, AND NO TOKEN WILL FIX IT.
+#     Established 2026-09-18 after Steven granted time-tracking permissions to
+#     this very token and nothing changed:
+#       - The token authenticates as Takia Livingston, user_role ADMIN, active,
+#         company 592669. So this is not a role problem.
+#       - It returns 200 on /v2/projects, /v2/users, /v2/company, /v2/webhooks,
+#         /v2/tags and /v2/groups, and 401 {"general":"Bad credentials"} on the
+#         time-entry routes ONLY. So the token is live and the route is real.
+#       - CompanyCam's public API docs contain NO time-tracking endpoints.
+#       - Its OAuth scopes are only read / write / destroy — none time-related.
+#       - Its webhook catalogue (project/photo/comment/document/video/todo_list/
+#         task, plus wildcards) has NO time-tracking event either.
+#     Conclusion: time tracking is not exposed on CompanyCam's public API in any
+#     form. The MCP connector reads it through a non-public surface. Only
+#     CompanyCam can open this up — it is an account/support request, NOT
+#     something re-minting a token or ticking a permission box can achieve.
 #   * Diagnosing it needs `Accept: application/json`. Without that header the
-#     same request 302s to /users/sign_in and looks like a wrong path — which
-#     is exactly the wrong conclusion drawn on 2026-09-18 before the header was
-#     added. This helper now always sends it.
-#   * The MCP connector's OAuth identity CAN read time entries. It is fine for
-#     interactive work, but must never be used on a schedule (see above), so
-#     jc-labor-sync.py takes --from-json until a curl-usable credential exists.
+#     same request 302s to /users/sign_in and looks like a wrong path — the
+#     wrong conclusion drawn earlier on 2026-09-18. This helper always sends it.
+#   * Until CompanyCam opens it: jc-labor-sync.py --from-json is the ingest
+#     path. The MCP connector can export entries in an INTERACTIVE session; it
+#     must never be used on a schedule (see the top of this file).
 #   * CompanyCam returns HOURS, NEVER DOLLARS. There is no pay-rate field
 #     anywhere in the API. Costing dollars come from payroll (jc_payroll_periods);
 #     these hours only decide how those dollars SPLIT across jobs.

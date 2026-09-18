@@ -204,8 +204,19 @@ reach CompanyCam through an `mcp__*` tool; it would stall in `REQUIRES_ACTION`).
 **Two blockers that are real today, neither of them code:**
 1. **Zero hours are logged.** The plan is active on company 592669; nobody has
    clocked in. Adoption is the project — crew + W2 field staff, per Steven.
-2. **`COMPANYCAM_TOKEN` cannot read time entries** — 302 → `/users/sign_in` on every
-   time-entry path while six other endpoints return 200. Scope, not path.
+2. **CompanyCam time tracking is not exposed on its public API at all**, so the
+   scheduled curl pull cannot work and no credential change will make it. Settled
+   2026-09-18 after granting time-tracking permissions to the existing token
+   changed nothing: the token is **admin**, returns 200 on six other v2
+   endpoints, and returns 401 `Bad credentials` on the time-entry routes only —
+   live token, real route. There is no documented time-tracking endpoint, no
+   time-related OAuth scope (only read/write/destroy), and no time-tracking
+   webhook event. The MCP connector reads it through a non-public surface.
+   Opening it is a **request to CompanyCam**, not a setting.
+   → Ingest is `--from-json` meanwhile: export in an interactive session, feed
+   the file. A scheduled Routine must never call `mcp__*` (it stalls in
+   `REQUIRES_ACTION`), which is precisely why the pull cannot simply switch to
+   the connector.
 
 **ServiceMinder still cannot take costs — re-verified, not inherited from §0.** 15
 endpoint spellings probed 2026-09-18, all returning the empty-200 "no such endpoint"

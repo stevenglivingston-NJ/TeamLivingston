@@ -173,18 +173,28 @@ python3 mcp-servers/jc-labor-sync.py --all         # the nightly run
 bash    mcp-servers/companycam.sh /v2/projects 'per_page=100'
 ```
 
-Two live findings to know before debugging a zero-row run (both probed 2026-09-18):
+Two findings, settled 2026-09-18 — read before debugging a zero-row run:
 - **Nobody is clocking in.** The time-tracking plan IS active on company 592669,
   but zero hours were logged in the 30 days to 2026-09-18. Empty means no
   adoption, not a broken pipe.
-- **`COMPANYCAM_TOKEN` cannot read time entries.** `/v2/projects`, `/v2/users`,
-  `/v2/company`, `/v2/webhooks`, `/v2/tags`, `/v2/groups` all return 200; every
-  time-entry path variant returns **302 → `/users/sign_in`**. That is a scope
-  symptom on the static token, not a wrong path — CompanyCam time tracking is
-  busybusy-backed (webhook 263822 on this company posts to
-  `company-cam-api.busybusy.io`), and the MCP connector's OAuth identity reads it
-  where the static token does not. Re-mint the token with time-entry scope, or
-  feed entries with `--from-json`.
+- **CompanyCam time tracking is not on the public API, and no token fixes it.**
+  Steven granted time-tracking permissions to the existing token; nothing
+  changed. The evidence is conclusive: the token authenticates as **admin**
+  (Takia Livingston, active, company 592669), returns **200** on `/v2/projects`,
+  `/v2/users`, `/v2/company`, `/v2/webhooks`, `/v2/tags`, `/v2/groups`, and
+  **401 `{"general":"Bad credentials"}`** on the time-entry routes *only*. So
+  the token is live and the route is real. CompanyCam's public API docs contain
+  **no time-tracking endpoint**; its OAuth scopes are only `read`/`write`/
+  `destroy`; its webhook catalogue (project/photo/comment/document/video/
+  todo_list/task + wildcards) has **no time event**. The MCP connector reads
+  time entries through a **non-public surface**. Opening this up is a request to
+  CompanyCam — not a permission box, not a re-minted token.
+  → Until then `--from-json` is the ingest path: export in an *interactive*
+  session and feed the file. Never call `mcp__*` from a scheduled Routine.
+- **Diagnosing any of this needs `Accept: application/json`.** Without it the
+  time-entry routes answer a browser-shaped request with `302 → /users/sign_in`,
+  which looks like a wrong path and produced exactly that misdiagnosis earlier
+  the same day. Both helpers now always send the header.
 
 **ServiceMinder cannot take job costs — confirmed, not inherited.** Re-probed
 2026-09-18 across 15 endpoint spellings (`jobcost`/`cost`/`margin`/
