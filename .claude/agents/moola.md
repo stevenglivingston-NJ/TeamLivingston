@@ -571,6 +571,87 @@ If a source is unavailable this scan, still write every section you *can* from
 the sources you have; the tab shows a per-section empty state for anything with
 no rows, and a stale banner if the latest `scan_date` is older than today.
 
+## Returned-payment alert — every scan (daily, not weekly); section `moola_returns`
+
+**Owner-directed (2026-09-18): a returned/reversed customer payment must reach Slack
+and email the same run it's detected — do not wait for the weekly reconciliation
+below.** This runs every single Moola scan, independent of the Monday gate on the
+full bank-vs-SM reconciliation. Be honest about the real cadence: Bank Connection
+(and the underlying aggregator) refreshes **once a day**, so "the same run it's
+detected" means **the next daily Moola scan after the bank posts the return**, not
+true real-time — say this plainly if the owner expects instant alerting; it isn't
+available without a push/webhook feed Moola doesn't have.
+
+**Why this has to be a distinct, narrower check from the weekly reconciliation
+below, not a byproduct of it:** a returned payment can be erased from ServiceMinder
+entirely rather than flagged (an office rep deletes the bad payment and re-invoices —
+confirmed practice 2026-09-18: the Rubin/Falkowski $10,977.05 eCheck return on KTU
+was handled exactly this way). A deleted record leaves no SM-side reference text to
+scan, so **the return can only be caught from the bank side**, and only from the
+bank's own transaction-category field — free-text keyword scanning on the
+`description` string is not reliable on its own; a same-day test with a loose
+`R0[1-9]` pattern (hunting ACH return codes) produced a flood of false positives by
+matching ordinary transaction/trace numbers. Anchor on the bank's own categorization
+instead:
+- **A raw bank export/feed that exposes its own category field is authoritative.**
+  Chase's activity export (`Details`/`Type` columns) tags actual returns explicitly
+  as `Type=DEPOSIT_RETURN`, with the description carrying the reason (`NSF`,
+  `Dup Presentment`, etc.) and often the original check number. Verified against a
+  full-year 2026 KTU pull: exactly 2 such rows existed, and both were real (one
+  already handled — Rubin/Falkowski; one **not yet corrected** — Sweeney,
+  I16821042, $13,632.44, NSF, returned 4/23/2026, still showing paid in SM as of
+  9/18/2026).
+- **`mcp__Bank_Connection_Truthifi__get_transactions` does not expose an equivalent
+  category** — its `transactionType` enum (checked against the live schema) has no
+  dedicated NSF/return/chargeback value, and free-text matching against its
+  `description` field is the same fragile fallback described above. Until Truthifi
+  (or whichever aggregator connector is live) exposes a real return/NSF category,
+  treat its output as a **lower-confidence supplement**, not the primary detector:
+  scan `description` for the anchored whole-phrase patterns `DEPOSITED ITEM
+  RETURNED`, `NSF`, `INSUFFICIENT FUNDS`, `CHARGEBACK`, `DUP PRESENTMENT`,
+  `STOP PAYMENT`, `UNPAID ITEM` (require the multi-word phrase, never a bare
+  2-3 character code like `R01` against unstructured text — that's what produced
+  the false-positive flood).
+- **Exhaustive pagination is mandatory before concluding "no returns this scan."**
+  A same-day investigation initially missed the Sweeney return because a paginated
+  `get_transactions` outflow page (`hasMore:true`) was left unfetched. Any call
+  returning `hasMore:true`/a `nextCursor` MUST be followed until exhausted before
+  the scan is allowed to report a clean result.
+
+**Method, every scan:**
+1. Pull outflow (returns post as debits) transactions for every confirmed KTU/BTU
+   deposit account over a rolling **14-day** window (covers typical NSF turnaround
+   of 2–5 business days with margin), paginating fully per above.
+2. Flag every row matching the bank's own return category (preferred) or the
+   anchored phrase list (fallback).
+3. For each hit, resolve the underlying customer/invoice: match the return amount
+   (and check number, when the description carries one — Chase's format includes
+   `CK#:` directly) against SM payment history for that approximate amount within
+   ~2 weeks prior to the return date.
+4. **Check whether ServiceMinder still shows the payment as applied.** If yes (the
+   Sweeney case), that is itself the headline finding — say explicitly that the
+   invoice currently reads paid but the money isn't there, and that whoever owns
+   the AR process needs to correct it (delete-and-reinvoice per current practice,
+   or apply a formal reversal if the process changes) before it's caught in a
+   collections/commission calculation downstream.
+5. **Do not conflate this with the broader SM-vs-bank amount gap** tracked in
+   `moola_bank_recon` below. That gap can have other causes (payment-processing
+   mechanics not yet diagnosed as of 2026-09-18) and is not evidence of additional
+   undetected returns unless the bank's own return category confirms it — a
+   same-day review found the bank's return category cleanly separates the 2 real
+   returns from a much larger ($638k, KTU YTD) amount-matching gap of a different,
+   undiagnosed character. Report them as separate findings with separate confidence
+   levels; do not let the small confirmed number get inflated by the large
+   unexplained one.
+
+**Alert — every hit, every scan, no severity threshold (a return is never "small"):**
+insert into `notify_queue` `{kind:'critical', subject:'[Return] <customer> $<amount> reversed <date>', body:'<customer>, invoice <ref>, $<amount> returned <reason> on <date>. SM currently shows this payment as <applied|already corrected>. Action: <verify AR / re-invoice / confirm correction>.', source:'moola_returns'}` for same-day Slack+email fan-out via `dispatch-notify`, **and** a same-day `moola_briefing` `urgent` row (do not wait for the next Monday `moola_bank_recon` write). Also write one row per hit to `moola_returns` (write-then-prune per `scan_date`, retain 90 days for a trend view): `{customer, brand, invoice_ref, amount, return_reason, return_date, original_payment_date, sm_still_shows_paid (bool), corrected (bool), scan_date}`.
+
+**Zero hits is only reportable as "clean" once step 1's pagination was actually
+exhausted for every confirmed account this scan** — if any account's pull hit a
+rate limit, an auth failure, or an unfetched page, write that account to
+`system_health`/the blind-lens note instead of implying a clean scan.
+
 ## ServiceMinder-vs-bank payment reconciliation — weekly (Mondays only); section `moola_bank_recon`
 
 **Gate: run this block only when today is Monday** (America/New_York). Every other
