@@ -368,3 +368,67 @@ Count actions on the Booking nodes (`ba6fe8ee…` for KTU, `bcda4208…` for BTU
 booked-tag nodes (`3f8f5ec3…` KTU, `54f437df…` BTU). If K1 and S0 land, this should move
 substantially. If it doesn't, the cause is deeper in the booking handoff and warrants a fuller
 transcript review.
+
+---
+
+# ADDENDUM 2026-09-19 — ServiceMinder reconciliation + an API hazard
+
+## ⚠ Never PUT a partial body to HighLevel `update-calendar`
+
+A partial-body PUT (`{allowBookingAfter, allowBookingAfterUnit}`) against
+`IezEuyUywqr1OL7tjHEk` **reset every field not sent to its default**:
+
+| Field | Before | After the partial PUT |
+|---|---|---|
+| `openHours` | Tue–Sat array | **`{}` — no bookable hours at all** |
+| `slotDuration` | 120 mins | 30 mins |
+| `slotInterval` | 120 mins | 30 mins |
+| `formSubmitType` | `RedirectURL` | `ThankYouMessage` |
+
+Restored within ~2 minutes by sending a complete body, verified by independent read. If you ever
+script against this endpoint: **read the calendar, merge your change into the whole object, write
+it back, then re-read to verify.** Prefer the UI for one-off changes.
+
+## ServiceMinder vs HighLevel — they disagree, and SM is the system of record
+
+### Kitchen Tune-Up
+
+| Designer | HighLevel | ServiceMinder (Sales category) |
+|---|---|---|
+| Ben Yabra (`x5Cvq…`) | Wed/Thu/Fri 10:00–18:00, Sat 10:00–14:00 | Wed 10–18, **Thu 09:00–20:00**, **Fri 10:00–20:00**, Sat 10–14 · 33 h/wk |
+| `t5pqL…` | Thu 10:00–16:00, Fri 10:00–14:00 | = Amanda Brochardt (61043) — **exact match** · 10 h/wk |
+| `t1T6f…` | Mon–Fri 10:00–16:00, Sat 10–14 (created 2026-09-18) | **no matching SM agent** |
+
+- **Do NOT open Monday or Tuesday on the KTU calendar.** No KTU sales agent has Monday or Tuesday
+  availability in ServiceMinder. The `t1T6f…` schedule added 2026-09-18 is a generic Mon–Fri 10–16
+  default matching no real agent. Opening those days advertises slots nobody can staff.
+  **This supersedes step K1.**
+- **Existing KTU Tuesday hours (14:00–18:00) are already unstaffed** per ServiceMinder. Worth
+  removing, not extending.
+- **Unexposed evening capacity:** ServiceMinder has Ben until **20:00 Thursday and Friday** and from
+  **09:00 Thursday**. Both the calendar's open hours and Ben's HighLevel schedule stop at 18:00, so
+  roughly 5 hours/week of staffed prime-time availability can never be offered by the bot.
+
+### Bath Tune-Up — the opposite problem
+
+| | Sales capacity |
+|---|---|
+| ServiceMinder | Ben 33 h/wk · Karen Naithe 33.5 h/wk (starts 2026-09-30) · Amanda Brochardt 10 h/wk · Amanda Borchardt 22.5 h/wk |
+| HighLevel bath calendar | **one** team member, ~13 h/wk |
+
+BTU is not capacity-constrained. Its HighLevel calendar exposes one person's partial week out of
+roughly four agents' worth in ServiceMinder. **This supersedes B-HL2's framing** — the people exist.
+
+### Duplicate agent records in ServiceMinder
+
+| Id | Name | Email | Mobile | Start | Availability |
+|---|---|---|---|---|---|
+| 61043 | Amanda **Bro**chardt | aborchardt@kitchentuneup.com | 248-422-4554 | 2026-05-04 | Thu 10–16, Fri 10–14 |
+| 61712 | Amanda **Bor**chardt | Aborchardt@kitchentuneup.com | 973-521-2698 | 2026-04-01 | Mon/Tue/Wed 10:30–14 + 16–18, Thu 16–18, Fri 10–14 |
+
+Two records for one person, different spellings, phones and availability. This splits round-robin
+assignment and any per-agent reporting. Merge or retire one.
+
+Also: **`Steven Livingston` (44444) has no time slots**, and **`Service Agents` (40117)** is a
+catch-all in the **Service** category (not Sales) with Sun–Sat 08:00–20:00 — it should not be
+reachable for consultations.
