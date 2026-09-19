@@ -466,3 +466,56 @@ same rate as KTU. That is an availability-and-closing problem (steps K1/K2/S0), 
 Every other BTU step in this runbook stands — the phone/email corruption (B2), the office address on
 the booking description (B3), the missing entry-tag gate (B4), the empty tools array (B6), the
 follow-up sequence (B7) and the prohibited-words list (B8).
+
+---
+
+# STATUS — verified 2026-09-19 19:10 UTC
+
+Checked against a fresh `GET /bot/{id}/export`, `GET /bot/{id}`, `GET /persona` and
+`GET /agency/source`. Bot versions at time of check: **KTU 0.0.184**, **BTU 0.0.38**
+(baseline was 0.0.182 / 0.0.31).
+
+## Remediated ✅
+
+| Item | Verified value |
+|---|---|
+| Booking prompt, **both** bots | "Book immediately on ANY affirmative response to a slot offer…" |
+| B2 — BTU `contact.phone` | `{{contact.phone}}` (was `{{contact.email}}`) |
+| B3 — BTU booking address | `{{contact.full_address}}` (was `{{location.full_address}}`) |
+| B4 — BTU entry gate | tag filter `ai start`, condition `is` |
+| B11b — BTU AI-stop scenario | present |
+| S1 — persona duration | "usually about 90 minutes" |
+| S2 — KTU reply hours | `08:00` + 13h = **08:00–21:00**, 7 days |
+| B1 — BTU booking calendar | correctly left as `kEW9PFmXRzujFf6rQUPp` |
+
+## Still open
+
+**BTU** — follow-up untouched (`smartFollowUp: false`, `followUpRepeat: false`, one step at
+3 weeks, `followUpExtraPrompt` empty); `prohibitedWords` at 4 entries (`Cheap`, `cheapest`, `-`,
+`affordable`) against KTU's 37; `tools` has `TranscribeConversation` + `SummarizeConversation` but
+**not `SmartFollowUp`**, which the follow-up fix depends on; "Get Full name" prompt still
+`Ensure email address is valid format.`; Set Field `contact.name` and `contact.address` still carry
+prose in the value field; orphan Booking branch `ba6fe8ee…` still present; reply window
+`08:00` + 9h = **08:00–17:00** where KTU got 21:00.
+
+**KTU** — follow-up still `repeat: true` / `repeatFinal: true` with no cap; Set Field
+`contact.name` still `{{nodes.166b4528….result[0]}}{{contact.address}}`; CalendarName still the
+`other-use-calendarid` placeholder; `addordable` typo still in `prohibitedWords`; disconnected
+source `src_X6UYDWSPPFPH2M9O` still attached with the KTU bot enabled on it.
+
+**Both** — booking prompts still say "up to 2 hours" while the persona now says 90 minutes, so the
+bot contradicts itself within one conversation. Highest-priority remaining item.
+
+**Not verifiable via API** — the knowledge-library cleanup (S3). Closebot exposes no uploads
+endpoint; `/settings/knowledge`, `/upload` and `/agency/upload` all return 404. Confirm visually.
+
+**Cosmetic** — four orphan BTU sources with zero bots attached (`src_24WVSJQXITOFM74O`,
+`src_K33N5LIO2QBMW3PN`, `src_L3IGFL677FXL3N5D`, `src_QB34844K4VMV14RK`); persona reads
+`in-home,usually` with a missing space.
+
+## Re-measure
+
+Booking-step conversion is the number. Baseline **9%** on both bots (KTU 14/155, BTU 4/43). The
+booking-prompt fix landed today, so the clock starts now. Count actions on the Booking nodes
+(`ba6fe8ee…` KTU, `bcda4208…` BTU) against the booked-tag nodes (`3f8f5ec3…`, `54f437df…`) via
+`GET /botMetric/actions`.
