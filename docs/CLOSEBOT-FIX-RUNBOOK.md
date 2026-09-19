@@ -432,3 +432,37 @@ assignment and any per-agent reporting. Merge or retire one.
 Also: **`Steven Livingston` (44444) has no time slots**, and **`Service Agents` (40117)** is a
 catch-all in the **Service** category (not Sales) with Sun–Sat 08:00–20:00 — it should not be
 reachable for consultations.
+
+---
+
+# ADDENDUM 2 — 2026-09-19 · B1 WITHDRAWN. The BTU booking design is correct.
+
+**Do not repoint BTU's booking calendar.** Step B1 above is wrong and must not be actioned.
+
+BTU's booking node deliberately targets `kEW9PFmXRzujFf6rQUPp` — the "Consultation Calendar - Bath"
+that sits in the **Kitchen Tune-Up** sub-account — so that Closebot only has to hold one HighLevel
+account connection. A downstream transfer then moves the appointment into Bath Tune-Up's own
+calendar. That is intentional, and it works.
+
+**Evidence (matched to the second):**
+
+| Closebot `AI Booked bath` tag fired | Appointment `dateAdded` on BTU `k6bokOz0oIicKYu93zhW` | Event title |
+|---|---|---|
+| 2026-01-27T15:57:54.96 | 2026-01-27T15:57:54 | "Angela Varachi" |
+| 2026-01-28T16:55:24.47 | 2026-01-28T16:55:23 | "Eileen And Jeffrey Riman" |
+
+Bot-originated bookings are titled with the **contact's name**; everything ServiceMinder creates on
+the same calendar is titled "Consultation - In-Home". That title difference plus the same-second
+`dateAdded` makes the attribution unambiguous.
+
+**Why the earlier finding was wrong.** `kEW9PFmXRzujFf6rQUPp` returns zero events for any window
+queried — but that is the *expected* end state of a staging calendar whose appointments are moved
+out. The original audit treated an empty staging calendar as a broken one without testing the
+transfer hypothesis. Anyone re-running this analysis should verify against the **destination**
+calendar, matching on `dateAdded` and event title, not against the staging calendar.
+
+**What does NOT change:** BTU still converts only 4 bookings from 43 booking-node hits (9%), the
+same rate as KTU. That is an availability-and-closing problem (steps K1/K2/S0), not a routing one.
+Every other BTU step in this runbook stands — the phone/email corruption (B2), the office address on
+the booking description (B3), the missing entry-tag gate (B4), the empty tools array (B6), the
+follow-up sequence (B7) and the prohibited-words list (B8).
