@@ -223,6 +223,48 @@ def create_hostname_regex_trigger(
 
 
 @mcp.tool()
+def create_custom_event_trigger(
+    brand: str,
+    name: str,
+    event_name: str,
+    match_regex: bool = False,
+    workspace_path: Optional[str] = None,
+) -> dict[str, Any]:
+    """Create a Custom Event trigger that fires when the dataLayer pushes
+    event_name (i.e. dataLayer.push({event: "<event_name>"})).
+
+    This is the shape a single-page app needs. A SPA never navigates to a
+    /thank-you URL, so a Page View trigger on Page Path never fires for it —
+    the app pushes a custom event instead. Observed 2026-09-19: BTU's
+    container fired its lead tags off a pageview trigger matching
+    ^/(thank-?you|appointmentbooked) while lp.bathtuneupbloomfield.com only
+    ever pushes lead_form_submission, so every BTU web conversion was lost.
+    KTU's container already carries the custom-event equivalents.
+
+    match_regex=False (default) matches the event name exactly; True treats
+    event_name as a RegEx.
+
+    Returns the created trigger; use its triggerId in
+    update_tag_firing_triggers. Staged only — a human publishes in the GTM UI.
+    """
+    ws = workspace_path or _default_workspace_path(brand)
+    body = {
+        "name": name,
+        "type": "customEvent",
+        "customEventFilter": [
+            {
+                "type": "matchRegex" if match_regex else "equals",
+                "parameter": [
+                    {"type": "template", "key": "arg0", "value": "{{_event}}"},
+                    {"type": "template", "key": "arg1", "value": event_name},
+                ],
+            }
+        ],
+    }
+    return _request("POST", f"{ws}/triggers", body=body)
+
+
+@mcp.tool()
 def update_tag_firing_triggers(
     brand: str,
     tag_id: str,
