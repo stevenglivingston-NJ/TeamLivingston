@@ -66,8 +66,12 @@ designer availability triples bookable capacity without touching hours.
 4. Drop `allowBookingAfter` from 24h to 4–12h so same-day and next-morning are reachable.
 5. Consider `slotInterval` 60 with `slotDuration` 120 for staggered starts — roughly doubles offer density.
 
-BTU's calendar (see P1.1 — it is in the wrong sub-account) is Mon–Fri 09:00–17:00, Sat 10:00–14:00,
-`slotInterval` 120, `appointmentPerSlot` 1. Same throttle, same fix.
+**BTU is NOT the same fix — corrected 2026-09-19.** BTU's own calendar
+(`k6bokOz0oIicKYu93zhW`) has **one** team member, so `appointmentPerSlot: 1` is correct there and
+raising it would double-book a single designer. BTU's availability constraint is different: a
+**48-hour** `allowBookingAfter`, twice KTU's. Its hours (Mon–Fri 09:00–17:00, Sat 09:00–15:00) and
+staggered 60-minute `slotInterval` are already better than KTU's. See
+[`CLOSEBOT-FIX-RUNBOOK.md`](CLOSEBOT-FIX-RUNBOOK.md) items K1 and B12.
 
 ### P0.2 — The bot does not close on a soft acceptance
 
