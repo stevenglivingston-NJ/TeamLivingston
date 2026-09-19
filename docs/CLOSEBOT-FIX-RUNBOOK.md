@@ -519,3 +519,72 @@ Booking-step conversion is the number. Baseline **9%** on both bots (KTU 14/155,
 booking-prompt fix landed today, so the clock starts now. Count actions on the Booking nodes
 (`ba6fe8ee…` KTU, `bcda4208…` BTU) against the booked-tag nodes (`3f8f5ec3…`, `54f437df…`) via
 `GET /botMetric/actions`.
+
+---
+
+# ADDENDUM 3 — 2026-09-19 · HighLevel `update-calendar` is destructive. Confirmed.
+
+Three distinct ways this one endpoint corrupted a live booking calendar in a single
+afternoon. All three were silent: no error, no log, and the HighLevel UI looked correct.
+
+| # | What was sent | What HighLevel did |
+|---|---|---|
+| 1 | Partial body `{allowBookingAfter, allowBookingAfterUnit}` | Reset **every field not sent**. `openHours` became `{}`, `slotDuration` 120→30, `formSubmitType` RedirectURL→ThankYouMessage. |
+| 2 | Full body including `openHours` | **Detached every user availability schedule** from the calendar. Reproduced twice. `teamMembers` stays populated so the UI looks right, but each schedule's `calendarIds` is emptied and nothing is bookable. |
+| 3 | `slotDuration: 2, slotDurationUnit: "hours"` — echoed back from a read | Stored **0.03 hours**. It divided by 60, assuming minutes. Two-minute consultation slots. |
+
+**Rules, not suggestions:**
+
+- **Prefer the UI for calendar edits.** None of the above happens through it.
+- If you must use the API: read the calendar, merge into the **whole** object, write it
+  back, re-read to verify.
+- Express durations in **minutes** (`slotDuration: 120, slotDurationUnit: "mins"`), never
+  in hours — the hours path mangles the value.
+- **After any write that touches `openHours`, re-link every availability schedule** and
+  verify. The fix is additive and safe:
+  `PUT /calendars/schedules/{scheduleId}/associations/{calendarId}`
+- `updateSchedule` (`PUT /calendars/schedules/{id}`) is **safe** — a genuine partial
+  update that leaves `calendarIds` intact. Prefer it for availability changes.
+
+## A second trap: HighLevel returns errors that look like empty data
+
+`GET /calendars/schedules/search` **requires `locationId`**. Without it it returns
+**401 with a JSON body** — `{"message":"Location ID is required"}`. Parse that as data and
+`schedules` reads as `[]`, which is indistinguishable from "no schedules are linked".
+
+The first version of `calendar-health.py` had exactly this bug and reported both calendars
+as detached when they were fine. Any client here must check the HTTP status, not just
+whether the body parses. `curl_json()` in that script now does.
+
+## Monitoring — this is now caught automatically
+
+`mcp-servers/calendar-health.py` asserts the invariants daily and emits RAG JSON.
+**Tekki** reads the integration half (detached schedules, corrupted slot duration,
+unstaffed open days, HighLevel↔ServiceMinder drift, stale bookable agents, Closebot key
+validity). **Pipeline** reads the conversion half (booking-step attempts vs bookings
+against the 9% baseline). Both agent specs carry the instruction.
+
+```
+python3 mcp-servers/calendar-health.py --days 30 --out /tmp/calendar-health.json
+```
+
+Needs `GHL_PIT_KTU` / `GHL_PIT_BTU` — the OAuth connector cannot be used from a scheduled
+Routine, it stalls on the permission prompt. Without them the HighLevel checks report as
+**unverified, never healthy**.
+
+## Live state at first clean run (2026-09-19 19:55 UTC)
+
+| | KTU | BTU |
+|---|---|---|
+| Team members / linked schedules | 3 / 3 ✅ | 1 / 1 ✅ |
+| Slot duration | 120 min ✅ | 120 min ✅ |
+| Per-slot cap | 1 ✅ | 1 ✅ |
+| Minimum notice | 12 hours ✅ | 24 hours |
+| Sunday | closed ✅ | closed ✅ (was 9–5 unstaffed) |
+| ServiceMinder Sales hours | 76.0 h/wk | 99.5 h/wk |
+| HighLevel offered | 45.0 h/wk | **15.0 h/wk** |
+
+Open findings: BTU has Monday, Tuesday and Saturday open with no designer available, and
+exposes 15 h/wk against 99.5 h/wk of real ServiceMinder capacity — the largest single
+availability gap across both brands. KTU hides 6 h/wk of Monday availability pending the
+Takia roster change.
