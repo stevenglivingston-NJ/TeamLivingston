@@ -1,181 +1,185 @@
-# Closebot fix runbook — exact steps, by business
+# Closebot + HighLevel fix runbook — exact steps, by business
 
 **Date:** 2026-09-19. Companion to [`CLOSEBOT-OPTIMIZATION-AUDIT.md`](CLOSEBOT-OPTIMIZATION-AUDIT.md).
 
-Every item below was verified against the live config. Each says **where** to make the change
-(Closebot vs HighLevel), the **exact node or field**, and the **exact value**.
+Every value below was read from the live config. Each step says **which system**, **the exact
+screen**, and **the exact value**.
 
 ---
 
-## ⚠ Read first — three things that will bite you
+## ⚠ Two corrections to the earlier audit — read before acting
 
-**1. The persona is shared.** Both bots use persona `pers_2NWYK8F7YCDST2PC` ("Andy") at 100%
-weight. **Any persona edit changes both bots.** Persona changes are in their own section at the
-end — do not make them while thinking you're editing one brand.
+**1. Do NOT raise `appointmentPerSlot`.** The earlier runbook said to set it to 3. That was wrong.
+HighLevel's API documents the field as *"Maximum bookings per slot **(per user)**"* — so `1` with
+three round-robin designers already permits three concurrent bookings. Setting it to 3 would permit
+**three per designer, nine concurrent**, and would overbook.
 
-**2. KTU and BTU have opposite calendar problems.** KTU has three designers throttled to one
-booking per slot. BTU has one designer and a 48-hour booking lead time. **Do not apply KTU's
-capacity fix to BTU** — it would create double-bookings against a single designer.
+**2. The real constraint was never `appointmentPerSlot` — it was that only one designer had any
+availability.** All 13 historical KTU appointments were assigned to the same user
+(`x5CvqPWifa1XXfvSIdCX`). The reason: until 2026-09-18 he was the only designer with a schedule on
+that calendar. Two more schedules were added 2026-09-18, so this is **already partly fixed** —
+not by anything in this runbook.
 
-**3. BTU's booking currently goes nowhere.** Fix B1 before anything else on BTU. Until it's done,
-every other BTU improvement just produces more bookings into a calendar nobody looks at.
+Current KTU designer availability:
 
----
+| Designer | Availability on the KTU calendar | Schedule created |
+|---|---|---|
+| `x5CvqPWifa1XXfvSIdCX` | Wed/Thu/Fri 10:00–18:00, Sat 10:00–14:00 — **no Mon, no Tue** | 2025-09-08 |
+| `t1T6fPu4eFzW86t6AhdK` | Mon–Fri 10:00–16:00, Sat 10:00–14:00 | 2026-09-18 |
+| `t5pqL2s7OHc2CbTGkcBY` | Thu 10:00–16:00, Fri 10:00–14:00 | 2026-09-18 |
 
-# KITCHEN TUNE-UP
-
-Bot `bot_SRQO2QVP9AVZ8SQ4` · HL location `nHLCxHPidnhV1NFzRtZZ` · Calendar `IezEuyUywqr1OL7tjHEk`
-
-**Audit result:** KTU is the healthier of the two. Correct calendar, correct entry gate, full
-guardrail list, working follow-up, all three bot tools enabled. Its problem is capacity and
-closing — 155 booking attempts produced 14 bookings.
-
-### K1 — Raise booking capacity ⬅ highest impact
-**Where:** HighLevel → Calendars → Consultation Calendar (`IezEuyUywqr1OL7tjHEk`)
-
-| Setting | Now | Change to | Why |
-|---|---|---|---|
-| `appointmentPerSlot` | **1** | **match your concurrent designer count (calendar has 3 members)** | Three designers assigned, one booking allowed per slot |
-| Monday | **closed** | 10:00–18:00 | A full working day is unbookable |
-| Tuesday | 14:00–18:00 | 10:00–18:00 | No Tuesday mornings today |
-| `allowBookingAfter` | 24 hours | 4–12 hours | Same-day and next-morning are impossible today |
-| `slotInterval` | 120 min | 60 min (keep `slotDuration` 120) | Staggered starts roughly double offer density |
-
-⚠ **Do not change `appointmentPerSlot` until you confirm the designer count** — see Open Questions.
-Current theoretical capacity is 16 slots/week; leads were being offered 1–2, a week out.
-
-### K2 — Make the bot close on a soft yes
-**Where:** Closebot → KTU flow → Booking node `ba6fe8ee-545d-41d1-a127-a1b667796f1c` → Prompt
-
-Current text ends with:
-```
-When a contact responds with "Yes" or "OK" to a slot offer, the bot should book them immediately.
-```
-Replace that sentence with:
-```
-Book immediately on ANY affirmative response to a slot offer — this includes naming a day, naming
-a time, "that works", "sure", "let's do it", "pencil me in", "book it", or repeating a slot back to
-you. Do not ask a further clarifying question once the contact has indicated a slot. Confirm the
-booking in the same reply.
-```
-**Evidence:** a lead replied "Let's pencil in Thursday the eighth at 4 o'clock" and was never booked.
-
-### K3 — Cap the follow-up sequence
-**Where:** Closebot → KTU flow → Follow-up settings
-
-`followUpRepeat: true` with the 30-day step set to repeat and **no attempt cap** — contacts are
-messaged every 30 days indefinitely. Set a cap of 3–5 total touches, then stop.
-
-### K4 — Fix the name field's value expression
-**Where:** Closebot → KTU flow → SetField node targeting `contact.name`
-
-| | Value |
-|---|---|
-| Now | `{{nodes.166b4528-b656-44f5-b156-d48a02e1fea5.result[0]}}{{contact.address}}` |
-| Change to | `{{contact.name}}` |
-
-It currently points at the **address** node's output. AI is on so it likely self-corrects, but it's wrong.
-
-### K5 — Remove the disconnected source
-**Where:** Closebot → Settings → Sources
-
-`src_X6UYDWSPPFPH2M9O` is **disconnected but still attached and enabled** on the KTU bot. Remove it.
-The live source is `src_L620TCZJBOL15MOG`.
-
-### K6 — Cosmetic: calendar name field
-**Where:** Closebot → KTU flow → Booking node → CalendarName
-
-Reads `other-use-calendarid`, a placeholder. The CalendarId beneath it is correct. Set to
-`Consultation Calendar` so the next person reading it isn't misled.
-
-### K7 — Fix the typo in the prohibited-words list
-**Where:** Closebot → KTU flow → Settings → Prohibited Words
-
-`addordable` → `affordable`. The intended word is currently not being blocked.
+**The remaining blocker is the calendar's own open hours.** HighLevel books only where *calendar
+open hours* AND *designer availability* overlap. The KTU calendar has **no Monday entry**, so even
+though `t1T6f…` is now available Monday 10:00–16:00, **Monday still yields zero bookable slots**.
+That is step K1 below and it is the single highest-value change remaining.
 
 ---
 
-# BATH TUNE-UP
+## ⚠ Three traps
 
-Bot `bot_O8XUQA6CTBLEILUV` · HL location `0uWA8M5BzHrrcJftuaDe`
+1. **The persona is shared.** Both bots use `pers_2NWYK8F7YCDST2PC` ("Andy") at 100%. Any persona
+   edit changes both. Persona steps are in Part 5.
+2. **Someone was editing the KTU calendar at 16:10 UTC on 2026-09-19** (all three schedules show
+   that update time). Confirm nobody else is mid-change before you start, or you will overwrite
+   each other.
+3. **Do B1 before any other BTU work.** Until it's done, every BTU improvement books into a
+   calendar nobody looks at.
 
-**Audit result:** BTU is materially broken, not merely under-tuned. It is at revision 31 against
-KTU's 182. Its bookings land nowhere, it corrupts CRM data on every contact it touches, it has no
-entry gate, no guardrails, no follow-up worth the name, and none of its bot tools enabled.
+---
 
-### B1 — Point booking at BTU's actual calendar ⬅ do this first
-**Where:** Closebot → BTU flow → Booking node `bcda4208-2523-4e0f-99de-6c989e362671` → CalendarId
+# PART 1 — HighLevel · Kitchen Tune-Up calendar
 
-| | Value |
+**Navigate:** HighLevel → switch to sub-account **Kitchen Tune-Up** → **Calendars** → **Calendar
+Settings** → **Consultation Calendar** (`IezEuyUywqr1OL7tjHEk`) → **Availability** tab.
+
+### K1 — Add Monday and extend Tuesday ⬅ do this one first
+The calendar's open hours today are Tue–Sat only, and Tuesday is afternoons only.
+
+| Day | Now | Set to |
+|---|---|---|
+| **Monday** | **not listed** | **10:00 – 18:00** |
+| Tuesday | 14:00 – 18:00 | **10:00 – 18:00** |
+| Wednesday | 10:00 – 18:00 | leave |
+| Thursday | 10:00 – 18:00 | leave |
+| Friday | 10:00 – 18:00 | leave |
+| Saturday | 10:00 – 14:00 | leave |
+
+**How:** in the Availability tab, toggle Monday on and set 10:00–18:00; change Tuesday's start from
+2:00 PM to 10:00 AM. Save.
+
+This unlocks Monday all-day and Tuesday mornings for `t1T6f…`, who is already available then.
+
+### K2 — Reduce the minimum booking notice
+**Screen:** same calendar → **Advanced / Scheduling Notice**
+
+| Setting | Now | Set to |
+|---|---|---|
+| Minimum Scheduling Notice | **24 hours** | **12 hours** |
+
+A lead texting at 6pm currently cannot be offered anything the next morning.
+
+### K3 — Leave these alone
+- **`appointmentPerSlot` / "Maximum bookings per slot": leave at 1.** See correction 1 above.
+- **`slotInterval`: leave at 120 minutes.** Dropping it to 60 while slots are 2 hours long can
+  create overlapping bookings that exceed designer count. Revisit only after K1 has run a few weeks.
+
+### K4 — Ask the two new designers to widen their own availability (optional, highest upside)
+`t5pqL…` is available only Thursday and Friday; `x5Cvq…` has no Monday or Tuesday. Their personal
+availability now caps the calendar more than the calendar caps them. Each designer sets this under
+**Settings → My Profile → Availability**, or you set it under **Settings → Team → [user] →
+Availability**.
+
+---
+
+# PART 2 — HighLevel · Bath Tune-Up calendar
+
+**Navigate:** HighLevel → sub-account **Bath Tune-Up** → **Calendars** → **Calendar Settings** →
+**Consultation Calendar** (`k6bokOz0oIicKYu93zhW`).
+
+### B-HL1 — Reduce the minimum booking notice
+| Setting | Now | Set to |
+|---|---|---|
+| Minimum Scheduling Notice | **48 hours** | **12 hours** |
+
+Twice KTU's, on the brand with less demand. Two full days before anyone can book.
+
+### B-HL2 — Add designers to the bath calendar ⬅ the real BTU capacity fix
+This calendar has **one** team member (`t5pqL2s7OHc2CbTGkcBY`) whose availability is Wed 10:30–14:00
++ 16:00–18:00, Thu 10:30–14:00 + 16:00–18:00, Fri 10:00–14:00 — roughly **13 hours a week**, no
+Monday, Tuesday or Saturday. The calendar's open hours say Mon–Fri 09:00–17:00 and Sat 09:00–15:00,
+so most of that window has nobody behind it.
+
+**How:** calendar → **Team Members** → add the designers who actually run bath consultations, then
+set each one's availability. **Leave `appointmentPerSlot` at 1** — it is per-user.
+
+If only one person runs bath consults, that is the honest ceiling and no setting changes it. Say so
+rather than widening the calendar's open hours, which would advertise slots nobody can staff.
+
+### B-HL3 — Don't change `appointmentPerSlot` here either
+Same reason as K3.
+
+---
+
+# PART 3 — Closebot · Bath Tune-Up bot
+
+**Navigate:** Closebot → **Agents** → **Job Flows** → `Bath Tune-Up Booking Bot`
+(`bot_O8XUQA6CTBLEILUV`). Changes take effect when you **publish** a new version.
+
+### B1 — Point booking at BTU's actual calendar ⬅ first
+**Node:** Booking `bcda4208-2523-4e0f-99de-6c989e362671` (click it on the canvas)
+
+| Field | Now | Set to |
+|---|---|---|
+| Calendar ID | `kEW9PFmXRzujFf6rQUPp` | **`k6bokOz0oIicKYu93zhW`** |
+| Calendar name | `Consultation Calendar` | `Consultation Calendar` (unchanged) |
+
+The current calendar sits in the **Kitchen Tune-Up** sub-account and has held **zero appointments
+ever**. Your team's real bath consults are on `k6bokOz0oIicKYu93zhW`.
+
+### B2 — Stop writing the email into the phone field
+**Node:** Set Field targeting `contact.phone`
+
+| Field | Now | Set to |
+|---|---|---|
+| Field value expression | `{{contact.email}}` | **`{{contact.phone}}`** |
+
+AI is off on this node, so nothing corrects it. Then repair the damage: **Contacts → filter Phone
+contains `@` → export → restore from ServiceMinder or the original form submissions.** Do the
+repair *after* the fix or it re-corrupts.
+
+### B3 — Book at the customer's home
+**Node:** Booking `bcda4208…` → Description
+
+| Now | Set to |
 |---|---|
-| Now | `kEW9PFmXRzujFf6rQUPp` — "Consultation Calendar - Bath", **sits in the KTU sub-account**, **0 appointments ever** |
-| Change to | `k6bokOz0oIicKYu93zhW` — "Consultation Calendar", in BTU's location, holds your team's real bath consults |
+| `Book a 2 hour appointment at {{location.full_address}} with the contact.` | `Book a 2 hour appointment at {{contact.address}} with the contact {{contact.name}}` |
 
-**Verified:** `kEW9PFmXRzujFf6rQUPp` has held zero appointments from June 2025 to Feb 2027, from any
-source. Your team's actual bath work — "full bathroom remodel, leak issues", "new tub and shower
-wall" — is on `k6bokOz0oIicKYu93zhW`. Also update CalendarName to `Consultation Calendar`.
-
-### B2 — Stop writing the email address into the phone field ⬅ active data corruption
-**Where:** Closebot → BTU flow → SetField node targeting `contact.phone`
-
-| | Value |
-|---|---|
-| Now | `{{contact.email}}` |
-| Change to | `{{contact.phone}}` |
-
-AI is **off** on this node, so nothing catches it. Every BTU contact the bot processes has its phone
-field overwritten with an email address, and has for months.
-
-**Then repair the damage:** export BTU contacts, filter phone fields containing `@`, and restore
-from the original source. Do this after the fix, not before, or it re-corrupts.
-
-### B3 — Book at the customer's home, not your office
-**Where:** Closebot → BTU flow → Booking node `bcda4208…` → Description
-
-| | Value |
-|---|---|
-| Now | `Book a 2 hour appointment at {{location.full_address}} with the contact.` |
-| Change to | `Book a 2 hour appointment at {{contact.address}} with the contact {{contact.name}}` |
-
-`{{location.full_address}}` is 1285 Broad Street — your own office — going onto every in-home
-bath consultation. KTU already does this correctly.
+`{{location.full_address}}` is 1285 Broad Street — your own office — on an in-home consultation.
 
 ### B4 — Add an entry-tag gate
-**Where:** Closebot → Settings → Sources → `src_16VMHVU5CCOHPAC7` → tag filter
+**Navigate:** Closebot → **Settings → Sources** → `src_16VMHVU5CCOHPAC7` ("Bath Tune-Up") → tag filter
 
-BTU has `tags: []` and an empty `tagFilterConfig`. It engages **every inbound conversation** across
-GMB, Live Chat, SMS, Facebook, Instagram and WhatsApp — existing customers, vendors, wrong numbers,
-job follow-ups. KTU requires the tag `ai start`.
+Currently empty, so the bot engages **every** inbound conversation on GMB, Live Chat, SMS, Facebook,
+Instagram and WhatsApp. Add a tag rule matching KTU's: operator `and`, rule tag **`ai start`**,
+condition `is`.
 
-Add the same gate. Expect BTU's engaged-conversation count to fall and its conversion rate to rise;
-that is the intent. It also means BTU's "242 conversations" figure has never been 242 leads.
-
-### B5 — Fix the booking prompt (same as K2)
-**Where:** Closebot → BTU flow → Booking node `bcda4208…` → Prompt
-
-Apply the identical replacement text from **K2**. Both bots have the "Yes"/"OK" literal-token problem.
+### B5 — Fix the booking prompt
+**Node:** Booking `bcda4208…` → Prompt. Replace the final sentence with the text in **Part 5 / S0**.
 
 ### B6 — Enable the three bot-level tools
-**Where:** Closebot → BTU flow → Settings
-
-BTU's `tools` array is **empty**. Enable all three, matching KTU:
-- `SummarizeConversation`
-- `TranscribeConversation`
-- `SmartFollowUp`
+**Navigate:** bot → **Settings** → Tools. BTU's list is empty; KTU has all three. Enable:
+`SummarizeConversation`, `TranscribeConversation`, `SmartFollowUp`.
 
 ### B7 — Replace the follow-up sequence
-**Where:** Closebot → BTU flow → Follow-up settings
+**Navigate:** bot → **Follow-up**
 
-| | Now (BTU) | Change to (match KTU) |
+| Setting | Now | Set to |
 |---|---|---|
-| `smartFollowUp` | false | **true** |
-| `followUpRepeat` | false | **true**, capped at 3–5 touches |
-| Sequence | one touch at **3 weeks** | **1 day → 72 hours → 30 days** |
-| Custom copy | **empty** | written, with the BTU booking link |
-| Window | weekdays only, to 17:00 | 7 days, to 21:00 |
+| Smart follow-up | false | **true** |
+| Repeat | false | **true**, capped at 4 total touches |
+| Steps | one at **3 weeks** | **1 day → 72 hours → 30 days** |
+| Extra prompt | empty | text below |
 
-Suggested copy (bath-adapted from KTU's, which is demonstrably working — a follow-up revived a
-lead dormant for three weeks):
 ```
 Hey {{contact.first_name}}! Just wanted to check back in. Life gets busy — totally understand.
 If you are still thinking about updating your bathroom, we would love to help. The consultation
@@ -184,131 +188,183 @@ www.bathtuneupbloomfield.com/schedule — or just reply here and I can get you s
 ```
 
 ### B8 — Copy KTU's prohibited-words list
-**Where:** Closebot → BTU flow → Settings → Prohibited Words
+**Navigate:** bot → **Settings → Prohibited Words**. BTU has three entries (`Cheap`, `cheapest`, `-`).
+Paste KTU's 37, with `addordable` corrected to `affordable`:
 
-BTU currently has **three** entries: `Cheap`, `cheapest`, `-` (a literal hyphen). KTU has 37,
-covering all pricing language, all design-review language, and the out-of-area geographies.
+```
+Cheap, cheapest, pricing, quote, estimate, cost, breakdown, invoice, proposal, rates, fee, fees,
+charge, charges, affordable, cheaper, discount, discounts, deal, deals, review, send, email, photos,
+plans, design, drawings, blueprint, measurements, specs, specifications, manhattan, brooklyn,
+queens, bronx, staten, newark, hudson
+```
 
-Copy KTU's list verbatim (with `addordable` → `affordable`). Your first operating rule is never to
-quote price over chat, and BTU has no hard filter enforcing it today.
+### B9 — Fix the wrong prompt on the name objective
+**Node:** "Get Full name" objective → Prompt
 
-### B9 — Fix the wrong prompt on the name field
-**Where:** Closebot → BTU flow → "Get Full name" objective → Prompt
-
-| | Value |
+| Now | Set to |
 |---|---|
-| Now | `Ensure email address is valid format.` |
-| Change to | `Get contact's last name to ensure you have their full name.` |
+| `Ensure email address is valid format.` | `Get contact's last name to ensure you have their full name.` |
 
-### B10 — Fix the two SetField expressions carrying prose
-**Where:** Closebot → BTU flow → SetField nodes targeting `contact.name` and `contact.address`
-
-Both have the **value expression** set to the literal sentence
-`Update {{contact.first_name}} {{contact.last_name}} and {{contact.name}} fields with collected
-information` — that's instruction text sitting in a value field. Set to `{{contact.name}}` and
+### B10 — Fix two Set Field expressions carrying prose
+**Nodes:** Set Field → `contact.name`, and Set Field → `contact.address`. Both have the **value
+expression** set to the sentence `Update {{contact.first_name}} {{contact.last_name}} and
+{{contact.name}} fields with collected information`. Set them to `{{contact.name}}` and
 `{{contact.address}}` respectively.
 
 ### B11 — Delete the orphan branch, restore the AI-stop gate
-**Where:** Closebot → BTU flow canvas
+**On the canvas.** Delete the unreachable branch: Booking `ba6fe8ee` → ModifyTags (`AI Booked
+Kitchen`) → SaveConversation → Conversation `228127fd`. Nothing routes into it.
 
-Eight nodes were never reached in 12 months. Delete the orphan Booking branch — Booking
-`ba6fe8ee` (points at KTU's calendar) → ModifyTags (`AI Booked Kitchen`) → SaveConversation →
-Conversation `228127fd`.
-
-**But re-attach `If tags contain AI stop`** (`02967243`), which is also currently unreachable. BTU
-has no working tag-based kill switch; KTU does. Without it, tagging a BTU contact `ai stop` does
-nothing.
-
-### B12 — Widen BTU's booking window
-**Where:** HighLevel → BTU → Calendars → Consultation Calendar (`k6bokOz0oIicKYu93zhW`)
-
-| Setting | Now | Change to |
-|---|---|---|
-| `allowBookingAfter` | **48 hours** | 4–12 hours |
-
-**Leave `appointmentPerSlot` at 1** — this calendar has one team member. Raising it would
-double-book a single designer. This is the opposite of K1.
-
-Its hours (Mon–Fri 09:00–17:00, Sat 09:00–15:00) and `slotInterval` (60 min, staggered) are
-already better than KTU's. The 48-hour lead time is the constraint.
-
-### B13 — Install the tracking pixel
-**Where:** bathtuneupbloomfield.com
-
-The Closebot pixel is **not detected** on the BTU site; KTU's is live. BTU has no web-chat or
-visitor-intelligence coverage.
-
-### B14 — Remove the orphan sources
-**Where:** Closebot → Settings → Sources
-
-Four BTU sources with zero job flows attached: `src_24WVSJQXITOFM74O`, `src_K33N5LIO2QBMW3PN`,
-`src_L3IGFL677FXL3N5D`, `src_QB34844K4VMV14RK`. Three are set to timezone `America/Cancun`.
+**Then re-attach `If tags contain AI stop`** (`02967243`), also currently unreachable. Without it,
+tagging a BTU contact `ai stop` does nothing. KTU has a working equivalent.
 
 ---
 
-# SHARED — affects BOTH bots
+# PART 4 — Closebot · Kitchen Tune-Up bot
 
-⚠ **These change KTU and BTU simultaneously.** Persona `pers_2NWYK8F7YCDST2PC`.
+**Navigate:** Closebot → **Agents → Job Flows** → `Kitchen Tune-Up Booking Bot`
+(`bot_SRQO2QVP9AVZ8SQ4`).
 
-### S1 — Fix the consultation duration
-**Where:** Closebot → Personas → Andy → How to Respond → CONSULTATION block
+### K-CB1 — Fix the booking prompt
+**Node:** Booking `ba6fe8ee-545d-41d1-a127-a1b667796f1c` → Prompt. Replace the final sentence with
+**Part 5 / S0**.
 
-| Source | Says |
+### K-CB2 — Cap the follow-up
+**Navigate:** bot → **Follow-up**. `followUpRepeat` is on with the 30-day step repeating and **no
+attempt cap** — contacts are messaged every 30 days forever. Cap at **4 total touches**.
+
+### K-CB3 — Fix the name field's value expression
+**Node:** Set Field → `contact.name`
+
+| Now | Set to |
 |---|---|
-| Persona | "always **60 minutes**" |
-| Both booking nodes | "up to **2 hours**" |
-| Both HL calendars | `slotDuration` **120 min** |
+| `{{nodes.166b4528-b656-44f5-b156-d48a02e1fea5.result[0]}}{{contact.address}}` | `{{contact.name}}` |
 
-The persona is the outlier. Change `always 60 minutes` → `always 2 hours`. The bot is already
-telling leads 2 hours in live conversations, so the persona is simply wrong and risks a customer
-blocking one hour for a two-hour visit.
+It currently points at the address node's output.
+
+### K-CB4 — Remove the disconnected source
+**Navigate:** Settings → Sources. `src_X6UYDWSPPFPH2M9O` is **disconnected but still attached and
+enabled**. Detach it. The live source is `src_L620TCZJBOL15MOG`.
+
+### K-CB5 — Cosmetic: the calendar name field
+**Node:** Booking → Calendar name reads `other-use-calendarid`, a placeholder. Set to
+`Consultation Calendar`. The ID beneath it is already correct.
+
+### K-CB6 — Fix the prohibited-words typo
+**Navigate:** bot → Settings → Prohibited Words. `addordable` → `affordable`.
+
+---
+
+# PART 5 — Closebot · shared (affects BOTH bots)
+
+### S0 — The booking-prompt replacement text
+Used by **B5** and **K-CB1**. Replace this sentence:
+
+```
+When a contact responds with "Yes" or "OK" to a slot offer, the bot should book them immediately.
+```
+
+with:
+
+```
+Book immediately on ANY affirmative response to a slot offer — this includes naming a day, naming a
+time, "that works", "sure", "let's do it", "pencil me in", "book it", or repeating a slot back to
+you. Do not ask a further clarifying question once the contact has indicated a slot. Confirm the
+booking in the same reply.
+```
+
+**Why:** a lead replied "Let's pencil in Thursday the eighth at 4 o'clock" and was never booked. The
+prompt named two literal tokens.
+
+### S1 — Consultation duration: block 2 hours, say 90 minutes
+**Navigate:** Closebot → **Agents → Personas → Andy** → *How to Respond* → CONSULTATION block.
+
+| Where | Now | Set to |
+|---|---|---|
+| Persona CONSULTATION block | `Always free, always in-home, always 60 minutes.` | `Always free, always in-home, and usually about 90 minutes.` |
+| Both Booking node prompts | "Consultations take up to 2 hours" | `Consultations usually take about 90 minutes.` |
+| Both HighLevel calendars | `slotDuration` 120 min | **leave at 120** |
+
+The calendar keeps blocking a full 2 hours of designer time; only the customer-facing wording
+changes. Today the persona says 60 minutes while the bot tells leads 2 hours — the worst of both.
+
+⚠ One caveat, stated once: 90 minutes is still under the 2 hours you actually block, so a designer
+running long will overrun what the customer was told. It is a large improvement on "60 minutes"
+and a normal way to reduce booking friction — just brief the designers that the customer heard 90.
 
 ### S2 — Set reply-hour restrictions
-**Where:** Closebot → Settings → Sources → each source → Reply Restrictions
+**Navigate:** Closebot → **Settings → Sources** → each source → **Reply Restrictions**.
+Both read "No restrictions configured" — the AI replies on every channel 24/7.
 
-Both sources read "No restrictions configured" — the AI replies on every channel 24/7. Only
-follow-ups are time-boxed. Set live-reply hours, or decide deliberately to keep 24/7.
+Apply to **both** `src_L620TCZJBOL15MOG` (KTU) and `src_16VMHVU5CCOHPAC7` (BTU):
+
+| Days | Hours | Timezone |
+|---|---|---|
+| Monday – Sunday | **08:00 – 21:00** | `America/New_York` |
+
+Select all channels when applying. This matches KTU's existing *follow-up* window, so the two
+settings stop contradicting each other. While you are on that screen, align BTU's **Follow-Up
+Restrictions** to the same 7-day 08:00–21:00 (BTU is currently weekdays only, to 17:00).
 
 ### S3 — Clean up the knowledge library
-**Where:** Closebot → Settings → Knowledge
+**Navigate:** Closebot → **Settings → Knowledge** (Uploads).
 
-11 files, 100KB, **referenced by nothing** — no node in either flow reads the library, and the real
-knowledge is the four HighLevel custom values in the Global Prompt. Two files carry error icons.
-Delete them, or wire them up deliberately.
+11 files, ~100 KB. **Nothing reads them** — no node in either flow references the library, and the
+Global Prompt pulls its knowledge from HighLevel custom values instead
+(`ktu_playbook`, `objections_toolkit_*`, `bath_tuneup_refacing_manual_*`, `core_services_guide_*`).
+Two files show error icons and four are orphaned `Real Wave Scraper` dumps attached to no source.
 
----
+**Do it in this order — the delete is not reversible:**
 
-# Open questions — answer these before K1 and B2
+1. **Download all 11 first.** Row's ⋮ menu → Download, for each. Closebot has no text preview, so
+   this is the only way to see what is in them.
+2. **Archive them to Drive**, under `07 Vendors & Products` or a new `Closebot archive` folder.
+3. **Delete all 11** from Closebot.
+4. **Verify**: run one test conversation per bot and confirm answers about services, pricing
+   deflection and scope are unchanged. They should be — the real knowledge is the HighLevel custom
+   values and this step does not touch them.
 
-1. **How many designers can genuinely run a KTU consultation at the same time?** The calendar has
-   three members assigned. If that reflects real concurrent capacity, K1 roughly triples bookable
-   supply. If the `1` was deliberate because only one designer works a slot, K1 is not a fix and
-   KTU's ceiling is a staffing decision, not a settings one. **This is the single most consequential
-   unknown in the whole audit.**
-2. **Should the bath calendar live in BTU's sub-account permanently?** B1 repoints the bot at
-   BTU's existing calendar, which is the right call. If you instead want the KTU-located
-   "Consultation Calendar - Bath" to be the system of record, that's a deliberate move and the
-   thank-you redirect needs fixing too.
-3. **Do you have a clean source to restore corrupted BTU phone numbers from?** (B2) ServiceMinder
-   or the original form submissions are the likely candidates.
+If you would rather not delete, deleting only the four orphaned `Real Wave Scraper` files and the
+two erroring files is the safe subset.
 
 ---
 
 # Suggested order
 
-| # | Item | Business | Where | Effort |
+| # | Step | System | Business | Effort |
 |---|---|---|---|---|
-| 1 | B1 — repoint calendar | BTU | Closebot | 1 field |
-| 2 | B2 — stop phone corruption | BTU | Closebot | 1 field |
-| 3 | B3 — book at customer address | BTU | Closebot | 1 field |
-| 4 | K2 + B5 — close on soft yes | Both | Closebot | 1 prompt ×2 |
-| 5 | K1 — raise KTU capacity | KTU | HighLevel | after Q1 |
-| 6 | B12 — widen BTU lead time | BTU | HighLevel | 1 field |
-| 7 | B4 — BTU entry gate | BTU | Closebot | 1 setting |
-| 8 | B6, B7, B8 — BTU parity | BTU | Closebot | ~30 min |
-| 9 | S1 — duration | Both | Closebot | 1 line |
-| 10 | Everything else | — | — | hygiene |
+| 1 | B1 — repoint calendar | Closebot | BTU | 1 field |
+| 2 | B2 — stop phone corruption | Closebot | BTU | 1 field |
+| 3 | B3 — book at customer address | Closebot | BTU | 1 field |
+| 4 | K1 — add Monday, extend Tuesday | HighLevel | KTU | 2 min |
+| 5 | S0 via K-CB1 + B5 — close on soft yes | Closebot | Both | 1 prompt ×2 |
+| 6 | K2 + B-HL1 — booking notice 12h | HighLevel | Both | 2 fields |
+| 7 | B4 — BTU entry gate | Closebot | BTU | 1 setting |
+| 8 | S1 — 90-minute wording | Closebot | Both | 3 edits |
+| 9 | S2 — reply hours | Closebot | Both | 2 screens |
+| 10 | B6, B7, B8 — BTU parity | Closebot | BTU | ~30 min |
+| 11 | B-HL2 — designers on bath calendar | HighLevel | BTU | staffing call |
+| 12 | S3 — knowledge cleanup | Closebot | Both | ~20 min |
+| 13 | K-CB2…K-CB6, B9, B10, B11 | Closebot | Both | hygiene |
 
-Items 1–4 are five single-field edits and one prompt. They address the two causes of the 9%
-booking-step conversion and the two defects doing daily damage. Everything after that is
-improvement rather than repair.
+Steps 1–5 are five single-field edits, one calendar change and one prompt. They address both causes
+of the 9% booking-step conversion and the two defects doing daily damage.
+
+---
+
+# After the changes — how to tell if it worked
+
+The number to watch is **booking-step conversion**: bookings divided by conversations that reached
+the Booking node. Baseline is **9%** on both bots (KTU 14/155, BTU 4/43).
+
+Re-measure after two weeks with:
+
+```bash
+curl -H "X-CB-KEY: $CLOSEBOT_API_KEY" \
+  "https://api.closebot.com/botMetric/actions?start=<ISO>&end=<ISO>&maxCount=5000"
+```
+
+Count actions on the Booking nodes (`ba6fe8ee…` for KTU, `bcda4208…` for BTU) against actions on the
+booked-tag nodes (`3f8f5ec3…` KTU, `54f437df…` BTU). If K1 and S0 land, this should move
+substantially. If it doesn't, the cause is deeper in the booking handoff and warrants a fuller
+transcript review.

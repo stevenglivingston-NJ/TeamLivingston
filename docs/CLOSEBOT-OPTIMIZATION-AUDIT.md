@@ -54,17 +54,27 @@ alternative was a single slot a week out. That is not a prompt failure. It is a 
 Theoretical capacity is **16 slots per week**. Real offered availability in transcripts was
 one to two slots, a week or more out.
 
-**The single highest-leverage change in this entire audit:** `appointmentPerSlot` is `1` while
-the calendar has **three** team members on round-robin equal distribution. You are throttling
-three designers' capacity down to one appointment per time slot. Raising this to match actual
-designer availability triples bookable capacity without touching hours.
+**Corrected 2026-09-19 — `appointmentPerSlot` is not the throttle.** HighLevel documents the
+field as *"Maximum bookings per slot **(per user)**"*, so `1` across three round-robin designers
+already allows three concurrent bookings. Raising it would allow three *per designer*. Do not
+change it.
+
+**The actual constraint was that only one designer had availability.** All 13 historical KTU
+appointments are assigned to the same user (`x5CvqPWifa1XXfvSIdCX`) because until 2026-09-18 he
+was the only designer with a schedule on this calendar. Two more schedules were added that day.
+What still blocks new capacity is the **calendar's own open hours**: HighLevel books only where
+calendar hours and designer availability overlap, and the calendar has no Monday entry even though
+a designer is now available Monday 10:00–16:00. See
+[`CLOSEBOT-FIX-RUNBOOK.md`](CLOSEBOT-FIX-RUNBOOK.md) step K1.
 
 **Required:**
-1. Set `appointmentPerSlot` to the number of designers genuinely available concurrently (likely 2–3).
-2. Open Monday. It is a full working day currently unbookable.
-3. Open Tuesday mornings (10:00–14:00) to match Wed–Fri.
-4. Drop `allowBookingAfter` from 24h to 4–12h so same-day and next-morning are reachable.
-5. Consider `slotInterval` 60 with `slotDuration` 120 for staggered starts — roughly doubles offer density.
+1. Open **Monday** 10:00–18:00 on the calendar. A designer is already available then; the calendar is not.
+2. Extend **Tuesday** to 10:00–18:00 to match Wed–Fri.
+3. Drop `allowBookingAfter` from 24h to 12h so next-morning is reachable.
+4. **Leave `appointmentPerSlot` at 1** (per-user — see correction above).
+5. **Leave `slotInterval` at 120.** Dropping to 60 against 2-hour slots risks overlapping bookings
+   beyond designer count. Revisit after the above has run.
+6. Widen the two newly-added designers' own availability — they now cap the calendar more than it caps them.
 
 **BTU is NOT the same fix — corrected 2026-09-19.** BTU's own calendar
 (`k6bokOz0oIicKYu93zhW`) has **one** team member, so `appointmentPerSlot: 1` is correct there and
