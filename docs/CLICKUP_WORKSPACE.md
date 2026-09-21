@@ -138,6 +138,46 @@ seeded**, because the only Space that exists is shared with Sonya and the
 permission rule puts personal/career material owner-only. They land once the
 private Space exists.
 
+## Third pass — ServiceMinder + Calendar (2026-09-21)
+
+Total seeded: **67** (14 Decisions · 13 Money & AR · 40 Commitments), verified by
+readback.
+
+**ServiceMinder AR — the largest finding of the build.** `$466,957` open across
+both brands. Split by the 50/40/10 cash model (50% at close, 40% by 60 days,
+10% by 90 days), since a balance inside 90 days can be legitimately on schedule:
+
+- **Past 90 days: $257,961.82 across 14 invoices.** 13 of the 14 sit at almost
+  exactly **50% paid** — deposit collected, closing balance never was. Track A
+  runs 5–7 weeks and Track B 9–12, so these jobs are long finished. That is a
+  closeout process gap, not fourteen coincidences.
+- Within 90 days: $208,995.54, not counted as aged.
+
+Three cross-checks corrected existing tasks:
+- **Kim Thompson** — answered Sonya's open question. Invoice `I476148` shows
+  $2,187.60 of $21,876.00, so **90% was collected**; only the closing 10% remains.
+- **Vecchiarello** — aging corrected from "125+" to the actual **143 days**.
+- **"Bill Rutherford and Karen L."** — Karen L. is **Karen Labagnara**. Between
+  them they carry **$66,161.58** open (Rutherford $42,666.27 at 159d; Labagnara
+  $23,495.31 at 75d), and Labagnara's balance is what is holding Elias order
+  #2649281. What looked like a scheduling call is a collection call.
+
+**API note:** `invoice/query` silently ignores `UnpaidOnly` and returns paid
+invoices regardless. Filter client-side on `DatePaid is null and BalanceDue > 0`.
+Pass `IncludeContact: true` or you get bare `ContactId` integers.
+
+**Calendar.** Six standing meetings across two calendar systems, and **Weekly
+Sales/Operations (Tue 11:00–12:00) collides with BTU Weekly (Tue 11:30–12:00)**
+every week — Steven, Jessica and Mayra double-booked, Mayra marked *tentative*.
+
+**Excluded by the invariant, deliberately:** HighLevel conversations (Goldeneye
+owns them), JobTread jobs (Foreman), CompanyCam photos. Only aged AR and stale
+proposals cross from the record systems.
+
+**Still held for the private Space:** the Gmail career items, plus calendar-side
+Executive Impact Institute and Larnell Vickers sessions, and the weekly LinkedIn
+post schedule.
+
 ## Repo gotcha — setup.sh resets the checkout to origin/main
 
 `mcp-servers/setup.sh` runs `git reset --hard origin/main` on session start, and
