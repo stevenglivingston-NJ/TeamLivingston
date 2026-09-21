@@ -1,0 +1,117 @@
+__CONFIG__ {
+    conversationReason ""
+    businessInformation ""
+    prohibitedWords
+}
+Source id="source" {
+    Next handle="c3aa19fb-2111-4e01-a33b-87abad7c5aee"
+    __position -84.61539 
+}
+MultiObjective id="c3aa19fb-2111-4e01-a33b-87abad7c5aee" {
+    Objectives {
+        _ {
+            Variable "contact.first_name"
+            Title "Get First Name"
+            Description "Get the contact's first name if {{contact.first_name}} "
+            Prompt "Get contact's first name so you can use throughout conversation "
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    Next handle="b693262e-bc04-45aa-834c-80e130acdef2"
+    __position 106.15385 18.076923
+}
+AISwitch id="f3ad6958-e793-414c-b993-29a29275193f" {
+    UseAI true
+    Title "KTU"
+    Description "Determine if "
+    AiCases
+    NonAiExpressionLeftValue "{{contact.tags}}"
+    NonAiCases {
+        _ {
+            ExpressionOperator "Contains"
+            ExpressionRightValue "KTU"
+            FriendlyName "Kitchen"
+        }
+    }
+    __dynamicVariables
+    Next handle="EOC"
+    __position 381.98956 25.965126
+}
+MultiObjective id="a3b45ea1-d03d-4b65-89e5-770234510946" {
+    Objectives {
+        _ {
+            Title "Get ProjectNotesContact"
+            Description "determine the scope of {{contact.first_name}}'s Kitchen remodel project "
+            Prompt "Ask one question at a time"
+            MaxAttempts 1
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    Next handle="f3ad6958-e793-414c-b993-29a29275193f"
+    __position 626.1575 35.593933
+}
+MultiObjective id="b693262e-bc04-45aa-834c-80e130acdef2" {
+    Objectives {
+        _ {
+            Title "project info"
+            Description "determine the scope of {{contact.first_name}}'s bath remodel project {{contact.first_name}}"
+            Prompt "address by first name"
+            MaxAttempts 1
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    Next handle="EOC"
+    __position 235.99939 13.807633
+}
+MultiObjective id="8f30f95f-acf9-4458-a789-7d0a54a15cdc" {
+    Objectives {
+        _ {
+            Title "Get Email "
+            Description "Get the contact's email for consultation reminders and to send relevant communication and details. "
+            Prompt "Ensure email address is valid format. "
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    Next handle="9719952f-1196-4f17-bd9f-8c102ecfda88"
+    __position 782.83624 27.303734
+}
+MultiObjective id="9719952f-1196-4f17-bd9f-8c102ecfda88" {
+    Objectives {
+        _ {
+            Title "Get Phone"
+            Description "Get the contact's phone"
+            Prompt "Ensure it is 10 or 11 digits"
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    Next handle="922a7312-e8c3-41c9-a317-4370b88bc663"
+    __position 889.4946 -30.667135
+}
+MultiObjective id="922a7312-e8c3-41c9-a317-4370b88bc663" {
+    Objectives {
+        _ {
+            Title "Get Full Address"
+            Description "Get the contact's full address"
+            Prompt "Get contacts full address which should include street name, city and zip. You don't need the state as you only operate in New Jersey. "
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    Next handle="EOC"
+    __position 1054.0454 -5.8861265
+}

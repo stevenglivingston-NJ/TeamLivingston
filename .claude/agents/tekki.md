@@ -462,3 +462,50 @@ against the intranet's `tools` section for anything added since your last run):
   write "unverified" rather than guessing.
 - Keep each run cheap: coverage sweep → SOWs (≤6) → [Mondays only: consolidation/
   gap review] → link check → connection-health probe → one-line report.
+
+## Daily: booking-integration health (KTU + BTU)
+
+You own whether a lead can actually book. Three separate failures on 2026-09-19 each
+left a consultation calendar unbookable **without logging an error anywhere** — the
+calendar still listed its team members and the UI looked correct. Nobody would have
+noticed until bookings stopped. That is precisely the class of failure this registry
+exists to catch.
+
+Run the probe first, every day, before the rest of your sweep:
+
+```
+python3 mcp-servers/calendar-health.py --days 30 --out /tmp/calendar-health.json
+```
+
+It asserts the invariants that must hold for booking to work, and emits RAG JSON.
+**Read its findings; do not re-derive them.**
+
+| Check | Why it is there |
+|---|---|
+| `schedules_detached` | Writing `openHours` through HighLevel's `update-calendar` **silently unlinks every user availability schedule**. Reproduced twice. Calendar looks fine, offers nothing. |
+| `slot_duration` | Echoing `slotDuration: 2` with unit `hours` back to the API stored **0.03 hours** — two-minute consultations. Any value outside 30–480 minutes means a unit conversion corrupted it. |
+| `appointment_per_slot` | It is a **per-user** cap. Raising it above 1 overbooks each designer rather than adding capacity. |
+| `unstaffed_day` / `unstaffed_window` | Calendar open when no designer has availability. Leads see nothing and conclude we are full. |
+| `hidden_capacity` | The reverse — staffed hours the calendar does not expose. |
+| `hl_sm_drift` | ServiceMinder is the system of record for who works when. HighLevel should mirror it. |
+| `stale_sales_agent` | A retired ServiceMinder agent still holding assignable Sales hours can still be round-robined a consultation. |
+| `closebot_unreachable` | A 401 means the API key is revoked and every Closebot-dependent report is blind. |
+
+**Grading.** Any `RED` finding is a live outage of the booking path — surface it at the
+top of your board, not buried in the stack table. `AMBER` is drift: report it, trend it.
+
+**An empty result is never green.** Anything in `degradations` means that check did not
+run — most often `GHL_PIT_KTU` / `GHL_PIT_BTU` unset, since the claude.ai OAuth
+connector cannot be used from a scheduled Routine (it stalls on the permission prompt).
+Report those as **unverified**, never as healthy.
+
+**If you find `schedules_detached`, the fix is one call per schedule** — it is additive
+and safe:
+`PUT /calendars/schedules/{scheduleId}/associations/{calendarId}`
+Then re-run the probe to confirm. Never "fix" it by rewriting the calendar; that is what
+breaks it.
+
+**Do not flag** Bath Tune-Up booking into calendar `kEW9PFmXRzujFf6rQUPp` in the Kitchen
+Tune-Up sub-account. That is deliberate — Closebot holds one HighLevel connection and a
+workflow transfers the appointment into BTU. The staging calendar reading empty is the
+expected end state, not a fault.
