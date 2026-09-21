@@ -136,7 +136,7 @@ case "$cmd" in
     echo ;;
 
   ""|help|-h|--help)
-    sed -n '2,55p' "$0" ;;
+    sed -n '2,61p' "$0" ;;
 
   *)
     echo "clickup.sh: unknown command '${cmd}'. Try: bash mcp-servers/clickup.sh help" >&2

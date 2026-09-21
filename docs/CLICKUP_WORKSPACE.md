@@ -61,13 +61,17 @@ Everything below the floor — Hiring, Systems, Marketing, Vendor, Ops — is a
 
 ## Connector limits found by live probe
 
+**Scope: this table describes the MCP connector only.** The REST API is a
+different surface and does more — see *Correction* below before concluding
+anything here is impossible.
+
 | Capability | Via MCP connector | Note |
 |---|---|---|
 | Create Folder / List / Task / Doc / Comment / Reminder | ✅ | |
-| Create **Space** | ❌ | no such tool — must be done in the UI |
-| Create **custom field** | ❌ | no such tool |
-| Create **view** | ❌ | no such tool |
-| Create **status** | ❌ | inherited from the Space |
+| Create **Space** | ❌ | no such tool *(REST can — see Correction)* |
+| Create **custom field** | ❌ | no such tool *(REST can)* |
+| Create **view** | ❌ | no such tool *(REST can)* |
+| Create **status** | ❌ | inherited from the Space *(REST cannot either — plan-gated)* |
 | Unified API operators | ❌ none enabled | `get_operators` → "none" |
 | **Call quota** | **100/day** | hard 429 at call 100; resets ~22h |
 
@@ -126,28 +130,15 @@ usages and no effect, but it resisted deletion through every endpoint tried
 (`DELETE /space/{id}/field/{id}` → 404, `/list/{id}/field/{id}` → 404, v3 → 405).
 Delete it in the UI.
 
-## Superseded — the original UI-only list
+## Cross-system ID fields — still not created, and why
 
-1. **Private Space** for personal/career — cannot be created via API.
-2. **Custom fields** on all three lists: `Workstream` (Hiring · Systems & fixes ·
-   Customer follow-up · Marketing & events · Vendor & procurement · Ops & admin ·
-   Money & AR), `Entity` (KTU · BTU · KTU/BTU · Jatalia/Earthwise · Axyom),
-   `Waiting on`, `Source URL`, `Status confidence`. Until these exist, every
-   seeded task carries those values in its description footer.
-3. **A `handback` status** on Commitments — the delegation loop needs
-   *assigned → doing → handback → accepted*, and only to do/in progress/complete
-   exist today.
-4. **Views**: "Waiting on Steven", "Waiting on Sonya", "This week", "Aged >30d".
-
-## Cross-system ID fields — deliberately NOT created
-
-The design calls for `SM Contact ID`, `SM Proposal ID`, `HL Opportunity ID`,
-`JobTread Job ID`. **None were created, because no ID resolution pass has run
-yet** — and an always-empty field is worse than a missing one. The customer
-names are in the corpus (Thompson, Rubin, McGriff, Vecchiarello, Simeone,
-Collins, Murchison, Barrett, Fleming, Lunny, Drechsel, Gold, MacQuillken);
-resolving them against ServiceMinder is a follow-up pass, and the fields get
-created when it produces IDs.
+`SM Contact ID`, `SM Proposal ID`, `HL Opportunity ID`, `JobTread Job ID` are
+**still absent on purpose.** No ID-resolution pass has run, and an always-empty
+field is worse than a missing one — doubly so now that field *usages* are the
+scarce resource. The customer names are in the corpus (Thompson, Rubin, McGriff,
+Vecchiarello, Simeone, Collins, Murchison, Barrett, Fleming, Lunny, Drechsel,
+Gold, MacQuillken, Rutherford, Labagnara, Province, Rabbitt, Mycka); resolving
+them against ServiceMinder is the next pass.
 
 ## Sources ingested, and not
 
@@ -165,9 +156,9 @@ This channel is currently the de-facto task system.
   scratch", and a "To do list" board whose newest item is from April 2025. It
   stays in Drive where the Librarian maps it.
 
-**Not reached this session:** Gmail (both identities), Google Calendar,
-ServiceMinder, JobTread, HighLevel, CompanyCam, the ecommerce stack. These are a
-second ingest pass; `clickup.sh` is idempotent so re-running is safe.
+**Reached in later passes (see below):** Gmail, Google Calendar, ServiceMinder.
+**Still not reached:** JobTread, HighLevel, CompanyCam, the ecommerce stack —
+each has an owning agent, so only their human-decision exceptions would cross.
 
 **Not reachable at all:** Apple Reminders / Notes — no connector exists and a
 Cloud session has no path to the device. Export to Drive and re-run the ingest.
