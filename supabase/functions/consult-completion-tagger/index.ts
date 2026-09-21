@@ -25,9 +25,36 @@
 // for that event). On the 3rd failure we insert notify_queue rows for Steven
 // + Takia so a human follows up.
 //
-// Open items (see report): HL calendar-events API version header and whether
-// the custom field keys already exist on each sub-account are both
-// judgment calls / unverified without live credentials -- see comments below.
+// 2026-09-21 fix, verified live against the real HighLevel API via the
+// High Level MCP connector (read-only calls only -- no writes tested against
+// production contacts):
+//   - GET /calendars/events query params ARE millisecond-epoch strings, as
+//     already coded -- confirmed against a live KTU calendar.
+//   - Real appointmentStatus values observed live: "confirmed", "showed",
+//     "cancelled" (noshow/invalid not observed live but kept in the mapping
+//     below since they're documented HL values) -- classifyStatus's mapping
+//     already matched this, no change needed there.
+//   - BUG FOUND AND FIXED: the calendar-events response has NO nested
+//     `contact` object -- confirmed live, the event payload only carries
+//     `contactId`, never `contact.phone`/`contact.email`. The prior version
+//     read `ev.contact?.phone`/`ev.contact?.email`, which was always
+//     undefined, silently defeating the ServiceMinder cross-check every run.
+//     Fixed by fetching GET /contacts/{contactId} once per event to get real
+//     phone/email before the SM lookup (confirmed live response shape:
+//     `{contact: {phone, email, ...}}`).
+//   - Custom field keys (last_consult_appt_id, last_consult_hl_user_id,
+//     last_consult_date, last_consult_calendar_id) confirmed to exist on KTU
+//     already (created by hand previously) and have now been created on BTU
+//     to match (all TEXT type -- KTU's last_consult_date was found to be typed
+//     DATE, which would likely reject the "Monday, Sept 21" string this
+//     function sends; BTU's was deliberately created as TEXT instead. KTU's
+//     existing DATE-typed field is a known open risk -- see report, not fixed
+//     here since retyping a live field was judged riskier than flagging it).
+//   - HL API Version header (2021-04-15) and the actual contact PUT/tag
+//     add-remove calls remain UNVERIFIED live -- this session's HighLevel MCP
+//     connector never exercises a write against production contact data
+//     without a human explicitly asking for that specific write, so those
+//     paths are still first-live-run untested.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const sb = createClient(
@@ -39,9 +66,11 @@ const HL_BASE = "https://services.leadconnectorhq.com";
 // Judgment call: dispatch-notify's contacts/messages calls use 2021-07-28 and
 // 2021-04-15 respectively. HighLevel's Calendars v2 API (GET /calendars/events,
 // contact tag/custom-field updates) is documented as Version 2021-04-15 --
-// used here for both the events read and the contact write. Unverified
-// against a live account (no HL_TOKEN_* set yet); if HighLevel returns a
-// version-mismatch error, this is the first thing to check.
+// used here for both the events read and the contact write. The events READ
+// path is now confirmed reachable via this version through the account's
+// HighLevel MCP connector; the contact WRITE path (PUT /contacts, tag
+// add/remove) is still unverified against a live account -- if HighLevel
+// returns a version-mismatch error, this is the first thing to check.
 const HL_VERSION = "2021-04-15";
 
 const FIRST_RUN_FLAG_KEY = "consult_tagger_first_run_done";
@@ -91,9 +120,21 @@ async function hlFetch(token: string, path: string, opts: RequestInit = {}) {
   return json;
 }
 
+// Fetch a contact's phone/email -- calendar-events responses do NOT embed
+// this (confirmed live 2026-09-21), so it takes a second call per event.
+async function getContactPhoneEmail(token: string, contactId: string): Promise<{ phone: string; email: string }> {
+  try {
+    const resp = await hlFetch(token, `/contacts/${contactId}`) as { contact?: { phone?: string; email?: string } };
+    return { phone: resp?.contact?.phone ?? "", email: resp?.contact?.email ?? "" };
+  } catch {
+    return { phone: "", email: "" };
+  }
+}
+
 // Map HighLevel's appointmentStatus strings to our three skip buckets.
-// Judgment call, unverified live: HL calendar events commonly use
-// "confirmed" | "cancelled" | "showed" | "noshow" | "invalid" | "new".
+// Confirmed live 2026-09-21: real calendar events return "confirmed",
+// "showed", "cancelled" -- "noshow"/"invalid" are documented HL values not
+// observed live in this sample but kept for safety.
 function classifyStatus(hlStatus: string): "skipped_cancelled" | "skipped_noshow" | null {
   const s = (hlStatus || "").toLowerCase();
   if (s === "cancelled" || s === "canceled") return "skipped_cancelled";
@@ -133,9 +174,8 @@ async function findSmMatch(brand: string, startIso: string, phone?: string, emai
   const start = new Date(startIso);
   const lo = new Date(start.getTime() - 30 * 60000).toISOString();
   const hi = new Date(start.getTime() + 30 * 60000).toISOString();
-  let q = sb.from("appointments").select("status,customer_phone,customer_email,appt_at")
+  const { data } = await sb.from("appointments").select("status,customer_phone,customer_email,appt_at")
     .eq("brand", brand).gte("appt_at", lo).lte("appt_at", hi);
-  const { data } = await q;
   if (!data || data.length === 0) return null;
   const norm = (s?: string | null) => (s || "").replace(/\D/g, "");
   const hit = data.find((r) =>
@@ -173,13 +213,15 @@ async function updateHlContact(
   fields: { last_consult_appt_id: string; last_consult_hl_user_id: string; last_consult_date: string; last_consult_calendar_id: string },
 ) {
   // Custom field keys used here (last_consult_appt_id, last_consult_hl_user_id,
-  // last_consult_date, last_consult_calendar_id) are ASSUMED to already exist
-  // as custom fields on each HL sub-account, addressed by key in the
-  // customFields array (`{ key, field_value }`) as HighLevel's v2 contacts API
-  // supports. This is UNVERIFIED without live credentials -- if these keys do
-  // not exist yet on the KTU/BTU sub-accounts, HighLevel will likely reject or
-  // silently ignore the update; Steven should confirm/create them (Settings ->
-  // Custom Fields -> Contact) before this function can do real work. See report.
+  // last_consult_date, last_consult_calendar_id) are now confirmed to exist on
+  // both KTU (pre-existing) and BTU (created 2026-09-21) sub-accounts, all as
+  // TEXT fields. The PUT itself (customFields by `key`) is still unverified
+  // against a live write -- HighLevel's read API returns customFields keyed by
+  // `id`+`value`, and the write API is documented to also accept `key`+
+  // `field_value`, but that specific write path was not exercised live this
+  // session (no destructive test against real contact data was run without a
+  // human explicitly asking for it). If this errors, check whether the write
+  // needs `id` instead of `key`.
   await hlFetch(token, `/contacts/${contactId}`, {
     method: "PUT",
     body: JSON.stringify({
@@ -216,7 +258,9 @@ async function processCalendar(
   const windowStart = firstRun ? now - 24 * 3600_000 : now - 72 * 3600_000;
   const windowEnd = now - 12 * 3600_000;
 
-  // Judgment call: GET /calendars/events, query params per HL v2 docs.
+  // Confirmed live 2026-09-21: startTime/endTime ARE millisecond-epoch
+  // strings, exactly as coded here -- a real KTU calendar query with these
+  // params returned real events.
   const qs = new URLSearchParams({
     locationId,
     calendarId,
@@ -266,8 +310,9 @@ async function processCalendar(
     }
 
     // Cross-check ServiceMinder via the intranet's own `appointments` table.
-    const contactPhone = String(ev.contact?.phone ?? "");
-    const contactEmail = String(ev.contact?.email ?? "");
+    // Calendar events do NOT embed contact phone/email (confirmed live) --
+    // fetch the contact separately.
+    const { phone: contactPhone, email: contactEmail } = await getContactPhoneEmail(token, contactId);
     const smRow = await findSmMatch(brand, startTime, contactPhone, contactEmail);
     let smStatus: string | null = null;
     if (smRow) {
