@@ -94,6 +94,8 @@ Direct-access helpers (curl/CLI, NOT registered MCP servers — no bootstrap nee
   ghl.sh              → HighLevel over curl, same endpoint as ghl-ktu / ghl-btu
   sm.sh               → ServiceMinder Open API over curl
   gmb.sh              → Google Business Profile over curl (mints its own OAuth token)
+  clickup.sh          → ClickUp v2 API over curl — the MCP connector is hard-capped at
+                        100 calls/day AND classifier-gated; curl is neither
   lead-sweep.py       → daily ad-response / missed-lead / booking-integrity sweep
   tracking-audit.py   → daily tracking-health sweep (GTM/GA4/Ads/HL/Clarity/Meta
                         config drift — paused conv tags, wrong-brand containers,
@@ -261,7 +263,15 @@ bash mcp-servers/sb.sh  'SELECT …'                          # Supabase
 bash mcp-servers/ghl.sh KTU contacts_get-contacts '{...}'   # HighLevel
 bash mcp-servers/sm.sh  KTU invoice/query '{"Take":50}'     # ServiceMinder
 bash mcp-servers/gmb.sh KTU info                            # Google Business Profile
+bash mcp-servers/clickup.sh GET /api/v2/team                # ClickUp
 ```
+
+**ClickUp has a second reason to avoid the MCP: a hard 100-calls/day cap.** Hitting
+it returns `RATE_LIMIT_EXCEEDED` with a ~20-hour reset and blocks *reads* too, so a
+single exploratory session can lock the tool out for the rest of the day. Use
+`clickup.sh` (auth header is the bare `CLICKUP_API_TOKEN`, **not** `Bearer`).
+Workspace: Goaxyom `90141667621` · Team Space `90148750591` · Axyom Operations
+folder `901413604098` · Org Chart & Hiring Plan list `901421350250`.
 
 Diagnosing a stale board: read the Routine's `last_run.status`. `ABANDONED` +
 a session in `REQUIRES_ACTION` with a `pending_action` naming an `mcp__*` tool
