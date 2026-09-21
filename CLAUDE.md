@@ -234,9 +234,30 @@ scheduled fire **cannot answer that prompt**, so the session does not error — 
 identical call. Nothing is logged as a failure; the board just goes stale.
 
 `.claude/settings.json` sets `permissions.defaultMode: bypassPermissions`, and
-that **does** cover Bash in scheduled runs — which is why `sb.sh` works. It does
-**not** override the account-level connector classifier that gates `mcp__*`
+that covers **ordinary** Bash in scheduled runs — which is why `sb.sh` works. It
+does **not** override the account-level connector classifier that gates `mcp__*`
 calls. Repo settings cannot fix this; only avoiding the gated call can.
+
+> **Correction, 2026-09-21 — `bypassPermissions` does NOT cover destructive
+> Bash.** Foreman was found hung four days with a **`Bash`** `pending_action`,
+> not an `mcp__*` one:
+>
+> ```
+> rm -f $SD/*_insert_*.sql $SD/*_insert.sql
+> ```
+>
+> `rm` with globs is classified separately and still prompts. The agent had
+> improvised that cleanup in its own publish step — **no agent spec contains
+> `rm` anywhere**, so this cannot be found by grepping the specs; only the
+> stalled session's `pending_action` reveals it.
+>
+> **Rule: a scheduled run must never emit `rm`, `mv` over an existing path, or
+> any other destructive shell.** Write each run's artifacts to a fresh per-run
+> directory (`$SD/run-$(date +%Y%m%dT%H%M%S)/`) so there is nothing to clean up.
+>
+> **Diagnosing:** read the stalled session's `pending_action`. If it names
+> `Bash`, it is this bug. If it names `mcp__*`, it is the connector one. They
+> look identical from the board — both just serve yesterday's rows.
 
 Measured on the 2026-08-19 → 08-27 outage — eight consecutive days, every
 credential valid the whole time:
@@ -261,7 +282,18 @@ bash mcp-servers/sb.sh  'SELECT …'                          # Supabase
 bash mcp-servers/ghl.sh KTU contacts_get-contacts '{...}'   # HighLevel
 bash mcp-servers/sm.sh  KTU invoice/query '{"Take":50}'     # ServiceMinder
 bash mcp-servers/gmb.sh KTU info                            # Google Business Profile
+bash mcp-servers/gads.sh query_lsa_periods '{"location":"KTU"}'   # Google Ads + LSA
+bash mcp-servers/companycam.sh /v2/photos 'per_page=100'    # CompanyCam
+bash mcp-servers/clickup.sh tasks <list_id>                 # ClickUp
 ```
+
+**`gads.sh` (added 2026-09-21) closed the last gap.** Google Ads was the only
+system in this stack without a curl escape hatch, which is exactly why Organic's
+`mcp__google-ads__query_lsa_periods` call was never migrated — and it hung that
+agent for **nine days**. The helper does not reimplement anything: it loads
+`google-ads/server.py` and calls the same function the MCP tool calls, so
+behaviour is identical by construction. `bash mcp-servers/gads.sh tools` lists
+all 14.
 
 Diagnosing a stale board: read the Routine's `last_run.status`. `ABANDONED` +
 a session in `REQUIRES_ACTION` with a `pending_action` naming an `mcp__*` tool
