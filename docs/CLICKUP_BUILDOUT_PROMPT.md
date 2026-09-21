@@ -43,6 +43,61 @@ duplicates `dash.goaxyom.com`, you have broken the invariant — delete it.
 
 ---
 
+## Scope — decided
+
+These calls are made. They are not re-derived at runtime; the derivation rules in Phase 2
+apply to *structure*, not to *scope*. Change one only with a stated reason.
+
+**The test:** does a system already own this fact, and does a human already work it there?
+If yes, ClickUp links to it. If nothing owns it, ClickUp owns it.
+
+### In — nothing owns these today
+
+| What | Why |
+|---|---|
+| **Decisions awaiting Steven** | No system tracks "Steven owes a decision on X by Y." It lives in his head and in Slack scrollback. |
+| **Chief of Staff delegation loop** | Assign → in progress → **handback** → accepted. The handback state is what makes the relationship work and what Slack cannot represent. |
+| **Cross-entity initiatives** | Work spanning KTU + BTU + Earthwise + Axyom has no home; every existing system is single-entity. |
+| **Agent-findings triage** | Eleven agents emit findings daily and **nothing records which were acted on.** Sections write-then-prune by `scan_date`, so an unactioned RED silently disappears the next morning. |
+| **Vendor & subcontractor relationships** | Elias, Richelieu, Hardware Resources, Northern Contours exist as QBO vendor records and email threads — no relationship record, no owner, no review cadence. |
+| **Hiring & team** | Unowned. |
+| **Recurring meeting agendas** | The CoS 1:1 needs an agenda that accumulates between meetings. |
+| **Personal & career** (private Space) | Spread across the `stevens-career` skill, Drive, and Steven's head. |
+
+### Out — with the reason, because each is a tempting mistake
+
+| Excluded | Reason |
+|---|---|
+| **HighLevel conversations** | Goldeneye already scans every touchpoint daily. A second unanswered-message queue goes stale on contact, because nobody answers a customer *from ClickUp* — they answer in HighLevel. Only Goldeneye escalations needing a human **decision** (not a reply) cross. |
+| **`ktubtubilling@` invoice inbox** | **A safety issue, not only duplication.** `docs/JOB_COSTING_DESIGN.md` defines a hard control — nothing is paid until it maps to a job, enforced in the database — worked daily by Sonya on the intranet. A parallel invoice queue in ClickUp is a **bypass of a deliberate payment control**, the same failure mode already flagged for Melio's Inbox Sync. |
+| **Agent metrics and analysis** | The invariant. Any card restating an intranet tab is two diverging numbers. |
+| **Bulk HighLevel contacts (~36k)** | §2.5 membership rule decides who crosses. |
+| **Job schedules, install windows, budgets** | ServiceMinder and JobTread own them. ClickUp holds the *blocker* on a job ("needs Karen's call on the Annunziato vanity"), never the *schedule*. |
+| **CompanyCam photos** | Link the project. Never mirror. |
+| **Ecommerce order-level data** | Cellar and Harvest own it. Only human-decision exceptions cross — reorder approvals, supplier problems, pricing calls. |
+| **QuickBooks transactions, bank feeds** | Moola owns them. |
+| **Ad-platform metrics** | Paid and Organic own them. |
+| **Closed or completed work** | History stays in its system. Migration carries open items only. |
+
+**The sharpest line, and the one most likely to be crossed by accident:** ClickUp gets the
+**blockers and decisions on** jobs, campaigns, orders and invoices — never the jobs,
+campaigns, orders or invoices themselves.
+
+### Checkpoints
+
+The run stops three times. Nothing is written to ClickUp before the first.
+
+1. **After Phase 1** — corpus stats: pre/post-dedupe counts, items per source, commitment
+   count, monday board disposition, degradations. **If commitments exceed ~300, tighten the
+   `item_kind` classifier before proceeding** — that number means `noise` and
+   `record_pointer` are leaking into `commitment`, and importing it produces a list nobody
+   opens.
+2. **After Phase 2** — the derived architecture, with rejections.
+3. **After Phase 3** — the plan-tier recommendation, before building anything that depends
+   on an upgrade.
+
+---
+
 ## Phase 0 — Ground truth
 
 No design decisions in this phase. Only evidence.
