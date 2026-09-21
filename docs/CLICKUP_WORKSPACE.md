@@ -121,6 +121,34 @@ second ingest pass; `clickup.sh` is idempotent so re-running is safe.
 **Not reachable at all:** Apple Reminders / Notes — no connector exists and a
 Cloud session has no path to the device. Export to Drive and re-run the ingest.
 
+## Second ingest pass — Gmail (2026-09-21)
+
+Added 10 tasks. Total seeded: **59** (13 Decisions · 10 Money & AR · 36 Commitments),
+verified by readback through `clickup.sh`, not by create responses.
+
+Two REST gotchas found and documented in `clickup.sh`: dates must be epoch
+milliseconds (the API returns a bare 400 naming no field), and text must not be
+HTML-escaped (ClickUp stores `&amp;` literally — it named a list "Money &amp; AR"
+until corrected).
+
+**Held back deliberately.** Gmail surfaced live career items — a Stokke GM/US
+update from the Barker Owen search, and an unanswered question from Simply Apply
+about broadening role targeting to Growth and Product Marketing. **Neither was
+seeded**, because the only Space that exists is shared with Sonya and the
+permission rule puts personal/career material owner-only. They land once the
+private Space exists.
+
+## Repo gotcha — setup.sh resets the checkout to origin/main
+
+`mcp-servers/setup.sh` runs `git reset --hard origin/main` on session start, and
+the SessionStart hook can fire again mid-session. Twice during this build it
+moved the working tree off the feature branch without warning: once a commit
+landed on `main` instead (moved by cherry-pick, `main` restored, never pushed),
+and once `clickup.sh` vanished from disk while sitting safely on the remote.
+
+Push early and re-check `git branch --show-current` after any long tool
+sequence. The branch is the thing that gets lost, not the commits.
+
 ## Known gaps in the Drive tooling
 
 `mcp__Google_Drive__search_files` **caps at 100 results and its pagination is

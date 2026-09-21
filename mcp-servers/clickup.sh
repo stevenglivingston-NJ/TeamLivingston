@@ -41,6 +41,15 @@
 # Requires env (set in the Cloud environment's secrets — see .env.example):
 #   CLICKUP_API_TOKEN   Personal API token (ClickUp → Settings → Apps)
 #
+# GOTCHA — dates are epoch MILLISECONDS, not date strings. The MCP tool accepts
+# "2026-10-03" and converts it; the REST API answers a bare HTTP 400 that names
+# no field. Convert first:
+#   python3 -c 'import datetime;print(int(datetime.datetime.strptime("2026-10-03","%Y-%m-%d").replace(tzinfo=datetime.timezone.utc).timestamp()*1000))'
+# Applies to due_date and start_date.
+#
+# GOTCHA — never HTML-escape task or list text. Passing "Money &amp; AR" stores
+# that string literally; ClickUp decodes no entities. Send a raw "&".
+#
 # Workspace/ids pinned for reference (verified 2026-09-21):
 #   team/workspace   90141667621  "Goaxyom"
 #   space            90148750591  "Team Space"
