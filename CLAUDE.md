@@ -83,7 +83,7 @@ mcp-servers/
 ├── amazon-sp/            server.py  # 15 tools (SP-API, LWA OAuth2)
 ├── cloudflare/           server.py  # 14 tools (Zones, DNS, Pages, Workers, R2, KV)
 ├── clarity/              server.py  # 4 tools — direct live-insights (KTU+BTU, Bearer)
-└── gtm/                  server.py  # 13 tools — Tag Manager v2, stage-only (no publish scope)
+└── gtm/                  server.py  # 15 tools — Tag Manager v2, stage-only (no publish scope)
 
 HTTP-transport servers (registered by bootstrap.sh, no local code):
   ghl-ktu / ghl-btu   → LeadConnector hosted MCP, PIT-scoped per location
