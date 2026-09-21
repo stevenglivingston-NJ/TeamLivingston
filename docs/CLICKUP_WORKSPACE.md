@@ -75,7 +75,58 @@ The REST API has none of these limits, which is why `mcp-servers/clickup.sh`
 exists. Use the connector for interactive work; use the helper for bulk and for
 anything recurring.
 
-## Still to do by hand (UI only)
+## Correction — most of this was NOT UI-only
+
+An earlier pass concluded Spaces, custom fields, views and statuses could only be
+created by hand. **That was true of the MCP connector's tool surface, not of the
+REST API.** With `CLICKUP_API_TOKEN` the REST API creates all of them. Everything
+below was then built programmatically:
+
+| Thing | REST | Note |
+|---|---|---|
+| Private Space | ✅ | `POST` creates it **public**; privacy needs a follow-up `PUT {"private":true}`. Verified `private=true` after. |
+| Custom fields | ✅ creatable | but see the usage cap below |
+| Views | ✅ | `divide.collapsed` must be `null`, not `false`, or you get a bare 400 |
+| Docs + pages | ✅ v3 | returns **201**, not 200 — a `!= 200` check silently skips every page |
+| **Custom statuses** | ❌ | the API accepts the PUT and **silently drops** custom statuses, keeping only open/closed. `handback` is not creatable on this plan. |
+
+### The plan answer, measured
+
+`FIELD_033: Custom field usages exceeded for your plan` fired at **exactly 60
+usages** — 15 tasks × 4 fields. Free ClickUp caps custom-field *usages*, not
+field definitions. 67 tasks × 4 fields would need 268.
+
+So the taxonomy rides on **tags**, which are uncapped: `ws:` workstream, `ent:`
+entity, `wait:` who is blocking, and `unverified`. All 67 tasks carry them (200
+tag applications, 0 untagged). The five field definitions are kept but their
+usages were cleared, so the quota is free the day the plan is upgraded.
+
+**What an upgrade actually buys here:** custom-field usage headroom, and custom
+statuses — the `handback` step the delegation loop wants. Little else this design
+uses. So it is worth upgrading for those two things or not at all.
+
+## Built — final state, verified 2026-09-21
+
+- **Space `90148750591` "Team Space"** → Folder `901413604098` "Axyom Operations"
+  - Decisions — Steven `901421334048` — **14**
+  - Money & AR `901421334055` — **13**
+  - Commitments `901421334062` — **40**
+  - **67 tasks, 0 untagged**
+- **Views:** Waiting on Steven · Waiting on Sonya · Money & AR — all ·
+  Unverified — verify before acting
+- **Doc:** Chief of Staff — Operating Manual (4 pages: how the workspace works ·
+  Sonya's day · standing meetings · field rules the crew already follows)
+- **Space `90148784039` "Steven — Private"**, `private=true`, Sonya has no access
+  - Career — 4 · Content & Personal — 2
+
+## Known residue
+
+An empty custom field named `__scope_probe` survives on the space. It has no
+usages and no effect, but it resisted deletion through every endpoint tried
+(`DELETE /space/{id}/field/{id}` → 404, `/list/{id}/field/{id}` → 404, v3 → 405).
+Delete it in the UI.
+
+## Superseded — the original UI-only list
 
 1. **Private Space** for personal/career — cannot be created via API.
 2. **Custom fields** on all three lists: `Workstream` (Hiring · Systems & fixes ·
