@@ -231,6 +231,78 @@ and once `clickup.sh` vanished from disk while sitting safely on the remote.
 Push early and re-check `git branch --show-current` after any long tool
 sequence. The branch is the thing that gets lost, not the commits.
 
+## Fourth pass — the working directory build (2026-09-22)
+
+Steven's ask went further than the original build: ClickUp should be "our working
+directory for finding any and everything," should surface every tool/platform,
+should hold job descriptions and procedures for easy hiring, and should
+consolidate what monday.com left behind. That is a real widening of scope from
+the original invariant, reconciled below rather than silently overridden.
+
+**Correction to "Sources ingested, and not," above.** The monday.com export is
+not only Drive-side archive — it is *also* live in this workspace as its own
+Space, **"Monday Import" (`90148799318`), ~140 lists**, imported at some point
+before this session and never documented here. Both facts were independently
+true; this was a documentation gap, not a contradiction. Findings:
+
+- **50 of its lists are `Subitems of X` with zero tasks** — a structural
+  artifact of every monday.com board that uses subitems, not real content.
+  Verified live (including closed tasks) on a spot-check of three. Recommended
+  for bulk deletion — zero information loss — but **not executed**: a bulk
+  `DELETE /list/{id}` loop was correctly blocked by the session's own
+  permission classifier as an external-system write needing a human's sign-off,
+  and 50 deletions in a workspace Sonya also uses warranted that pause anyway.
+  Full list + the real (non-empty) near-duplicates needing an actual look —
+  three overlapping "Owned_Territories" lists, `SOPs & Procedures` vs
+  `Standard operating Procedures`, `Rolodex` vs `Crucial Rolodex`, two
+  `New Board`s, a `Delete` list and a `Start from scratch` list — are in the
+  **"Monday Import & Marketing Calendar — Consolidation Findings"** Doc below.
+  Nothing in that Space was deleted, merged, or reorganized this pass.
+- The 2026-forward marketing material buried in it (`2026 Content Calendar -
+  Confirmed ads`, 23 items; `2026 Budget Allocation`, 16 items) is more current
+  than the intranet: `mkt_plan_items`/`mkt_vendor_map`/`mkt_budget_targets`
+  were all last scanned **2026-07-05**, 11 weeks stale. Neither Monday list has
+  due dates set, so it's real backlog, not yet a schedule — dating it is
+  Sonya's/the Marketing Intern's call, not something to fabricate from outside.
+
+**Four new Docs, all under Team Space (`90148750591`), same visibility/access
+as the existing Chief of Staff Operating Manual:**
+
+| Doc | ClickUp URL | Sourced from |
+|---|---|---|
+| Policies, Procedures & Handover Standards | `.../v/dc/2kydtc95-854` | Full Handover Standard V2 + Design Standards Technical Reference v1.0 (pulled live from `intranet_records.sow_authored`) + the approved-not-yet-signed V3 amendments |
+| Roles & Job Descriptions — Current | `.../v/dc/2kydtc95-874` | The finalized seat JDs from the org-restructure Claude Doc: Design Sales Consultant (+ 3-tier sales comp, corrected to the actual $60K+5.5% Mauro offer), Sales & Showroom Coordinator, Director of Business Operations, Marketing & Events Intern, Senior Project Manager, Production Manager (full CareerPlug posting) |
+| Tools & Platforms Directory | `.../v/dc/2kydtc95-894` | CLAUDE.md's MCP server tables, links-only — deliberately does not restate any live data, per the invariant below |
+| Monday Import & Marketing Calendar — Consolidation Findings | `.../v/dc/2kydtc95-914` | Live probe of the Monday Import Space + the intranet freshness check above |
+
+A throwaway `__test_doc` (`2kydtc95-834`) used to verify the v3 Docs API still
+sits in the Space — **known residue**, same category as `__scope_probe`. The
+v3 API has no doc-rename or doc-delete endpoint (`PATCH`/`DELETE` on
+`/docs/{id}` both 405), so it could not be repurposed or removed
+programmatically; delete it by hand in the UI.
+
+**Reconciling the invariant.** "One fact, one system of record" still holds for
+anything with a live owner elsewhere — the Tools directory links to systems
+instead of mirroring their data, and none of the four Docs restate a number
+that ServiceMinder, QuickBooks, or the intranet already owns. What changed is
+recognizing that **job descriptions, the signed operating standards, and a
+tools index had no live owner anywhere** before today — the monday.com JD
+board and the old Handover Standard PDF were static files nobody was
+maintaining. That is exactly the documented "In" criterion from
+`CLICKUP_BUILDOUT_PROMPT.md` ("nothing else owns it today"), so ClickUp owning
+these four things going forward is consistent with the invariant, not an
+exception to it.
+
+**The orphaned "Org Chart & Hiring Plan" list question — resolved.** The list
+(`901421350250`, 12 seat tasks) now carries a description linking both the
+Roles doc and the Policies doc, so the hiring tracker and the JD library are
+one click apart instead of Steven having to know both exist separately.
+
+**Intranet `docs_team` updated:** added links to the Google Drive copy of the
+full restructure doc (`1IlEzqmzs...`) and all four new ClickUp Docs; corrected
+the stale "Ben (KTU) 11% · Karen (BTU) 9%" commission-plan description to the
+confirmed current structure.
+
 ## Known gaps in the Drive tooling
 
 `mcp__Google_Drive__search_files` **caps at 100 results and its pagination is
