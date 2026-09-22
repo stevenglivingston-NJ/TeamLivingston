@@ -165,6 +165,27 @@ the curl helper `bash mcp-servers/sb.sh '<SQL>'` (service role, curl→PostgREST
 permission-gated — the anon REST endpoint 401s). Sections you own: `pipeline_briefing`, `pipeline_funnel`,
 `pipeline_sources`, `pipeline_revival`, `pipeline_playbook`.
 
+⚠️ **Never pass `fields` as a quoted JSON string — build it with `jsonb_build_object(...)`,
+not a JSON-text literal wrapped in single quotes.** Found and repaired 2026-09-22: a large
+share of `pipeline_revival` (17/18 rows), `pipeline_funnel` (12/21), and `pipeline_briefing`
+(4/6) had `fields` stored as a **double-encoded JSON string** — the whole payload as text
+inside a jsonb scalar (`jsonb_typeof(fields) = 'string'`), instead of a real jsonb object
+(`'object'`). This breaks every frontend read that does `r.fields.brand`/`.value_ktu`/etc.,
+since a JS string has no such properties — it silently produces wrong/blank values rather
+than an error, which is exactly how this went unnoticed: it looked like "the KTU filter is
+showing BTU rows" and inconsistent funnel numbers, not an outage. The likely cause is
+building the INSERT with the JSON payload already `json.dumps()`-ed into a Python string,
+then embedding that string as a quoted SQL literal (`'{"brand":"KTU",...}'`) without a
+`::jsonb` cast, or double-encoding before that. Correct pattern:
+`INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES ('pipeline_revival',
+'KTU', 1, jsonb_build_object('name', name, 'brand', brand, 'status', status, ...))` — build
+the object with `jsonb_build_object`/an explicit `::jsonb` cast on a real JSON-text literal,
+never rely on a bare string ending up as an object by coincidence. **Sanity-check after every
+write**: `select jsonb_typeof(fields) from intranet_records where section='<your section>'
+order by created_at desc limit 5;` should return `object` every time, never `string` — if you
+ever see `string`, the write is broken and needs fixing before the next run, not just prune-
+and-retry.
+
 **Write-then-prune, per section, every run** (never delete before a successful
 insert — stale beats blank): build rows in memory → `INSERT` today's rows tagged
 `scan_date` = today → only after success `DELETE ... WHERE section='<sec>' AND
