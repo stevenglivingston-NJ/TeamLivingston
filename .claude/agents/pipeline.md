@@ -32,8 +32,24 @@ to the `pipeline_*` intranet sections.
   - `query_appointments` — booked / confirmed / completed / cancelled consults
     (the "Consultation - In-Home" appointment type is the funnel entry). Pull the
     trailing 60 days each run; classify by status and capture `CancelReason`.
-  - `query_proposals` — open vs accepted, with contract value and created/decision
-    dates. Open proposals = the live pipeline; accepted = wins.
+  - **Proposals — never call `query_proposals` (or `sm.sh proposal/query`) with
+    `scope` left blank.** ServiceMinder's `proposal/query` endpoint throws
+    `ResultCode:1 "Object reference not set to an instance of an object."` on
+    its own server whenever `Scope` is empty/null — confirmed live 2026-09-22,
+    and this is exactly what had been silently degrading the funnel's
+    Proposals stage to 0 with "Proposal API unavailable" every run (the MCP
+    tool's `scope` param defaults to `""`, which triggers it). Passing a
+    non-empty scope resolves it completely (verified with `"Scope":"all"` via
+    `bash mcp-servers/sm.sh <KTU|BTU> proposal/query '{"Scope":"all",...}'` —
+    real rows returned, `ResultCode:0`); `query_proposals(scope="open")` /
+    `scope="expired"` (as Goldeneye already does, see its doc) should work
+    the same way through the MCP tool directly, since it's the value that
+    matters, not the transport. Prefer `sm.sh` anyway for the same reliability
+    reason established elsewhere in this codebase (curl calls don't stall a
+    scheduled run on a permission prompt the way a raw `mcp__serviceminder__*`
+    call can) — but the one-line, must-fix rule is: always pass a real scope
+    value. Open vs accepted, with contract value and
+    created/decision dates: open proposals = the live pipeline; accepted = wins.
   - `query_invoices` / `query_payments` — corroborate a proposal→won→collected
     transition (a proposal isn't really "won" money until the deposit lands).
 - **HighLevel** (`mcp__ghl-ktu__*` = KTU, `mcp__ghl-btu__*` = BTU — verify the
