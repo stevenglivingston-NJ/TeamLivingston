@@ -95,6 +95,8 @@ Direct-access helpers (curl/CLI, NOT registered MCP servers — no bootstrap nee
   sm.sh               → ServiceMinder Open API over curl
   gmb.sh              → Google Business Profile over curl (mints its own OAuth token)
   lead-sweep.py       → daily ad-response / missed-lead / booking-integrity sweep
+  hl-field-sync.py    → SM→HighLevel proposal tags + SM Last Proposal Date/Status
+                        (fill-missing only; runs in the office-address Routine)
   tracking-audit.py   → daily tracking-health sweep (GTM/GA4/Ads/HL/Clarity/Meta
                         config drift — paused conv tags, wrong-brand containers,
                         foreign ids, unattributed leads); Paid runs it first,
@@ -205,6 +207,23 @@ level, none cost-related. The **only** write surface is a contact note, so the
 intranet queues one (`jc_sm_note_log`, status `pending`) after a person confirms
 which SM proposal it attaches to, and the sync posts it server-side. The browser
 never holds an SM key — SM authenticates with its ApiKey inside the request body.
+
+**`hl-field-sync.py` — keeps HighLevel's proposal fields filled from ServiceMinder (2026-09-22).**
+Runs inside the office-address Routine (`trig_01QqB9tL5vcAMsrtRdiLqYiw`), once a day on
+the 12:00 UTC fire. For every SM contact whose proposals changed in the last 3 days it
+finds the HighLevel contact (phone → email, name-guarded) and fills only what's missing:
+tag `has proposal`, tag `won` (if signed and no won-family tag yet), and the DATE/TEXT
+fields `SM Last Proposal Date` / `SM Last Proposal Status`. Never removes a tag, never
+touches another field, never creates/deletes a contact. Ambiguous phone matches (name
+differs) are skipped and reported. Do **not** use the older `Proposal Date Sent` /
+`Proposal Status` fields for filtering: they are TEXT, sparsely filled, and the legacy
+SM→HL sync writes a status-change date into them (audit 2026-09-22).
+
+```
+python3 mcp-servers/hl-field-sync.py --dry-run          # report only
+python3 mcp-servers/hl-field-sync.py                    # last 3 days, both brands
+python3 mcp-servers/hl-field-sync.py --full             # re-backfill everything
+```
 
 **`ghl.sh` — HighLevel without MCP registration.** `bootstrap.sh` runs from the
 Cloud environment's setup script, so when that step doesn't run (or runs after
