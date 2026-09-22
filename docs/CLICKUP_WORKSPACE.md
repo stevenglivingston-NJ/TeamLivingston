@@ -303,6 +303,66 @@ full restructure doc (`1IlEzqmzs...`) and all four new ClickUp Docs; corrected
 the stale "Ben (KTU) 11% · Karen (BTU) 9%" commission-plan description to the
 confirmed current structure.
 
+## Fifth pass — Vendor Directory (2026-09-22)
+
+Built at Steven's request after the Monday Import audit surfaced five
+unreconciled vendor-contact lists sitting untouched in that Space. New List
+**"Vendor Directory" (`901421384995`)**, Team Space → Axyom Operations,
+**104 vendors/suppliers/subcontractors/professional-services contacts**.
+
+**Sources merged, by seniority:**
+1. Intranet `vendor_directory` (79 rows) — the base. Already deduped, already
+   carried `group` (KTU/BTU/Ops/Realtors → mapped to Brand KTU/BTU/Both),
+   contact name/email/phone/website/portal/username/password, Drive doc links.
+2. Intranet `vendors` (16 rows) — narrative category + relationship $ volume +
+   lead time + ordering process, matched by name to enrich Type and Notes.
+3. Intranet `docs_vendors` (62 rows) — title/desc pairs, used only for Type
+   hints on rows the other two sources didn't cover.
+4. Raw Monday `Supplier/Vendors` (100 tasks) — fuzzy name-matched against the
+   above to fill missing passwords/usernames/emails on existing rows, and
+   contributed **12 genuinely new vendors** the intranet source had missed.
+   ~40 rows were pure junk (category placeholders like "Countertops"/"Tubs"
+   with no data, or personal notes like "Shirt printing") and were dropped.
+5. Monday `Crucial Rolodex` (13) → type **Professional Services** (bank,
+   insurance, legal, CPA contacts).
+6. Monday `Rolodex` (13) → type **Subcontractor** (trade sub vetting sheet —
+   license, insurance, crew size, accepting-new-jobs status folded into notes).
+
+**Not done: fresh Gmail/Spark scraping per vendor.** Steven's ask named Spark
+specifically; **Spark is not a connected server in this environment** — only
+the `Gmail` connector is. Rather than run ~100 individual Gmail searches for
+uncertain payoff, the build used `vendor_accounts` (Foreman's own Gmail-sourced
+AR/order-status intelligence, scan_date 2026-09-14) for the handful of vendors
+it already tracks live (Elias, MSI, Hardware Resources) and left everything
+else on its Monday/intranet contact info. If a specific vendor's contact is
+stale, that's a one-vendor Gmail lookup, not a re-run of the whole build.
+
+**Classification.** `Type` (35 distinct values — Cabinetry, Countertops/Stone,
+Plumbing Fixtures, Subcontractor, Professional Services, etc.) and `Brand`
+(ktu/btu/both) are **tags**, not custom fields — the free-plan 60-usage cap
+documented above would have blown past instantly at 104 vendors × up to 9
+fields. Contact details (name/email/phone/website/portal/username/password/
+notes/doc links) live in the task **description** instead, which doesn't count
+against that cap. A `has-credentials` tag marks the 17 rows carrying a portal
+password.
+
+**Security flag, not resolved.** Those 17 rows carry vendor portal
+login credentials copied forward from Monday, at Steven's explicit
+instruction. This is not a new exposure in kind — the same passwords already
+sit in the intranet's `vendor_directory` (Supabase) and in the Monday import —
+but it is a **new surface**: ClickUp lists aren't secrets-grade storage (no
+encryption-at-rest guarantee, no rotation tracking, and this workspace is
+explicitly meant to be shared with and beyond Sonya). Flagged once, in the
+list's own description and in the Tools & Platforms Directory Doc, with a
+recommendation to migrate to a real password manager. Not blocking — Steven's
+instruction was explicit and repeated.
+
+**Coverage after merge:** 89/104 have a contact name, 58/104 a phone,
+49/104 an email, 17/104 a portal password. The ~15 rows still short every
+field are genuinely under-documented vendors (mostly one-line Monday category
+placeholders that did carry *some* real signal, e.g. a bare website) — not a
+tooling gap.
+
 ## Known gaps in the Drive tooling
 
 `mcp__Google_Drive__search_files` **caps at 100 results and its pagination is
