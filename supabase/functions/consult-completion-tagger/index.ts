@@ -45,11 +45,12 @@
 //   - Custom field keys (last_consult_appt_id, last_consult_hl_user_id,
 //     last_consult_date, last_consult_calendar_id) confirmed to exist on KTU
 //     already (created by hand previously) and have now been created on BTU
-//     to match (all TEXT type -- KTU's last_consult_date was found to be typed
-//     DATE, which would likely reject the "Monday, Sept 21" string this
-//     function sends; BTU's was deliberately created as TEXT instead. KTU's
-//     existing DATE-typed field is a known open risk -- see report, not fixed
-//     here since retyping a live field was judged riskier than flagging it).
+//     to match. KTU's last_consult_date is typed DATE, BTU's is TEXT --
+//     HighLevel's update-custom-field API does not support changing dataType
+//     after creation (confirmed via its schema), and recreating a live field
+//     was judged too risky, so fmtConsultDateForBrand() sends each brand the
+//     format its field actually expects (ISO for KTU, "Monday, Sept 21" for
+//     BTU) instead.
 //   - HL API Version header (2021-04-15) and the actual contact PUT/tag
 //     add-remove calls remain UNVERIFIED live -- this session's HighLevel MCP
 //     connector never exercises a write against production contact data
@@ -101,6 +102,28 @@ function fmtConsultDate(iso: string): string {
   const month = d.toLocaleDateString("en-US", { month: "short", timeZone: "America/New_York" });
   const day = d.toLocaleDateString("en-US", { day: "numeric", timeZone: "America/New_York" });
   return `${weekday}, ${month} ${day}`;
+}
+
+// KTU's last_consult_date custom field is typed DATE (built by hand before this
+// function existed); BTU's is TEXT (created 2026-09-21 to match this function's
+// output). HighLevel's custom-field API does not support changing a field's
+// dataType after creation (confirmed via locations.update-custom-field's schema
+// -- only name/placeholder/position/etc. are updatable, not dataType), and
+// deleting+recreating a live field risks breaking anything already keyed to its
+// id, so instead of touching HighLevel config, send the format each field type
+// actually expects: ISO (YYYY-MM-DD) for KTU's DATE field, the friendly
+// "Monday, Sept 21" string for BTU's TEXT field.
+function fmtConsultDateForBrand(iso: string, brand: string): string {
+  if (brand === "KTU") {
+    // DATE fields expect ISO 8601 date-only.
+    const d = new Date(iso);
+    const tzDate = new Date(d.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const y = tzDate.getFullYear();
+    const m = String(tzDate.getMonth() + 1).padStart(2, "0");
+    const day = String(tzDate.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+  return fmtConsultDate(iso);
 }
 
 async function hlFetch(token: string, path: string, opts: RequestInit = {}) {
@@ -340,7 +363,7 @@ async function processCalendar(
       await updateHlContact(token, contactId, {
         last_consult_appt_id: hlEventId,
         last_consult_hl_user_id: assignedUserId,
-        last_consult_date: startTime ? fmtConsultDate(startTime) : "",
+        last_consult_date: startTime ? fmtConsultDateForBrand(startTime, brand) : "",
         last_consult_calendar_id: calendarId,
       });
       await logRow({
