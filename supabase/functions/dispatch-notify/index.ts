@@ -1,4 +1,4 @@
-// Axyom notify_queue dispatcher — v7. Email (HighLevel) + targeted Slack.
+// Axyom notify_queue dispatcher — v8. Email (HighLevel) + targeted Slack.
 //
 // Why this exists: notification delivery used to depend on scheduled agent
 // sessions whose MCP connectors flap at startup — pings sat pending for hours.
@@ -25,6 +25,10 @@
 // `via` as if it had delivered. Now a row is `sent` if ANY configured channel
 // actually delivered, failures land in `result.partial_failures`, and only a
 // total blackout across every configured channel errors the row.
+//
+// v8: a 200 from HighLevel only means the email was queued. sendEmail now reads the message
+// back and treats status "failed" as a failure, so it lands in partial_failures instead of
+// `via` (every KTU email failed silently 2026-07-06 → 2026-09-27: "email service is expired").
 //
 // Secrets (preferred over the dispatch_config table, so they never land in
 // backups/dumps/query logs):
@@ -90,6 +94,18 @@ async function sendEmail(c: Record<string, string>, to: string, subject: string,
     }),
   });
   if (!msg.ok) throw new Error("GHL email send failed: " + (await msg.text()).slice(0, 200));
+  // A 200 here only means HighLevel QUEUED the email. Delivery can still fail inside HighLevel —
+  // from 2026-07-06 to 2026-09-27 every KTU email failed with "Configured email service is expired"
+  // while this function recorded it as sent. Read the email back and fail loudly instead.
+  const mj = await msg.json().catch(() => ({}));
+  const emailId = mj?.emailMessageId || mj?.messageId;
+  if (!emailId) return;
+  await new Promise((r) => setTimeout(r, 2000));
+  const chk = await fetch(`https://services.leadconnectorhq.com/conversations/messages/email/${emailId}`, {
+    headers: { ...auth, Version: "2021-04-15" },
+  });
+  const em = (await chk.json().catch(() => ({})))?.emailMessage;
+  if (em?.status === "failed") throw new Error("GHL email failed: " + String(em.error || "unknown").slice(0, 150));
 }
 
 type SlackUser = { id: string; name: string; display: string; email: string };
@@ -258,7 +274,7 @@ Deno.serve(async (req) => {
         .update({
           status: "sent",
           sent_at: new Date().toISOString(),
-          result: { via: via.join("+"), dispatcher: "edge-v7", ...(failures.length ? { partial_failures: failures } : {}) },
+          result: { via: via.join("+"), dispatcher: "edge-v8", ...(failures.length ? { partial_failures: failures } : {}) },
         })
         .eq("id", r.id)
         .eq("status", "pending");
@@ -278,5 +294,5 @@ Deno.serve(async (req) => {
       results.push({ id: r.id, ok: false, error: String(e).slice(0, 120) });
     }
   }
-  return Response.json({ processed: results.length, results, v: 7 });
+  return Response.json({ processed: results.length, results, v: 8 });
 });
