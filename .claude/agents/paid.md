@@ -648,6 +648,41 @@ and so **Moola can pressure-test your reallocations** (Moola reads section
    you must not lose. This section has no other writer, so if you skip it nothing
    else will fill it.
 
+### 10b. Keyword-level detail (sections `ppc_*`) — the retired dashboard's job
+
+The `ktu-team-dashboard` held keyword-, ad- and campaign-level PPC that `paid_brief`
+does not: it was deleted 2026-09-09 (it was publicly readable), and its data was loaded
+into `intranet_records` as a **2026-07-02 snapshot** so nothing was lost. Those rows carry
+`"source":"team-dashboard-snapshot"` and `"is_snapshot":true`. **You are now the live
+writer for them.** Same crash-safe rule as `paid_brief`: INSERT first, prune after.
+
+| Section | One row per | Key fields beyond the common shape |
+|---|---|---|
+| `ppc_keywords` | keyword | `keyword`, `match_type`, `quality_score`, `spend`, `clicks`, `conversions`, `cpa`; `kind` = `top_keyword` or `spend_trap` |
+| `ppc_negatives` | wasted search term | `search_term`, `spend`, `clicks`, `conversions`; `kind` = `negative_candidate` |
+| `ppc_campaigns` | campaign | `name`, `status`, `channel_type`, `budget_daily`, `spend`, `conversions`, `cpa` |
+| `ppc_impression_share` | campaign, and month | `impression_share`, `lost_to_budget`, `lost_to_rank`; `kind` = `by_campaign` or `by_month` |
+| `ppc_actions` | recommendation | `type`, `priority`, `action`, `impact`, `confidence`, `difficulty`, `detail` |
+
+Every row takes `scan_date` and a brand tag, exactly like `paid_brief`. Keep each section
+to what a human will read — roughly 10 keywords, 25 negatives, all campaigns.
+
+**When Google Ads is unavailable, write nothing and say so.** The OAuth has been failing
+`invalid_client` since 2026-08-24 (a bad *client secret*, not an expired token, so
+re-authorising will not fix it), and `ktubtu-mcp-google-ads` on Render is **suspended by
+its owner**. Both need Steven. Until then the July snapshot rows stand — stale and clearly
+labelled beats blank or invented. Say plainly in the brief that keyword detail is frozen
+and why; do not silently omit it.
+
+**Once you write live rows, drop the snapshot.** After a successful insert for a section,
+prune rows in it where `fields->>'is_snapshot' = 'true'`. That is the only thing that
+clears them, and it must happen after the insert succeeds, never before.
+
+**Register with the freshness watchdog only once you are genuinely feeding these.**
+`check_agent_freshness()` alarms on any tracked section that misses its `due_hour`;
+adding them while the data is frozen would alarm every hour and teach everyone to ignore
+`system_health`.
+
 ## Phone routing — the truth to check against
 
 An unanswered or IVR'd line wastes the whole click. Verify these against live call
