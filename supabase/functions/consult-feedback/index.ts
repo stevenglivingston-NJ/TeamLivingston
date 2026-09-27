@@ -3,7 +3,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 /**
  * Public consult-feedback intake: POST /consult-feedback
  * Body: { brand, contact_id, appt_id, hl_user_id, agent_name, rating,
- *         missing_items[], feedback_text, callback_requested }
+ *         missing_items[], feedback_text, callback_requested, decision? }
+ *
+ * rating is a fully labeled 1-5 scale (survey v2, 2026-09-27) -- see RATING below.
+ * decision is optional: "ready" | "need_info" | "not_now".
  *
  * verify_jwt is OFF (called from a public post-consult survey with no user
  * session). This function holds the service-role key directly, so unlike
@@ -18,7 +21,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
  * - Forwards the same JSON to the brand's HighLevel inbound webhook
  *   (HL_FEEDBACK_WEBHOOK_KTU/BTU in app_secrets — placeholders until Steven
  *   supplies the real URLs), retried once on failure, logged not fatal.
- * - rating <= 3 OR callback_requested -> inserts a notify_queue alert row
+ * - rating <= 3 OR callback_requested OR decision = need_info -> inserts a notify_queue alert row
  *   directly (this function already holds service-role access, so it does
  *   not need to go through the queue-notify HTTP function, which exists for
  *   *external* non-service-role callers).
@@ -39,6 +42,15 @@ const svcHeaders = {
 // existing notify_queue rows — slivingston@kitchentuneup.com is the
 // established address for this kind of operational alert).
 const STEVEN_EMAIL = "slivingston@kitchentuneup.com";
+
+// The survey's labeled scale (design.ktubtu.com/feedback, portal/src/feedback.js) -- keep in step.
+const RATING: Record<number, string> = {
+  5: "Superb — covered every detail", 4: "Very good — just a few gaps", 3: "Good — some questions left open",
+  2: "Fair — I've seen better", 1: "Poor — not what I expected",
+};
+const DECISION: Record<string, string> = {
+  ready: "Ready to move forward", need_info: "Still undecided — needs more information", not_now: "Not moving forward right now",
+};
 
 const CORS = {
   "Content-Type": "application/json",
@@ -71,6 +83,8 @@ function toHlPayload(row: Record<string, unknown>): Record<string, unknown> {
     ...row,
     missing_items: missing.join(", "),
     callback_requested: row.callback_requested ? "Yes" : "No",
+    rating_label: RATING[row.rating as number] ?? "",
+    decision: row.decision ? DECISION[row.decision as string] ?? row.decision : "",
   };
 }
 
@@ -117,6 +131,8 @@ Deno.serve(async (req) => {
 
   const missingItems = Array.isArray(b.missing_items) ? b.missing_items.map(String) : null;
   const callbackRequested = Boolean(b.callback_requested);
+  const decision = b.decision == null || b.decision === "" ? null : String(b.decision);
+  if (decision != null && !(decision in DECISION)) return json(400, { error: "decision must be ready, need_info or not_now" });
   const contactId = b.contact_id != null ? Number(b.contact_id) : null;
   const apptId = b.appt_id != null ? Number(b.appt_id) : null;
   if (apptId == null || !Number.isFinite(apptId)) return json(400, { error: "appt_id required" });
@@ -131,6 +147,7 @@ Deno.serve(async (req) => {
     missing_items: missingItems,
     feedback_text: feedbackText,
     callback_requested: callbackRequested,
+    decision,
   };
 
   const insertRes = await fetch(`${SUPA}/rest/v1/consult_feedback`, {
@@ -152,14 +169,18 @@ Deno.serve(async (req) => {
   // Forward to HighLevel (best-effort, retried once, never blocks the response's success).
   await forwardToHighLevel(brand, row);
 
-  // Low-rating or callback-requested alert straight into notify_queue.
-  if (rating <= 3 || callbackRequested) {
+  // Low rating, a callback request, or an undecided client who needs more information:
+  // alert straight into notify_queue so someone follows up.
+  const needInfo = decision === "need_info";
+  if ((rating as number) <= 3 || callbackRequested || needInfo) {
     const items = (missingItems ?? []).join(", ") || "none noted";
-    const subject = `Consult feedback ALERT (${brand}) – ${rating}/5${callbackRequested ? " – callback requested" : ""}`;
+    const tags = [callbackRequested ? "callback requested" : null, needInfo ? "needs more information" : null].filter(Boolean).join(" – ");
+    const subject = `Consult feedback ALERT (${brand}) – ${rating}/5 ${RATING[rating as number]?.split(" — ")[0] ?? ""}${tags ? " – " + tags : ""}`;
     const body =
-      `Consult feedback ALERT (${brand}) – rep ${row.agent_name ?? "unknown"}, ${rating}/5, ` +
+      `Consult feedback ALERT (${brand}) – rep ${row.agent_name ?? "unknown"}, ${rating}/5 (${RATING[rating as number] ?? ""}), ` +
+      `decision: ${decision ? DECISION[decision] : "not answered"}, ` +
       `missing: ${items}, comment: ${feedbackText ?? "(none)"}, ` +
-      `callback: ${callbackRequested ? "yes" : "no"}, HL contact ${row.contact_id ?? "unknown"}`;
+      `callback: ${callbackRequested ? "yes" : "no"}, SM contact ${row.contact_id ?? "unknown"}, appt ${row.appt_id}`;
     const alertRes = await fetch(`${SUPA}/rest/v1/notify_queue`, {
       method: "POST",
       headers: svcHeaders,
