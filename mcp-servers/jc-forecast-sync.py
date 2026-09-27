@@ -281,6 +281,9 @@ def main():
     print(f"\n{'APPLIED' if apply else 'DRY RUN'}: "
           f"{tot_sm} SM proposal lines across {jobs_sm} jobs; "
           f"{tot_jt} JobTread cost items across {jobs_jt} jobs")
+    if apply and not a.job:
+        log_run(tot_sm + tot_jt > 0, len(jobs), tot_sm, tot_jt,
+                None if tot_sm + tot_jt > 0 else "zero lines across all jobs")
     if apply:
         # placeholder category rows are superseded once real lines land
         # NOTE: SM proposal lines carry PRICE but (on KTU) almost never UnitCost,
@@ -293,5 +296,26 @@ def main():
            "and coalesce(r.forecasted_cost,0) > 0)")
         print("estimate rows dropped only where real COSTED lines exist")
 
+def log_run(ok, jobs_done=0, sm_lines=0, jt_lines=0, error=None):
+    """The run logs ITSELF. The routine used to ask the model to write this row afterwards; from
+    2026-09-23 the scheduled sessions ended "succeeded" in ~16 s having written nothing, and the
+    job-costing data went stale for days with every run marked green. Now the only way a run leaves
+    no row is if Python never started — which the routine's freshness check catches."""
+    detail = json.dumps({"via": os.environ.get("JC_SYNC_VIA", "routine"), **({"error": str(error)[:500]} if error else {})})
+    sb("insert into jc_sync_runs (mode, ok, jobs_done, sm_lines, jt_lines, detail) values "
+       f"('jobs', {str(bool(ok)).lower()}, {int(jobs_done)}, {int(sm_lines)}, {int(jt_lines)}, {q(detail)}::jsonb)")
+    if ok:
+        r = sb("update jc_jobs set forecast_synced_at = now() where id is not null")   # pg-safeupdate rejects an UPDATE with no WHERE
+        if isinstance(r, dict) and r.get("code"):
+            raise RuntimeError(f"could not stamp forecast_synced_at: {r.get('message')}")
+
 if __name__ == "__main__":
-    main()
+    applying = "--apply" in sys.argv and "--dry-run" not in sys.argv
+    try:
+        main()
+    except Exception as e:
+        if applying:
+            try: log_run(False, error=e)
+            except Exception: pass
+        print(f"FAILED: {e}", file=sys.stderr)
+        sys.exit(1)
