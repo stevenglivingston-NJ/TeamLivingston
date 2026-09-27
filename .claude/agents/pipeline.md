@@ -32,8 +32,24 @@ to the `pipeline_*` intranet sections.
   - `query_appointments` — booked / confirmed / completed / cancelled consults
     (the "Consultation - In-Home" appointment type is the funnel entry). Pull the
     trailing 60 days each run; classify by status and capture `CancelReason`.
-  - `query_proposals` — open vs accepted, with contract value and created/decision
-    dates. Open proposals = the live pipeline; accepted = wins.
+  - **Proposals — never call `query_proposals` (or `sm.sh proposal/query`) with
+    `scope` left blank.** ServiceMinder's `proposal/query` endpoint throws
+    `ResultCode:1 "Object reference not set to an instance of an object."` on
+    its own server whenever `Scope` is empty/null — confirmed live 2026-09-22,
+    and this is exactly what had been silently degrading the funnel's
+    Proposals stage to 0 with "Proposal API unavailable" every run (the MCP
+    tool's `scope` param defaults to `""`, which triggers it). Passing a
+    non-empty scope resolves it completely (verified with `"Scope":"all"` via
+    `bash mcp-servers/sm.sh <KTU|BTU> proposal/query '{"Scope":"all",...}'` —
+    real rows returned, `ResultCode:0`); `query_proposals(scope="open")` /
+    `scope="expired"` (as Goldeneye already does, see its doc) should work
+    the same way through the MCP tool directly, since it's the value that
+    matters, not the transport. Prefer `sm.sh` anyway for the same reliability
+    reason established elsewhere in this codebase (curl calls don't stall a
+    scheduled run on a permission prompt the way a raw `mcp__serviceminder__*`
+    call can) — but the one-line, must-fix rule is: always pass a real scope
+    value. Open vs accepted, with contract value and
+    created/decision dates: open proposals = the live pipeline; accepted = wins.
   - `query_invoices` / `query_payments` — corroborate a proposal→won→collected
     transition (a proposal isn't really "won" money until the deposit lands).
 - **HighLevel** (`mcp__ghl-ktu__*` = KTU, `mcp__ghl-btu__*` = BTU — verify the
@@ -148,6 +164,27 @@ Write to Supabase project `tguwpswcneywvscxzyef`, table `intranet_records`, via
 the curl helper `bash mcp-servers/sb.sh '<SQL>'` (service role, curl→PostgREST, not
 permission-gated — the anon REST endpoint 401s). Sections you own: `pipeline_briefing`, `pipeline_funnel`,
 `pipeline_sources`, `pipeline_revival`, `pipeline_playbook`.
+
+⚠️ **Never pass `fields` as a quoted JSON string — build it with `jsonb_build_object(...)`,
+not a JSON-text literal wrapped in single quotes.** Found and repaired 2026-09-22: a large
+share of `pipeline_revival` (17/18 rows), `pipeline_funnel` (12/21), and `pipeline_briefing`
+(4/6) had `fields` stored as a **double-encoded JSON string** — the whole payload as text
+inside a jsonb scalar (`jsonb_typeof(fields) = 'string'`), instead of a real jsonb object
+(`'object'`). This breaks every frontend read that does `r.fields.brand`/`.value_ktu`/etc.,
+since a JS string has no such properties — it silently produces wrong/blank values rather
+than an error, which is exactly how this went unnoticed: it looked like "the KTU filter is
+showing BTU rows" and inconsistent funnel numbers, not an outage. The likely cause is
+building the INSERT with the JSON payload already `json.dumps()`-ed into a Python string,
+then embedding that string as a quoted SQL literal (`'{"brand":"KTU",...}'`) without a
+`::jsonb` cast, or double-encoding before that. Correct pattern:
+`INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES ('pipeline_revival',
+'KTU', 1, jsonb_build_object('name', name, 'brand', brand, 'status', status, ...))` — build
+the object with `jsonb_build_object`/an explicit `::jsonb` cast on a real JSON-text literal,
+never rely on a bare string ending up as an object by coincidence. **Sanity-check after every
+write**: `select jsonb_typeof(fields) from intranet_records where section='<your section>'
+order by created_at desc limit 5;` should return `object` every time, never `string` — if you
+ever see `string`, the write is broken and needs fixing before the next run, not just prune-
+and-retry.
 
 **Write-then-prune, per section, every run** (never delete before a successful
 insert — stale beats blank): build rows in memory → `INSERT` today's rows tagged

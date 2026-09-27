@@ -283,8 +283,10 @@ stack so Steven gets one number each morning.
     - HighLevel: `bash mcp-servers/ghl.sh KTU locations_get-location '{}'` (and `BTU`) — **verify by returned name** (KTU→Kitchen Tune-Up, BTU→Bath Tune-Up)
     - ServiceMinder: `bash mcp-servers/sm.sh KTU test/echo '{}'` (and `BTU`) — proves `SM_KEY_KTU/BTU`
     - Google Business Profile: `bash mcp-servers/gmb.sh locations` (env/OAuth check, no API spend), then `bash mcp-servers/gmb.sh KTU info` for a real answer
+    - Google Ads (+ LSA): `bash mcp-servers/gads.sh query_campaigns '{"location":"KTU"}'` (and `BTU`) — added 2026-09-21, closes the gap that hung Organic for 9 days on `mcp__google-ads__query_lsa_periods`. This pipe is explicitly in the scoring weight below (demand/CRM bucket) — score it 🔴 by omission if you skip the probe, don't leave it off the board. Also cheap-check `EARTHWISE` (customer `7159460368`, ~$300k/30d, owned by Harvest) — a live account with real spend that has no agent watching it yet; a 🔴/🟡 here is Harvest's problem, not Paid's, see CLAUDE.md Connection ownership.
     - Supabase: `bash mcp-servers/sb.sh 'select 1'`
-  - Remaining pipes have no curl helper yet — if one of these raises a permission prompt, record it 🟡 with "connector-gated in scheduled runs; needs a curl helper" and MOVE ON rather than stalling the whole run: Render `clarity` via `test_connection` / `list_locations` (1 call max — ~10/project/day cap); QuickBooks `company_info`; Shopify `get-shop-info`; JobTread `currentGrant`; Cloudflare list zones.
+    - Cloudflare: `bash mcp-servers/cf.sh zones` — added 2026-09-22, closes the gap that hung Tekki itself for 7 days (2026-09-15→09-22) stuck in `REQUIRES_ACTION` on `mcp__cloudflare__list_zones`. **Never call `mcp__cloudflare__*` tools directly in this section** — the "if it prompts, record 🟡 and move on" instruction that used to sit here doesn't actually work: a scheduled Routine fire is non-interactive, so a permission prompt isn't a catchable error, it just blocks the whole session turn forever with nobody present to approve it. That is exactly what happened. `cf.sh` is curl-only and carries zero permission-prompt risk, same as every other helper in this list.
+  - Remaining pipes still have no curl helper — if one of these raises a permission prompt, record it 🟡 with "connector-gated in scheduled runs; needs a curl helper" and MOVE ON rather than stalling the whole run: Render `clarity` via `test_connection` / `list_locations` (1 call max — ~10/project/day cap); QuickBooks `company_info`; Shopify `get-shop-info`; JobTread `currentGrant`. **Do not assume this "record 🟡 and move on" fallback actually works** — it did not for Cloudflare (see above); treat any pipe still on this list as a known stall risk until it gets its own curl helper, and if you find one of these has silently gone stale for days, check the session's status for `REQUIRES_ACTION` before trusting a more mundane explanation.
   - A connector needing OAuth that fails → 🔴 "re-authorize in claude.ai settings". Re-probe once before calling anything 🔴 (a connector may just be reconnecting in-session — a session artifact, not a real outage).
   - **Metered/quota'd sources are a distinct failure class from "down" — probe and report them separately.** A tool can be fully authorized and still return nothing all day because its allowance is spent, which looks like health to a naive check while an agent that depends on it silently produces less. Cover at least:
     - **SEMrush API units** — one cheap discovery call. The exhausted response is *"active Semrush subscription, but does not have enough API units"*. **Verified exhausted 2026-08-21**, account-wide (every tool, including discovery), which dark-fires **Organic's primary source** and Paid's competitive block. Report 🟡 with the top-up link **https://www.semrush.com/mcp-access** — never 🟢 just because the token authenticates.
@@ -371,6 +373,68 @@ and the tab reads them straight from there instead of the hardcoded list.
 - If nothing in the wiring changed since your last run, still re-publish
   (cheap — it's a straight replace) so `d` stays honest and the tab never
   silently goes stale again.
+
+### 3d. Landing pages & phone-line uptime — daily pass (curl only, never `mcp__*`)
+
+Nobody currently checks day-to-day whether the sites customers actually land on
+are up, or whether the phone number printed on them is the number that's
+supposed to be there. This closes that gap. Same rule as §3b: **curl only** — a
+`WebFetch` or browser-tool call here is exactly the kind of confirmation-gated
+action that stalls a scheduled run in `REQUIRES_ACTION` forever (see the
+Goldeneye/Foreman/Organic/Pipeline incidents in CLAUDE.md). `curl` has no such
+gate.
+
+**Sites to check every run** (add to this list as new tools go live — cross-check
+against the intranet's `tools` section for anything added since your last run):
+| Site | Role |
+|---|---|
+| `https://kitchentuneup.com/bloomfield-nj` | KTU franchise landing page |
+| `https://bathtune-up.com/bloomfield-nj` | BTU franchise landing page |
+| `https://ktubloomfield.com` | KTU owned domain |
+| `https://lookbook.ktubtu.com` | Lookbook tool |
+| `https://pricing.ktubtu.com` | Pricing tool |
+| `https://playbook.ktubtu.com` | Playbook tool |
+| `https://finance.ktubloomfield.com` | Finance / loan-app tool |
+
+- **Uptime**: `curl -sS -o /dev/null -w '%{http_code} %{time_total}' --max-time 10 <url>`.
+  2xx/3xx = 🟢. Anything else (including timeout/DNS failure, curl exit ≠ 0) —
+  **retry once** before calling it 🔴 (matches §3b's re-probe rule; a cold
+  Cloudflare edge on the first hit isn't an outage). Record latency; a page that's
+  up but consistently >3s is worth a 🟡 note, not a 🔴.
+- **Phone-number drift**: for the two franchise pages and `ktubloomfield.com`,
+  grep the fetched HTML for `tel:` links and diff against the routing table in
+  `paid.md` § "Phone routing — the truth to check against". Use
+  `curl -sSL <url> | grep -oE 'tel:[^"]*' | sed 's/&#x2B;/+/' | sort -u` —
+  **not** a bare `[0-9+-]+` pattern, which misses real-world markup like
+  `tel:(973) 521-1182` (parens/spaces) and HTML-entity-encoded `+` signs
+  (`&#x2B;`). Verified 2026-09-12: the naive pattern found nothing on any of
+  the three pages; the corrected one found real numbers on the first try,
+  including a live example of the exact drift this check exists to catch —
+  `kitchentuneup.com/bloomfield-nj` is still serving `tel:(973) 521-1182`
+  (the legacy IVR number), not `521-8442`. It also turned up a
+  `tel:+18668188411` toll-free number that isn't in Paid's table at all —
+  flag anything you find that isn't in the table as its own finding, don't
+  just silently ignore it. That table is the source of truth — **read it
+  fresh each run, never hardcode a copy of the numbers here**, since Paid is
+  the one who updates it when a number changes.
+- **Google Business Profile phone**: `bash mcp-servers/gmb.sh KTU info` and `BTU
+  info` (already an established curl-safe helper from §3b) — compare the
+  returned phone against the same table's GBP row. This is the exact check that
+  caught GBP serving the wrong number for both brands on 2026-08-22 — don't let
+  it silently drift back.
+- **Google Ads call-asset ENABLED/PAUSED status is explicitly out of scope
+  here** — no curl helper exists for it yet, and Paid already owns verifying it
+  periodically. Don't reach for `mcp__google-ads__*` to cover the gap; that's
+  the stall risk this whole section exists to avoid. If a curl helper for it
+  ever gets built, fold it in then.
+- **Publish**: one `tekki_health` component row per site (`component:'uptime:<site
+  short-name>'`) plus one row per phone-drift finding (`component:'phone:<surface>'`),
+  same write-then-prune pattern as the rest of `tekki_health`. A page/number pair
+  with nothing wrong still gets a 🟢 row — silence isn't the same as "checked
+  and fine."
+- **Fold one line into the Slack digest**: `✅ Sites & phones OK` when everything
+  above is 🟢, or `⚠️ N site/phone issues — see Tech Health` naming the worst one
+  inline, when anything isn't. This is the OK/issue line the daily report is for.
 
 ### 4. Report
 - **Write the Tech Stack tab's executive summary** — section `exec_summary`,
