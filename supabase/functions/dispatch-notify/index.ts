@@ -1,4 +1,4 @@
-// Axyom notify_queue dispatcher — v8. Email (HighLevel) + targeted Slack.
+// Axyom notify_queue dispatcher — v9. Email (HighLevel) + targeted Slack.
 //
 // Why this exists: notification delivery used to depend on scheduled agent
 // sessions whose MCP connectors flap at startup — pings sat pending for hours.
@@ -29,6 +29,12 @@
 // v8: a 200 from HighLevel only means the email was queued. sendEmail now reads the message
 // back and treats status "failed" as a failure, so it lands in partial_failures instead of
 // `via` (every KTU email failed silently 2026-07-06 → 2026-09-27: "email service is expired").
+//
+// v9: when the primary HighLevel location's email fails (KTU's email service expired, 2026-09-27),
+// retry once through a fallback location whose email works — the BTU location. Token: the
+// GHL_PIT_FALLBACK function secret (preferred) or app_secrets HL_TOKEN_BTU; location: app_secrets
+// HL_LOCATION_BTU (or dispatch_config ghl_fallback_pit / ghl_fallback_location_id). No token = no-op.
+// The fallback sends with that location's default From. The row records `email(fallback)`.
 //
 // Secrets (preferred over the dispatch_config table, so they never land in
 // backups/dumps/query logs):
@@ -63,6 +69,14 @@ async function loadConfig(): Promise<Record<string, string>> {
   if (!cfg.slack_bot_token) {
     const { data: s } = await sb.from("app_secrets").select("value").eq("key", "SLACK_BOT_TOKEN").maybeSingle();
     if (s?.value) cfg.slack_bot_token = s.value;
+  }
+  const envFallback = Deno.env.get("GHL_PIT_FALLBACK");
+  if (envFallback) cfg.ghl_fallback_pit = envFallback;
+  if (!cfg.ghl_fallback_pit || !cfg.ghl_fallback_location_id) {
+    const { data: f } = await sb.from("app_secrets").select("key,value").in("key", ["HL_TOKEN_BTU", "HL_LOCATION_BTU"]);
+    const m = Object.fromEntries((f ?? []).map((r) => [r.key, r.value]));
+    cfg.ghl_fallback_pit ||= m.HL_TOKEN_BTU || "";
+    cfg.ghl_fallback_location_id ||= m.HL_LOCATION_BTU || "";
   }
   return cfg;
 }
@@ -106,6 +120,22 @@ async function sendEmail(c: Record<string, string>, to: string, subject: string,
   });
   const em = (await chk.json().catch(() => ({})))?.emailMessage;
   if (em?.status === "failed") throw new Error("GHL email failed: " + String(em.error || "unknown").slice(0, 150));
+}
+
+/** Primary location first; on any failure, once more through the fallback location. */
+async function sendEmailAny(c: Record<string, string>, to: string, subject: string, body: string): Promise<string> {
+  try {
+    await sendEmail(c, to, subject, body);
+    return `email:${to}`;
+  } catch (primary) {
+    if (!c.ghl_fallback_pit || !c.ghl_fallback_location_id || c.ghl_fallback_location_id === c.ghl_location_id) throw primary;
+    try {
+      await sendEmail({ ...c, ghl_pit: c.ghl_fallback_pit, ghl_location_id: c.ghl_fallback_location_id, email_from: "" }, to, subject, body);
+    } catch (fb) {
+      throw new Error(`${String(primary).slice(0, 110)} ; fallback: ${String(fb).slice(0, 110)}`);
+    }
+    return `email(fallback):${to}`;
+  }
 }
 
 type SlackUser = { id: string; name: string; display: string; email: string };
@@ -245,7 +275,7 @@ Deno.serve(async (req) => {
 
       const [slackResult, emailResult] = await Promise.allSettled([
         sendSlack(c, r),
-        c.ghl_pit ? sendEmail(c, to, r.subject || "Axyom", r.body || "") : Promise.resolve(null),
+        c.ghl_pit ? sendEmailAny(c, to, r.subject || "Axyom", r.body || "") : Promise.resolve(null),
       ]);
 
       // Record only the channels that actually delivered — see the v7 note above.
@@ -256,7 +286,7 @@ Deno.serve(async (req) => {
       }
       if (c.ghl_pit) {
         if (emailResult.status === "fulfilled") {
-          via.push(`email:${to}`);
+          via.push(String(emailResult.value));
         } else {
           failures.push("email: " + String(emailResult.reason).slice(0, 150));
         }
@@ -274,7 +304,7 @@ Deno.serve(async (req) => {
         .update({
           status: "sent",
           sent_at: new Date().toISOString(),
-          result: { via: via.join("+"), dispatcher: "edge-v8", ...(failures.length ? { partial_failures: failures } : {}) },
+          result: { via: via.join("+"), dispatcher: "edge-v9", ...(failures.length ? { partial_failures: failures } : {}) },
         })
         .eq("id", r.id)
         .eq("status", "pending");
@@ -294,5 +324,5 @@ Deno.serve(async (req) => {
       results.push({ id: r.id, ok: false, error: String(e).slice(0, 120) });
     }
   }
-  return Response.json({ processed: results.length, results, v: 8 });
+  return Response.json({ processed: results.length, results, v: 9 });
 });
