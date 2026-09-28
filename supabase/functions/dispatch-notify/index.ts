@@ -1,4 +1,4 @@
-// Axyom notify_queue dispatcher — v9. Email (HighLevel) + targeted Slack.
+// Axyom notify_queue dispatcher — v10. Email (HighLevel) + targeted Slack.
 //
 // Why this exists: notification delivery used to depend on scheduled agent
 // sessions whose MCP connectors flap at startup — pings sat pending for hours.
@@ -36,6 +36,10 @@
 // HL_LOCATION_BTU (or dispatch_config ghl_fallback_pit / ghl_fallback_location_id). No token = no-op.
 // The fallback sends with that location's default From. The row records `email(fallback)`.
 //
+// v10: dispatch_config.slack_aliases maps an alert address to the Slack login it belongs to, so
+// Steven's slivingston@kitchentuneup.com alerts reach his DM (his Slack login is his Gmail)
+// instead of the fallback channel.
+//
 // Secrets (preferred over the dispatch_config table, so they never land in
 // backups/dumps/query logs):
 //   GHL_PIT          HighLevel Private Integration Token — `supabase secrets set GHL_PIT=...`
@@ -51,6 +55,7 @@
 //   slack_bot_token    Slack bot token — fallback only; prefer the SLACK_BOT_TOKEN secret
 //   slack_channel_id   Channel to post to when a DM can't be opened / no recipient match
 //   slack_webhook_url  Legacy incoming webhook, used only when no bot token is configured
+//   slack_aliases      JSON {"alert@address": "slack-login@address"} -- DM people whose Slack email differs
 //   cron_secret        Shared secret pg_cron sends as the x-cron-secret header
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -176,6 +181,14 @@ async function slackUsers(token: string): Promise<SlackUser[]> {
   return out;
 }
 
+/** dispatch_config.slack_aliases: {"work@address": "slack-login@address"} for people whose Slack
+ *  account uses a different email than the one alerts are addressed to (Steven's alerts go to
+ *  slivingston@kitchentuneup.com; his Slack login is his Gmail). Explicit on purpose: guessing by
+ *  name would send "slivingston" alerts to Miguel's slivingston@bathtune-up.com. */
+function slackEmailFor(c: Record<string, string>, email: string | null): string | null {
+  try { const m = JSON.parse(c.slack_aliases || "{}"); return m[(email || "").toLowerCase()] || email; } catch { return email; }
+}
+
 function matchUser(users: SlackUser[], email: string | null, subject: string): SlackUser | null {
   const em = (email || "").toLowerCase();
   if (em) {
@@ -224,7 +237,7 @@ async function sendSlack(
   }
 
   const users = await slackUsers(token);
-  const target = matchUser(users, r.recipient_email ?? null, r.subject || "");
+  const target = matchUser(users, slackEmailFor(c, r.recipient_email ?? null), r.subject || "");
   const blocks = slackBlocks(text, taskId);
 
   if (target) {
@@ -304,7 +317,7 @@ Deno.serve(async (req) => {
         .update({
           status: "sent",
           sent_at: new Date().toISOString(),
-          result: { via: via.join("+"), dispatcher: "edge-v9", ...(failures.length ? { partial_failures: failures } : {}) },
+          result: { via: via.join("+"), dispatcher: "edge-v10", ...(failures.length ? { partial_failures: failures } : {}) },
         })
         .eq("id", r.id)
         .eq("status", "pending");
@@ -324,5 +337,5 @@ Deno.serve(async (req) => {
       results.push({ id: r.id, ok: false, error: String(e).slice(0, 120) });
     }
   }
-  return Response.json({ processed: results.length, results, v: 9 });
+  return Response.json({ processed: results.length, results, v: 10 });
 });
