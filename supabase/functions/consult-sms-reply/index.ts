@@ -15,7 +15,15 @@
 //   - adds a ServiceMinder contact note,
 //   - tags the HighLevel contact consult-survey-done + consult-promoter/neutral/detractor,
 //   - texts back a short thank-you with a link to add detail (the survey page, answer preselected).
-// Anything else (a question, "call me", STOP) is left in the HighLevel conversation for the team.
+// The text also invites questions ("Need more info? Just text us back"), so:
+//   - a rating WITH a request ("4, can you send pricing?") records the rating as need_info and/or
+//     callback_requested, which makes consult-feedback alert the office whatever the score;
+//   - written feedback with NO number ("the designer was great but I need to think about cost") is
+//     not dropped: the office gets an alert, ServiceMinder gets a note, the contact is tagged, and the
+//     client gets one short acknowledgement. Only the FIRST written reply in 7 days does this: after
+//     that it's a conversation the team is having in HighLevel, and alerting on every "Tuesday works"
+//     would be noise. (A later 1-5 rating is still recorded.)
+// Opt-outs (STOP etc.) and one- or two-word replies with no number ("ok", "thanks") are left alone.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPA = Deno.env.get("SUPABASE_URL")!;
@@ -31,18 +39,36 @@ const json = (status: number, body: unknown) => new Response(JSON.stringify(body
 
 /** 1-5 from a text reply, or null. "5", "5!", "4 stars", "I'd say a 4", "five", "10/10" all count;
  *  opt-out keywords and numbers outside 1-5 ("8", "555") don't. With several numbers, the first 1-5 wins. */
+const OPT_OUT = /^(stop|stopall|unsubscribe|cancel|end|quit|help|info)[\s.!]*$/;   // carrier keywords count only as the whole message
 export function parseRating(body: string): number | null {
   const t = String(body || "").toLowerCase().trim();
-  if (!t || /^(stop|stopall|unsubscribe|cancel|end|quit|help|info)\b/.test(t)) return null;
+  if (!t || OPT_OUT.test(t)) return null;
   if (/\b10\s*(\/|out of)\s*10\b/.test(t)) return 5;
-  const nums = (t.match(/(?<![\d.])\d+(?![\d.])/g) ?? []).map(Number);
+  const nums = (t.match(/(?<!\d|\d\.)\d+(?!\d|\.\d)/g) ?? []).map(Number);   // "2." counts; "2.5" and "555" don't
   const hit = nums.find((n) => n >= 1 && n <= 5);
   if (hit) return hit;
   if (nums.length) return null;                                    // a number, but not 1-5
-  for (const table of [WORDS, PRAISE])
-    for (const [w, n] of Object.entries(table).sort((a, b) => b[0].length - a[0].length)) if (new RegExp(`\\b${w}\\b`).test(t)) return n;
+  // A number word is a rating only as the reply's first word, before "star(s)"/"out of", or in a short
+  // reply ("five", "a four") -- not inside a sentence ("between two options").
+  const short = t.split(/\s+/).length <= 3;
+  for (const [w, n] of Object.entries(WORDS))
+    if (new RegExp(`^${w}\\b|\\b${w}\\s+(stars?|out of)\\b`).test(t) || (short && new RegExp(`\\b${w}\\b`).test(t))) return n;
+  for (const [w, n] of Object.entries(PRAISE).sort((a, b) => b[0].length - a[0].length)) if (new RegExp(`\\b${w}\\b`).test(t)) return n;
   return null;
 }
+
+/** Does the reply ask for something? needInfo: a question or a request for information/pricing;
+ *  callback: asks to be called or contacted. Deliberately narrow: "great price" is praise, not a request. */
+export function parseIntent(body: string): { needInfo: boolean; callback: boolean } {
+  const t = String(body || "").toLowerCase().trim();
+  if (!t || OPT_OUT.test(t)) return { needInfo: false, callback: false };
+  const callback = /^(please )?call\b|\b(call me|call us|(can|could|would) (you|someone|somebody) (please )?call|please call|call back|callback|give (me|us) a call|reach out|contact me|contact us|talk to (someone|somebody|you)|speak (to|with) (someone|somebody|you))\b/.test(t);
+  const needInfo = !/\bno (more )?questions?\b/.test(t) && (/\?/.test(t) ||
+    /\b(more info|more information|need (some |more )?info|info (on|about)|information (on|about)|details (on|about)|send (me|us)|can you send|question|questions|how much|what (would|will|does) it cost|pricing (on|for)|still deciding|need to think|thinking about it|not sure yet)\b/.test(t));
+  return { needInfo, callback };
+}
+
+const STEVEN_EMAIL = "slivingston@kitchentuneup.com";   // same alert address consult-feedback uses
 
 async function secrets() {
   const { data } = await sb.from("app_secrets").select("key,value");
@@ -94,6 +120,57 @@ async function latestInboundSms(token: string, locationId: string, contactId: st
   return best;
 }
 
+/** A reply with words but no 1-5: alert the office, note ServiceMinder, tag HighLevel, acknowledge once.
+ *  Deduplicated by HighLevel message id (notify_queue.source), so a re-fired workflow can't double-alert. */
+async function writtenFeedback(brand: string, s: Record<string, string>, token: string, contactId: string,
+  msg: { body: string; id: string }, intent: { needInfo: boolean; callback: boolean },
+  log: { sm_contact_id: number; sm_appt_id: number; agent_name: string | null } | null) {
+  const source = `consult-sms-reply:${contactId}:${msg.id}`;
+  const { data: dup } = await sb.from("notify_queue").select("id").eq("source", source).limit(1);
+  if (dup?.length) return json(200, { ignored: "already handled", message_id: msg.id });
+  const { data: recent } = await sb.from("notify_queue").select("id").like("source", `consult-sms-reply:${contactId}:%`)
+    .gte("created_at", new Date(Date.now() - 7 * 86400_000).toISOString()).limit(1);
+  if (recent?.length) return json(200, { ignored: "follow-up message in a conversation the team already has open in HighLevel" });
+
+  const label = intent.callback ? "callback requested" : intent.needInfo ? "needs more information" : "written feedback";
+  const results: Record<string, string> = { recorded: label };
+  const body = `Consult survey text reply (${brand}) – ${label}. Client wrote: "${msg.body.slice(0, 600)}". ` +
+    (log ? `SM contact ${log.sm_contact_id}, appt ${log.sm_appt_id}${log.agent_name ? `, designer ${log.agent_name}` : ""}. ` : "No matching ServiceMinder consult found. ") +
+    `Reply in the HighLevel conversation (contact ${contactId}).`;
+  const { error } = await sb.from("notify_queue").insert({ kind: "consult_feedback_alert", recipient_email: STEVEN_EMAIL,
+    subject: `Consult survey text (${brand}) – ${label}`, body, source, status: "pending" });
+  results.alert = error ? String(error.message).slice(0, 120) : "queued";
+
+  if (log?.sm_contact_id) {
+    try {
+      await sm(s[`SM_KEY_${brand}`], "contacts/addnote", { ContactId: Number(log.sm_contact_id), Note: {
+        Title: `Consultation feedback (text reply) — ${label}`,
+        Body: `Appointment ${log.sm_appt_id}${log.agent_name ? ` with ${log.agent_name}` : ""}\nReply: "${msg.body.slice(0, 600)}"` } });
+      results.smNote = "ok";
+    } catch (e) { results.smNote = String(e).slice(0, 120); }
+  }
+  try {
+    await hl(token, `/contacts/${contactId}/tags`, { method: "POST",
+      body: JSON.stringify({ tags: ["consult-survey-replied", ...(intent.needInfo || intent.callback ? ["consult-follow-up"] : [])] }) });
+    results.tags = "ok";
+  } catch (e) { results.tags = String(e).slice(0, 120); }
+
+  let first = "";
+  if (log?.sm_contact_id) try {
+    const c = (await sm(s[`SM_KEY_${brand}`], "contacts/locate", { IdSearch: Number(log.sm_contact_id), Skip: 0, Limit: 1 })).Matches?.[0];
+    first = String(c?.FirstName || c?.Name || "").trim().split(/\s+/)[0] || "";
+  } catch { /* greeting without a name */ }
+  const hi = first ? `, ${first}` : "";
+  const text = intent.needInfo || intent.callback
+    ? `Thank you${hi}! We'll get back to you shortly about your question.`
+    : `Thank you for sharing that${hi}. We read every reply ourselves, and it genuinely helps.`;
+  try {
+    await hl(token, `/conversations/messages`, { method: "POST", body: JSON.stringify({ type: "SMS", contactId, message: text }) });
+    results.reply = "sent";
+  } catch (e) { results.reply = String(e).slice(0, 120); }
+  return json(200, results);
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "POST only" });
   let b: Record<string, any>;
@@ -108,8 +185,10 @@ Deno.serve(async (req) => {
 
   const msg = await latestInboundSms(token, locationId, contactId).catch((e) => { console.error(String(e)); return null; });
   if (!msg) return json(200, { ignored: "no recent inbound SMS" });
-  const rating = parseRating(msg.body);
-  if (!rating) return json(200, { ignored: "reply is not a 1-5 rating", body: msg.body.slice(0, 80) });
+  const rating = parseRating(msg.body), intent = parseIntent(msg.body);
+  const words = msg.body.trim().split(/\s+/).filter(Boolean).length;
+  if (!rating && (OPT_OUT.test(msg.body.toLowerCase().trim()) || (!intent.needInfo && !intent.callback && words < 3)))
+    return json(200, { ignored: "not a rating, request or written feedback", body: msg.body.slice(0, 80) });
 
   let log: { sm_contact_id: number; sm_appt_id: number; agent_name: string | null } | null =
     await fromSurveyLink(s[`SM_KEY_${brand}`], String(b.survey_link ?? b.customData?.survey_link ?? "")).catch(() => null);
@@ -119,6 +198,7 @@ Deno.serve(async (req) => {
       .gte("processed_at", new Date(Date.now() - LOOKBACK_DAYS * 86400_000).toISOString()).order("processed_at", { ascending: false }).limit(1);
     log = logs?.[0] ?? null;
   }
+  if (!rating) return await writtenFeedback(brand, s, token, contactId, msg, intent, log);
   if (!log?.sm_appt_id) return json(200, { ignored: "no recent completed consult for this contact" });
 
   const { data: existing } = await sb.from("consult_feedback").select("id").eq("appt_id", log.sm_appt_id).limit(1);
@@ -126,7 +206,8 @@ Deno.serve(async (req) => {
 
   const intake = await fetch(`${SUPA}/functions/v1/consult-feedback`, { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ brand, contact_id: log.sm_contact_id, appt_id: log.sm_appt_id, agent_name: log.agent_name, hl_user_id: null,
-      rating, missing_items: [], feedback_text: `Text reply: "${msg.body.slice(0, 300)}"`, callback_requested: false }) });
+      rating, missing_items: [], feedback_text: `Text reply: "${msg.body.slice(0, 300)}"`, callback_requested: intent.callback,
+      decision: intent.needInfo ? "need_info" : null }) });
   if (!intake.ok) return json(502, { error: `consult-feedback ${intake.status}` });
 
   const results: Record<string, string> = { recorded: `${rating}/5` };
@@ -149,7 +230,9 @@ Deno.serve(async (req) => {
   } catch (e) { results.tags = String(e).slice(0, 120); }
 
   const hi = first ? `, ${first}` : "";
-  const text = rating >= 4
+  const text = intent.needInfo || intent.callback
+    ? `Thank you${hi}! We'll get back to you shortly about your question.`
+    : rating >= 4
     ? `Thank you${hi}! That means a lot to us and our team.${link ? ` Anything you'd like to add? ${link}` : ""}`
     : `Thank you for being honest${hi}. We're sorry it fell short, and someone from our team will reach out personally.${link ? ` Anything you'd like to add: ${link}` : ""}`;
   try {
