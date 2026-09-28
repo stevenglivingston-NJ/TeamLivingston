@@ -270,13 +270,16 @@ def write_section(section, rows):
         fields = dict(r)
         fields["brand"] = BRAND
         fields["scan_date"] = TODAY
-        values.append(f"({_sql_lit(section)}, {i}, {_sql_lit(json.dumps(fields))}::jsonb)")
+        values.append(f"({_sql_lit(section)}, {_sql_lit(BRAND)}, {i}, {_sql_lit(json.dumps(fields))}::jsonb)")
     stmts = []
     if values:
         stmts.append(
-            "INSERT INTO intranet_records (section, sort_order, fields) VALUES\n"
+            "INSERT INTO intranet_records (section, brand, sort_order, fields) VALUES\n"
             + ",\n".join(values) + ";"
         )
+    if not values:
+        # stale beats blank: never prune a section we had nothing to replace it with
+        return True, "no rows — section left as-is"
     stmts.append(
         f"DELETE FROM intranet_records WHERE section = {_sql_lit(section)} "
         f"AND (fields->>'scan_date') IS DISTINCT FROM {_sql_lit(TODAY)};"
@@ -300,7 +303,11 @@ def run_builders():
         print(f"▸ running {script} …", file=sys.stderr)
         try:
             proc = subprocess.run([py, script], cwd=HERE, timeout=timeout)
-            if proc.returncode != 0 and required:
+            # check_exceptions.py exits 1 when it FOUND exceptions — that is its
+            # report, not a failure. Treating it as fatal aborted every sweep on
+            # exactly the days there was something to report.
+            ok_codes = (0, 1) if script == "check_exceptions.py" else (0,)
+            if proc.returncode not in ok_codes and required:
                 print(f"✗ {script} exited {proc.returncode} (required) — aborting build", file=sys.stderr)
                 return False
         except subprocess.TimeoutExpired:
