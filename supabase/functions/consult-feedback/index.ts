@@ -14,10 +14,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
  * service-role caller.
  *
  * - Validates types (rating int 1-5, feedback_text <= 2000 chars).
- * - Inserts into consult_feedback. appt_id is unique; on a duplicate submit
- *   we detect the unique-violation (Postgres code 23505) from PostgREST and
- *   return 200 { ok:true, note:"already received" } rather than an error, so
- *   a retried survey POST is harmless.
+ * - Inserts into consult_feedback. appt_id is unique; a second answer for the same
+ *   appointment (a text-message rating, then detail added through the survey link)
+ *   UPDATES the row: rating replaced, comments appended, callback/decision merged,
+ *   and it only alerts again if it adds a callback request or "needs more information".
  * - Forwards the same JSON to the brand's HighLevel inbound webhook
  *   (HL_FEEDBACK_WEBHOOK_KTU/BTU in app_secrets — placeholders until Steven
  *   supplies the real URLs), retried once on failure, logged not fatal.
@@ -109,6 +109,27 @@ async function forwardToHighLevel(brand: string, payload: Record<string, unknown
   }
 }
 
+// Low rating, a callback request, or an undecided client who needs more information:
+// alert straight into notify_queue so someone follows up.
+async function queueAlert(brand: string, row: Record<string, unknown>, rating: number, missingItems: string[] | null,
+                          feedbackText: string | null, callbackRequested: boolean, decision: string | null) {
+  const needInfo = decision === "need_info";
+  const items = (missingItems ?? []).join(", ") || "none noted";
+  const tags = [callbackRequested ? "callback requested" : null, needInfo ? "needs more information" : null].filter(Boolean).join(" – ");
+  const subject = `Consult feedback ALERT (${brand}) – ${rating}/5 ${RATING[rating]?.split(" — ")[0] ?? ""}${tags ? " – " + tags : ""}`;
+  const body =
+    `Consult feedback ALERT (${brand}) – rep ${row.agent_name ?? "unknown"}, ${rating}/5 (${RATING[rating] ?? ""}), ` +
+    `decision: ${decision ? DECISION[decision] : "not answered"}, ` +
+    `missing: ${items}, comment: ${feedbackText ?? "(none)"}, ` +
+    `callback: ${callbackRequested ? "yes" : "no"}, SM contact ${row.contact_id ?? "unknown"}, appt ${row.appt_id}`;
+  const alertRes = await fetch(`${SUPA}/rest/v1/notify_queue`, {
+    method: "POST",
+    headers: svcHeaders,
+    body: JSON.stringify({ kind: "consult_feedback_alert", recipient_email: STEVEN_EMAIL, subject, body, source: "consult-feedback", status: "pending" }),
+  });
+  if (!alertRes.ok) console.error("consult-feedback: notify_queue insert failed", await alertRes.text());
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json(405, { error: "POST only" });
@@ -160,7 +181,24 @@ Deno.serve(async (req) => {
     const text = await insertRes.text();
     // Postgres unique_violation surfaces as PostgREST code 23505.
     if (insertRes.status === 409 || text.includes("23505")) {
-      return json(200, { ok: true, note: "already received" });
+      // Second answer for the same appointment: a client who replied to the survey TEXT with a
+      // number, then used the link to add detail. Update the row (web answer wins on rating;
+      // comments are appended) instead of dropping the detail on the floor.
+      const prevRes = await fetch(`${SUPA}/rest/v1/consult_feedback?appt_id=eq.${apptId}&select=feedback_text,missing_items,callback_requested,decision`, { headers: svcHeaders });
+      const prev = (await prevRes.json().catch(() => []))?.[0] ?? {};
+      const patch: Record<string, unknown> = {
+        rating,
+        callback_requested: Boolean(prev.callback_requested) || callbackRequested,
+        feedback_text: [prev.feedback_text, feedbackText].filter(Boolean).join(" | ") || null,
+      };
+      if (missingItems?.length) patch.missing_items = missingItems;
+      if (decision) patch.decision = decision;
+      const up = await fetch(`${SUPA}/rest/v1/consult_feedback?appt_id=eq.${apptId}`, { method: "PATCH", headers: svcHeaders, body: JSON.stringify(patch) });
+      if (!up.ok) { console.error("consult-feedback: update failed", up.status, (await up.text()).slice(0, 300)); return json(200, { ok: true, note: "already received" }); }
+      // Only alert again when this answer adds something to act on.
+      const newlyActionable = (callbackRequested && !prev.callback_requested) || (decision === "need_info" && prev.decision !== "need_info");
+      if (newlyActionable) await queueAlert(brand, row, rating as number, missingItems, feedbackText, callbackRequested, decision);
+      return json(200, { ok: true, note: "updated" });
     }
     console.error("consult-feedback: insert failed", insertRes.status, text.slice(0, 500));
     return json(502, { error: "insert failed" });
@@ -169,31 +207,8 @@ Deno.serve(async (req) => {
   // Forward to HighLevel (best-effort, retried once, never blocks the response's success).
   await forwardToHighLevel(brand, row);
 
-  // Low rating, a callback request, or an undecided client who needs more information:
-  // alert straight into notify_queue so someone follows up.
-  const needInfo = decision === "need_info";
-  if ((rating as number) <= 3 || callbackRequested || needInfo) {
-    const items = (missingItems ?? []).join(", ") || "none noted";
-    const tags = [callbackRequested ? "callback requested" : null, needInfo ? "needs more information" : null].filter(Boolean).join(" – ");
-    const subject = `Consult feedback ALERT (${brand}) – ${rating}/5 ${RATING[rating as number]?.split(" — ")[0] ?? ""}${tags ? " – " + tags : ""}`;
-    const body =
-      `Consult feedback ALERT (${brand}) – rep ${row.agent_name ?? "unknown"}, ${rating}/5 (${RATING[rating as number] ?? ""}), ` +
-      `decision: ${decision ? DECISION[decision] : "not answered"}, ` +
-      `missing: ${items}, comment: ${feedbackText ?? "(none)"}, ` +
-      `callback: ${callbackRequested ? "yes" : "no"}, SM contact ${row.contact_id ?? "unknown"}, appt ${row.appt_id}`;
-    const alertRes = await fetch(`${SUPA}/rest/v1/notify_queue`, {
-      method: "POST",
-      headers: svcHeaders,
-      body: JSON.stringify({
-        kind: "consult_feedback_alert",
-        recipient_email: STEVEN_EMAIL,
-        subject,
-        body,
-        source: "consult-feedback",
-        status: "pending",
-      }),
-    });
-    if (!alertRes.ok) console.error("consult-feedback: notify_queue insert failed", await alertRes.text());
+  if ((rating as number) <= 3 || callbackRequested || decision === "need_info") {
+    await queueAlert(brand, row, rating as number, missingItems, feedbackText, callbackRequested, decision);
   }
 
   return json(200, { ok: true });
