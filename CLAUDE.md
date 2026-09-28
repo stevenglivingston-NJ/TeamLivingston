@@ -6,6 +6,38 @@ This environment manages operations for two business groups:
 - **KTUBTU** — Kitchen Tune-Up (KTU) and Bath Tune-Up (BTU) franchise locations in Bloomfield, NJ
 - **Jatalia** — Jatalia / Earthwise brand operations
 
+## Where things live (canonical map, 2026-09-28)
+
+**Nothing runs on anyone's computer.**
+- Code lives in four GitHub repos.
+- It runs on Cloudflare and Supabase.
+- Secrets live in Cloudflare Worker secrets, Supabase (`app_secrets`, function secrets) or the Claude cloud environment's env vars.
+
+Before assuming something is "in TeamLivingston", check this table. The client-facing apps live in `ktu-pricing-build`.
+
+| System | Live at | Code | Runs on | Deploys |
+|---|---|---|---|---|
+| **Design Journey client portal**<br>Style quiz, invite links, designer brief `/brief/…`, post-consult survey `/f/k` `/f/b`, rep tool `/send`, journeys and funnel `/send/journeys`, tier cheat sheets `/tiers`, Pick the look `/tiers/pick` | design.ktubtu.com | `stevenglivingston-NJ/ktu-pricing-build` → `portal/` | Cloudflare Worker `ktubtu-design`<br>KV `PORTAL` 6cbe1ee64f1a42039864231f72c81d30 | `.github/workflows/deploy-portal.yml` on push to main, or `npx wrangler deploy` from `portal/` |
+| **Pricing app** | pricing.ktubtu.com | `ktu-pricing-build` → `app/` | Cloudflare Worker `ktubtu-pricing`<br>KV `STATE` eac228b23726485389a6236be9f72e0a<br>JobTread holds the engine | `deploy-worker.yml` (paths `app/**`) |
+| **Design Journey invite, booking text and survey templates** | Pasted into ServiceMinder | `ktu-pricing-build/portal/email/build.py`, which writes `{ktu,btu}-invite.html`, `-subject.txt`, `-invite-sms*.txt` | ServiceMinder sends them | Re-run `build.py`, zip `index.html` and upload to ServiceMinder. **The repo is the source of truth**; ServiceMinder only holds copies |
+| **Style quiz content** | Inside the portal | Rounds and tips: `portal/tools/style_rounds.py`<br>Build: `build_quiz.py`<br>Evidence: `portal/docs/DESIGN-JOURNEY-QUIZ-EVIDENCE.md`<br>Photos: from `ktu-lookbook/img` | Portal KV `flag:quiz_v2` = `"true"` switches it on | Rebuild, then deploy the portal |
+| **Live browser checks** for the portal | none | `ktu-pricing-build/portal/tools/e2e/` (see its README) | Any Claude cloud session (Playwright is pre-installed) | none |
+| **Lookbooks** | lookbook.ktubtu.com | `stevenglivingston-NJ/ktu-lookbook` | Built by its GitHub Action | `.github/workflows/publish.yml`: on push, daily cron, or a `catalogue-changed` dispatch |
+| **Supabase functions for this repo**<br>`consult-sms-reply`, `consult-feedback`, `dispatch-notify`, `consult-completion-tagger`, `sm-agent-sync`, `jc-forecast-sync`, `rep-card`, `ingest-email`, `admin-users` | Supabase project `tguwpswcneywvscxzyef` | `TeamLivingston/supabase/functions/` | Supabase Edge Functions | Supabase CLI or MCP `deploy_edge_function` |
+| **Supabase function `queue-notify`** (designer email queue) | same project | `ktu-pricing-build/supabase-functions/` | Supabase | `deploy-supabase-functions.yml` |
+| **Axyom intranet** | dash.goaxyom.com | This repo, `intranet/` (see Dashboards below) | Cloudflare | `intranet/DEPLOY.md` |
+| `KTUBTU-Intranet` repo | none | `stevenglivingston-NJ/KTUBTU-Intranet` | none | Original intranet build brief. **Not used** by the portal or the pricing app |
+| **Design mocks** (Design Journey canvas) | https://claude.ai/artifact/JkYyRXszcHyy6EWwwRm7ZA | none | claude.ai | Edited from a Claude session |
+
+**Deploy rules. Both were learned the hard way on 2026-09-28.**
+1. **Only deploy code that contains current `main`.** Merge `origin/main` into your branch first. `wrangler deploy` uploads your working tree, so a stale branch silently reverts other sessions' live work. On 2026-09-28 that took `/tiers/pick` down for about 30 minutes.
+2. **Merge what you deploy.** If the live site runs code that isn't on `main`, the next deploy from `main` undoes it.
+
+**GitHub Actions account block (since 2026-09-27 ~22:45 UTC).**
+- **Symptom:** every Actions job in every private repo (`ktu-pricing-build` deploys, `ktu-lookbook` publish) fails within 3 seconds, with `runner_id 0` and no logs.
+- **Cause:** GitHub refuses to start jobs at the account level. That is a billing block (included minutes used up with a $0 spending limit, or a failed payment), not a code error. Fix it in GitHub → Settings → Billing and plans.
+- **Until it's fixed:** deploys only happen by hand from a Claude cloud session (`npx wrangler deploy`, using `CLOUDFLARE_API_TOKEN` from the env), and the lookbook doesn't rebuild.
+
 ## MCP Servers
 
 ### KTUBTU Servers
