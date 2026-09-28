@@ -54,7 +54,7 @@ TODAY = os.environ.get("SWEEP_TODAY") or dt.date.today().isoformat()
 BUILDERS = [
     ("shopify_costs.py", 180, False),        # (script, timeout_s, required)
     ("walmart_pull.py", 180, False),         # returns feed (optional; skips w/o WMT creds)
-    ("build_jatalia_data.py", 420, True),
+    ("build_jatalia_data.py", 900, True),   # monthly ShipStation windows (see builder)
     ("build_ops_data.py", 300, False),
     ("build_latency_data.py", 900, True),
     ("check_exceptions.py", 120, True),
