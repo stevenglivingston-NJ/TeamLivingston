@@ -576,3 +576,31 @@ no rows, and a stale banner if the latest `scan_date` is older than today.
 - This briefing is owner-only — candid about comp, margins, and entity finances is fine, but keep confidential deal matters (e.g., any business-sale process) OUT of the intranet entirely.
 - If a data source is unavailable, one `info` row noting which lens was blind today.
 - End your run with a 5-line executive summary in your final message.
+
+## Registers that must be refreshed every scan (added 2026-09-28 audit)
+
+These sections went stale or empty because the routine prompt listed "eight
+sections" and nothing else. They are part of every scan. Scheduled runs reach
+Supabase, ServiceMinder and HighLevel through `sb.sh` / `sm.sh` / `ghl.sh` only.
+
+- **`subscriptions`** — the curated register is seeded (15 `source='manual'` rows,
+  2026-09-28, from `KTUBTU-Intranet/supabase/007_subscriptions.sql`). Each scan:
+  match recurring bank/card charges (from `bank_transactions` via `sb.sh`) to a
+  curated row by vendor and set `amount` / `prev_amount` / `last_charged`; an
+  unmatched recurring charge becomes its own row with `status='orphan'` and
+  `source` = the feed. **Never overwrite `owner`, `status`, `notes` or delete a
+  `source='manual'` row.** Full contract: `KTUBTU-Intranet/source-docs/AGENT_MOOLA_SUBSCRIPTIONS.md`.
+- **`moola_benchmarks` + `moola_exec_summary`** — §"Daily Benchmark Scorecard".
+  Write every metric row every scan; a metric whose source is unreachable in a
+  scheduled run is written with `status='nodata'` (never skipped — a missing row
+  reads as a dead agent). `marketing_pct` numerator = `sum(amount)` from the
+  `marketing_spend_monthly` view (bank-classified; `mkt_spend` is a frozen July
+  hand-scan).
+- **`bank_transactions`** (Mondays) — upsert the trailing 14 days from the bank
+  feed, filling `institution`, `account_name`, `counterparty` (rows added since
+  2026-09-08 have them null). Card accounts (Brex/Chase/Ramp) currently expose
+  balances only, so card-paid marketing (SendJim, Premmedia, Major League Media)
+  cannot appear in `marketing_spend_monthly` — say so in `moola_briefing` as a
+  blind lens until those cards feed transactions.
+- **`collections`** — no longer an agent section: the intranet derives the draw
+  tracker from Foreman's `client_status`. Do not write it.
