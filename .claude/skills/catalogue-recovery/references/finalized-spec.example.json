@@ -1,0 +1,48 @@
+{
+  "_comment": "Spec for `recover.py build`. Placeholders in <angle brackets>. Line names/descriptions are CLIENT-FACING: no OPEN/CONFIRM, no parameter or budget talk, no staff names. Internal notes go in internalComments (team-only). One line per orderable product. photos = local files (from `recover.py photos`) or URLs; all photos for a line are attached in ONE call.",
+  "jobId": "<JobTread job id>",
+  "copySenderFromDocId": "<id of the rep's existing Selections document — copies to/from, signature disclaimer, email message>",
+  "name": "Selections",
+  "subject": "Finalized — <Room>",
+  "groupName": "<Room> — Finalized Selections",
+  "description": "FINAL SELECTIONS — <Room>\n<Job address>\n\nThis sheet lists the final products for your <room>: what each item is, where it will be purchased, the quantity, and a photo of your selection. Please review each line and sign below so we can place the orders.\n\nWhere a line says \"to be confirmed\", we will confirm the exact model, size or quantity with you before anything is ordered.\n\nThis document confirms your selections only. Pricing is carried on your approved proposal and change order.",
+  "lines": [
+    {
+      "name": "Vanity splash tile — Coco White Glossy, 2\" x 6\"",
+      "description": "Glossy white porcelain wall tile, 2\" x 6\", installed vertically behind the vanity. The Tile Shop item #484212.\nQuantity: 50 sq ft.\nWhere to buy: The Tile Shop — https://www.tileshop.com/products/coco-white-glossy-porcelain-wall-tile-2-x-6-in-484212",
+      "quantity": 50,
+      "unitId": "22PB4XQgFyet",
+      "costCodeId": "22PGGsi2nns6",
+      "costTypeId": "22PB4XQgFyfX",
+      "photos": ["recovery/img/IMG_0001.jpeg"]
+    },
+    {
+      "name": "Vanity sconces — brushed gold with starburst glass",
+      "description": "Brushed gold two-light fixture with round, starburst-cut clear glass shades.\nQuantity: 2.\nExact model to be confirmed before ordering.",
+      "quantity": 2,
+      "unitId": "22PB4XQgFyem",
+      "costCodeId": "22PGGsi2nns6",
+      "costTypeId": "22PEWSb5J3qR",
+      "photos": ["recovery/img/IMG_0002.jpeg"]
+    },
+    {
+      "name": "Crown molding",
+      "description": "New crown molding.\nQuantity: 4 linear feet.\nProfile to be confirmed with you before ordering.",
+      "quantity": 4,
+      "unitId": "22PB4XQgFyeq",
+      "costCodeId": "22PGGsi2nns6",
+      "costTypeId": "22PEWSb5J3qR",
+      "photos": []
+    }
+  ],
+  "internalComments": [
+    {
+      "name": "Open items (internal)",
+      "message": "INTERNAL — open items before ordering (not visible to client)\n\n1. <item>: <what is missing>. Qty source: <budget line / parameter>.\n...\n\nSigned scope (<room>): proposal <date> — <items>. Change order <date> — <items>."
+    },
+    {
+      "name": "Sources (internal)",
+      "message": "INTERNAL — where each line came from (not visible to client)\n\n• <line>: rep's Selection #<n> \"<original line>\" + photo <IMG_xxxx>. Qty = <budget line / parameter>. Link checked <date>.\n..."
+    }
+  ]
+}
