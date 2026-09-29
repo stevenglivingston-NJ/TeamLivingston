@@ -1,5 +1,12 @@
 # Axyom Intranet (`ktubtuintranet` Cloudflare Worker)
 
+> ## 🗄️ ARCHIVED 2026-09-13 — see ARCHIVED.md, do not deploy from this folder
+> `dash.goaxyom.com` is now built from a different repo
+> (`github.com/stevenglivingston-NJ/KTUBTU-Intranet`). Everything below this
+> line describes a deploy path that has been deliberately disabled
+> (`wrangler.jsonc` no longer names the live worker or claims the domain).
+> Kept for history. Read `ARCHIVED.md` first.
+
 > ## ⚠️ Reconciliation in progress (2026-08-18)
 > `ktubtuintranet.html` has been **reset to match the live worker byte-for-byte**,
 > so **deploying is now safe — it is a no-op against production.**

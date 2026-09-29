@@ -30,7 +30,13 @@
 # Credential resolution matches .env.example: GA4_CLIENT_ID/SECRET and
 # GTM_CLIENT_ID/SECRET fall back to GOOGLE_ADS_CLIENT_ID/SECRET when blank
 # (same OAuth app, different token) — GA4_REFRESH_TOKEN / GTM_REFRESH_TOKEN
-# always need their own value, minted via tools/get_refresh_token.py.
+# always need their own value, minted via tools/get_refresh_token.py. If a
+# var is unset in the environment (e.g. an interactive session where secrets
+# live in Claude Code's own config rather than exported env vars), each var
+# is also looked up under ~/.claude/settings.json's mcpServers.<server>.env —
+# checked per credential set's own server key, and additionally under
+# "google-ads" for client id/secret (never for refresh tokens, which are not
+# interchangeable between APIs).
 #
 # Exit code: 0 only if every set that was checked minted a token. Prints one
 # JSON object per set to stdout either way, so a caller can act on
@@ -40,21 +46,67 @@ set -uo pipefail
 
 TOKEN_URL="https://oauth2.googleapis.com/token"
 TOKENINFO_URL="https://oauth2.googleapis.com/tokeninfo"
+SETTINGS_JSON="$HOME/.claude/settings.json"
 
 die() { echo "{\"error\":$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$1")}" >&2; exit "${2:-1}"; }
 
-# ---- verify_set <name> <client_id_var> <client_secret_var> <refresh_token_var> [fallback_id_var] [fallback_secret_var]
+# ---- settings_lookup <var_name> <mcp_server_key> -------------------------
+# Prints the value if ~/.claude/settings.json has
+# mcpServers.<server_key>.env.<var_name> set, else prints nothing and
+# returns 1. Never errors on a missing/malformed file.
+settings_lookup() {
+  local var="$1" server="$2"
+  [ -f "$SETTINGS_JSON" ] || return 1
+  VAR="$var" SERVER="$server" SETTINGS_JSON="$SETTINGS_JSON" python3 <<'PY'
+import json, os, sys
+try:
+    d = json.load(open(os.environ["SETTINGS_JSON"]))
+except Exception:
+    sys.exit(1)
+v = d.get("mcpServers", {}).get(os.environ["SERVER"], {}).get("env", {}).get(os.environ["VAR"])
+if v:
+    print(v)
+else:
+    sys.exit(1)
+PY
+}
+
+# ---- verify_set <name> <server_key> <client_id_var> <client_secret_var> <refresh_token_var> [fallback_id_var] [fallback_secret_var]
 # Prints one JSON object; returns 0 on a successful mint, 1 otherwise.
 verify_set() {
-  local name="$1" id_var="$2" secret_var="$3" rt_var="$4" fb_id_var="${5:-}" fb_secret_var="${6:-}"
+  local name="$1" server="$2" id_var="$3" secret_var="$4" rt_var="$5" fb_id_var="${6:-}" fb_secret_var="${7:-}"
 
   local cid="${!id_var:-}"
   local csec="${!secret_var:-}"
   local rt="${!rt_var:-}"
 
-  local id_source="$id_var" secret_source="$secret_var"
+  local id_source="$id_var" secret_source="$secret_var" rt_source="$rt_var"
   if [ -z "$cid" ] && [ -n "$fb_id_var" ]; then cid="${!fb_id_var:-}"; id_source="$fb_id_var (fallback)"; fi
   if [ -z "$csec" ] && [ -n "$fb_secret_var" ]; then csec="${!fb_secret_var:-}"; secret_source="$fb_secret_var (fallback)"; fi
+
+  # Env (and its GOOGLE_ADS_* fallback above) came up empty — try
+  # ~/.claude/settings.json before giving up. Client id/secret also fall
+  # back to the "google-ads" section there, matching the env-var fallback;
+  # refresh tokens only ever check their own section, never google-ads',
+  # since a token is not valid across APIs.
+  if [ -z "$cid" ]; then
+    local v
+    v="$(settings_lookup "$id_var" "$server")" && { cid="$v"; id_source="$id_var (~/.claude/settings.json)"; }
+    if [ -z "$cid" ] && [ -n "$fb_id_var" ]; then
+      v="$(settings_lookup "$fb_id_var" "google-ads")" && { cid="$v"; id_source="$fb_id_var (~/.claude/settings.json fallback)"; }
+    fi
+  fi
+  if [ -z "$csec" ]; then
+    local v
+    v="$(settings_lookup "$secret_var" "$server")" && { csec="$v"; secret_source="$secret_var (~/.claude/settings.json)"; }
+    if [ -z "$csec" ] && [ -n "$fb_secret_var" ]; then
+      v="$(settings_lookup "$fb_secret_var" "google-ads")" && { csec="$v"; secret_source="$fb_secret_var (~/.claude/settings.json fallback)"; }
+    fi
+  fi
+  if [ -z "$rt" ]; then
+    local v
+    v="$(settings_lookup "$rt_var" "$server")" && { rt="$v"; rt_source="$rt_var (~/.claude/settings.json)"; }
+  fi
 
   if [ -z "$cid" ] || [ -z "$csec" ] || [ -z "$rt" ]; then
     local missing=()
@@ -82,7 +134,7 @@ PY
   local body="${resp%$'\n'*}"
 
   NAME="$name" HTTP_CODE="$http_code" BODY="$body" \
-  ID_SRC="$id_source" SECRET_SRC="$secret_source" RT_VAR="$rt_var" \
+  ID_SRC="$id_source" SECRET_SRC="$secret_source" RT_VAR="$rt_source" \
   TOKENINFO_URL="$TOKENINFO_URL" python3 <<'PY'
 import json, os, urllib.request, urllib.error, urllib.parse
 
@@ -156,13 +208,13 @@ TARGET="${1:-all}"
 overall_ok=0
 
 check_ads() {
-  verify_set "google-ads" GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET GOOGLE_ADS_REFRESH_TOKEN
+  verify_set "google-ads" "google-ads" GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET GOOGLE_ADS_REFRESH_TOKEN
 }
 check_ga4() {
-  verify_set "ga4" GA4_CLIENT_ID GA4_CLIENT_SECRET GA4_REFRESH_TOKEN GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET
+  verify_set "ga4" "google-analytics" GA4_CLIENT_ID GA4_CLIENT_SECRET GA4_REFRESH_TOKEN GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET
 }
 check_gtm() {
-  verify_set "gtm" GTM_CLIENT_ID GTM_CLIENT_SECRET GTM_REFRESH_TOKEN GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET
+  verify_set "gtm" "gtm" GTM_CLIENT_ID GTM_CLIENT_SECRET GTM_REFRESH_TOKEN GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET
 }
 
 case "$TARGET" in

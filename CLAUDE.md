@@ -6,14 +6,46 @@ This environment manages operations for two business groups:
 - **KTUBTU** — Kitchen Tune-Up (KTU) and Bath Tune-Up (BTU) franchise locations in Bloomfield, NJ
 - **Jatalia** — Jatalia / Earthwise brand operations
 
+## Where things live (canonical map, 2026-09-28)
+
+**Nothing runs on anyone's computer.**
+- Code lives in four GitHub repos.
+- It runs on Cloudflare and Supabase.
+- Secrets live in Cloudflare Worker secrets, Supabase (`app_secrets`, function secrets) or the Claude cloud environment's env vars.
+
+Before assuming something is "in TeamLivingston", check this table. The client-facing apps live in `ktu-pricing-build`.
+
+| System | Live at | Code | Runs on | Deploys |
+|---|---|---|---|---|
+| **Design Journey client portal**<br>Style quiz, invite links, designer brief `/brief/…`, post-consult survey `/f/k` `/f/b`, rep tool `/send`, journeys and funnel `/send/journeys`, tier cheat sheets `/tiers`, Pick the look `/tiers/pick` | design.ktubtu.com | `stevenglivingston-NJ/ktu-pricing-build` → `portal/` | Cloudflare Worker `ktubtu-design`<br>KV `PORTAL` 6cbe1ee64f1a42039864231f72c81d30 | `.github/workflows/deploy-portal.yml` on push to main, or `npx wrangler deploy` from `portal/` |
+| **Pricing app** | pricing.ktubtu.com | `ktu-pricing-build` → `app/` | Cloudflare Worker `ktubtu-pricing`<br>KV `STATE` eac228b23726485389a6236be9f72e0a<br>JobTread holds the engine | `deploy-worker.yml` (paths `app/**`) |
+| **Design Journey invite, booking text and survey templates** | Pasted into ServiceMinder | `ktu-pricing-build/portal/email/build.py`, which writes `{ktu,btu}-invite.html`, `-subject.txt`, `-invite-sms*.txt` | ServiceMinder sends them | Re-run `build.py`, zip `index.html` and upload to ServiceMinder. **The repo is the source of truth**; ServiceMinder only holds copies |
+| **Style quiz content** | Inside the portal | Rounds and tips: `portal/tools/style_rounds.py`<br>Build: `build_quiz.py`<br>Evidence: `portal/docs/DESIGN-JOURNEY-QUIZ-EVIDENCE.md`<br>Photos: from `ktu-lookbook/img` | Portal KV `flag:quiz_v2` = `"true"` switches it on | Rebuild, then deploy the portal |
+| **Live browser checks** for the portal | none | `ktu-pricing-build/portal/tools/e2e/` (see its README) | Any Claude cloud session (Playwright is pre-installed) | none |
+| **Lookbooks** | lookbook.ktubtu.com | `stevenglivingston-NJ/ktu-lookbook` | Built by its GitHub Action | `.github/workflows/publish.yml`: on push, daily cron, or a `catalogue-changed` dispatch |
+| **Supabase functions for this repo**<br>`consult-sms-reply`, `consult-feedback`, `dispatch-notify`, `consult-completion-tagger`, `sm-agent-sync`, `jc-forecast-sync`, `rep-card`, `ingest-email`, `admin-users` | Supabase project `tguwpswcneywvscxzyef` | `TeamLivingston/supabase/functions/` | Supabase Edge Functions | Supabase CLI or MCP `deploy_edge_function` |
+| **Supabase function `queue-notify`** (designer email queue) | same project | `ktu-pricing-build/supabase-functions/` | Supabase | `deploy-supabase-functions.yml` |
+| **Axyom intranet** | dash.goaxyom.com | `stevenglivingston-NJ/KTUBTU-Intranet` → `index.html` + `worker.js`. **Not** this repo's `intranet/`, which was archived 2026-09-13 (see `intranet/ARCHIVED.md`) | Cloudflare Worker `ktubtuintranet` | Automatic on push to `main` (Cloudflare Workers Builds) |
+| **Playbook** (Lead to Last Nail, BTU Handover SOP BTU-OPS-001, KTU Handover Standard V2, Selections & Order Sheet) | playbook.ktubtu.com | This repo, `playbook/` (see its README) | Cloudflare Pages `ktu-playbook` | `npx wrangler pages deploy . --project-name ktu-playbook --branch main` from `playbook/`. Linked from the intranet Playbook tab |
+| **Design mocks** (Design Journey canvas) | https://claude.ai/artifact/JkYyRXszcHyy6EWwwRm7ZA | none | claude.ai | Edited from a Claude session |
+
+**Deploy rules. Both were learned the hard way on 2026-09-28.**
+1. **Only deploy code that contains current `main`.** Merge `origin/main` into your branch first. `wrangler deploy` uploads your working tree, so a stale branch silently reverts other sessions' live work. On 2026-09-28 that took `/tiers/pick` down for about 30 minutes.
+2. **Merge what you deploy.** If the live site runs code that isn't on `main`, the next deploy from `main` undoes it.
+
+**GitHub Actions account block (since 2026-09-27 ~22:45 UTC).**
+- **Symptom:** every Actions job in every private repo (`ktu-pricing-build` deploys, `ktu-lookbook` publish) fails within 3 seconds, with `runner_id 0` and no logs.
+- **Cause:** GitHub refuses to start jobs at the account level. That is a billing block (included minutes used up with a $0 spending limit, or a failed payment), not a code error. Fix it in GitHub → Settings → Billing and plans.
+- **Until it's fixed:** deploys only happen by hand from a Claude cloud session (`npx wrangler deploy`, using `CLOUDFLARE_API_TOKEN` from the env), and the lookbook doesn't rebuild.
+
 ## MCP Servers
 
 ### KTUBTU Servers
 
 | Server | Type | Tools | Auth |
 |--------|------|-------|------|
-| google-ads | stdio (Python) | Campaigns, keywords, search terms, geo performance, LSA, **change history** (`query_change_history` — who changed what, 30-day retention) | OAuth2 (Desktop client) |
-| gmb | stdio (Python) | Reviews, metrics, search keywords, location info, hours | OAuth2 (shared with google-ads) |
+| google-ads | stdio (Python) | Campaigns, keywords, search terms, geo performance, LSA, **change history** (`query_change_history` — who changed what, 30-day retention). Covers KTU (2579406186), BTU (4477036900), and BTU's separate LSA account "Bath Tune-Up Local Ads" (4668735878) — KTU's LSA runs off its main account, BTU's does not, see `LSA_ACCOUNT_MAP` in `mcp-servers/google-ads/server.py`. **Also covers Jatalia/Earthwise** (see Jatalia Servers table below) — same server, same login, different account hierarchy | OAuth2 (Desktop client) |
+| gmb | stdio (Python) | Reviews, metrics, search keywords, location info, hours. **Place Actions** (the booking/appointment link on the profile) is NOT reachable — `mybusinessplaceactions.googleapis.com` is disabled on Cloud project `731866071255`; enable it there to read or set the booking URL | OAuth2 — **no token of its own**, it reads `GOOGLE_ADS_REFRESH_TOKEN`, which must carry BOTH `adwords` and `business.manage`. Re-mint only with `get_refresh_token.py --preset ads` (that preset requests both). A token minted with `adwords` alone keeps Google Ads working and silently 403s every GMB call |
 | google-analytics | stdio (Python) | GA4 Data API direct — channel/landing-page performance, generate_lead events | ✅ LIVE (2026-08-21). Own `GA4_REFRESH_TOKEN` (scope `.../auth/analytics`; the google-ads token 403s here). Properties: KTU 453600017, BTU 487870392. **Filter by `hostName`** — the two properties are cross-contaminated |
 | gtm | stdio (Python) | Tag Manager API v2 — tags, triggers, variables, stage container versions (KTU GTM-KLT6WSH4, BTU GTM-PK4HC6SR) | Own `GTM_REFRESH_TOKEN` (scopes `tagmanager.readonly` + `edit.containers` + `edit.containerversions`, NO publish — humans publish in the GTM UI; current token lacks `edit.containerversions`, so `create_container_version` 403s until re-minted). Client id/secret fall back to `GOOGLE_ADS_CLIENT_ID/SECRET` |
 | closebot | stdio (Python) | Bots, messages, actions, bookings, billing | API key (X-CB-KEY header) |
@@ -41,6 +73,7 @@ This environment manages operations for two business groups:
 | amazon-ads | *(planned)* | Sponsored Products/Brands/Display campaigns, keywords, reports | LWA OAuth2 (Ads API) |
 | walmart-marketplace | *(planned)* | Orders, items, inventory, prices, reports | Walmart API |
 | walmart-ads | *(planned)* | Sponsored Products campaigns, keywords, reports | Walmart Connect API |
+| google-ads (Earthwise) | stdio (Python) — **shared with KTU/BTU server** | Google Shopping/PMax/Search/Demand Gen campaigns for "Earthwise Seed Co." (customer `7159460368`) — discovered 2026-09-13 via `listAccessibleCustomers`, live spend ~$300k/30d, never previously wired into any tool or agent. Owned by **Harvest**, not Paid. Use `mcp__google-ads__query_campaigns` etc. with `location="EARTHWISE"` | OAuth2 (same login as google-ads/KTU-BTU: `firstgenerationusallc@gmail.com`) |
 
 ### Shared / Cross-Group
 
@@ -70,7 +103,11 @@ mcp-servers/
 ├── bootstrap.sh          # registers every server below from env-vars
 ├── .env.example          # the full env-var list (names only, no secrets)
 ├── serviceminder/        server.py  # 29 tools (multi-location: KTU + BTU)
-├── google-ads/           server.py  # 12 tools (KTU 2579406186, BTU 4477036900)
+├── google-ads/           server.py  # 12 tools (KTU 2579406186, BTU 4477036900, BTU-LSA
+│                                    #   4668735878, Earthwise/Jatalia 7159460368 — added
+│                                    #   2026-09-13; NOT under the KTU/BTU MCC, see
+│                                    #   _MCC_MANAGED_ACCOUNTS in server.py before adding
+│                                    #   any new brand to this server)
 ├── gmb/                  server.py  # 12 tools
 ├── closebot/             server.py  # 15 tools
 ├── companycam/           server.py  # 12 tools
@@ -78,7 +115,7 @@ mcp-servers/
 ├── amazon-sp/            server.py  # 15 tools (SP-API, LWA OAuth2)
 ├── cloudflare/           server.py  # 14 tools (Zones, DNS, Pages, Workers, R2, KV)
 ├── clarity/              server.py  # 4 tools — direct live-insights (KTU+BTU, Bearer)
-└── gtm/                  server.py  # 12 tools — Tag Manager v2, stage-only (no publish scope)
+└── gtm/                  server.py  # 15 tools — Tag Manager v2, stage-only (no publish scope)
 
 HTTP-transport servers (registered by bootstrap.sh, no local code):
   ghl-ktu / ghl-btu   → LeadConnector hosted MCP, PIT-scoped per location
@@ -90,11 +127,47 @@ Direct-access helpers (curl/CLI, NOT registered MCP servers — no bootstrap nee
   sm.sh               → ServiceMinder Open API over curl
   gmb.sh              → Google Business Profile over curl (mints its own OAuth token)
   lead-sweep.py       → daily ad-response / missed-lead / booking-integrity sweep
+  hl-field-sync.py    → SM→HighLevel proposal tags + SM Last Proposal Date/Status
+                        (fill-missing only; runs in the office-address Routine)
   tracking-audit.py   → daily tracking-health sweep (GTM/GA4/Ads/HL/Clarity/Meta
                         config drift — paused conv tags, wrong-brand containers,
                         foreign ids, unattributed leads); Paid runs it first,
                         Tekki verifies it ran (RAG JSON, curl transport)
 ```
+
+## Google Ads account discovery — 6 accounts, not 2 (canonical; verified 2026-09-13)
+
+`ACCOUNT_MAP` in `mcp-servers/google-ads/server.py` only ever listed KTU and BTU,
+which quietly implied the OAuth login behind `GOOGLE_ADS_REFRESH_TOKEN`
+(`firstgenerationusallc@gmail.com`) had access to nothing else. It doesn't — a
+direct `listAccessibleCustomers` call returns **six** customer ids:
+
+| Customer ID | Name | Status | Wired in? |
+|---|---|---|---|
+| 2579406186 | Kitchen Tune Up JL | Live (KTU) | ✅ `ACCOUNT_MAP["KTU"]` |
+| 4477036900 | Bath Tune-up Bloomfield NJ | Live (BTU) | ✅ `ACCOUNT_MAP["BTU"]` |
+| 4668735878 | Bath Tune-Up Local Ads | Live — BTU's LSA account | ✅ `LSA_ACCOUNT_MAP["BTU"]` (was already correct) |
+| 9366710070 | KTU/BTU Reporting | The MCC itself (manager=True) | N/A — this is `GOOGLE_ADS_LOGIN_CUSTOMER_ID` |
+| 4278203845 | KTU Bloomfield NJ | **Dormant** — every campaign PAUSED/REMOVED, $0/30d, last active ~2023 | ❌ Deliberately excluded — old agency scaffolding, not a live gap |
+| 7159460368 | Earthwise Seed Co. Google Ads2 | **Live, ~$300k/30d spend** | ✅ Added 2026-09-13 as `ACCOUNT_MAP["EARTHWISE"]` |
+
+**The real bug this surfaced:** `_ads_client()` unconditionally attached
+`GOOGLE_ADS_LOGIN_CUSTOMER_ID` (the KTU/BTU MCC) to every call. Earthwise is
+**not** a client of that MCC — querying it with that header set returns
+`PERMISSION_DENIED`, not empty data. Simply adding Earthwise to `ACCOUNT_MAP`
+without also fixing this would have silently broken on first use. Fixed via
+`_MCC_MANAGED_ACCOUNTS` (a set of customer ids that legitimately need the MCC
+header) — every `_ads_client()` call site now passes its resolved
+`customer_id` so the right accounts get the header and Earthwise doesn't.
+**Any future brand added to this server must be classified into
+`_MCC_MANAGED_ACCOUNTS` (or deliberately left out of it) — guessing wrong
+fails loudly, it does not silently return another brand's data.**
+
+Ownership: Earthwise's Google Ads spend belongs to **Harvest** (Jatalia demand
+generation), not Paid — see Connection ownership below. The dormant KTU
+account (4278203845) is not a monitoring gap; it's a decision for Steven on
+whether to formally close it in Google Ads, not something an agent should act
+on.
 
 **`lead-sweep.py` — the deterministic half of Goldeneye's morning run.** One pass
 over HighLevel + ServiceMinder that emits a RAG-graded JSON document: positive ad
@@ -112,6 +185,77 @@ It self-tests every pipe first and reports failures in `degradations`; an empty
 bucket next to a degradation is **unverified, not clean**. All HTTP goes through
 `curl` on purpose — python-urllib gets a 403 from the session egress proxy and
 would silently return zero rows.
+
+**`jc-labor-sync.py` + `companycam.sh` — CompanyCam hours into job costing (2026-09-18).**
+Closes the labor gap in `docs/JOB_COSTING_DESIGN.md` §7, which until now allocated
+crew labor by inference ("no per-job timesheets exist anywhere"). Clocked hours
+become the top evidence tier, above JobTread assignment and CompanyCam photo
+presence.
+
+**The rule, and it is not negotiable: hours are the ALLOCATION KEY, never a dollar
+source.** CompanyCam returns hours and has no pay-rate field anywhere in its API,
+and the QBO/Gusto sweep already books the weekly lump into `jc_actual_costs` — so
+multiplying hours by an invented rate would charge every job for labor **twice**.
+`jc_allocate_week()` instead splits the real payroll pro rata by hours and
+guarantees the week sums to exactly what the person was paid (largest-remainder
+rounding; verified against awkward thirds). Non-job time (bench/shop/warranty)
+keeps its dollars visible but never touches a job's actuals.
+
+```
+python3 mcp-servers/jc-labor-sync.py --dry-run     # report, write nothing
+python3 mcp-servers/jc-labor-sync.py --all         # the nightly run
+bash    mcp-servers/companycam.sh /v2/projects 'per_page=100'
+```
+
+Two findings, settled 2026-09-18 — read before debugging a zero-row run:
+- **Nobody is clocking in.** The time-tracking plan IS active on company 592669,
+  but zero hours were logged in the 30 days to 2026-09-18. Empty means no
+  adoption, not a broken pipe.
+- **CompanyCam time tracking is not on the public API, and no token fixes it.**
+  Steven granted time-tracking permissions to the existing token; nothing
+  changed. The evidence is conclusive: the token authenticates as **admin**
+  (Takia Livingston, active, company 592669), returns **200** on `/v2/projects`,
+  `/v2/users`, `/v2/company`, `/v2/webhooks`, `/v2/tags`, `/v2/groups`, and
+  **401 `{"general":"Bad credentials"}`** on the time-entry routes *only*. So
+  the token is live and the route is real. CompanyCam's public API docs contain
+  **no time-tracking endpoint**; its OAuth scopes are only `read`/`write`/
+  `destroy`; its webhook catalogue (project/photo/comment/document/video/
+  todo_list/task + wildcards) has **no time event**. The MCP connector reads
+  time entries through a **non-public surface**. Opening this up is a request to
+  CompanyCam — not a permission box, not a re-minted token.
+  → Until then `--from-json` is the ingest path: export in an *interactive*
+  session and feed the file. Never call `mcp__*` from a scheduled Routine.
+- **Diagnosing any of this needs `Accept: application/json`.** Without it the
+  time-entry routes answer a browser-shaped request with `302 → /users/sign_in`,
+  which looks like a wrong path and produced exactly that misdiagnosis earlier
+  the same day. Both helpers now always send the header.
+
+**ServiceMinder cannot take job costs — confirmed, not inherited.** Re-probed
+2026-09-18 across 15 endpoint spellings (`jobcost`/`cost`/`margin`/
+`purchaseorder`/`vendorinvoice`/`posting`/`expense`/`joblines`, singular and
+plural); every one returns SM's empty-200 "no such endpoint" signature. Custom
+fields are 48 contact-level + 1 appointment-level — none at proposal or job
+level, none cost-related. The **only** write surface is a contact note, so the
+intranet queues one (`jc_sm_note_log`, status `pending`) after a person confirms
+which SM proposal it attaches to, and the sync posts it server-side. The browser
+never holds an SM key — SM authenticates with its ApiKey inside the request body.
+
+**`hl-field-sync.py` — keeps HighLevel's proposal fields filled from ServiceMinder (2026-09-22).**
+Runs inside the office-address Routine (`trig_01QqB9tL5vcAMsrtRdiLqYiw`), once a day on
+the 12:00 UTC fire. For every SM contact whose proposals changed in the last 3 days it
+finds the HighLevel contact (phone → email, name-guarded) and fills only what's missing:
+tag `has proposal`, tag `won` (if signed and no won-family tag yet), and the DATE/TEXT
+fields `SM Last Proposal Date` / `SM Last Proposal Status`. Never removes a tag, never
+touches another field, never creates/deletes a contact. Ambiguous phone matches (name
+differs) are skipped and reported. Do **not** use the older `Proposal Date Sent` /
+`Proposal Status` fields for filtering: they are TEXT, sparsely filled, and the legacy
+SM→HL sync writes a status-change date into them (audit 2026-09-22).
+
+```
+python3 mcp-servers/hl-field-sync.py --dry-run          # report only
+python3 mcp-servers/hl-field-sync.py                    # last 3 days, both brands
+python3 mcp-servers/hl-field-sync.py --full             # re-backfill everything
+```
 
 **`ghl.sh` — HighLevel without MCP registration.** `bootstrap.sh` runs from the
 Cloud environment's setup script, so when that step doesn't run (or runs after
@@ -141,9 +285,30 @@ scheduled fire **cannot answer that prompt**, so the session does not error — 
 identical call. Nothing is logged as a failure; the board just goes stale.
 
 `.claude/settings.json` sets `permissions.defaultMode: bypassPermissions`, and
-that **does** cover Bash in scheduled runs — which is why `sb.sh` works. It does
-**not** override the account-level connector classifier that gates `mcp__*`
+that covers **ordinary** Bash in scheduled runs — which is why `sb.sh` works. It
+does **not** override the account-level connector classifier that gates `mcp__*`
 calls. Repo settings cannot fix this; only avoiding the gated call can.
+
+> **Correction, 2026-09-21 — `bypassPermissions` does NOT cover destructive
+> Bash.** Foreman was found hung four days with a **`Bash`** `pending_action`,
+> not an `mcp__*` one:
+>
+> ```
+> rm -f $SD/*_insert_*.sql $SD/*_insert.sql
+> ```
+>
+> `rm` with globs is classified separately and still prompts. The agent had
+> improvised that cleanup in its own publish step — **no agent spec contains
+> `rm` anywhere**, so this cannot be found by grepping the specs; only the
+> stalled session's `pending_action` reveals it.
+>
+> **Rule: a scheduled run must never emit `rm`, `mv` over an existing path, or
+> any other destructive shell.** Write each run's artifacts to a fresh per-run
+> directory (`$SD/run-$(date +%Y%m%dT%H%M%S)/`) so there is nothing to clean up.
+>
+> **Diagnosing:** read the stalled session's `pending_action`. If it names
+> `Bash`, it is this bug. If it names `mcp__*`, it is the connector one. They
+> look identical from the board — both just serve yesterday's rows.
 
 Measured on the 2026-08-19 → 08-27 outage — eight consecutive days, every
 credential valid the whole time:
@@ -168,7 +333,18 @@ bash mcp-servers/sb.sh  'SELECT …'                          # Supabase
 bash mcp-servers/ghl.sh KTU contacts_get-contacts '{...}'   # HighLevel
 bash mcp-servers/sm.sh  KTU invoice/query '{"Take":50}'     # ServiceMinder
 bash mcp-servers/gmb.sh KTU info                            # Google Business Profile
+bash mcp-servers/gads.sh query_lsa_periods '{"location":"KTU"}'   # Google Ads + LSA
+bash mcp-servers/companycam.sh /v2/photos 'per_page=100'    # CompanyCam
+bash mcp-servers/clickup.sh tasks <list_id>                 # ClickUp
 ```
+
+**`gads.sh` (added 2026-09-21) closed the last gap.** Google Ads was the only
+system in this stack without a curl escape hatch, which is exactly why Organic's
+`mcp__google-ads__query_lsa_periods` call was never migrated — and it hung that
+agent for **nine days**. The helper does not reimplement anything: it loads
+`google-ads/server.py` and calls the same function the MCP tool calls, so
+behaviour is identical by construction. `bash mcp-servers/gads.sh tools` lists
+all 14.
 
 Diagnosing a stale board: read the Routine's `last_run.status`. `ABANDONED` +
 a session in `REQUIRES_ACTION` with a `pending_action` naming an `mcp__*` tool
@@ -437,7 +613,8 @@ brief it degrades. Tekkie audits all of these daily.
 |---|---|---|
 | ServiceMinder (`SM_KEY_KTU/BTU`) | Moola, Foreman, Paid | Revenue/invoice/appointment truth; ROI tie-back |
 | HighLevel `ghl-ktu` / `ghl-btu` | Goldeneye, Paid, Foreman | Customer conversations, lead attribution, HL→SM sync audit |
-| Google Ads + LSA / Meta Ads | Paid | Spend sweep, CPL/CAC/ROAS |
+| Google Ads + LSA / Meta Ads (KTU/BTU) | Paid | Spend sweep, CPL/CAC/ROAS |
+| Google Ads (Earthwise, customer `7159460368`) | Harvest | Google Shopping/PMax/Search spend for Jatalia — separate account, separate owner from the KTU/BTU row above; do not conflate |
 | Clarity (`clarity-live` stdio, `clarity` Render, `clarity-*-export` npm) | Paid, Organic | Landing-page-experience check; live-insights direct feed |
 | QuickBooks / Ramp / Bank_Connection | Moola | P&L, AR/AP, cash flow, card spend |
 | CompanyCam / JobTread | Foreman | Field progress, estimates, PM status |

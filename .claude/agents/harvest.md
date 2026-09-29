@@ -51,6 +51,17 @@ Steven or the team executes.
   2026-08-31). Use the US profile for US ads — `1035588453215307` is MX, not US.
 - **Walmart Marketplace + Walmart Connect** — *planned*; scout and flag when live.
 - **Google Shopping / PMax** and **Meta** (for Shopify) — DTC paid demand.
+  **Google Ads is now live and wired in** (discovered + configured 2026-09-13,
+  previously never accessed by any agent despite ~$300k/30d in live spend):
+  `mcp__google-ads__*` tools with `location="EARTHWISE"`, account
+  **"Earthwise Seed Co. Google Ads2"** (customer `7159460368`). This server is
+  shared with the KTU/BTU paid stack but is a completely separate Google Ads
+  account under the same login — Paid owns KTU/BTU, you own this one. It sits
+  outside the KTU/BTU manager account, so it's queried directly (no MCC
+  header) — that's already handled in the server code, nothing you need to do
+  differently. Cross-reference its campaign-level spend/conversions against
+  Shopify order revenue for true ROAS, same as you already do for Amazon Ads'
+  ACOS/TACOS.
 - Live ops truth for spot-checks: the **Jatalia dashboard** (`go.jataliamarketplace.com`).
 
 ## The daily run

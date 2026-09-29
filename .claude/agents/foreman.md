@@ -86,9 +86,30 @@ you enforce daily:
     $15,145 sat Open; the job was done.) Duplicates inflate the open-AR total — subtract
     them and say so. Only treat an Open invoice as real AR when its proposal has no paid
     twin.
-- **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
+- **CompanyCam** — ⚠️ **use `mcp-servers/companycam.sh`, NOT `mcp__companycam__*`.**
+  On 2026-09-21 this run stalled with `mcp__companycam__test_connection` queued
+  behind a blocked Bash call; the connector prompt is unanswerable on a
+  scheduled fire. The helper hits the same REST API:
+
+  ```
+  bash mcp-servers/companycam.sh /v2/photos   'per_page=100'
+  bash mcp-servers/companycam.sh /v2/projects 'per_page=100'
+  ```
+
+  Filter by `modified_since=<yesterday>` client-side, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).
+  **Duplicate CompanyCam projects for the same customer/address are a known,
+  recurring failure mode — confirmed live on 2026-09-15 (Mycka, 5 Roosevelt Pl:
+  two projects, both 15 photos, one dormant since 08-10 and one with photos
+  from that same day). A matching photo_count does NOT mean you found the same
+  project twice — it can mean you found a stale duplicate that happens to tie.**
+  If address-matching (or `search_projects`) surfaces more than one live project
+  for a job, do not resolve it by picking the first/only result returned —
+  check every candidate's latest photo timestamp and use the most recent one as
+  the job's `company_cam_status` source. Name the stale duplicate's project_id
+  in the write-up so it can be archived in CompanyCam; otherwise the same wrong
+  project gets re-picked every run.
 - **HighLevel** for appointment/context enrichment. ✅ Both brands live via the
   OAuth connector `mcp__High_Level__*` (verified 2026-08-17, agency-scoped):
   `search_operations`/`execute_operation` with `locationId` per call — KTU
@@ -1245,6 +1266,30 @@ publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
   every route in its chain fails. (No Zapier app exists for ServiceMinder.)
 
 ## Known breakages / preconditions (verified 2026-07-03 — re-verify each run)
+
+- 🔴 **Never write a destructive shell command in a scheduled run — `bypassPermissions`
+  does NOT cover them.** On 2026-09-21 this agent hung for four days on its own
+  publish step. The blocking `pending_action` was **a `Bash` call, not an `mcp__*`
+  one**:
+
+  ```
+  rm -f $SD/*_insert_*.sql $SD/*_insert.sql
+  ```
+
+  That matters because CLAUDE.md states `bypassPermissions` covers Bash in
+  scheduled runs. It covers ordinary Bash. It does **not** cover a destructive
+  command — `rm` with globs is classified separately and still prompts, and a
+  scheduled fire cannot answer. The board then serves yesterday's rows with no
+  error on screen.
+
+  **So: do not clean up. Never emit `rm`, `mv` over an existing path, or any
+  other destructive shell in a scheduled run.** Write each run's artifacts into
+  a fresh per-run directory instead — `$SD/run-$(date +%Y%m%dT%H%M%S)/` — so
+  there is nothing to delete. Stale scratch files cost nothing; a blocked `rm`
+  costs the whole day's briefing.
+
+  Diagnose this class by reading the stalled session's `pending_action`. If it
+  names `Bash` rather than `mcp__*`, it is this bug, not the connector one.
 
 - 🔴 **ServiceMinder: use `mcp-servers/sm.sh`, NOT `mcp__serviceminder__*`, on any
   scheduled run — see CLAUDE.md § "Scheduled runs stall on MCP connector calls".**

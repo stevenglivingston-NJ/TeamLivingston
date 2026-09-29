@@ -165,15 +165,25 @@ function linesFromJt(items: any[]): Line[] {
   for (const it of items) {
     const name = String(it?.name ?? it?.description ?? "").trim();
     if (!name) continue;
-    const qty = num(it?.quantity) ?? 0;
+    // JobTread treats a NULL quantity as 1 in its own cost/price rollups
+    // (vendor-confirmed 2026-09-10: unit cost 100 / unit price 130 with no
+    // quantity rolls up as cost 100 and price 130). The fallback must use the
+    // same effective quantity -- multiplying by a literal 0 recorded cost 0
+    // against the FULL price, flattering gross margin and making the 45% gate
+    // less likely to escalate a job that deserves it.
+    // NULL and an explicit 0 are NOT the same thing here: null means 1, while a
+    // deliberate 0 zeroes both cost and price. `qty || 1` conflated them, so an
+    // item zeroed on purpose still carried a full unit of cost.
+    const rawQty = num(it?.quantity);
+    const effQty = rawQty === null ? 1 : rawQty;
     const ucost = num(it?.unitCost);
     const cost = num(it?.cost);
     out.push({
       description: name.slice(0, 400),
       category: categorize(name, it?.costType?.name),
-      qty: qty || 1,
+      qty: effQty,
       unit_cost: ucost,
-      forecasted_cost: cost !== null ? cost : (ucost ? qty * ucost : null),
+      forecasted_cost: cost !== null ? cost : (ucost !== null ? effQty * ucost : null),
       amount_charged: num(it?.price),
       cost_code: it?.costCode?.name ?? null,
       source_line_id: String(it?.id ?? ""),

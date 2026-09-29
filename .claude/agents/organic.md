@@ -472,8 +472,30 @@ Every run, in addition to the numbered picture below:
     even though **Paid owns LSA spend decisions**. You surface and diagnose; Paid
     acts on budget and bids. Never change an LSA budget, category, or bid.
 
-    Pull with **one call per brand**: `mcp__google-ads__query_lsa_periods`
-    (`location` = `KTU` / `BTU`). It returns week-to-date, month-to-date and
+    ⚠️ **Use `mcp-servers/gads.sh`, NOT `mcp__google-ads__*`.** This exact call
+    is why Organic was dead 2026-09-12 → 09-21: the session sat in
+    `REQUIRES_ACTION` with `pending_action: mcp__google-ads__query_lsa_periods
+    {location: "KTU"}` for **nine days**, and `organic_report` served stale rows
+    the whole time with no error anywhere on screen. Auto mode raises a
+    permission prompt that no scheduled fire can answer. Google Ads was the last
+    system in the stack without a curl escape hatch, which is precisely why this
+    one call never got migrated. It has one now.
+
+    Pull with **one call per brand**:
+
+    ```
+    bash mcp-servers/gads.sh query_lsa_periods '{"location":"KTU"}'
+    bash mcp-servers/gads.sh query_lsa_periods '{"location":"BTU"}'
+    ```
+
+    The helper loads the same `server.py` the MCP tool does and calls the same
+    function, so the output is identical by construction — only the transport
+    changes. stdout is clean JSON; the Google client's INFO logging goes to
+    stderr, so redirect `2>/dev/null` if you are piping. Pass
+    `"include_cost":false` when you only need lead volume — cost adds three
+    calls per brand against a rate-limited endpoint.
+
+    It returns week-to-date, month-to-date and
     year-to-date lead counts, charged counts, spend, phone calls and answered
     calls, plus a prior-year YTD for the YoY column. Weeks start Monday. Lead
     counts come from the Google Ads `local_services_lead` resource (full account
