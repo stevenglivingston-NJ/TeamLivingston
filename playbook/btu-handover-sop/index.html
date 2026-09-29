@@ -9,14 +9,17 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
 <link rel="stylesheet" href="/assets/playbook.css">
+<link rel="stylesheet" href="/assets/fold.css">
 </head>
 <body>
 <nav class="pbnav" aria-label="Playbook"><div class="in">
   <b>Playbook</b>
-  <a href="/">Lead to Last Nail</a>
+  <a href="/">Library</a>
+  <a href="/lead-to-last-nail/">Lead to Last Nail</a>
   <a href="/btu-handover-sop/" aria-current="page">BTU Handover SOP</a>
   <a href="/ktu-handover-standard/">KTU Handover Standard</a>
   <a href="/selections-and-ordering/">Selections &amp; Order Sheet</a>
+  <a href="/systems/">Systems</a>
   <a class="ext" href="https://dash.goaxyom.com/">Intranet ↗</a>
 </div></nav>
 
@@ -41,7 +44,7 @@
 </section>
 
 <section>
-  <h2>1. Purpose</h2>
+  <h2 data-desc="Why this SOP exists: every bath job reaches the PM complete, accurate and client-approved, so ordering and install run without surprises.">1. Purpose</h2>
   <p>Every Bath Tune-Up project reaches the Project Manager complete, accurate and client-approved. Orders can then be placed, materials received and the installation scheduled without delays, mid-job client calls or disputes at walkthrough.</p>
   <p>It solves three recurring problems:</p>
   <ul>
@@ -53,7 +56,7 @@
 </section>
 
 <section>
-  <h2>2. Roles &amp; ownership</h2>
+  <h2 data-desc="Who owns each deliverable (Sales Designer, Drafter, PM, Owner) and what each role does not own.">2. Roles &amp; ownership</h2>
   <p>Every deliverable has exactly one owner. Others may contribute; the owner is accountable.</p>
   <div class="tbl"><table>
     <thead><tr><th>Role</th><th>Owns</th><th>Does not own</th></tr></thead>
@@ -71,7 +74,7 @@
 </section>
 
 <section>
-  <h2>3. Timeline standard (sale → install ≈ 10 weeks)</h2>
+  <h2 data-desc="Week-by-week milestones from signed contract to install, with owners, and the timelines we give the client.">3. Timeline standard (sale → install ≈ 10 weeks)</h2>
   <p>Design and selections run <b>in parallel</b>, not one after the other. Running them in sequence wastes about two weeks.</p>
   <div class="tbl"><table>
     <thead><tr><th>#</th><th>Milestone</th><th>Owner</th><th>Target</th><th>Week</th></tr></thead>
@@ -107,7 +110,7 @@
 </section>
 
 <section>
-  <h2>4. Stage 1 — The Design Packet (Drafter)</h2>
+  <h2 data-desc="The drawing set the client signs and the installer builds from: required pages, title block, revisions, file names.">4. Stage 1 — The Design Packet (Drafter)</h2>
   <p>The Design Packet is the drawing set the client signs and the installer builds from. <b>It uses one universal format for both KTU and BTU.</b> The page order is always the same, so anyone can pick up any job.</p>
   <h3>4.1 Required pages, in this order</h3>
   <div class="tbl"><table>
@@ -150,7 +153,7 @@
 </section>
 
 <section>
-  <h2>5. Stage 2 — The Selection Sheet (Sales)</h2>
+  <h2 data-desc="The complete, signed buy list: what every line must include, quantities, sources and the pricing-tool acceptance rule.">5. Stage 2 — The Selection Sheet (Sales)</h2>
   <p>The Selection Sheet is the complete buy list. <b>If it is not on the sheet, it does not get ordered.</b> Sales owns the quantities; the PM does not re-do the math.</p>
   <h3>5.1 Every line must include</h3>
   <div class="tbl"><table>
@@ -187,12 +190,12 @@
   </table></div>
   <div class="rule-box"><span class="k">No open items at sign-off</span>The Selection Sheet may not contain "TBD," "not selected," "client to decide," or unresolved sourcing notes when it goes to the client for signature. Anything the client hasn't chosen delays the signature; it is not handed to the PM as a problem.</div>
   <h3>5.3 Where the Selection Sheet is built <span class="new">v1.1</span></h3>
-<div class="note"><span class="k">Status — in build</span>The pricing tool's order sheet, drafted Handover Email and Job Tracker are being built (Sept 29, 2026). Until the <a href="/selections-and-ordering/#status-order-sheet">Selections &amp; Order Sheet</a> page drops its "in build" notes, use the JobTread template and the manual email; log orders in JobTread.</div>
+<div class="note"><span class="k">Status</span>The pricing tool's order sheet and the drafted Handover Email are live (Sept 29, 2026). The Job Tracker is <a href="/selections-and-ordering/#status-tracker">connecting</a>; until your job has a tab there, log orders in JobTread.</div>
   <p>The Selection Sheet is the JobTread document built from the template <b>"Order Sheet — final selections (PDF)"</b>, following the line standard on the <a href="/selections-and-ordering/">Selections &amp; Order Sheet</a> page. The pricing tool (pricing.ktubtu.com) generates the order sheet from JobTread's finalized estimate plus the approved selections and flags any line missing SKU, finish, quantity or source as <b>Needs info</b>. A client "accepting" picks in the pricing tool is a preference, not a signature: it never replaces the signed PDF.</p>
 </section>
 
 <section>
-  <h2>6. Stage 3 — Client sign-off</h2>
+  <h2 data-desc="Both PDFs go to the client together and come back signed with the same date and revision.">6. Stage 3 — Client sign-off</h2>
   <ul>
     <li>Sales sends the client both PDFs together: the final Design Packet and the final Selection Sheet (same revision number).</li>
     <li>The client signs both with the same date. They go together and describe the same project.</li>
@@ -203,7 +206,7 @@
 </section>
 
 <section>
-  <h2>7. Stage 4 — The Handover Email (Sales → PM)</h2>
+  <h2 data-desc="The official handover: subject line, required contents, attachments, and the email template.">7. Stage 4 — The Handover Email (Sales → PM)</h2>
   <p>The handover is an <b>email with attached PDFs</b>, not a message saying "it's on JobTread." Handover is official when this email is sent.</p>
   <h3>7.1 Required contents</h3>
   <ul>
@@ -234,7 +237,7 @@ I have proofed both documents and confirm they match. – [Sales Designer]</div>
 </section>
 
 <section>
-  <h2>8. Stage 5 — PM Production Gate</h2>
+  <h2 data-desc="The PM&#x27;s checklist within 2 business days: what passes, what goes back to Sales.">8. Stage 5 — PM Production Gate</h2>
   <p>Within <b>2 business days</b> of the handover, the PM checks the package against this gate. The PM proofs <b>alignment</b> (drawing matches selections, dimensions make sense) and does not re-calculate Sales' quantities.</p>
   <ul class="check">
     <li>Handover Email received with scope summary, watch-outs, dates and payment status</li>
@@ -261,7 +264,7 @@ I have proofed both documents and confirm they match. – [Sales Designer]</div>
 </section>
 
 <section>
-  <h2>9. Stages 6–8 — Welcome, ordering, receiving, installer handover</h2>
+  <h2 data-desc="The client welcome letter (72 h), placing and logging orders, receiving and checking materials, briefing the installer.">9. Stages 6–8 — Welcome, ordering, receiving, installer handover</h2>
   <h3>9.1 Client welcome letter (within 72 hours) <span class="new">v1.1</span></h3>
   <p>The PM emails the client directly (cc Sales) within <b>72 hours</b> of receiving the approvals, to confirm everything has been verified and is being processed. If the Sales Designer prefers to send client communications themselves, they say so in the Handover Email.</p>
   <div class="template">Subject: Your Bath Tune-Up project – next steps
@@ -314,7 +317,7 @@ If anything comes up in the meantime, I'm your point of contact. – [PM]</div>
 </section>
 
 <section>
-  <h2>10. Change orders &amp; the signed-drawing rule</h2>
+  <h2 data-desc="Any change after sign-off needs a signed change order and a new drawing revision before work or orders change.">10. Change orders &amp; the signed-drawing rule</h2>
   <ul>
     <li>After sign-off, any change to scope, selection, location or dimension requires a written change order — description, price, schedule impact and client signature — before the work or order changes.</li>
     <li>Approved change orders produce a new revision (R+1) of the affected document, re-sent to the PM by email.</li>
@@ -324,7 +327,7 @@ If anything comes up in the meantime, I'm your point of contact. – [PM]</div>
 </section>
 
 <section>
-  <h2>11. During install &amp; closeout</h2>
+  <h2 data-desc="Daily photos and logs, client updates twice a week, walkthrough against the signed packet, punch list and closeout.">11. During install &amp; closeout</h2>
   <ul>
     <li>Daily progress photos in CompanyCam; daily log in JobTread.</li>
     <li>The PM or installer lead sends the client a short status update at least twice a week.</li>
@@ -334,7 +337,7 @@ If anything comes up in the meantime, I'm your point of contact. – [PM]</div>
 </section>
 
 <section>
-  <h2>12. KPIs (reviewed monthly by Operations)</h2>
+  <h2 data-desc="The numbers this process is measured on, with targets and owners.">12. KPIs (reviewed monthly by Operations)</h2>
   <div class="tbl"><table>
     <thead><tr><th>KPI</th><th>Target</th><th>Owner</th></tr></thead>
     <tbody>
@@ -354,7 +357,7 @@ If anything comes up in the meantime, I'm your point of contact. – [PM]</div>
 </section>
 
 <section>
-  <h2>13. Reference example — Segal project</h2>
+  <h2 data-desc="The model packet and selection sheet to copy for format.">13. Reference example — Segal project</h2>
   <p>The Segal packet (Project 26-1, issued 4/14/2026) and selection sheet (Selections 26-5, signed 4/16/2026) are the <b>model for the format</b>: title block on every page, a dimensioned floor plan, four elevations, renderings, a material spec page and a client-signed selection sheet. Measured against this SOP, it also shows what to tighten:</p>
   <div class="tbl"><table>
     <thead><tr><th>What it did well</th><th>What this SOP now requires</th></tr></thead>
@@ -371,7 +374,7 @@ If anything comes up in the meantime, I'm your point of contact. – [PM]</div>
 </section>
 
 <section>
-  <h2>14. Responsibility at a glance</h2>
+  <h2 data-desc="One table: each stage, who does it, what they hand off and to whom.">14. Responsibility at a glance</h2>
   <div class="tbl"><table>
     <thead><tr><th>Stage</th><th>Who</th><th>Hands off</th><th>To</th></tr></thead>
     <tbody>
@@ -390,7 +393,7 @@ If anything comes up in the meantime, I'm your point of contact. – [PM]</div>
 </section>
 
 <section>
-  <h2>15. Open decisions for owners</h2>
+  <h2 data-desc="Questions still to settle (site measure, project numbering, Rendr), with their current status.">15. Open decisions for owners</h2>
   <div class="tbl"><table>
     <thead><tr><th>#</th><th>Decision</th><th>Status</th></tr></thead>
     <tbody>
@@ -405,7 +408,7 @@ If anything comes up in the meantime, I'm your point of contact. – [PM]</div>
 </section>
 
 <section>
-  <h2>Sign-off</h2>
+  <h2 data-desc="Who approves this SOP.">Sign-off</h2>
   <div class="tbl"><table>
     <thead><tr><th>Name</th><th>Role</th><th>Signature</th><th>Date</th></tr></thead>
     <tbody>
@@ -419,7 +422,7 @@ If anything comes up in the meantime, I'm your point of contact. – [PM]</div>
 </section>
 
 <section>
-  <h2>Change log</h2>
+  <h2 data-desc="What changed in each version and why.">Change log</h2>
   <div class="tbl"><table>
     <thead><tr><th>Version</th><th>Date</th><th>Changes</th></tr></thead>
     <tbody>
@@ -431,5 +434,6 @@ If anything comes up in the meantime, I'm your point of contact. – [PM]</div>
 
 </main>
 <footer><div class="wrap"><p>BTU-OPS-001 · Bath Tune-Up Bloomfield, 1285 Broad Street, Unit 2, Bloomfield NJ 07003 · Source of truth: this page (playbook.ktubtu.com), maintained in the TeamLivingston repository under playbook/. Edit there and republish; do not edit copies.</p></div></footer>
+<script src="/assets/fold.js" defer></script>
 </body>
 </html>

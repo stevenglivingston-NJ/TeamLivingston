@@ -4,1185 +4,234 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
-<title>Lead to Last Nail</title>
+<title>Team Livingston Playbook</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
-
+<link rel="stylesheet" href="/assets/playbook.css">
+<link rel="stylesheet" href="/assets/fold.css">
 <style>
-:root{
-  --paper:#EFF1EF;
-  --surface:#FBFCFB;
-  --surface-2:#E6E9E7;
-  --ink:#141A20;
-  --ink-2:#39434E;
-  --muted:#697682;
-  --rule:#CFD5D3;
-  --rule-soft:#DEE3E1;
-  --accent:#23406B;
-  --accent-soft:#E3E9F2;
-  --brass:#8A6A2C;
-  --ok:#1C6E52;
-  --ok-soft:#DDEBE5;
-  --warn:#9A6A12;
-  --warn-soft:#F2E9D6;
-  --stop:#993528;
-  --stop-soft:#F3E0DC;
-  --shadow:0 1px 2px rgba(20,26,32,.05), 0 8px 24px -16px rgba(20,26,32,.28);
-  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
-  --f-body:"Source Serif 4",Georgia,"Times New Roman",serif;
-  --f-data:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --paper:#101418;
-    --surface:#171D23;
-    --surface-2:#1F262E;
-    --ink:#E7EBEE;
-    --ink-2:#B7C0C8;
-    --muted:#8794A0;
-    --rule:#2C353E;
-    --rule-soft:#242C34;
-    --accent:#8FB0DE;
-    --accent-soft:#1B2836;
-    --brass:#C7A45F;
-    --ok:#63BE9B;
-    --ok-soft:#152720;
-    --warn:#D6A63F;
-    --warn-soft:#2A2113;
-    --stop:#E08475;
-    --stop-soft:#2C1915;
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
-  }
-}
-:root[data-theme="dark"]{
-  --paper:#101418;
-  --surface:#171D23;
-  --surface-2:#1F262E;
-  --ink:#E7EBEE;
-  --ink-2:#B7C0C8;
-  --muted:#8794A0;
-  --rule:#2C353E;
-  --rule-soft:#242C34;
-  --accent:#8FB0DE;
-  --accent-soft:#1B2836;
-  --brass:#C7A45F;
-  --ok:#63BE9B;
-  --ok-soft:#152720;
-  --warn:#D6A63F;
-  --warn-soft:#2A2113;
-  --stop:#E08475;
-  --stop-soft:#2C1915;
-  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
-}
-
-*{box-sizing:border-box}
-body{
-  background:var(--paper);
-  color:var(--ink);
-  font-family:var(--f-body);
-  font-size:16.5px;
-  line-height:1.62;
-  -webkit-font-smoothing:antialiased;
-}
-h1,h2,h3,h4{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.14;letter-spacing:-.012em}
-p{margin:0}
-a{color:var(--accent)}
-:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
-
-.wrap{max-width:1120px;margin:0 auto;padding:0 28px}
-.prose{max-width:68ch}
-
-/* ---------- masthead ---------- */
-.mast{border-bottom:1px solid var(--rule);background:var(--surface)}
-.mast-in{padding:52px 0 40px;display:grid;gap:26px}
-.eyebrow{
-  font-family:var(--f-data);font-size:11.5px;font-weight:600;
-  letter-spacing:.16em;text-transform:uppercase;color:var(--brass);
-}
-h1{font-size:clamp(38px,6.4vw,66px);font-weight:700;letter-spacing:-.028em}
-.dek{font-size:19px;color:var(--ink-2);max-width:60ch}
-.mast-meta{
-  display:flex;flex-wrap:wrap;gap:10px 26px;padding-top:6px;
-  font-family:var(--f-data);font-size:12px;color:var(--muted);
-}
-.mast-meta b{color:var(--ink-2);font-weight:600}
-
-/* ---------- sticky rail ---------- */
-.railbar{
-  position:sticky;top:0;z-index:40;
-  background:color-mix(in srgb, var(--paper) 88%, transparent);
-  backdrop-filter:blur(10px);
-  border-bottom:1px solid var(--rule);
-}
-.railbar-in{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:9px 0}
-.railbar .lbl{
-  font-family:var(--f-data);font-size:10.5px;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--muted);margin-right:4px;
-}
-.fbtn{
-  font-family:var(--f-data);font-size:11.5px;font-weight:500;
-  padding:5px 11px;border-radius:999px;cursor:pointer;
-  border:1px solid var(--rule);background:transparent;color:var(--ink-2);
-  transition:background .14s,border-color .14s,color .14s;
-}
-.fbtn:hover{border-color:var(--accent);color:var(--accent)}
-.fbtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
-.fnote{font-family:var(--f-data);font-size:11px;color:var(--muted);margin-left:auto}
-
-/* ---------- generic section ---------- */
-section{padding:56px 0}
-.sec-head{display:grid;gap:12px;margin-bottom:30px;max-width:70ch}
-.sec-head h2{font-size:clamp(25px,3.2vw,33px);font-weight:700}
-.sec-head p{color:var(--ink-2)}
-.phase-band{border-top:1px solid var(--rule)}
-
-/* ---------- phase header ---------- */
-.phase{
-  display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
-  padding:44px 0 18px;border-top:2px solid var(--ink);margin-top:26px;
-}
-.phase-n{
-  font-family:var(--f-data);font-size:12px;font-weight:600;color:var(--brass);
-  letter-spacing:.14em;text-transform:uppercase;
-}
-.phase h2{font-size:clamp(24px,3vw,31px);font-weight:700}
-.phase .who{
-  font-family:var(--f-data);font-size:11.5px;color:var(--muted);
-  margin-left:auto;letter-spacing:.04em;
-}
-
-/* ---------- stage ---------- */
-.stage{
-  display:grid;grid-template-columns:112px 1fr;gap:0 28px;
-  padding:26px 0;border-top:1px solid var(--rule-soft);
-  transition:opacity .18s;
-}
-.stage-rail{display:grid;gap:10px;align-content:start;padding-top:3px}
-.stage-num{
-  font-family:var(--f-data);font-size:30px;font-weight:600;
-  color:var(--rule);line-height:1;letter-spacing:-.02em;
-}
-.stage.hit .stage-num{color:var(--accent)}
-.clock{
-  font-family:var(--f-data);font-size:11px;font-weight:600;line-height:1.35;
-  color:var(--ink-2);border-left:2px solid var(--brass);padding-left:8px;
-}
-.stage-body{display:grid;gap:14px;min-width:0}
-.stage-body h3{font-size:21px;font-weight:600;letter-spacing:-.015em}
-.stage-body>p{max-width:66ch;color:var(--ink-2)}
-
-.chips{display:flex;flex-wrap:wrap;gap:6px}
-.chip{
-  font-family:var(--f-data);font-size:10.5px;font-weight:500;
-  padding:3px 9px;border-radius:3px;border:1px solid var(--rule);
-  color:var(--muted);background:var(--surface);white-space:nowrap;
-}
-.chip b{font-weight:600;color:var(--ink-2)}
-.stage.hit .chip.owner{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
-.stage.hit .chip.owner b{color:var(--accent)}
-
-.play{
-  list-style:none;padding:0;margin:0;display:grid;gap:9px;
-  border-left:1px solid var(--rule);padding-left:18px;max-width:70ch;
-}
-.play li{position:relative;font-size:15.5px}
-.play li::before{
-  content:"";position:absolute;left:-22.5px;top:.68em;
-  width:6px;height:6px;border-radius:50%;background:var(--rule);
-}
-.play li.key::before{background:var(--brass)}
-.play li.key{font-weight:600}
-.play code,.sysline code,td code,.tax code{
-  font-family:var(--f-data);font-size:12.5px;
-  background:var(--surface-2);padding:1px 5px;border-radius:3px;color:var(--ink-2);
-}
-
-.sysline{
-  display:grid;grid-template-columns:auto 1fr;gap:10px 14px;align-items:baseline;
-  font-size:14.5px;padding:12px 14px;background:var(--surface);
-  border:1px solid var(--rule-soft);border-radius:5px;max-width:72ch;
-}
-.sysline .k{
-  font-family:var(--f-data);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
-  color:var(--muted);white-space:nowrap;padding-top:2px;
-}
-.sysline .v{color:var(--ink-2)}
-
-.fail{
-  display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:baseline;
-  font-size:14.5px;max-width:72ch;padding-left:2px;
-}
-.fail .k{
-  font-family:var(--f-data);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
-  color:var(--stop);white-space:nowrap;
-}
-.fail .v{color:var(--muted);font-style:italic}
-
-/* handoff marker */
-.handoff{
-  display:flex;align-items:center;gap:12px;margin:6px 0 0 0;
-  padding:10px 0 0 140px;
-}
-.handoff .bar{height:1px;flex:1;background:linear-gradient(90deg,var(--brass),transparent)}
-.handoff span{
-  font-family:var(--f-data);font-size:10.5px;font-weight:600;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--brass);white-space:nowrap;
-}
-
-/* ---------- tables ---------- */
-.tbl-scroll{overflow-x:auto;border:1px solid var(--rule);border-radius:6px;background:var(--surface)}
-table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:640px}
-th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
-thead th{
-  font-family:var(--f-data);font-size:10px;letter-spacing:.13em;text-transform:uppercase;
-  color:var(--muted);font-weight:600;background:var(--surface-2);
-  border-bottom:1px solid var(--rule);position:sticky;top:0;
-}
-tbody tr:last-child td{border-bottom:none}
-td.num,th.num{font-family:var(--f-data);font-variant-numeric:tabular-nums;white-space:nowrap}
-td.mono{font-family:var(--f-data);font-size:12.5px}
-.raci{font-family:var(--f-data);font-size:11.5px;font-weight:600;text-align:center}
-thead th.raci{font-size:10px;letter-spacing:.13em}
-.raci-A{color:var(--accent)}
-.raci-R{color:var(--ok)}
-.raci-C{color:var(--muted);font-weight:400}
-.raci-I{color:var(--rule);font-weight:400}
-
-.pill{
-  font-family:var(--f-data);font-size:10.5px;font-weight:600;padding:2px 8px;
-  border-radius:3px;white-space:nowrap;display:inline-block;
-}
-.pill.ok{background:var(--ok-soft);color:var(--ok)}
-.pill.warn{background:var(--warn-soft);color:var(--warn)}
-.pill.stop{background:var(--stop-soft);color:var(--stop)}
-
-/* ---------- cadence strip ---------- */
-.cadence{display:grid;gap:0;border:1px solid var(--rule);border-radius:6px;overflow:hidden;background:var(--surface)}
-.cad-row{
-  display:grid;grid-template-columns:78px 132px 1fr;gap:16px;
-  padding:12px 16px;border-bottom:1px solid var(--rule-soft);align-items:baseline;
-}
-.cad-row:last-child{border-bottom:none}
-.cad-day{
-  font-family:var(--f-data);font-size:13px;font-weight:600;color:var(--accent);
-  font-variant-numeric:tabular-nums;
-}
-.cad-ch{font-family:var(--f-data);font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
-.cad-txt{font-size:14.5px;color:var(--ink-2)}
-.cad-row.stop-row{background:var(--stop-soft)}
-.cad-row.stop-row .cad-day{color:var(--stop)}
-
-/* ---------- taxonomy grid ---------- */
-.tax{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:14px}
-.tax-card{
-  background:var(--surface);border:1px solid var(--rule-soft);border-radius:5px;
-  padding:14px 16px;display:grid;gap:6px;border-left:3px solid var(--rule);
-}
-.tax-card.recoverable{border-left-color:var(--ok)}
-.tax-card.watch{border-left-color:var(--warn)}
-.tax-card.ours{border-left-color:var(--stop)}
-.tax-card h4{font-size:15px;font-weight:600;display:flex;gap:8px;align-items:baseline}
-.tax-card .code{font-family:var(--f-data);font-size:11px;color:var(--muted);font-weight:500}
-.tax-card p{font-size:14px;color:var(--ink-2)}
-.tax-card .mv{font-family:var(--f-data);font-size:11.5px;color:var(--muted);padding-top:2px}
-
-/* ---------- kpi ---------- */
-.kpi-note{font-family:var(--f-data);font-size:11.5px;color:var(--muted);margin-top:10px}
-
-/* ---------- rhythm ---------- */
-.rhythm{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
-.rh{background:var(--surface);border:1px solid var(--rule-soft);border-radius:5px;padding:16px 18px;display:grid;gap:8px}
-.rh .when{font-family:var(--f-data);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--brass);font-weight:600}
-.rh h4{font-size:16.5px;font-weight:600}
-.rh ul{margin:0;padding-left:17px;font-size:14.5px;color:var(--ink-2);display:grid;gap:4px}
-.rh .attend{font-family:var(--f-data);font-size:11px;color:var(--muted);border-top:1px solid var(--rule-soft);padding-top:8px}
-
-/* ---------- rollout ---------- */
-.roll{display:grid;gap:0;counter-reset:r}
-.roll-item{
-  display:grid;grid-template-columns:64px 1fr;gap:22px;
-  padding:18px 0;border-top:1px solid var(--rule-soft);
-}
-.roll-item .wk{font-family:var(--f-data);font-size:11.5px;font-weight:600;color:var(--brass);letter-spacing:.06em;padding-top:3px}
-.roll-item h4{font-size:17px;font-weight:600;margin-bottom:5px}
-.roll-item p{font-size:15px;color:var(--ink-2);max-width:64ch}
-
-/* ---------- footer ---------- */
-footer{border-top:1px solid var(--rule);background:var(--surface);padding:36px 0 52px}
-footer p{font-family:var(--f-data);font-size:12px;color:var(--muted);max-width:74ch;line-height:1.7}
-
-.dim{opacity:.34}
-@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-
-@media (max-width:760px){
-  .wrap{padding:0 18px}
-  .stage{grid-template-columns:1fr;gap:12px}
-  .stage-rail{display:flex;align-items:baseline;gap:14px}
-  .stage-num{font-size:22px}
-  .handoff{padding-left:0}
-  .handoff span{white-space:normal}
-  .cad-row{grid-template-columns:66px 1fr;gap:6px 12px}
-  .cad-ch{grid-column:2}
-  .cad-txt{grid-column:2}
-}
-</style>
-
-<style>
-.pbnav{background:#141A20;color:#FBFCFB}
-.pbnav .in{max-width:1120px;margin:0 auto;padding:8px 28px;display:flex;flex-wrap:wrap;gap:4px 18px;align-items:center;font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-size:12px}
-.pbnav b{letter-spacing:.14em;text-transform:uppercase;font-size:11px;color:#C7A45F;margin-right:6px}
-.pbnav a{color:#DCE3EA;text-decoration:none;padding:3px 0;border-bottom:1px solid transparent}
-.pbnav a:hover{border-bottom-color:#DCE3EA}
-.pbnav a[aria-current="page"]{color:#fff;border-bottom-color:#C7A45F}
-.pbnav .ext{margin-left:auto}
-@media (max-width:760px){.pbnav .in{padding:8px 16px}.pbnav .ext{margin-left:0}}
+.find{display:flex;gap:10px;align-items:center;margin:22px 0 4px}
+.find input{flex:1;font:16px var(--f-body);padding:11px 14px;border:1px solid var(--rule);border-radius:8px;background:var(--surface);color:var(--ink)}
+.find input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.find .n{font-family:var(--f-data);font-size:12px;color:var(--muted);white-space:nowrap}
+.grp{padding:26px 0 4px}
+.grp>h2{font-size:13px;font-family:var(--f-data);letter-spacing:.16em;text-transform:uppercase;color:var(--brass);margin:0 0 4px}
+.grp>p.gd{color:var(--muted);font-size:15px;margin:0 0 12px}
+.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.doc{display:flex;flex-direction:column;gap:8px;border:1px solid var(--rule);border-radius:10px;background:var(--surface);padding:16px 18px;text-decoration:none;color:inherit;position:relative}
+.doc:hover{border-color:var(--accent)}
+.doc .ty{font-family:var(--f-data);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.doc h3{margin:0;font-size:20px}
+.doc h3 a{color:var(--ink);text-decoration:none}
+.doc h3 a::after{content:"";position:absolute;inset:0}
+.doc p{margin:0;font-size:15px;line-height:1.5;color:var(--ink-2)}
+.doc .m{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--f-data);font-size:11.5px;color:var(--muted);margin-top:auto;padding-top:4px}
+.doc .m b{color:var(--ink-2);font-weight:600}
+.doc .jump{display:flex;flex-wrap:wrap;gap:6px;position:relative;z-index:1}
+.doc .jump a{font-family:var(--f-data);font-size:11.5px;border:1px solid var(--rule);border-radius:999px;padding:2px 9px;text-decoration:none}
+.doc .jump a:hover{border-color:var(--accent)}
+.doc.tool{background:var(--surface-2)}
+.hidden{display:none!important}
+.empty{color:var(--muted);font-style:italic;padding:12px 0}
 </style>
 </head>
 <body>
 <nav class="pbnav" aria-label="Playbook"><div class="in">
   <b>Playbook</b>
-  <a href="/" aria-current="page">Lead to Last Nail</a>
+  <a href="/" aria-current="page">Library</a>
+  <a href="/lead-to-last-nail/">Lead to Last Nail</a>
   <a href="/btu-handover-sop/">BTU Handover SOP</a>
   <a href="/ktu-handover-standard/">KTU Handover Standard</a>
   <a href="/selections-and-ordering/">Selections &amp; Order Sheet</a>
+  <a href="/systems/">Systems</a>
   <a class="ext" href="https://dash.goaxyom.com/">Intranet ↗</a>
 </div></nav>
-<header class="mast">
-  <div class="wrap mast-in">
-    <div class="eyebrow">Kitchen Tune-Up &amp; Bath Tune-Up · Bloomfield NJ · Operating Standard</div>
-    <h1>Lead to Last Nail</h1>
-    <p class="dek">One workflow, fifteen stages, five owners. Every stage names who acts, how fast, what gets written down, and what it looks like when it breaks. Nothing advances on memory.</p>
-    <div class="mast-meta">
-      <span><b>Version</b> 1.2 · Sept 29, 2026</span>
-      <span><b>Systems of record</b> HighLevel · ServiceMinder · CompanyCam · JobTread · Axyom Intranet</span>
-      <span><b>Folds in</b> Sonya's revival playbook and the old job-flow outline. Summarizes the signed <a href="/ktu-handover-standard/">KTU Handover Standard V2</a> and <a href="/btu-handover-sop/">BTU-OPS-001</a>, which stay the documents of record</span>
-      <span><b>Live counterpart</b> dash.goaxyom.com — Pipeline, Foreman &amp; Recovery Desk tabs</span>
-    </div>
-  </div>
-</header>
 
-<nav class="railbar" aria-label="Focus by role">
-  <div class="wrap railbar-in">
-    <span class="lbl">Focus</span>
-    <button class="fbtn" aria-pressed="true" data-role="all">Everyone</button>
-    <button class="fbtn" aria-pressed="false" data-role="office">Office</button>
-    <button class="fbtn" aria-pressed="false" data-role="sales">Sales rep</button>
-    <button class="fbtn" aria-pressed="false" data-role="manager">Sales manager</button>
-    <button class="fbtn" aria-pressed="false" data-role="pm">Project manager</button>
-    <button class="fbtn" aria-pressed="false" data-role="ops">Ops / Owner</button>
-    <span class="fnote" id="fnote">15 stages shown</span>
+<header class="mast"><div class="wrap">
+  <div class="eyebrow">Kitchen Tune-Up · Bath Tune-Up · Bloomfield NJ</div>
+  <h1>Team Livingston Playbook</h1>
+  <p class="dek">Our one-stop library: how we work from the first call to the last nail, what each piece of software is for, and where everything lives. Pick a document below; inside, every section opens with a click.</p>
+  <div class="meta">
+    <span><b>Updated</b> Sept 29, 2026</span>
+    <span><b>Owner</b> Steven &amp; Takia Livingston</span>
+    <span><b>Today's numbers</b> live on the intranet, not here</span>
   </div>
-</nav>
+</div></header>
 
-<main class="wrap">
+<main class="wrap nofold">
 
-<section>
-  <div class="sec-head">
-    <h2>The one rule the whole thing hangs on</h2>
-    <p>A lead, an appointment, or a job is never in someone's head, someone's texts, or someone's truck. It is in the system with an owner, a next action, and a date. If it isn't written down, it didn't happen — and at review time, it didn't exist.</p>
-  </div>
-  <div class="tbl-scroll">
-    <table>
-      <thead>
-        <tr><th style="width:22%">System</th><th style="width:30%">It is the truth for</th><th>It is never the truth for</th></tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><b>HighLevel</b> <span class="pill ok">source of truth</span></td>
-          <td>Where the lead came from. UTM source/medium/campaign, tracked number, <code>fbclid</code>, tags, conversation history.</td>
-          <td>Revenue. Job status. Anything after the sale.</td>
-        </tr>
-        <tr>
-          <td><b>ServiceMinder</b> <span class="pill ok">source of truth</span></td>
-          <td>Appointments, proposals, invoices, payments, balances, the contact record, and <code>Appointment.Notes</code> — where every outcome and reason lives.</td>
-          <td>Attribution. SM's channel field is an <em>output</em> we backfill from HighLevel, never an input we trust.</td>
-        </tr>
-        <tr>
-          <td><b>CompanyCam</b></td>
-          <td>Every photo of every property, before / during / after. The pre-measurement package.</td>
-          <td>Scheduling, costs, client communication.</td>
-        </tr>
-        <tr>
-          <td><b>JobTread</b></td>
-          <td>Production schedule, daily logs, budget vs. actual, task assignment (KTU).</td>
-          <td>Sales pipeline, lead attribution, invoicing.</td>
-        </tr>
-      </tbody>
-    </table>
+<div class="find">
+  <input id="q" type="search" placeholder="Search the library — e.g. handover, order sheet, change order, ServiceMinder" aria-label="Search the library" autocomplete="off">
+  <span class="n" id="qn"></span>
+</div>
+
+<section class="grp">
+  <h2>Start here</h2>
+  <p class="gd">New to the team, or not sure where something goes? These two cover everything else.</p>
+  <div class="lib">
+    <article class="doc" data-k="operating standard stages lead booking appointment proposal close handover production closeout sales office pm owner sla fail state">
+      <span class="ty">Operating standard · both brands</span>
+      <h3><a href="/lead-to-last-nail/">Lead to Last Nail</a></h3>
+      <p>The whole job in fifteen stages, from the first call to the review request. Each stage says who acts, how fast, what gets written down and what failure looks like.</p>
+      <div class="jump">
+        <a href="/lead-to-last-nail/#stage-01">01 Speed to lead</a>
+        <a href="/lead-to-last-nail/#stage-05">05 Consultation</a>
+        <a href="/lead-to-last-nail/#stage-08">08 Proposal</a>
+        <a href="/lead-to-last-nail/#stage-11">11 Close</a>
+        <a href="/lead-to-last-nail/#stage-12">12 Handover</a>
+        <a href="/lead-to-last-nail/#stage-15">15 Closeout</a>
+      </div>
+      <div class="m"><span><b>For</b> everyone</span><span><b>Version</b> 1.2</span></div>
+    </article>
+    <article class="doc" data-k="systems software tools where things live highlevel serviceminder jobtread companycam pricing design journey lookbook intranet drive google sheet slack quickbooks">
+      <span class="ty">Reference · both brands</span>
+      <h3><a href="/systems/">Systems &amp; Where Things Live</a></h3>
+      <p>Which software does what, where each record lives, and how a job moves from one system to the next. The answer to "where do I put this?"</p>
+      <div class="jump">
+        <a href="/systems/#s-1-a-job-s-path-through-the-systems">Job path</a>
+        <a href="/systems/#s-2-every-tool-what-it-s-for">Every tool</a>
+        <a href="/systems/#s-4-where-documents-live">Where documents live</a>
+      </div>
+      <div class="m"><span><b>For</b> everyone</span><span><b>Version</b> 1.0</span></div>
+    </article>
   </div>
 </section>
 
-<section class="phase-band">
-  <div class="sec-head">
-    <h2>Where this lives</h2>
-    <p>Sales process was scattered across static rows on the live intranet — a script here, a role list there, a cadence someone had memorized. It's consolidated into this page now. The daily numbers stay where they are: on the intranet, updated by the agents that already watch these systems.</p>
-  </div>
-  <div class="rhythm">
-    <div class="rh">
-      <span class="when">Folded into this page</span>
-      <h4>What used to be scattered rows</h4>
-      <ul>
-        <li>"Sonya's Playbook" (lead revival scoring + cadence) → Stage 10</li>
-        <li>The cabinet-refacing pitch + the Training index → Stage 05</li>
-        <li>The old 7-step job flow outline → superseded by Stages 01–06</li>
-        <li>The field role list → the RACI role glossary above</li>
-        <li>The KTU Handover Standard's milestone table + Production Gate → Stage 12</li>
-      </ul>
-      <span class="attend">This page is now the one copy — edit here, not on the intranet rows.</span>
-    </div>
-    <div class="rh">
-      <span class="when">Stays live on the intranet</span>
-      <h4>dash.goaxyom.com — check these for today's number</h4>
-      <ul>
-        <li><b>Pipeline tab</b> — daily funnel, cancel rate, reason-capture %, revival queue</li>
-        <li><b>Recovery Desk</b> — active saves in progress: status, assignee, next step, notes</li>
-        <li><b>Foreman tab</b> — per-project Production Gate status, what's blocking each job</li>
-        <li><b>Training tab</b> — full scripts and onboarding materials this page only summarizes</li>
-      </ul>
-      <span class="attend">This page is the standard those tabs are measured against, not a replacement for them.</span>
-    </div>
+<section class="grp">
+  <h2>Handover &amp; production</h2>
+  <p class="gd">What Sales hands the project manager, and the gate a job must pass before anything is ordered.</p>
+  <div class="lib">
+    <article class="doc" data-k="btu bath handover sop btu-ops-001 design packet selection sheet sign-off handover email production gate welcome letter ordering receiving installer change order kpi timeline rendr">
+      <span class="ty">SOP · Bath Tune-Up</span>
+      <h3><a href="/btu-handover-sop/">BTU Handover SOP</a></h3>
+      <p>BTU-OPS-001: from signed contract to installer, in eight stages. The Design Packet, the Selection Sheet, sign-off, the Handover Email, the PM's Production Gate, ordering and install.</p>
+      <div class="jump">
+        <a href="/btu-handover-sop/#s-3-timeline-standard-sale-install-10-weeks">Timeline</a>
+        <a href="/btu-handover-sop/#7-2">Handover email template</a>
+        <a href="/btu-handover-sop/#s-8-stage-5-pm-production-gate">Production Gate</a>
+      </div>
+      <div class="m"><span><b>For</b> Sales, Drafter, PM</span><span><b>Version</b> 1.1</span></div>
+    </article>
+    <article class="doc" data-k="ktu kitchen handover standard v2 signed production gate milestones track a track b reface custom elias cad selection sheet">
+      <span class="ty">Signed standard · Kitchen Tune-Up</span>
+      <h3><a href="/ktu-handover-standard/">KTU Handover Standard</a></h3>
+      <p>The signed Sales → PM standard for kitchens: the ten handover requirements, milestone targets for reface and custom, and the Production Gate. Reproduced word for word.</p>
+      <div class="jump">
+        <a href="/ktu-handover-standard/#s-handover-requirements">Requirements</a>
+        <a href="/ktu-handover-standard/#s-project-milestone-timeline">Milestones</a>
+        <a href="/ktu-handover-standard/#s-production-gate">Production Gate</a>
+      </div>
+      <div class="m"><span><b>For</b> Sales, PM</span><span><b>Version</b> V2 (signed)</span></div>
+    </article>
   </div>
 </section>
 
-<!-- ============ PHASE 1 ============ -->
-<div class="phase">
-  <span class="phase-n">Phase One</span>
-  <h2>Demand &amp; Booking</h2>
-  <span class="who">Office owns this phase end to end</span>
-</div>
-
-<div class="stage" data-roles="office">
-  <div class="stage-rail">
-    <div class="stage-num">01</div>
-    <div class="clock">Web form: 5 min<br>Phone: 3 rings<br>After hours: 8:15 am</div>
-  </div>
-  <div class="stage-body">
-    <h3>Lead lands · speed to lead</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Office</span>
-      <span class="chip"><b>Backup</b> Sales rep on call</span>
-      <span class="chip"><b>Automation</b> Closebot + HL workflow</span>
-    </div>
-    <p>Response speed is the highest-leverage number in the business and the cheapest one to fix. A homeowner who fills out three forms buys from whoever calls first, not whoever is best. Every minute past five cuts the contact rate.</p>
-    <ul class="play">
-      <li class="key">Call — do not text-only — within 5 minutes of any form fill, chat handoff, or LSA lead, during business hours.</li>
-      <li>If the call doesn't connect: leave a voicemail naming the specific project they asked about, then text within 60 seconds of hanging up, then email. Three channels, one attempt cycle.</li>
-      <li>Phone rings: answered live by the third ring. A missed call gets a callback inside 5 minutes and is logged as a miss.</li>
-      <li>After hours and weekends: Closebot engages and books if it can. Any Closebot conversation that did not end in a booking is worked by a human by 8:15 am the next business day.</li>
-      <li>Attempt cadence if no contact on day one: 6 attempts over 8 days across call, text, and email — 3 on day 1, then day 2, day 4, day 8. Vary the time of day.</li>
-      <li class="key">Never let a lead die undispositioned. Day 8 with no contact moves it to Nurture with a reason, not to the trash.</li>
-    </ul>
-    <div class="sysline">
-      <span class="k">Write it</span>
-      <span class="v"><b>HL:</b> contact created, true source resolved via the attribution cascade (<code>utmSource=google</code> + <code>utmMedium=cpc</code> → Google PPC; <code>fbclid</code> → Meta Paid; tracked number → its campaign). Opportunity opened at <em>New Lead</em>. Every attempt logged.</span>
-      <span class="k">Never</span>
-      <span class="v">Accept "Z Default," "Online," or "Personal Contact" as a source. Those are missing data wearing a costume — roughly two lead in five today. Resolve it in HL before the record moves on.</span>
-    </div>
-    <div class="fail"><span class="k">Fail state</span><span class="v">Median first response over 30 minutes; leads sitting in HL with no attempt logged; the same lead called twice by two people because neither wrote it down.</span></div>
-  </div>
-</div>
-
-<div class="stage" data-roles="office">
-  <div class="stage-rail">
-    <div class="stage-num">02</div>
-    <div class="clock">Book within<br>5–7 days<br>Hot lead: 72 h</div>
-  </div>
-  <div class="stage-body">
-    <h3>Qualification call &amp; booking</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Office</span>
-      <span class="chip"><b>Escalate to</b> Sales manager</span>
-      <span class="chip"><b>Output</b> SM appointment</span>
-    </div>
-    <p>The booking call is not order-taking. It sets up the sales appointment to succeed, and it screens out the visits that were never going to close — the single biggest hidden cost in a remodeling business is a designer driving to an unqualified home.</p>
-    <ul class="play">
-      <li><b>Scope:</b> what room, what's wrong with it now, what do they picture instead. Kitchen refacing, full kitchen, tub-to-shower, full bath, ADA.</li>
-      <li><b>Ownership &amp; address:</b> homeowner, not renter. Zip inside the service area. Confirm it against our zip list before booking.</li>
-      <li><b>Timeline:</b> "When would you want this finished?" Anything past six months books into nurture, not a designer's calendar.</li>
-      <li class="key"><b>Decision makers:</b> "So we can get you real numbers in one visit — will everyone involved in the decision be there?" Both parties present is the strongest single predictor of a one-visit close. If only one can attend, offer the times when both can.</li>
-      <li><b>Budget frame:</b> not an interrogation. "Most kitchen refaces in Bloomfield land between $X and $Y, full remodels higher. Does that range work for the project you're picturing?" A hard flinch here is information, not rejection — route it to the right tier or to financing.</li>
-      <li>Book the appointment on the call. Never "someone will call you back to schedule."</li>
-      <li>Assign to a rep by calendar and by fit, then send the confirmation before hanging up so they see it arrive.</li>
-    </ul>
-    <div class="sysline">
-      <span class="k">Write it</span>
-      <span class="v"><b>SM:</b> appointment created with <code>Service</code> set correctly (Consultation – In-Home), <code>ServiceAgentId</code> assigned, and a note carrying scope, timeline, budget frame, and who will be present. <b>HL:</b> opportunity → <em>Appointment Set</em>.</span>
-      <span class="k">Disqualify well</span>
-      <span class="v">Out of area, renter, or a timeline past six months gets a courteous decline plus a referral or a nurture tag — and a reason code. A no is a data point.</span>
-    </div>
-    <div class="fail"><span class="k">Fail state</span><span class="v">Appointments booked with one spouse "who'll fill the other one in." Blank budget field. A designer's day burned on a rental property.</span></div>
-  </div>
-</div>
-
-<div class="stage" data-roles="office">
-  <div class="stage-rail">
-    <div class="stage-num">03</div>
-    <div class="clock">T−48 h text<br>T−24 h live call<br>T−2 h text</div>
-  </div>
-  <div class="stage-body">
-    <h3>Pre-appointment confirmation</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Office</span>
-      <span class="chip"><b>T−2 h touch</b> Sales rep</span>
-      <span class="chip"><b>Target</b> no-show under 10%</span>
-    </div>
-    <p>No-shows are almost never a change of heart. They're a calendar the homeowner forgot about and felt awkward cancelling. Three touches make it socially easy to keep or to move — and a moved appointment is worth ten times a ghosted one.</p>
-    <ul class="play">
-      <li><b>T−48 hours, text + email:</b> date, time window, the rep's name and photo, what to expect, how long it takes, and one line asking them to have everyone who's deciding on hand.</li>
-      <li class="key"><b>T−24 hours, live human call from the office.</b> Not a text. Confirm the time, re-confirm both decision makers, ask if anything has changed, and ask them to have any inspiration photos handy. This call is where a reschedule surfaces instead of a no-show.</li>
-      <li>Unreachable at T−24? Text, then try again at T−4 hours. Two failed live confirms means the rep calls before driving.</li>
-      <li><b>T−2 hours, from the rep:</b> "On my way at 2:00, see you shortly." Personal, short, from a real number.</li>
-      <li>They want to move it: move it on the spot, right then, to a specific date. Never "call us back when you know."</li>
-    </ul>
-    <div class="sysline">
-      <span class="k">Write it</span>
-      <span class="v"><b>SM:</b> each confirmation attempt logged as an appointment note with the outcome — <em>Confirmed live, both present</em> / <em>Confirmed by text only</em> / <em>Unreachable</em>. The rep reads this before driving.</span>
-    </div>
-    <div class="fail"><span class="k">Fail state</span><span class="v">A rep drives 25 minutes to a dark house. Confirmations sent only by automation, so nobody knows whether a human ever agreed the time still works.</span></div>
-  </div>
-</div>
-
-<div class="handoff"><span>Handoff · Office → Sales rep</span><div class="bar"></div></div>
-
-<!-- ============ PHASE 2 ============ -->
-<div class="phase">
-  <span class="phase-n">Phase Two</span>
-  <h2>The Appointment and the Follow-Up Loop</h2>
-  <span class="who">Sales rep owns the room · Office owns the loop</span>
-</div>
-
-<div class="stage" data-roles="sales">
-  <div class="stage-rail">
-    <div class="stage-num">04</div>
-    <div class="clock">15 min<br>night before</div>
-  </div>
-  <div class="stage-body">
-    <h3>Pre-call prep</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Sales rep</span>
-      <span class="chip"><b>Cost</b> 15 minutes</span>
-      <span class="chip"><b>Return</b> the whole first impression</span>
-    </div>
-    <p>The homeowner can tell within ninety seconds whether you read anything about them. Prepared reps close materially more, and it costs a quarter hour the night before.</p>
-    <ul class="play">
-      <li>Read the HL contact end to end: source, every message, what they clicked, what they asked for.</li>
-      <li>Read the booking notes: scope, timeline, budget frame, who will be there, and the confirmation outcome.</li>
-      <li>Pull two or three recent completed jobs in or near their zip, with photos, on the tablet. Neighborhood proof outperforms a portfolio every time.</li>
-      <li>Know the current lead time and the next realistic install window before you walk in. Never guess a date in someone's kitchen.</li>
-      <li>Bring the full kit: samples, financing sheet, warranty, brochure, tape, tablet, and the price book you actually trust.</li>
-    </ul>
-    <div class="fail"><span class="k">Fail state</span><span class="v">Asking in the doorway what they're looking to do — a question the office already answered in writing four days ago.</span></div>
-  </div>
-</div>
-
-<div class="stage" data-roles="sales">
-  <div class="stage-rail">
-    <div class="stage-num">05</div>
-    <div class="clock">90–120 min<br>on site</div>
-  </div>
-  <div class="stage-body">
-    <h3>The in-home consultation</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Sales rep</span>
-      <span class="chip"><b>Mandatory</b> CompanyCam photo set</span>
-      <span class="chip"><b>Goal</b> a decision, not a "think about it"</span>
-    </div>
-    <p>The visit has a shape. Skipping the discovery to get to the numbers is what produces a proposal the homeowner has no emotional reason to say yes to.</p>
-    <ul class="play">
-      <li><b>Connect (10 min).</b> House, family, how long they've lived there. Ask before you pitch.</li>
-      <li><b>Discover (25 min).</b> What's not working and why it matters — "who cooks," "where does everyone stand," "what made you finally call." Get to the reason behind the reason. Write it down in front of them.</li>
-      <li class="key"><b>Measure and photograph (20 min).</b> Full measurements plus the complete CompanyCam set: every wall, every elevation, appliances and their spec labels, plumbing, electrical, flooring transitions, the condition of what stays. This set <em>is</em> the pre-measurement package later. Shoot it as if a project manager who has never seen the house has to order from it — because one will.</li>
-      <li><b>Educate (15 min).</b> Reface vs. semi-custom vs. full. Materials in hand. What we control, what the vendor controls, what a realistic timeline is. Set the expectation you can actually keep. Objection language and the per-service pitch (refacing, semi-custom, tub-to-shower) live in the intranet's <b>Training</b> index — the objection-handling toolkit and the Sales Manager Toolkit (KTUTK-0001) are the source, not this page; this stage tells you when to reach for them, not what to say.</li>
-      <li><b>Present (20 min).</b> Good / Better / Best, three real tiers, priced. Always three — a single number is a yes-or-no, three is a which-one.</li>
-      <li class="key"><b>Ask (10 min).</b> Ask for the decision, out loud, and then be quiet. For reface and tune-up scope the target is a signature that day. For semi-custom, the target is a signed design agreement and a scheduled selection appointment.</li>
-      <li>If it's not a yes: leave with a <em>specific</em> next step on the calendar — a date and a time, never "I'll follow up next week."</li>
-    </ul>
-    <div class="sysline">
-      <span class="k">Write it</span>
-      <span class="v"><b>CompanyCam:</b> project created at the address, full photo set uploaded before leaving the driveway. <b>SM:</b> outcome, objections heard, and the specific next step with its date.</span>
-    </div>
-    <div class="fail"><span class="k">Fail state</span><span class="v">Photos taken on a personal phone and never uploaded, so the PM re-measures three weeks later and the whole schedule shifts right.</span></div>
-  </div>
-</div>
-
-<div class="stage" data-roles="sales">
-  <div class="stage-rail">
-    <div class="stage-num">06</div>
-    <div class="clock">Within 2 h<br>hard stop<br>end of day</div>
-  </div>
-  <div class="stage-body">
-    <h3>Same-day disposition</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Sales rep</span>
-      <span class="chip"><b>Enforced by</b> Office next morning</span>
-      <span class="chip"><b>No exceptions</b></span>
-    </div>
-    <p>This is the smallest stage on the page and the one that fixes the most. Every downstream report, follow-up sequence, cancellation analysis, and rep scorecard is built on the fields filled in here. A blank disposition doesn't just lose a note — it silently deletes the appointment from the company's memory.</p>
-    <ul class="play">
-      <li class="key">Every appointment gets one of five outcomes, in ServiceMinder, within two hours of leaving: <b>Sold</b> · <b>Proposal to follow</b> · <b>Follow-up scheduled</b> · <b>Not a fit</b> · <b>Did not hold</b>.</li>
-      <li>Every outcome gets a written note in the homeowner's own words — what they liked, what they hesitated on, what they said the money question was.</li>
-      <li>Every outcome except Sold and Not a fit gets a dated next action with a named owner.</li>
-      <li>Not a fit and Did not hold both require a reason code from the nine buckets in Stage 10. There is no "no reason."</li>
-      <li>The office runs the disposition check at 8:30 each morning. Anything from yesterday still blank is called out in the huddle, by name.</li>
-    </ul>
-    <div class="fail"><span class="k">Fail state</span><span class="v">The one we have right now, measured by Pipeline's daily scan of ServiceMinder (60-day window, Sept 9–10 scan): <b>KTU 59% of booked consults cancel, only 19% carry a captured reason. BTU 22% cancel, 0% carry a reason.</b> Bucket 09 can't be told apart from Bucket 02 when the field is empty — every one of those is currently a guess.</span></div>
-  </div>
-</div>
-
-<div class="handoff"><span>Handoff · Sales rep → Office (quality loop)</span><div class="bar"></div></div>
-
-<div class="stage" data-roles="office manager">
-  <div class="stage-rail">
-    <div class="stage-num">07</div>
-    <div class="clock">Within<br>24 business<br>hours</div>
-  </div>
-  <div class="stage-body">
-    <h3>The "how did it go?" call</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Office</span>
-      <span class="chip"><b>Escalates to</b> Sales manager, same day</span>
-      <span class="chip"><b>Every appointment</b> sold or not</span>
-    </div>
-    <p>Within one business day of <em>every</em> in-home appointment, the office calls the homeowner. Not the rep — the office. It is framed as service, and it does four jobs at once: it flatters the homeowner, it catches an unspoken objection while it's still soft, it surfaces rep behavior nobody would otherwise report, and it puts a second friendly voice on the account before the decision gets made.</p>
-    <ul class="play">
-      <li class="key">The script is short and genuinely curious: <em>"Hi Mrs. Drechsel, this is Karen at Kitchen Tune-Up. Ben was out to see you yesterday — I'm just checking in. How did it go? Did he cover everything you wanted to talk about? Anything still open that I can get answered for you?"</em></li>
-      <li>Then stop talking. The value is entirely in what they say next.</li>
-      <li>Ask two closing questions every time: <em>"Was he on time and respectful of your home?"</em> and <em>"Is there anything that would keep you from moving forward?"</em></li>
-      <li><b>They're positive and ready</b> → confirm what happens next and by when, and note it.</li>
-      <li><b>They're hesitant, vague, or "still thinking"</b> → don't sell. Name the hesitation back to them, write it verbatim, and tell them someone will follow up with an answer.</li>
-      <li class="key"><b>They raise a real objection, mention a competitor, or express any dissatisfaction</b> → sales manager is told the same day and calls within 24 hours. This is the save window and it is short.</li>
-      <li><b>They report a service problem</b> — late, rushed, dismissive, didn't listen — → owner-level call same day, and the incident goes on the rep's scorecard. This is the only reliable way to see how the rep actually behaves in someone's home.</li>
-      <li>Unreachable: text the same questions. A written reply is often more candid than a spoken one.</li>
-    </ul>
-    <div class="sysline">
-      <span class="k">Write it</span>
-      <span class="v"><b>SM:</b> a QC note on the contact — sentiment (positive / neutral / at risk), the objection verbatim, the rep-conduct answer, and any escalation raised. This is the raw material for the rep scorecard and for every "why did we lose it" review.</span>
-      <span class="k">Measure</span>
-      <span class="v">QC call completion rate against appointments held. Target 100%. It takes four minutes and it is the highest-yield four minutes in the office's day.</span>
-    </div>
-    <div class="fail"><span class="k">Fail state</span><span class="v">Finding out at the 21-day mark that they went with someone else over a concern they would have said out loud on day one, to anyone who asked.</span></div>
-  </div>
-</div>
-
-<div class="stage" data-roles="sales">
-  <div class="stage-rail">
-    <div class="stage-num">08</div>
-    <div class="clock">Reface: same day<br>Semi-custom: 48 h<br>Escalates at 49 h</div>
-  </div>
-  <div class="stage-body">
-    <h3>Proposal delivery</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Sales rep</span>
-      <span class="chip"><b>SLA tracked by</b> Office</span>
-      <span class="chip"><b>Never</b> emailed cold</span>
-    </div>
-    <p>A proposal that arrives as an unexplained PDF closes at roughly half the rate of the same proposal walked through live. The number always needs a voice next to it.</p>
-    <ul class="play">
-      <li class="key">Deliver it live — in person, on a video call, or at minimum on the phone with the document open in front of both of you. Booking that walkthrough is part of the appointment, not an afterthought.</li>
-      <li>Three tiers, every time, with the difference between them stated in what the homeowner gets, not in line-item jargon.</li>
-      <li>Include the exclusions in plain language. Every change order argument later starts with something a proposal didn't say.</li>
-      <li>Include the realistic timeline, the payment schedule (50 / 50), the warranty, and the financing option on the same page as the price.</li>
-      <li>Present the middle tier as the recommendation and say why. An unguided menu produces deferral.</li>
-      <li>Ask for the decision at the end of the walkthrough. If it's a not-yet, set the follow-up date <em>on the call</em>, on both calendars.</li>
-      <li>The office watches the clock. At hour 49 with no proposal issued, it's raised in the huddle — not to scold, to unblock.</li>
-    </ul>
-    <div class="sysline">
-      <span class="k">Write it</span>
-      <span class="v"><b>SM:</b> proposal created and sent, tied to the contact and the appointment. <b>HL:</b> opportunity → <em>Proposal Out</em>, with the value. Note the delivery method — live, video, phone, or email-only — because that field will explain your close rate.</span>
-    </div>
-    <div class="fail"><span class="k">Fail state</span><span class="v">"Sent it Tuesday, haven't heard back." A proposal nobody watched them read is a proposal nobody presented.</span></div>
-  </div>
-</div>
-
-<div class="stage" data-roles="sales office">
-  <div class="stage-rail">
-    <div class="stage-num">09</div>
-    <div class="clock">7 touches<br>over 21 days<br>then nurture</div>
-  </div>
-  <div class="stage-body">
-    <h3>Proposal follow-up cadence</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Sales rep (touches 1–6)</span>
-      <span class="chip"><b>Office</b> touch 4, concierge</span>
-      <span class="chip"><b>Then</b> HL nurture, automatic</span>
-    </div>
-    <p>Most remodeling sales are lost to silence, not to a competitor. The cadence runs on a schedule until you get a yes, a no, or an explicit "stop contacting me" — and it never runs on how a rep feels about the odds.</p>
-    <div class="cadence">
-      <div class="cad-row"><span class="cad-day">Day 0</span><span class="cad-ch">Live · rep</span><span class="cad-txt">Present the proposal and ask for the decision. Set the next date before you hang up.</span></div>
-      <div class="cad-row"><span class="cad-day">Day 1</span><span class="cad-ch">Text · rep</span><span class="cad-txt">One-line recap plus one image — their layout, or the finish they lit up about. Nothing to answer, just presence.</span></div>
-      <div class="cad-row"><span class="cad-day">Day 3</span><span class="cad-ch">Call + email · rep</span><span class="cad-txt">Call, leave a voicemail, then email something of value they didn't have: warranty detail, a comparable job in their zip, the financing math on their number.</span></div>
-      <div class="cad-row"><span class="cad-day">Day 7</span><span class="cad-ch">Call · rep</span><span class="cad-txt">The scheduling call. "I'm holding a install window for you — do you want me to keep it or release it?" Real scarcity only. Never invent it.</span></div>
-      <div class="cad-row"><span class="cad-day">Day 10</span><span class="cad-ch">Call · office</span><span class="cad-txt">Concierge call from a different voice. "I'm following up on Ben's proposal — is there anything unanswered I can chase down for you?" Homeowners tell the office what they won't tell the rep.</span></div>
-      <div class="cad-row"><span class="cad-day">Day 14</span><span class="cad-ch">Call · rep</span><span class="cad-txt">Offer a change, not a discount: a different tier, a phased scope, a later start. Most stalls are a scope-and-budget mismatch, not a rejection.</span></div>
-      <div class="cad-row stop-row"><span class="cad-day">Day 21</span><span class="cad-ch">Email · rep</span><span class="cad-txt"><b>The closing-the-file email.</b> "I don't want to keep bothering you — I'm going to close your file for now. If the timing changes, you know where I am." Highest reply rate of any message in the sequence, by a wide margin.</span></div>
-      <div class="cad-row"><span class="cad-day">Day 30+</span><span class="cad-ch">Automated · HL</span><span class="cad-txt">Long nurture: completed-project photos, seasonal offers, financing changes. Monthly, indefinitely, until they buy or unsubscribe. Quarter of a remodeling year's revenue comes out of this list.</span></div>
-    </div>
-    <div class="sysline">
-      <span class="k">Rule</span>
-      <span class="v">No proposal is marked Lost without a reason code from the nine buckets. "No response" is bucket 8, not an absence of a reason.</span>
-      <span class="k">Write it</span>
-      <span class="v"><b>HL:</b> every touch logged; opportunity stage current. <b>SM:</b> proposal status accurate. A stale pipeline is worse than no pipeline — it makes the forecast confidently wrong.</span>
-    </div>
-  </div>
-</div>
-
-<!-- ============ PHASE 3 ============ -->
-<div class="phase">
-  <span class="phase-n">Phase Three</span>
-  <h2>Saves and the Close</h2>
-  <span class="who">Office triages · Sales manager saves · Rep closes</span>
-</div>
-
-<div class="stage" data-roles="office manager ops">
-  <div class="stage-rail">
-    <div class="stage-num">10</div>
-    <div class="clock">Rebook on<br>the same call<br>Save call: 24 h</div>
-  </div>
-  <div class="stage-body">
-    <h3>Cancellation, no-show &amp; stall recovery</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Office</span>
-      <span class="chip"><b>Post-proposal saves</b> Sales manager</span>
-      <span class="chip"><b>Post-sale saves</b> Owner</span>
-    </div>
-    <p>A cancellation is a scheduling problem far more often than it's a buying decision, and it is treated as one. Nothing is ever simply cancelled — it is moved, recovered, or coded and released. The reason code is not optional and not free-text-optional: a cancelled appointment that can't be saved must still leave behind why.</p>
-    <div class="sysline">
-      <span class="k">Triage first</span>
-      <span class="v">Not every cancellation is worth the same effort. Score it 0–5 before you spend time chasing it — work the 4s and 5s first, then the 3s, skip the 0–2s: <code>+2</code> completed consult · <code>+2</code> open proposal / quoted · <code>+1</code> soft reason ("not ready," "timing," "budget") · <code>+1</code> job over $15K or a tier-A zip · <code>+1</code> source is organic, referral, or LSA · <code>−2</code> hard no ("not interested," "went with someone," out of area) · <code>−1</code> wrong-fit or spam pattern. This is the office's existing scoring model, not a new one — it's how Sonya's revival list is already worked.</span>
-    </div>
-    <ul class="play">
-      <li class="key"><b>They call to cancel:</b> never accept the cancellation as the end of the call. "Absolutely, no problem — what day next week works better?" Rebook on the spot. A rebooked appointment converts nearly as well as an original; a cancelled one converts at nearly zero.</li>
-      <li><b>They won't rebook now:</b> ask the real question — <em>"Is it the timing, or has something changed about the project?"</em> — and record the answer verbatim, same day, text and call together.</li>
-      <li><b>No-show:</b> call within 15 minutes from the driveway, warm and blameless — "I think we got our wires crossed." Then text, then email that afternoon, then one call at 48 hours. Roughly a third of no-shows rebook when the first contact carries no blame.</li>
-      <li class="key"><b>Cancelled after a proposal is out:</b> sales manager calls within 24 hours. Not to re-pitch — to understand. Ask what they'd have needed to be a yes. Then, if there's room, offer a tier change, a phased scope, or financing.</li>
-      <li><b>Cancelled after signing:</b> owner calls the same day, in person if the job has started. Handle the rescission window correctly, capture the reason in full, and — separately, later — figure out what we did or promised that produced it.</li>
-      <li><b>Reschedule requests from us</b> (crew, vendor, weather) get a call, not a text, plus a specific new date and something that acknowledges the disruption. Our delays cost us more goodwill than theirs cost them.</li>
-    </ul>
-    <div class="cadence">
-      <div class="cad-row"><span class="cad-day">Day 0</span><span class="cad-ch">Text + call</span><span class="cad-txt">Same day as the cancel. "Saw we had to move your [service] appointment — totally fine. What got in the way, and when works better?" Log the real reason in SM before you move to the next call.</span></div>
-      <div class="cad-row"><span class="cad-day">Day 2</span><span class="cad-ch">Call + VM</span><span class="cad-txt">No answer on day 0 → second call plus a voicemail offering a specific slot — "I have Thursday 10am or Saturday 9am," never an open-ended "call us back."</span></div>
-      <div class="cad-row"><span class="cad-day">Day 5</span><span class="cad-ch">Text</span><span class="cad-txt">A value touch, not a chase — a before/after photo, the current financing offer, or a live promo.</span></div>
-      <div class="cad-row"><span class="cad-day">Day 14</span><span class="cad-ch">Call</span><span class="cad-txt">"Still thinking it over?" check-in.</span></div>
-      <div class="cad-row stop-row"><span class="cad-day">Day 45</span><span class="cad-ch">Call</span><span class="cad-txt"><b>Last touch.</b> "Should I close this out, or keep you on the list?" Often re-engages on its own. No response → mark Dormant, revisit at 90 days.</span></div>
-    </div>
-    <div class="sysline">
-      <span class="k">Escalate when</span>
-      <span class="v">Job over $25K or a repeat customer → loop in the owner directly, don't run the standard cadence alone. Three or more reschedules by the same person → flag as a serial-rescheduler and qualify hard before a 4th appointment goes on the calendar. A pattern across many cancels — one source spiking, one install day of the week losing people — is systemic, not personal: hand it to the pipeline review (Stage below), not to another callback.</span>
-    </div>
-    <p style="font-family:var(--f-data);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);padding-top:8px">The nine reason buckets · every loss gets exactly one</p>
-    <div class="tax">
-      <div class="tax-card recoverable"><h4>Price / budget gap <span class="code">01</span></h4><p>The number is real to them and too high. Distinguish "can't" from "won't."</p><span class="mv">→ Tier change, phased scope, financing. Recoverable.</span></div>
-      <div class="tax-card recoverable"><h4>Timing — not ready <span class="code">02</span></h4><p>Wants it, not now. Money, season, another project, a life thing first.</p><span class="mv">→ Dated nurture with a real callback date. Highly recoverable.</span></div>
-      <div class="tax-card watch"><h4>Chose a competitor <span class="code">03</span></h4><p>Always ask who and why. The answer is your market intelligence.</p><span class="mv">→ Log the competitor and the stated reason. Review monthly.</span></div>
-      <div class="tax-card recoverable"><h4>Decision makers not aligned <span class="code">04</span></h4><p>One partner is in, one isn't. Usually a Stage 2 booking failure resurfacing.</p><span class="mv">→ Offer a second visit with both present. Very recoverable.</span></div>
-      <div class="tax-card"><h4>Scope changed or cancelled <span class="code">05</span></h4><p>They're selling, moving, or the project became something else.</p><span class="mv">→ Close cleanly. Ask for the referral anyway.</span></div>
-      <div class="tax-card recoverable"><h4>Financing declined <span class="code">06</span></h4><p>Application denied or never submitted.</p><span class="mv">→ Second lender, smaller scope, deposit plan. Often recoverable.</span></div>
-      <div class="tax-card"><h4>Life event <span class="code">07</span></h4><p>Health, job, family, a death. Be a human first.</p><span class="mv">→ Warm close, long nurture, no pressure.</span></div>
-      <div class="tax-card watch"><h4>Unresponsive / ghosted <span class="code">08</span></h4><p>Full cadence ran, no reply. A code, not an absence of one.</p><span class="mv">→ Auto-nurture. Watch the volume by source — a spike means a lead-quality problem.</span></div>
-      <div class="tax-card ours"><h4>Our error <span class="code">09</span></h4><p>Late, no-show, rushed, wrong fit, poor experience, a promise we broke.</p><span class="mv">→ Owner reviews every single one at the monthly ops meeting. This bucket is a process defect, not a loss.</span></div>
-    </div>
-    <div class="sysline">
-      <span class="k">Enforce it</span>
-      <span class="v">No appointment or proposal closes to Cancelled or Lost in ServiceMinder without a bucket code <em>and</em> a free-text note. A reason can sit in three different places — the appointment's own notes, the contact's activity log, or the <code>CancelReasonId</code> picklist — and counting only the picklist overstates the blank rate: a spot check found real reasons sitting in contact notes for cancellations the picklist alone showed as empty. Check all three before calling a reason missing.</span>
-      <span class="k">Live today</span>
-      <span class="v">This is already tracked daily, not proposed — the Pipeline agent scans ServiceMinder every morning. 60-day scan, Sept 9–10: <b>KTU 59% of booked consults cancel, 19% with a captured reason. BTU 22% cancel, 0% captured.</b> Live view: <b>dash.goaxyom.com → Pipeline tab</b> and the <b>Recovery Desk</b> (active saves — status, assignee, next step, method, notes). This page is the standard; that tab is today's number against it.</span>
-      <span class="k">Review it</span>
-      <span class="v">Monthly: bucket mix by rep, by source, by service type, by zip. Bucket 09 is read aloud, case by case. Bucket 03 gets a competitor tally. Bucket 01 concentrating in one source means the marketing is attracting the wrong budget.</span>
-    </div>
-  </div>
-</div>
-
-<div class="stage" data-roles="sales office">
-  <div class="stage-rail">
-    <div class="stage-num">11</div>
-    <div class="clock">Deposit at<br>signature<br>Welcome: 24 h</div>
-  </div>
-  <div class="stage-body">
-    <h3>Close, contract &amp; deposit</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Sales rep</span>
-      <span class="chip"><b>Welcome call</b> Office</span>
-      <span class="chip"><b>Terms</b> 50 / 50</span>
-    </div>
-    <p>The moment of the yes is also the moment the buyer's remorse clock starts. What happens in the first 24 hours after a signature decides whether the next twelve weeks feel reassuring or abandoning.</p>
-    <ul class="play">
-      <li>Signed proposal and 50% deposit collected together. A signature without a deposit is not a sale and doesn't go on the board.</li>
-      <li>Walk the contract out loud: scope, exclusions, timeline with its honest ranges, payment schedule, change-order policy, warranty, cancellation rights.</li>
-      <li class="key">Set the expectation for the wait. Say the real number — kitchens: 7 to 9 weeks for reface, 9 to 12 for semi-custom; baths: 4 to 8 weeks from signed approvals for smaller jobs with no custom product, 6 to 10 weeks for all other bathrooms — and say what happens in each of them. Unexplained silence is what turns a normal lead time into an angry phone call.</li>
-      <li>Schedule the next two appointments before you leave: the PM measurement and the selection appointment. Dates on a calendar, not intentions.</li>
-      <li class="key"><b>Office welcome call within 24 hours.</b> Introduce the project manager by name, confirm the next two dates, give them one phone number and one email for everything, and tell them what to expect next and when.</li>
-    </ul>
-    <div class="sysline">
-      <span class="k">Write it</span>
-      <span class="v"><b>SM:</b> proposal Won, invoice created, deposit payment recorded. <b>HL:</b> opportunity Won with the value. <b>CompanyCam:</b> project confirmed at the address. <b>JobTread:</b> job created with customer, address, and contract value. Same day, all four.</span>
-    </div>
-    <div class="fail"><span class="k">Fail state</span><span class="v">The signature happens and then nothing visible happens for three weeks, and the client's first post-sale contact is them calling to ask if we forgot about them.</span></div>
-  </div>
-</div>
-
-<div class="handoff"><span>Handoff · Sales → Project management · the clock is now formal</span><div class="bar"></div></div>
-
-<!-- ============ PHASE 4 ============ -->
-<div class="phase">
-  <span class="phase-n">Phase Four</span>
-  <h2>Handover &amp; Production</h2>
-  <span class="who">Sales delivers a package · PM holds the gate</span>
-</div>
-
-<div class="stage" data-roles="sales pm">
-  <div class="stage-rail">
-    <div class="stage-num">12</div>
-    <div class="clock">18 business days<br>sales-controlled<br>(currently the gap)</div>
-  </div>
-  <div class="stage-body">
-    <h3>Handover package &amp; the Production Gate</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Accountable</b> Sales rep</span>
-      <span class="chip"><b>Gate authority</b> Project manager</span>
-      <span class="chip"><b>Standard</b> <a href="/ktu-handover-standard/">KTU V2</a> · <a href="/btu-handover-sop/">BTU-OPS-001</a></span>
-    </div>
-    <p>End-to-end target is 7–9 weeks for reface and 9–12 for semi-custom. The live board says we're running far past that: Foreman's daily gate scan puts the <b>average age of an open project at 138 days for KTU, 68 for BTU</b> (Sept 10 scan — days since signed on the currently active roster, the clearest live proxy we have for cycle time; the slowest KTU project on the board is past 400 days). The overrun is almost entirely inside the sales-controlled 18 days below — not in vendor production. This is where the cycle time is won back.</p>
-    <div class="tbl-scroll">
-      <table>
-        <thead><tr><th style="width:38%">Milestone</th><th class="num" style="width:16%">Target</th><th style="width:18%">Owner</th><th>Starts when</th></tr></thead>
-        <tbody>
-          <tr><td>Pre-measurement package to PM</td><td class="num">5 biz days</td><td>Sales</td><td>Contract signed</td></tr>
-          <tr><td>PM measurement completed</td><td class="num">5 biz days</td><td>PM</td><td>Package received</td></tr>
-          <tr><td>Design presentation to client</td><td class="num">10 biz days</td><td>Sales</td><td>Measurement complete</td></tr>
-          <tr><td>Selection appointment, sheet 100%</td><td class="num">client-paced</td><td>Sales schedules</td><td>Design presented</td></tr>
-          <tr><td>Final design approval, signed drawings</td><td class="num">client-paced</td><td>Client</td><td>Selections complete</td></tr>
-          <tr><td>Complete handover package to PM</td><td class="num">3 biz days</td><td>Sales</td><td>Drawings signed</td></tr>
-          <tr><td>PM review + Elias order placed</td><td class="num">5 biz days</td><td>PM</td><td>Package received</td></tr>
-          <tr><td>Vendor production + delivery</td><td class="num">3–4 weeks</td><td>Vendor</td><td>Order placed</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <ul class="play">
-      <li class="key"><b>The Production Gate is a stop, not a checklist.</b> The project manager verifies all ten items before anything is ordered, and has the authority — and the obligation — to hold the job until they're met. A gate that can be waived under schedule pressure is not a gate.</li>
-      <li>① CAD finalized and reviewed · ② Client signature on drawings, dated · ③ Selection sheet 100% complete, every field filled or explicitly marked N/A, three weeks before job start · ④ All accessories in the proposal with quantities · ⑤ Non-carpentry items in the proposal with vendor detail on the selection sheet · ⑥ Pre-measurement package received: CompanyCam photos, sketch, scope context · ⑦ Appliance spec sheets referenced · ⑧ Proposal matches the CAD · ⑨ Design Standards Reference requirements met · ⑩ No field on the selection sheet reading "Not selected."</li>
-      <li>Any milestone at 80% of its target with no completion triggers an alert to the owner. Not at breach — before it.</li>
-      <li>A gate hold gets a same-day client call from the PM explaining what's outstanding and what it means for the date. Clients tolerate delay; they don't tolerate discovering it.</li>
-    </ul>
-    <div class="sysline">
-      <span class="k">Write it</span>
-      <span class="v"><b>JobTread:</b> milestone dates as tasks with owners, so slippage is visible instead of remembered. <b>SM:</b> appointments for measurement and selections. <b>CompanyCam:</b> pre-measurement package attached to the project. <b>Pricing tool:</b> the order sheet, built from JobTread's finalized estimate and the approved selections; nothing reads Ready to order while a line is Needs info. <b>Job Tracker (Google Sheet):</b> the PM's order status, POs and actual costs per job — see <a href="/selections-and-ordering/">Selections &amp; Order Sheet</a>.</span>
-      <span class="k">Live today</span>
-      <span class="v">The milestone table above is KTU's (<a href="/ktu-handover-standard/">Handover Standard V2</a>). BTU now has its own written standard: <a href="/btu-handover-sop/">BTU-OPS-001</a> — signed Design Packet and Selection Sheet by email, a 13-point gate within 2 business days, orders within 14 days, install start about 10 weeks from sale. The gate check also runs operationally on <b>both</b> brands: Foreman audits open KTU and BTU projects daily against these same signals — missing CompanyCam photos, no install date on file, selection evidence unreachable — and flags what's blocking each one. Live view: <b>dash.goaxyom.com → Foreman tab.</b></span>
-    </div>
-    <div class="fail"><span class="k">Fail state</span><span class="v">An order placed against a selection sheet with three blanks, discovered at delivery, costing four weeks and the client's confidence.</span></div>
-  </div>
-</div>
-
-<div class="stage" data-roles="pm office">
-  <div class="stage-rail">
-    <div class="stage-num">13</div>
-    <div class="clock">T−3 wks · selections<br>T−1 wk · materials<br>T−48 h · call</div>
-  </div>
-  <div class="stage-body">
-    <h3>Pre-install readiness</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Project manager</span>
-      <span class="chip"><b>Client comms</b> Office</span>
-      <span class="chip"><b>Gate</b> no materials, no start</span>
-    </div>
-    <ul class="play">
-      <li><b>T−3 weeks:</b> selection sheet must read 100%. Anything open is escalated to the sales rep that day, not monitored quietly.</li>
-      <li><b>T−2 weeks:</b> office sends the pre-install letter — start date, daily hours, crew names, parking, pets, dust and noise, what to clear out, what we protect, the payment schedule, and who to call.</li>
-      <li><b>T−1 week:</b> PM verifies every material physically received and inspected. Damage or shortage found now is a phone call; found on day one it's a stalled crew and a furious homeowner.</li>
-      <li><b>T−1 week:</b> crew assigned and briefed on this specific job's scope and quirks.</li>
-      <li class="key"><b>T−48 hours:</b> PM calls the homeowner. Confirms the start, walks the first day out loud, answers the small anxious questions people don't want to bother us with.</li>
-    </ul>
-    <div class="fail"><span class="k">Fail state</span><span class="v">A crew arriving to a kitchen the family hasn't emptied, because nobody told them to empty it.</span></div>
-  </div>
-</div>
-
-<div class="stage" data-roles="pm">
-  <div class="stage-rail">
-    <div class="stage-num">14</div>
-    <div class="clock">Daily log<br>Midpoint call<br>CO before work</div>
-  </div>
-  <div class="stage-body">
-    <h3>Installation &amp; change control</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Owner</b> Project manager</span>
-      <span class="chip"><b>Midpoint call</b> Office</span>
-      <span class="chip"><b>Photos</b> daily, CompanyCam</span>
-    </div>
-    <ul class="play">
-      <li><b>Day one walkthrough</b> with the homeowner before a tool comes out: scope confirmed on site, protection explained, hours, access, where the crew's things go, how we leave it each night.</li>
-      <li><b>Every day:</b> CompanyCam photos, a JobTread daily log, and the site left clean. The end-of-day tidy is not optional — it's most of how people judge a contractor.</li>
-      <li><b>Every day the crew is on site,</b> the homeowner hears from someone. Thirty seconds is enough.</li>
-      <li class="key"><b>No verbal change orders. Ever.</b> Any change to scope, material, or price is written, priced, signed, and paid or scheduled before that work proceeds. This rule protects the client as much as us, and every job that goes bad went bad here first.</li>
-      <li><b>Midpoint call from the office:</b> "How's the crew? Anything we should know?" A second channel that catches what people are too polite to raise with the person in their house.</li>
-      <li><b>Surprises</b> — rot, wiring, out-of-square, hidden plumbing — get a same-day call from the PM with options and prices. Never discovered by the homeowner on the invoice.</li>
-    </ul>
-    <div class="sysline">
-      <span class="k">Write it</span>
-      <span class="v"><b>JobTread:</b> daily logs, change orders, budget vs. actual kept current so margin is knowable during the job rather than after it. <b>CompanyCam:</b> daily photo record — the whole warranty and dispute defense.</span>
-    </div>
-  </div>
-</div>
-
-<!-- ============ PHASE 5 ============ -->
-<div class="phase">
-  <span class="phase-n">Phase Five</span>
-  <h2>Closeout &amp; the Next Job</h2>
-  <span class="who">PM closes · Office delights · Sales harvests</span>
-</div>
-
-<div class="stage" data-roles="pm office sales">
-  <div class="stage-rail">
-    <div class="stage-num">15</div>
-    <div class="clock">Punch: 5 biz days<br>Review: day 3<br>Referral: day 7</div>
-  </div>
-  <div class="stage-body">
-    <h3>Punch, closeout, review &amp; referral</h3>
-    <div class="chips">
-      <span class="chip owner"><b>Punch &amp; final</b> PM</span>
-      <span class="chip"><b>Delight calls</b> Office</span>
-      <span class="chip"><b>Review &amp; referral ask</b> Sales rep</span>
-    </div>
-    <p>The last five percent of a job produces most of the reviews, all of the referrals, and every bit of the reputation. It is also the part most often left to peter out because the crew has already moved on.</p>
-    <ul class="play">
-      <li><b>Punch walkthrough</b> with the homeowner, room by room, list written together and signed by both. Their list, in their words.</li>
-      <li class="key"><b>Punch items closed within 5 business days.</b> A three-month punch list erases a flawless twelve-week job.</li>
-      <li><b>Final invoice and payment</b> collected at punch sign-off, not chased for a month afterward.</li>
-      <li><b>Warranty packet</b> delivered in person: care and cleaning, warranty terms, model and finish numbers, who to call. Paper and email both.</li>
-      <li><b>24–48 hours after completion — office delight call.</b> "Are you happy with it? Anything at all still bothering you?" Fix anything small immediately and without argument.</li>
-      <li class="key"><b>Day 3 — review request from the rep who sold it,</b> by text, with a direct Google link, referencing something specific about their project. Personal asks convert several times better than automated ones. Google first; a second platform only after Google is posted.</li>
-      <li class="key"><b>Day 7 — referral ask, by name.</b> Not "keep us in mind." Instead: "Is there anyone on your street or in your family who's been talking about doing theirs?" Bring the finished photos. This is the single highest-margin lead source in the business and it is almost never asked for properly.</li>
-      <li><b>Day 30 — PM quality check.</b> Settling, adjustments, anything that has shown itself since. Catches warranty claims while they're small and free.</li>
-      <li><b>Day 90 — office call and the cross-sell.</b> Kitchen clients get the bath conversation and vice versa. A satisfied KTU homeowner is BTU's best-qualified lead in the market.</li>
-      <li><b>Day 365 — anniversary touch</b> with their own photos. Cheap, memorable, and it reactivates referrals.</li>
-    </ul>
-    <div class="sysline">
-      <span class="k">Write it</span>
-      <span class="v"><b>SM:</b> job closed, final payment, punch signed, warranty issued, NPS captured at day 7. <b>HL:</b> contact tagged Completed Client and moved into the client nurture and referral audience. <b>CompanyCam:</b> final photo set — this is also next month's marketing library.</span>
-    </div>
-    <div class="fail"><span class="k">Fail state</span><span class="v">Beautiful finished kitchens with no Google review, no referral asked for, and no photos we're allowed to use.</span></div>
-  </div>
-</div>
-
-<!-- ============ RACI ============ -->
-<section class="phase-band">
-  <div class="sec-head">
-    <h2>Who owns what</h2>
-    <p><b class="raci raci-A">A</b> accountable — one person, the one who answers for it &nbsp;·&nbsp; <b class="raci raci-R">R</b> responsible — does the work &nbsp;·&nbsp; <span class="raci raci-C">C</span> consulted &nbsp;·&nbsp; <span class="raci raci-C">I</span> informed. Exactly one A per row. If two people are accountable, nobody is.</p>
-  </div>
-  <div class="tbl-scroll">
-    <table>
-      <thead>
-        <tr>
-          <th style="width:30%">Stage</th>
-          <th class="raci">Office</th>
-          <th class="raci">Sales rep</th>
-          <th class="raci">Sales mgr</th>
-          <th class="raci">PM</th>
-          <th class="raci">Ops / Owner</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td>01 · Speed to lead</td><td class="raci raci-A">A R</td><td class="raci raci-I">I</td><td class="raci raci-C">C</td><td class="raci raci-I">—</td><td class="raci raci-I">I</td></tr>
-        <tr><td>02 · Qualify &amp; book</td><td class="raci raci-A">A R</td><td class="raci raci-C">C</td><td class="raci raci-C">C</td><td class="raci raci-I">—</td><td class="raci raci-I">I</td></tr>
-        <tr><td>03 · Confirmations</td><td class="raci raci-A">A R</td><td class="raci raci-R">R</td><td class="raci raci-I">I</td><td class="raci raci-I">—</td><td class="raci raci-I">—</td></tr>
-        <tr><td>04 · Pre-call prep</td><td class="raci raci-C">C</td><td class="raci raci-A">A R</td><td class="raci raci-C">C</td><td class="raci raci-I">—</td><td class="raci raci-I">—</td></tr>
-        <tr><td>05 · In-home consultation</td><td class="raci raci-I">I</td><td class="raci raci-A">A R</td><td class="raci raci-C">C</td><td class="raci raci-I">I</td><td class="raci raci-I">I</td></tr>
-        <tr><td>06 · Same-day disposition</td><td class="raci raci-R">R</td><td class="raci raci-A">A R</td><td class="raci raci-C">C</td><td class="raci raci-I">—</td><td class="raci raci-I">I</td></tr>
-        <tr><td>07 · "How did it go?" call</td><td class="raci raci-A">A R</td><td class="raci raci-I">I</td><td class="raci raci-C">C</td><td class="raci raci-I">—</td><td class="raci raci-I">I</td></tr>
-        <tr><td>08 · Proposal delivery</td><td class="raci raci-C">C</td><td class="raci raci-A">A R</td><td class="raci raci-C">C</td><td class="raci raci-I">—</td><td class="raci raci-I">I</td></tr>
-        <tr><td>09 · Follow-up cadence</td><td class="raci raci-R">R</td><td class="raci raci-A">A R</td><td class="raci raci-C">C</td><td class="raci raci-I">—</td><td class="raci raci-I">I</td></tr>
-        <tr><td>10 · Cancellation &amp; saves</td><td class="raci raci-R">R</td><td class="raci raci-R">R</td><td class="raci raci-A">A</td><td class="raci raci-I">I</td><td class="raci raci-C">C</td></tr>
-        <tr><td>11 · Close &amp; deposit</td><td class="raci raci-R">R</td><td class="raci raci-A">A R</td><td class="raci raci-I">I</td><td class="raci raci-I">I</td><td class="raci raci-I">I</td></tr>
-        <tr><td>12 · Handover &amp; gate</td><td class="raci raci-I">—</td><td class="raci raci-R">R</td><td class="raci raci-C">C</td><td class="raci raci-A">A R</td><td class="raci raci-C">C</td></tr>
-        <tr><td>13 · Pre-install readiness</td><td class="raci raci-R">R</td><td class="raci raci-C">C</td><td class="raci raci-I">—</td><td class="raci raci-A">A R</td><td class="raci raci-I">I</td></tr>
-        <tr><td>14 · Installation &amp; changes</td><td class="raci raci-R">R</td><td class="raci raci-I">I</td><td class="raci raci-I">—</td><td class="raci raci-A">A R</td><td class="raci raci-C">C</td></tr>
-        <tr><td>15 · Closeout &amp; referral</td><td class="raci raci-R">R</td><td class="raci raci-R">R</td><td class="raci raci-I">I</td><td class="raci raci-A">A R</td><td class="raci raci-I">I</td></tr>
-      </tbody>
-    </table>
-  </div>
-  <p class="kpi-note">Roles, not headcount. In a shop this size one person wears several — Steven is Sales manager and Ops, Takia is Ops. What matters is that for any given stage, both people know which hat is on.</p>
-  <p class="kpi-note">Field titles map onto the five roles above: <b>PM</b> covers Project Manager, Operations Coordinator, and Customer Service Coordinator; <b>Sales rep</b> covers the Sales Kitchen Consultant and Bathroom Remodeler roles that also sell; the Tiler, Bathroom Remodeler (install), and Lead Bathroom Remodel Installer titles are the crew Stage 14 refers to as "the crew" — they execute inside PM's lane, not a sixth column of their own.</p>
-</section>
-
-<!-- ============ RHYTHM ============ -->
-<section class="phase-band">
-  <div class="sec-head">
-    <h2>The operating rhythm</h2>
-    <p>The workflow only holds if there are fixed moments where it gets inspected. Four meetings, none of them long, each with one job.</p>
-  </div>
-  <div class="rhythm">
-    <div class="rh">
-      <span class="when">Daily · 8:30 am · 15 min</span>
-      <h4>Huddle</h4>
-      <ul>
-        <li>Yesterday's appointments — each one dispositioned out loud</li>
-        <li>Blank dispositions named and closed on the spot</li>
-        <li>Today's confirmations and who's unreachable</li>
-        <li>Proposals past their SLA</li>
-        <li>Any Bucket 09 or escalation from a QC call</li>
-      </ul>
-      <span class="attend">Office · Sales · Sales manager</span>
-    </div>
-    <div class="rh">
-      <span class="when">Weekly · Monday · 45 min</span>
-      <h4>Pipeline review</h4>
-      <ul>
-        <li>Every open proposal, by name, with its next dated action</li>
-        <li>Cadence compliance — who's skipping touches</li>
-        <li>Losses since last week, by bucket</li>
-        <li>Lead volume and cost per lead by source</li>
-        <li>Speed-to-lead median for the week</li>
-      </ul>
-      <span class="attend">Sales manager · Sales · Office · Marketing</span>
-    </div>
-    <div class="rh">
-      <span class="when">Weekly · Friday · 45 min</span>
-      <h4>Production meeting</h4>
-      <ul>
-        <li>Every active job against its milestone dates</li>
-        <li>Anything at 80% of a target with no completion</li>
-        <li>Gate holds and what's blocking them</li>
-        <li>Selection sheets inside the 3-week window</li>
-        <li>Change orders raised and margin to date</li>
-      </ul>
-      <span class="attend">PM · Sales · Ops · Owner</span>
-    </div>
-    <div class="rh">
-      <span class="when">Monthly · 90 min</span>
-      <h4>Ops review</h4>
-      <ul>
-        <li>Full funnel, stage by stage, against target</li>
-        <li>Loss buckets by rep, source, service, zip</li>
-        <li>Every Bucket 09 read aloud, case by case</li>
-        <li>Rep scorecards and QC-call sentiment</li>
-        <li>Cycle time: signed → install start</li>
-        <li>Reviews captured, referrals generated, NPS</li>
-      </ul>
-      <span class="attend">Owner · Ops · Sales manager · PM</span>
-    </div>
+<section class="grp">
+  <h2>Selections &amp; ordering</h2>
+  <p class="gd">How selections are written so purchasing can order without a phone call, and how every order and its real cost are tracked.</p>
+  <div class="lib">
+    <article class="doc" data-k="selections selection sheet line standard sku source quantity overage order sheet job tracker google sheet purchasing vendors where to buy mayra actual cost gp">
+      <span class="ty">Standard · both brands</span>
+      <h3><a href="/selections-and-ordering/">Selections &amp; Order Sheet</a></h3>
+      <p>The line standard for every selection, the categories people forget, default stores, the order sheet built from JobTread, and the Job Tracker where orders and actual costs are logged.</p>
+      <div class="jump">
+        <a href="/selections-and-ordering/#s-2-every-line-on-the-selection-sheet">Line standard</a>
+        <a href="/selections-and-ordering/#s-4-where-to-buy-defaults">Where to buy</a>
+        <a href="/selections-and-ordering/#s-6-the-order-sheet-pricing-tool">Order sheet</a>
+        <a href="/selections-and-ordering/#tracker">Job Tracker</a>
+      </div>
+      <div class="m"><span><b>For</b> Sales, PM, purchasing</span><span><b>Version</b> 2.0</span></div>
+    </article>
   </div>
 </section>
 
-<!-- ============ KPI ============ -->
-<section class="phase-band">
-  <div class="sec-head">
-    <h2>The scoreboard</h2>
-    <p>One number per stage. If a stage can't be measured, it can't be managed — and every number below is already sitting in a system we own.</p>
-  </div>
-  <div class="tbl-scroll">
-    <table>
-      <thead><tr><th style="width:26%">Metric</th><th class="num" style="width:16%">Target</th><th style="width:14%">Owner</th><th style="width:14%">Source</th><th>Why this one</th></tr></thead>
-      <tbody>
-        <tr><td>Median speed to lead</td><td class="num">&lt; 5 min</td><td>Office</td><td class="mono">HL</td><td>Compounds into everything downstream. Cheapest fix available.</td></tr>
-        <tr><td>Inbound call answer rate</td><td class="num">≥ 95%</td><td>Office</td><td class="mono">HL / call tracking</td><td>An unanswered call is a lead we paid for and threw away.</td></tr>
-        <tr><td>Lead → appointment set</td><td class="num">≥ 65%</td><td>Office</td><td class="mono">HL → SM</td><td>Tests the booking script and lead quality together.</td></tr>
-        <tr><td>Appointment set → held</td><td class="num">≥ 88%</td><td>Office</td><td class="mono">SM</td><td>Directly measures the confirmation sequence.</td></tr>
-        <tr><td>QC call completion</td><td class="num">100%</td><td>Office</td><td class="mono">SM notes</td><td>The early-warning system. Skipped calls are blind spots.</td></tr>
-        <tr><td>Held → proposal issued</td><td class="num">≥ 90%</td><td>Sales</td><td class="mono">SM</td><td>A held appointment with no proposal is a wasted visit.</td></tr>
-        <tr><td>Appointment → proposal, days</td><td class="num">≤ 2</td><td>Sales</td><td class="mono">SM</td><td>Enthusiasm decays fast. So does the close rate.</td></tr>
-        <tr><td>Proposal → sold</td><td class="num">33–40%</td><td>Sales</td><td class="mono">SM</td><td>The headline sales number. Higher for one-visit reface.</td></tr>
-        <tr><td>Losses with a reason code</td><td class="num">100%</td><td>All</td><td class="mono">SM notes</td><td>Currently KTU 19%, BTU 0% (Sept 9 scan). Without this, no loss analysis is real.</td></tr>
-        <tr><td>Cancellation → rebooked</td><td class="num">≥ 40%</td><td>Office</td><td class="mono">SM</td><td>Measures whether we're saving or just accepting.</td></tr>
-        <tr><td>Signed → install start</td><td class="num">7–9 wk reface<br>9–12 wk semi-custom</td><td>PM</td><td class="mono">SM / JobTread</td><td>Currently 14+. The gap is in the sales-controlled 18 days.</td></tr>
-        <tr><td>Production Gate pass, first time</td><td class="num">≥ 90%</td><td>PM</td><td class="mono">JobTread</td><td>Every gate failure is a delay we created ourselves.</td></tr>
-        <tr><td>Change orders, % of contract</td><td class="num">&lt; 10%</td><td>PM</td><td class="mono">JobTread</td><td>High means the sale under-scoped. Zero means we're absorbing cost.</td></tr>
-        <tr><td>Punch closed, business days</td><td class="num">≤ 5</td><td>PM</td><td class="mono">SM / JobTread</td><td>The last impression outweighs the previous eleven weeks.</td></tr>
-        <tr><td>Google reviews per job done</td><td class="num">≥ 50%</td><td>Sales</td><td class="mono">GMB</td><td>Feeds local pack rank, which feeds the top of this whole page.</td></tr>
-        <tr><td>Referral rate</td><td class="num">≥ 25%</td><td>Sales</td><td class="mono">HL source</td><td>Highest-margin, highest-closing lead we can get.</td></tr>
-        <tr><td>NPS at day 7</td><td class="num">≥ 70</td><td>Ops</td><td class="mono">SM</td><td>The leading indicator for both reviews and referrals.</td></tr>
-      </tbody>
-    </table>
+<section class="grp">
+  <h2>Tools we use every day</h2>
+  <p class="gd">Sign-in required. What each one is for is on <a href="/systems/">Systems</a>.</p>
+  <div class="lib">
+    <article class="doc tool" data-k="intranet axyom dashboard briefs pipeline projects appointments scripts training vendors directory library">
+      <span class="ty">Team hub</span>
+      <h3><a href="https://dash.goaxyom.com/">Intranet</a></h3>
+      <p>Daily briefs, pipeline, projects, appointments, sales scripts, training, vendors and the document library.</p>
+      <div class="m"><span>dash.goaxyom.com</span></div>
+    </article>
+    <article class="doc tool" data-k="pricing tool proposal estimate selections client link order sheet admin notifications">
+      <span class="ty">Pricing &amp; selections</span>
+      <h3><a href="https://pricing.ktubtu.com/">Pricing tool</a></h3>
+      <p>Price a job, send the client their selection link, build the order sheet. Admins set who receives order sheets.</p>
+      <div class="m"><span>pricing.ktubtu.com</span></div>
+    </article>
+    <article class="doc tool" data-k="design journey style quiz send invite brief tiers cheat sheet">
+      <span class="ty">Before the visit</span>
+      <h3><a href="https://design.ktubtu.com/send">Design Journey</a></h3>
+      <p>Send a client the design style quiz by hand, see the journeys funnel, and open the tier cheat sheets.</p>
+      <div class="m"><span>design.ktubtu.com/send · /tiers</span></div>
+    </article>
+    <article class="doc tool" data-k="lookbook door styles colours finishes thermofoil samples">
+      <span class="ty">In the home</span>
+      <h3><a href="https://lookbook.ktubtu.com/">Lookbook</a></h3>
+      <p>Door styles, colours and finishes to show the client.</p>
+      <div class="m"><span>lookbook.ktubtu.com</span></div>
+    </article>
   </div>
 </section>
 
-<!-- ============ ROLLOUT ============ -->
-<section class="phase-band">
-  <div class="sec-head">
-    <h2>How to turn it on</h2>
-    <p>Rolling out all fifteen stages at once fails. Sequence it so each block is habit before the next one starts, and so the earliest weeks fix the things that are currently costing the most.</p>
-  </div>
-  <div class="roll">
-    <div class="roll-item">
-      <span class="wk">Week 1–2</span>
-      <div>
-        <h4>Disposition discipline and the reason codes</h4>
-        <p>Nothing else works until Stage 06 and the nine buckets are non-negotiable. Add the reason field to ServiceMinder, train it in one meeting, and check it every morning in the huddle for two weeks straight. This is the cheapest change on the page and it unlocks every analysis after it.</p>
-      </div>
-    </div>
-    <div class="roll-item">
-      <span class="wk">Week 3–4</span>
-      <div>
-        <h4>The QC call and the confirmation sequence</h4>
-        <p>Stages 03 and 07 — both are office-owned, both are scripts, both start returning signal in days. Expect the first few QC calls to surface something uncomfortable. That's the point of them.</p>
-      </div>
-    </div>
-    <div class="roll-item">
-      <span class="wk">Week 5–6</span>
-      <div>
-        <h4>Speed to lead and the follow-up cadence</h4>
-        <p>Instrument the response clock in HighLevel, then build the seven-touch cadence as a workflow with tasks so the rep is prompted rather than relied upon. Publish the median response time weekly where everyone sees it.</p>
-      </div>
-    </div>
-    <div class="roll-item">
-      <span class="wk">Week 7–8</span>
-      <div>
-        <h4>The Production Gate, with teeth</h4>
-        <p>The ten items already exist on paper. What's missing is the PM's unambiguous authority to stop a job, and an owner who backs the hold when the schedule argues against it. Put the milestone dates into JobTread as owned tasks the same week.</p>
-      </div>
-    </div>
-    <div class="roll-item">
-      <span class="wk">Week 9–12</span>
-      <div>
-        <h4>The closeout engine</h4>
-        <p>Punch SLA, the delight call, the day-3 review ask, the day-7 referral ask by name. Last to build, because it needs jobs finishing under the new process to work on — and first to pay back, because it lowers what the top of the funnel has to cost.</p>
-      </div>
-    </div>
-    <div class="roll-item">
-      <span class="wk">Ongoing</span>
-      <div>
-        <h4>The four meetings</h4>
-        <p>Start the daily huddle in week one and never miss one. It's the enforcement mechanism for everything above; without it this document is a nice PDF.</p>
-      </div>
-    </div>
-  </div>
+<section class="grp" id="faq">
+  <h2>Quick answers</h2>
+  <p class="gd">The questions that come up most. Each links to the full rule.</p>
+  <details class="fold" data-k="order place who mayra purchasing email">
+    <summary><h2>Who places orders, and from what?</h2><span class="fold-d">The PM (Mayra) for both brands, from the signed Selection Sheet only.</span></summary>
+    <div class="fold-b"><p>Purchasing orders from the client-signed Selection Sheet and the order sheet the pricing tool builds from it. Never from a rendering, a text or an unsigned draft. Order sheets are emailed to the recipients set in the pricing tool (default TLivingston@kitchentuneup.com). <a href="/selections-and-ordering/#s-6-the-order-sheet-pricing-tool">The order sheet →</a></p></div>
+  </details>
+  <details class="fold" data-k="log order status eta actual cost tracker">
+    <summary><h2>Where do I log an order, ETA or actual cost?</h2><span class="fold-d">The job's tab in the Job Tracker Google Sheet.</span></summary>
+    <div class="fold-b"><p>Drive → .Project Management → "Job Tracker — KTU &amp; BTU (live)". Type in the Order status, PO, dates, Actual cost and Notes columns; the rest fills itself from JobTread. <a href="/selections-and-ordering/#tracker">The Job Tracker →</a></p></div>
+  </details>
+  <details class="fold" data-k="handover email template subject attachments">
+    <summary><h2>What goes in the handover email?</h2><span class="fold-d">Signed Design Packet + signed Selection Sheet, scope summary and watch-outs, in one email.</span></summary>
+    <div class="fold-b"><p>BTU: use the template in BTU-OPS-001 §7.2. KTU: the ten requirements in the signed standard. A message saying "it's on JobTread" is not a handover. <a href="/btu-handover-sop/#7-2">BTU template →</a> · <a href="/ktu-handover-standard/#s-handover-requirements">KTU requirements →</a></p></div>
+  </details>
+  <details class="fold" data-k="change order after signing selection change">
+    <summary><h2>The client wants to change something after signing.</h2><span class="fold-d">Written, priced, signed change order first, then a new drawing revision.</span></summary>
+    <div class="fold-b"><p>Nothing is ordered or built differently until the change order is signed and the affected documents are re-issued as R+1. <a href="/btu-handover-sop/#s-10-change-orders-the-signed-drawing-rule">Change orders →</a></p></div>
+  </details>
+  <details class="fold" data-k="where record lives highlevel serviceminder source of truth notes">
+    <summary><h2>Which system is the truth for what?</h2><span class="fold-d">Lead source: HighLevel. Appointments and money: ServiceMinder. Price and selections: JobTread. Photos: CompanyCam.</span></summary>
+    <div class="fold-b"><p>Write every fact in its home first, the same day; everything else copies it. <a href="/systems/">Systems &amp; Where Things Live →</a></p></div>
+  </details>
+  <details class="fold" data-k="design journey quiz invite send by hand client didn't get">
+    <summary><h2>A client didn't get their design style quiz.</h2><span class="fold-d">Send it by hand from design.ktubtu.com/send.</span></summary>
+    <div class="fold-b"><p>ServiceMinder sends the invite automatically when the consultation is booked. If it didn't arrive, open <a href="https://design.ktubtu.com/send">design.ktubtu.com/send</a>, find the client and send the link by text or email.</p></div>
+  </details>
 </section>
+
+<p class="empty hidden" id="none">Nothing matches that. Try a simpler word, or ask in Slack.</p>
 
 </main>
 
-<footer>
-  <div class="wrap">
-    <p>Kitchen Tune-Up &amp; Bath Tune-Up Bloomfield · Operating Standard v1.1 · September 11, 2026. Absorbs and extends the Sales-to-Project-Management Handover Standard of April 21, 2026 (Stage 12's milestone table and ten-item Production Gate are that document, unchanged), Sonya's Lead Follow-Up &amp; Cancellation Revival playbook (Stage 10's scoring model and cadence), and the intranet's earlier job-flow outline (superseded by Stages 01–06). Targets in the scoreboard are goals set against industry benchmarks, not current measured performance; where current performance is named — cancellation rate and reason capture, signed-to-install age, and unresolved lead attribution — it's sourced from the live agent scans on the Axyom Intranet (dash.goaxyom.com), dated to the scan it came from, not frozen at publish time. Refresh those figures from the Pipeline and Foreman tabs before quoting this page in a room where the number matters.</p>
-  </div>
-</footer>
+<footer><div class="wrap"><p>Source of truth: this site (playbook.ktubtu.com), kept in the TeamLivingston repository under playbook/. Edit the source, never a copy.</p></div></footer>
 
 <script>
-(function(){
-  var btns = Array.prototype.slice.call(document.querySelectorAll('.fbtn'));
-  var stages = Array.prototype.slice.call(document.querySelectorAll('.stage'));
-  var note = document.getElementById('fnote');
-
-  function apply(role){
-    var shown = 0;
-    stages.forEach(function(s){
-      var roles = (s.getAttribute('data-roles')||'').split(/\s+/);
-      var match = (role === 'all') || roles.indexOf(role) !== -1;
-      s.classList.toggle('dim', !match);
-      s.classList.toggle('hit', match && role !== 'all');
-      if (match) shown++;
+(function () {
+  var q = document.getElementById("q"), n = document.getElementById("qn"), none = document.getElementById("none");
+  var items = Array.prototype.slice.call(document.querySelectorAll("[data-k]"));
+  function run() {
+    var t = q.value.trim().toLowerCase(), words = t.split(/\s+/).filter(Boolean), shown = 0;
+    items.forEach(function (el) {
+      var hay = (el.getAttribute("data-k") + " " + el.textContent).toLowerCase();
+      var hit = words.every(function (w) { return hay.indexOf(w) !== -1; });
+      el.classList.toggle("hidden", !hit);
+      if (hit) shown++;
+      if (el.tagName === "DETAILS") el.open = !!t && hit;
     });
-    var label = {all:'Everyone', office:'Office', sales:'Sales rep', manager:'Sales manager', pm:'Project manager', ops:'Ops / Owner'}[role];
-    note.textContent = (role === 'all')
-      ? stages.length + ' stages shown'
-      : shown + ' of ' + stages.length + ' stages involve ' + label;
+    document.querySelectorAll(".grp").forEach(function (g) {
+      g.classList.toggle("hidden", !!t && !g.querySelector("[data-k]:not(.hidden)"));
+    });
+    n.textContent = t ? shown + " found" : "";
+    none.classList.toggle("hidden", !t || shown > 0);
   }
-
-  btns.forEach(function(b){
-    b.addEventListener('click', function(){
-      btns.forEach(function(o){ o.setAttribute('aria-pressed', String(o === b)); });
-      apply(b.getAttribute('data-role'));
-    });
-  });
+  q.addEventListener("input", run);
 })();
 </script>
 </body>
