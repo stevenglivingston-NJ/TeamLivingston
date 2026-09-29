@@ -2,49 +2,75 @@
 # =============================================================================
 # companycam.sh — CompanyCam API access over curl
 # -----------------------------------------------------------------------------
-# Why this exists: scheduled Routines (Foreman, Goldeneye, ...) are Claude-
-# created, so they fire in Auto mode, where the connector-call classifier
-# prompts before an mcp__* tool it hasn't already approved. A non-interactive
-# scheduled fire can't answer that prompt — the session doesn't error, it sits
-# in REQUIRES_ACTION forever, and the next fire stalls in the identical spot.
-# That is the exact mechanism documented in CLAUDE.md's "Scheduled runs stall
-# on MCP connector calls" section for ServiceMinder/HighLevel/Supabase/GMB; it
-# applies equally to mcp__CompanyCam__* since that's a connector-gated MCP tool
-# too.
+# Why this exists: same reason as sm.sh / ghl.sh / sb.sh. Scheduled Routines are
+# Claude-created, so they run in Auto mode, where a connector-call classifier
+# prompts before any `mcp__*` tool it has not already approved. A non-interactive
+# scheduled fire CANNOT answer that prompt — the session does not error, it sits
+# in REQUIRES_ACTION forever and the board silently goes stale. That is the
+# single highest-impact failure mode in this repo (CLAUDE.md, verified
+# 2026-08-27, an eight-day outage with every credential valid throughout).
 #
-# Bash is NOT classifier-gated. This helper calls the same CompanyCam v2 REST
-# API directly over curl (same auth as mcp-servers/companycam/server.py:
-# Authorization: Bearer $COMPANYCAM_TOKEN), so agents reach CompanyCam with
-# zero permission prompts and zero dependency on MCP registration — same
-# approach as sb.sh (Supabase), sm.sh (ServiceMinder), ghl.sh (HighLevel).
+# Bash is not classifier-gated. So the labor sync reaches CompanyCam through
+# THIS helper, never through mcp__CompanyCam__* / mcp__companycam__*. The MCP
+# tools stay fine for interactive work where a human can approve a prompt.
 #
 # Usage:
-#   bash mcp-servers/companycam.sh <GET|POST> <path> ['<json-params-or-body>']
-#
-# GET  -> the json object's keys become query-string params.
-# POST -> the json object is sent as the request body.
+#   bash mcp-servers/companycam.sh <path> [query-string]
 #
 # Examples:
-#   bash mcp-servers/companycam.sh GET /projects '{"page":1,"per_page":100}'
-#   bash mcp-servers/companycam.sh GET /projects/12345/photos '{"per_page":50}'
-#   bash mcp-servers/companycam.sh GET /photos '{"modified_since":"2026-09-01T00:00:00Z"}'
-#   bash mcp-servers/companycam.sh GET /projects/12345/notes
-#   bash mcp-servers/companycam.sh GET /projects/12345/labels
-#   bash mcp-servers/companycam.sh GET /users/current
+#   bash mcp-servers/companycam.sh /v2/timeentries 'per_page=100&status=completed'
+#   bash mcp-servers/companycam.sh /v2/timeentries 'since=2026-09-01T00:00:00Z'
+#   bash mcp-servers/companycam.sh /v2/projects    'per_page=100'
+#   bash mcp-servers/companycam.sh /v2/users
 #
-# Requires env: COMPANYCAM_TOKEN (Bearer token; see mcp-servers/.env.example)
+# TIME TRACKING NOTES (probed live 2026-09-18):
+#   * The time-tracking plan IS active on company 592669 (Kitchen Tune-Up
+#     Bloomfield NJ) — read through the MCP connector, the summary endpoint
+#     answers cleanly rather than returning a plan error. But ZERO hours were
+#     logged in the 30 days to 2026-09-18: the feature is on and nobody is
+#     clocking in. An empty result therefore means "no one clocked in", NOT
+#     "the integration is broken" — never report it as an outage.
+#   * THIS HELPER CANNOT READ TIME ENTRIES, AND NO TOKEN WILL FIX IT.
+#     Established 2026-09-18 after Steven granted time-tracking permissions to
+#     this very token and nothing changed:
+#       - The token authenticates as Takia Livingston, user_role ADMIN, active,
+#         company 592669. So this is not a role problem.
+#       - It returns 200 on /v2/projects, /v2/users, /v2/company, /v2/webhooks,
+#         /v2/tags and /v2/groups, and 401 {"general":"Bad credentials"} on the
+#         time-entry routes ONLY. So the token is live and the route is real.
+#       - CompanyCam's public API docs contain NO time-tracking endpoints.
+#       - Its OAuth scopes are only read / write / destroy — none time-related.
+#       - Its webhook catalogue (project/photo/comment/document/video/todo_list/
+#         task, plus wildcards) has NO time-tracking event either.
+#     Conclusion: time tracking is not exposed on CompanyCam's public API in any
+#     form. The MCP connector reads it through a non-public surface. Only
+#     CompanyCam can open this up — it is an account/support request, NOT
+#     something re-minting a token or ticking a permission box can achieve.
+#   * Diagnosing it needs `Accept: application/json`. Without that header the
+#     same request 302s to /users/sign_in and looks like a wrong path — the
+#     wrong conclusion drawn earlier on 2026-09-18. This helper always sends it.
+#   * Until CompanyCam opens it: jc-labor-sync.py --from-json is the ingest
+#     path. The MCP connector can export entries in an INTERACTIVE session; it
+#     must never be used on a schedule (see the top of this file).
+#   * CompanyCam returns HOURS, NEVER DOLLARS. There is no pay-rate field
+#     anywhere in the API. Costing dollars come from payroll (jc_payroll_periods);
+#     these hours only decide how those dollars SPLIT across jobs.
+#   * There is ONE CompanyCam company covering BOTH brands. Brand is resolved
+#     per project through jc_cc_project_map, never from the account.
 #
-# Returns: the endpoint's JSON payload on stdout. Non-zero exit + JSON
-# {"error":...} on failure. The token is never echoed back (CompanyCam doesn't
-# echo it like ServiceMinder does, but we scrub defensively anyway).
+# Requires env (Cloud environment secrets — see .env.example):
+#   COMPANYCAM_TOKEN   Bearer token, manager/admin scope
+#
+# Returns: the endpoint's JSON on stdout. Non-zero exit + {"error":...} on
+# failure. Pagination cursors come back in the `meta` object; pass the next
+# cursor back as `after=<cursor>`.
 # =============================================================================
 set -uo pipefail
 
-API_BASE="https://api.companycam.com/v2"
+API_BASE="https://api.companycam.com"
 
-METHOD="$(echo "${1:-}" | tr '[:lower:]' '[:upper:]')"
-PATH_IN="${2:-}"
-BODY_IN="${3:-{\}}"
+PATH_IN="${1:-}"
+QS="${2:-}"
 
 TOKEN="${COMPANYCAM_TOKEN:-}"
 if [ -z "$TOKEN" ]; then
@@ -52,78 +78,48 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 if [ -z "$PATH_IN" ]; then
-  echo '{"error":"usage: companycam.sh <GET|POST> <path> [json]  e.g. companycam.sh GET /projects {\"page\":1}"}' >&2
+  echo '{"error":"no path given; e.g. /v2/timeentries, /v2/projects, /v2/users"}' >&2
   exit 2
 fi
-case "$METHOD" in GET|POST) ;; *)
-  echo '{"error":"method must be GET or POST"}' >&2; exit 2 ;;
-esac
 
-# normalize leading slash
-[[ "$PATH_IN" == /* ]] || PATH_IN="/$PATH_IN"
-
-BODY_IN_VALID="$(python3 -c '
-import json, os, sys
-raw = os.environ.get("BODY_IN") or "{}"
-try:
-    body = json.loads(raw)
-except json.JSONDecodeError as e:
-    print(json.dumps({"error": f"json-body is not valid JSON: {e}"}))
-    sys.exit(2)
-if not isinstance(body, dict):
-    print(json.dumps({"error": "json-body must be a JSON object"}))
-    sys.exit(2)
-print(json.dumps(body))
-' 2>&1)"
-rc=$?
-if [ $rc -ne 0 ]; then echo "$BODY_IN_VALID" >&2; exit 2; fi
+URL="${API_BASE}/${PATH_IN#/}"
+[ -n "$QS" ] && URL="${URL}?${QS}"
 
 RESP_FILE="$(mktemp)"
 trap 'rm -f "$RESP_FILE"' EXIT
 
-if [ "$METHOD" = "GET" ]; then
-  QS="$(BODY_IN="$BODY_IN_VALID" python3 -c '
-import json, os, urllib.parse
-body = json.loads(os.environ["BODY_IN"])
-print(urllib.parse.urlencode(body))
-')"
-  URL="$API_BASE$PATH_IN"
-  [ -n "$QS" ] && URL="$URL?$QS"
-  curl -sS -X GET "$URL" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    --max-time 120 -o "$RESP_FILE" || {
-      echo '{"error":"curl failed reaching api.companycam.com"}' >&2; exit 1; }
-else
-  curl -sS -X POST "$API_BASE$PATH_IN" \
-    -H "Authorization: Bearer $TOKEN" \
-    -H "Content-Type: application/json" \
-    --max-time 120 -d "$BODY_IN_VALID" -o "$RESP_FILE" || {
-      echo '{"error":"curl failed reaching api.companycam.com"}' >&2; exit 1; }
-fi
+# -w writes the status code after the body so a 401/403 is distinguishable from
+# an empty-but-valid 200. Without this an expired token reads as "no hours".
+# Accept: application/json is NOT optional. Without it the time-tracking routes
+# answer a browser-shaped request with 302 -> /users/sign_in, which reads like a
+# wrong path. With it the same request returns an honest 401 "Bad credentials".
+# That cost a misdiagnosis on 2026-09-18 — the route was real all along.
+HTTP_CODE=$(curl -sS -X GET "$URL" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  --max-time 120 -o "$RESP_FILE" -w '%{http_code}') || {
+    echo '{"error":"curl failed reaching api.companycam.com"}' >&2; exit 1; }
 
-RESP_FILE="$RESP_FILE" TOKEN="$TOKEN" python3 <<'PY'
-import json, os
+RESP_FILE="$RESP_FILE" HTTP_CODE="$HTTP_CODE" python3 <<'PY'
+import json, os, sys
+code = os.environ["HTTP_CODE"]
 with open(os.environ["RESP_FILE"], encoding="utf-8", errors="replace") as fh:
     raw = fh.read()
-tok = os.environ.get("TOKEN", "")
+
+if code == "401":
+    print(json.dumps({"error": "CompanyCam returned 401 'Bad credentials'. Note this can be PER-ENDPOINT: the same token returns 200 on /v2/projects and /v2/users while the time-tracking routes reject it, because time tracking authorizes separately. So a 401 here does not mean the token is dead — check another endpoint before assuming that.", "http": 401, "body": raw[:300]}))
+    sys.exit(1)
+if code == "403":
+    print(json.dumps({"error": "CompanyCam returned 403 — the token lacks manager/admin scope. Time-entry reads require it; a standard-user token cannot read them at all.", "http": 403}))
+    sys.exit(1)
+if code.startswith(("4", "5")):
+    print(json.dumps({"error": f"CompanyCam returned HTTP {code}", "http": int(code), "body": raw[:500]}))
+    sys.exit(1)
+
 try:
-    data = json.loads(raw)
+    print(json.dumps(json.loads(raw), indent=1))
 except json.JSONDecodeError:
-    if not raw.strip():
-        print(json.dumps({"error": "empty response from CompanyCam (check the path — a wrong path usually 404s with a JSON body, but an empty body can mean a routing/auth problem)"}))
-        raise SystemExit(1)
-    print(raw.replace(tok, "<redacted>") if tok else raw)
-    raise SystemExit(0)
-
-def scrub(o):
-    if isinstance(o, dict):
-        return {k: ("<redacted>" if "token" in k.lower() else scrub(v)) for k, v in o.items()}
-    if isinstance(o, list):
-        return [scrub(v) for v in o]
-    if isinstance(o, str) and tok and tok in o:
-        return o.replace(tok, "<redacted>")
-    return o
-
-print(json.dumps(scrub(data), indent=1))
+    print(json.dumps({"error": "CompanyCam returned non-JSON", "http": int(code), "body": raw[:500]}))
+    sys.exit(1)
 PY

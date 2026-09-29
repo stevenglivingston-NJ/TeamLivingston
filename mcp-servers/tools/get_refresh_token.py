@@ -5,8 +5,18 @@ Every Google-backed server here (google-ads, gmb, google-analytics, and now
 Tag Manager) authenticates the same way: a Desktop OAuth client plus a
 long-lived refresh token held in an environment variable. Scopes do NOT carry
 across tokens — the google-ads token 403s against the Analytics API, and it
-403s against Tag Manager too (verified 2026-08-23). Each API needs its own
-token minted with its own scopes.
+403s against Tag Manager too (verified 2026-08-23). Analytics and Tag Manager
+each need their own token minted with their own scopes.
+
+The ONE exception is gmb: it has no token of its own. gmb/server.py and gmb.sh
+both read GOOGLE_ADS_REFRESH_TOKEN, so the `ads` preset deliberately requests
+business.manage alongside adwords. Re-minting `ads` without business.manage
+leaves Google Ads working and breaks every GMB call — a silent, one-sided
+failure. See the comment on that preset.
+
+Gmail is the opposite of the gmb case: it needs its OWN tokens, one per
+mailbox, because each mailbox is a separate Google account — see the
+`gmail-firstgentalent` / `gmail-ktubtubilling` presets below.
 
 `server.py` in google-ads has referenced this script for months without it
 existing in the repo. This is that script.
@@ -29,7 +39,9 @@ Presets:
                    the above plus publish rights — an agent can ship a
                    container live with no human step. Prefer `tagmanager`.
   analytics        GA4 Data API (matches the existing GA4_REFRESH_TOKEN).
-  ads              Google Ads API (matches GOOGLE_ADS_REFRESH_TOKEN).
+  ads              Google Ads API + Google Business Profile (matches
+                   GOOGLE_ADS_REFRESH_TOKEN, which gmb shares). Requests
+                   adwords AND business.manage — do not drop either.
   gmail-firstgentalent / gmail-ktubtubilling
                    Gmail API, read-only, for the two ops mailboxes Foreman/Paid
                    read via Zapier today. Run this WHILE LOGGED INTO THE
@@ -70,8 +82,19 @@ PRESETS: dict[str, tuple[str, list[str]]] = {
         ["https://www.googleapis.com/auth/analytics.readonly"],
     ),
     "ads": (
+        # ONE token, TWO APIs. gmb/server.py and gmb.sh both read
+        # GOOGLE_ADS_REFRESH_TOKEN (bootstrap.sh passes it to the gmb server) —
+        # there is no GMB_REFRESH_TOKEN. So this preset MUST request
+        # business.manage as well as adwords. Minting with adwords alone
+        # produces a token that still works perfectly for Google Ads and
+        # silently 403s every Google Business Profile call — reviews, hours,
+        # location info, the lot. Verified 2026-09-22 by introspecting the live
+        # token at oauth2.googleapis.com/tokeninfo: it carries both scopes.
         "GOOGLE_ADS_REFRESH_TOKEN",
-        ["https://www.googleapis.com/auth/adwords"],
+        [
+            "https://www.googleapis.com/auth/adwords",
+            "https://www.googleapis.com/auth/business.manage",
+        ],
     ),
     "gmail-firstgentalent": (
         "GMAIL_REFRESH_TOKEN_FIRSTGENTALENT",

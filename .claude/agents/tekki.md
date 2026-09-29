@@ -283,8 +283,10 @@ stack so Steven gets one number each morning.
     - HighLevel: `bash mcp-servers/ghl.sh KTU locations_get-location '{}'` (and `BTU`) — **verify by returned name** (KTU→Kitchen Tune-Up, BTU→Bath Tune-Up)
     - ServiceMinder: `bash mcp-servers/sm.sh KTU test/echo '{}'` (and `BTU`) — proves `SM_KEY_KTU/BTU`
     - Google Business Profile: `bash mcp-servers/gmb.sh locations` (env/OAuth check, no API spend), then `bash mcp-servers/gmb.sh KTU info` for a real answer
+    - Google Ads (+ LSA): `bash mcp-servers/gads.sh query_campaigns '{"location":"KTU"}'` (and `BTU`) — added 2026-09-21, closes the gap that hung Organic for 9 days on `mcp__google-ads__query_lsa_periods`. This pipe is explicitly in the scoring weight below (demand/CRM bucket) — score it 🔴 by omission if you skip the probe, don't leave it off the board. Also cheap-check `EARTHWISE` (customer `7159460368`, ~$300k/30d, owned by Harvest) — a live account with real spend that has no agent watching it yet; a 🔴/🟡 here is Harvest's problem, not Paid's, see CLAUDE.md Connection ownership.
     - Supabase: `bash mcp-servers/sb.sh 'select 1'`
-  - Remaining pipes have no curl helper yet — if one of these raises a permission prompt, record it 🟡 with "connector-gated in scheduled runs; needs a curl helper" and MOVE ON rather than stalling the whole run: Render `clarity` via `test_connection` / `list_locations` (1 call max — ~10/project/day cap); QuickBooks `company_info`; Shopify `get-shop-info`; JobTread `currentGrant`; Cloudflare list zones.
+    - Cloudflare: `bash mcp-servers/cf.sh zones` — added 2026-09-22, closes the gap that hung Tekki itself for 7 days (2026-09-15→09-22) stuck in `REQUIRES_ACTION` on `mcp__cloudflare__list_zones`. **Never call `mcp__cloudflare__*` tools directly in this section** — the "if it prompts, record 🟡 and move on" instruction that used to sit here doesn't actually work: a scheduled Routine fire is non-interactive, so a permission prompt isn't a catchable error, it just blocks the whole session turn forever with nobody present to approve it. That is exactly what happened. `cf.sh` is curl-only and carries zero permission-prompt risk, same as every other helper in this list.
+  - Remaining pipes still have no curl helper — if one of these raises a permission prompt, record it 🟡 with "connector-gated in scheduled runs; needs a curl helper" and MOVE ON rather than stalling the whole run: Render `clarity` via `test_connection` / `list_locations` (1 call max — ~10/project/day cap); QuickBooks `company_info`; Shopify `get-shop-info`; JobTread `currentGrant`. **Do not assume this "record 🟡 and move on" fallback actually works** — it did not for Cloudflare (see above); treat any pipe still on this list as a known stall risk until it gets its own curl helper, and if you find one of these has silently gone stale for days, check the session's status for `REQUIRES_ACTION` before trusting a more mundane explanation.
   - A connector needing OAuth that fails → 🔴 "re-authorize in claude.ai settings". Re-probe once before calling anything 🔴 (a connector may just be reconnecting in-session — a session artifact, not a real outage).
   - **Metered/quota'd sources are a distinct failure class from "down" — probe and report them separately.** A tool can be fully authorized and still return nothing all day because its allowance is spent, which looks like health to a naive check while an agent that depends on it silently produces less. Cover at least:
     - **SEMrush API units** — one cheap discovery call. The exhausted response is *"active Semrush subscription, but does not have enough API units"*. **Verified exhausted 2026-08-21**, account-wide (every tool, including discovery), which dark-fires **Organic's primary source** and Paid's competitive block. Report 🟡 with the top-up link **https://www.semrush.com/mcp-access** — never 🟢 just because the token authenticates.
@@ -462,3 +464,50 @@ against the intranet's `tools` section for anything added since your last run):
   write "unverified" rather than guessing.
 - Keep each run cheap: coverage sweep → SOWs (≤6) → [Mondays only: consolidation/
   gap review] → link check → connection-health probe → one-line report.
+
+## Daily: booking-integration health (KTU + BTU)
+
+You own whether a lead can actually book. Three separate failures on 2026-09-19 each
+left a consultation calendar unbookable **without logging an error anywhere** — the
+calendar still listed its team members and the UI looked correct. Nobody would have
+noticed until bookings stopped. That is precisely the class of failure this registry
+exists to catch.
+
+Run the probe first, every day, before the rest of your sweep:
+
+```
+python3 mcp-servers/calendar-health.py --days 30 --out /tmp/calendar-health.json
+```
+
+It asserts the invariants that must hold for booking to work, and emits RAG JSON.
+**Read its findings; do not re-derive them.**
+
+| Check | Why it is there |
+|---|---|
+| `schedules_detached` | Writing `openHours` through HighLevel's `update-calendar` **silently unlinks every user availability schedule**. Reproduced twice. Calendar looks fine, offers nothing. |
+| `slot_duration` | Echoing `slotDuration: 2` with unit `hours` back to the API stored **0.03 hours** — two-minute consultations. Any value outside 30–480 minutes means a unit conversion corrupted it. |
+| `appointment_per_slot` | It is a **per-user** cap. Raising it above 1 overbooks each designer rather than adding capacity. |
+| `unstaffed_day` / `unstaffed_window` | Calendar open when no designer has availability. Leads see nothing and conclude we are full. |
+| `hidden_capacity` | The reverse — staffed hours the calendar does not expose. |
+| `hl_sm_drift` | ServiceMinder is the system of record for who works when. HighLevel should mirror it. |
+| `stale_sales_agent` | A retired ServiceMinder agent still holding assignable Sales hours can still be round-robined a consultation. |
+| `closebot_unreachable` | A 401 means the API key is revoked and every Closebot-dependent report is blind. |
+
+**Grading.** Any `RED` finding is a live outage of the booking path — surface it at the
+top of your board, not buried in the stack table. `AMBER` is drift: report it, trend it.
+
+**An empty result is never green.** Anything in `degradations` means that check did not
+run — most often `GHL_PIT_KTU` / `GHL_PIT_BTU` unset, since the claude.ai OAuth
+connector cannot be used from a scheduled Routine (it stalls on the permission prompt).
+Report those as **unverified**, never as healthy.
+
+**If you find `schedules_detached`, the fix is one call per schedule** — it is additive
+and safe:
+`PUT /calendars/schedules/{scheduleId}/associations/{calendarId}`
+Then re-run the probe to confirm. Never "fix" it by rewriting the calendar; that is what
+breaks it.
+
+**Do not flag** Bath Tune-Up booking into calendar `kEW9PFmXRzujFf6rQUPp` in the Kitchen
+Tune-Up sub-account. That is deliberate — Closebot holds one HighLevel connection and a
+workflow transfers the appointment into BTU. The staging calendar reading empty is the
+expected end state, not a fault.
