@@ -198,15 +198,25 @@ def lines_from_jt(items):
         if not name:
             continue
         ctype = ((it.get("costType") or {}) or {}).get("name")
-        qty = num(it.get("quantity")) or 0
+        # JobTread treats a NULL quantity as 1 in its own cost/price rollups
+        # (vendor-confirmed 2026-09-10: unit cost 100 / unit price 130 with no
+        # quantity rolls up as cost 100 and price 130). So the fallback below
+        # must use the same effective quantity -- multiplying by a literal 0
+        # recorded cost 0 against the FULL price, which flatters gross margin
+        # and makes the 45% gate less likely to escalate a job that deserves it.
+        # NULL and an explicit 0 are NOT the same thing here: null means 1,
+        # while a deliberate 0 zeroes both cost and price. `qty or 1` conflated
+        # them, so an item zeroed on purpose still carried a full unit of cost.
+        raw_qty = num(it.get("quantity"))
+        eff_qty = 1 if raw_qty is None else raw_qty
         ucost = num(it.get("unitCost"))
         cost = num(it.get("cost"))
         price = num(it.get("price"))
         cat = categorize(name, cost_type=ctype)
         out.append({
-            "description": name[:400], "category": cat, "qty": qty or 1,
+            "description": name[:400], "category": cat, "qty": eff_qty,
             "unit_cost": ucost,
-            "forecasted_cost": cost if cost is not None else ((qty * ucost) if ucost else None),
+            "forecasted_cost": cost if cost is not None else ((eff_qty * ucost) if ucost is not None else None),
             "amount_charged": price,
             "cost_code": ((it.get("costCode") or {}) or {}).get("name"),
             "source_line_id": str(it.get("id") or ""),
