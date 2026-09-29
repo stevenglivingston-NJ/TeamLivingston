@@ -9,14 +9,17 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
 <link rel="stylesheet" href="/assets/playbook.css">
+<link rel="stylesheet" href="/assets/fold.css">
 </head>
 <body>
 <nav class="pbnav" aria-label="Playbook"><div class="in">
   <b>Playbook</b>
-  <a href="/">Lead to Last Nail</a>
+  <a href="/">Library</a>
+  <a href="/lead-to-last-nail/">Lead to Last Nail</a>
   <a href="/btu-handover-sop/">BTU Handover SOP</a>
   <a href="/ktu-handover-standard/">KTU Handover Standard</a>
   <a href="/selections-and-ordering/" aria-current="page">Selections &amp; Order Sheet</a>
+  <a href="/systems/">Systems</a>
   <a class="ext" href="https://dash.goaxyom.com/">Intranet ↗</a>
 </div></nav>
 
@@ -39,7 +42,7 @@
 </section>
 
 <section>
-  <h2>1. Three records, three jobs</h2>
+  <h2 data-desc="Client picks, the signed Selection Sheet, and the order sheet + Job Tracker: where each lives and what it is for.">1. Three records, three jobs</h2>
   <div class="cards">
     <div class="card"><h3>Client picks</h3><p><b>Where:</b> JobTread job → Selections tab (simple selections), or the pricing tool's client selection link.</p><p>Where the client chooses. One decision per sheet ("Choose your faucet"), every final pick ticked. It is a preference, not a signature, and never the order record.</p></div>
     <div class="card"><h3>Selection Sheet (signed)</h3><p><b>Where:</b> JobTread job → Documents → New → Selections → template "Order Sheet — final selections (PDF)".</p><p>The signed, printable buy list. Built once the picks are final; prices hidden and excluded from the budget total (the proposal carries pricing). Signed the same day as the Design Packet.</p></div>
@@ -48,7 +51,7 @@
 </section>
 
 <section>
-  <h2>2. Every line on the Selection Sheet</h2>
+  <h2 data-desc="The line standard: make, model/SKU, finish, quantity with unit, one source, fit notes, supplied-by.">2. Every line on the Selection Sheet</h2>
   <ul class="check">
     <li><b>Group</b> = the category (Faucet, Lighting, Floor tile, Grout, Trim…), one group per category.</li>
     <li><b>Name</b> = make + model/collection + finish + SKU. Never just "Mirror".</li>
@@ -69,7 +72,7 @@
 </section>
 
 <section>
-  <h2>3. The categories people forget</h2>
+  <h2 data-desc="Install materials and small parts that are easy to miss and delay jobs.">3. The categories people forget</h2>
   <p>Every category is marked <b>selected</b> or <b>N/A</b>. None are left blank. The bathroom list is <a href="/btu-handover-sop/">BTU-OPS-001 §5.2</a>; these are the ones missed most often, on both brands:</p>
   <ul>
     <li><b>Install materials:</b> grout (type and color), Schluter/edge trim (profile and finish), floor transitions, waterproofing, backer board, wet-wall adhesive, thin-set, caulk color-matched to grout, sealer.</li>
@@ -83,7 +86,7 @@
 </section>
 
 <section>
-  <h2>4. Where to buy (defaults)</h2>
+  <h2 data-desc="Default stores and vendors by category, so every line has one decided source.">4. Where to buy (defaults)</h2>
   <div class="tbl"><table>
     <thead><tr><th>Category</th><th>Default store</th></tr></thead>
     <tbody>
@@ -98,7 +101,7 @@
 </section>
 
 <section>
-  <h2>5. Before the sheet goes for signature</h2>
+  <h2 data-desc="The pre-signature checklist, and what happens after the client signs.">5. Before the sheet goes for signature</h2>
   <ol>
     <li>Nothing is open. No "TBD", "not selected", "client to decide" or "see if X has it".</li>
     <li>Anything over allowance goes out as a change order first.</li>
@@ -110,44 +113,45 @@
 </section>
 
 <section>
-  <h2>6. The order sheet (pricing tool)</h2>
-<div class="note" id="status-order-sheet"><span class="k">Status — in build (Sept 29, 2026)</span>The pricing tool's order sheet is being built now. Until this note is removed, build the order sheet in JobTread with the "Order Sheet — final selections (PDF)" template and email the handover by hand.</div>
+  <h2 data-desc="How the order sheet is built from JobTread, what &quot;Needs info&quot; means, and who receives it.">6. The order sheet (pricing tool)</h2>
+<div class="note" id="status-order-sheet" style="background:var(--ok-soft);border-left-color:var(--ok)"><span class="k" style="color:var(--ok)">Status — live (Sept 29, 2026)</span>The order sheet is live in the pricing tool. Open the job → <b>Order sheet</b>, or use the link in the order email.</div>
   <p>When a client approves selections in the pricing tool, it builds the job's order sheet from <b>JobTread's finalized estimate</b> — quantities, costs and prices as quoted — and pairs each estimate line with the product the client chose for it.</p>
   <ul>
     <li><b>One row per item</b>: category, item, chosen product (make/model/finish), SKU, source, link, quantity and unit, expected unit cost, expected cost, expected retail, expected margin.</li>
     <li><b>Grouped by vendor</b>, so each group is one purchase order.</li>
     <li><b>Needs info</b> on any line missing SKU, finish, quantity or source. The sheet only reads <b>Ready to order</b> when there are none — the tool enforces the same rule as the Production Gate.</li>
-    <li><b>Labor lines</b> appear for margin (expected cost) but are marked "not ordered".</li>
+    <li><b>Labor, fees and services</b> (delivery, sink cutout, project fee) appear for margin but are marked "not ordered". Install materials on the estimate (grout, setting materials, paint) show as <b>Needs info</b> until the sheet names them; general supplies show "Supplies — confirm"; materials a sub supplies (heated-floor mat) show "Sub supplies — confirm spec".</li>
     <li>It drafts the Handover Email for Sales and sends the order-sheet notice to the recipients set in the pricing tool's admin screen (default TLivingston@kitchentuneup.com, both brands). The PM (Mayra) places orders for both brands.</li>
-    <li>The approved selections are written back to the JobTread job as a selections document, with a comment linking the order sheet.</li>
+    <li>The approved selections are written back to the JobTread job as a selections document. The job also gets a comment with the order sheet link whenever the sheet's status changes (not on every refresh).</li>
+    <li>Anyone on the team can rebuild it: open the job in the pricing tool → <b>Order sheet</b>. It also refreshes itself from JobTread every 2 hours, so a quantity fixed in JobTread reaches the sheet and the tracker.</li>
   </ul>
   <div class="note"><span class="k">Known data gap</span>JobTread catalog items have no vendor or SKU field. The tool reads SKUs from item names and sources from links in the description, and anything it can't find is <b>Needs info</b>. The permanent fix is filling in make, model/SKU and a "Buy:" link on the catalog items themselves.</div>
 </section>
 
 <section id="tracker">
-  <h2>7. The Job Tracker (Google Sheet)</h2>
-<div class="note" id="status-tracker"><span class="k">Status — in build (Sept 29, 2026)</span>The Job Tracker is being built now. Until this note is removed, log orders, ship dates and actual costs on the job in JobTread.</div>
+  <h2 data-desc="The live tracker: what updates itself, what you type, strikethrough on removal, change log, Summary tab.">7. The Job Tracker (Google Sheet)</h2>
+<div class="note" id="status-tracker"><span class="k">Status — connecting (Sept 29, 2026)</span>The workbook is set up in .Project Management and the sync is built. Its first automatic fill is waiting on Google Sheets access being switched on for our Google account. Until your job has its own tab, log orders, ship dates and actual costs on the job in JobTread.</div>
   <p><b>Where:</b> Google Drive (ktubloomfieldnj) → <b>.Project Management</b> → "Job Tracker — KTU &amp; BTU (live)". One workbook, a tab per finalized job, a Summary tab and a Change log tab. It is the live job tracker from ordering to closeout.</p>
   <h3>7.1 What updates itself, and what you type</h3>
   <div class="tbl"><table>
     <thead><tr><th>Columns</th><th>Filled by</th></tr></thead>
     <tbody>
-      <tr><td>Category · Item · Selection · SKU · Source · Link · Qty · Unit · Expected unit cost · Expected cost · Expected retail · Expected GP</td><td><b>Automatic</b> from JobTread and the pricing tool, every 30 minutes and whenever selections change. Don't type in these columns; your edits would be overwritten.</td></tr>
+      <tr><td>Status · Needs · Vendor / source · Category · Product · SKU · Qty · Unit · Budget line · Exp. unit cost · Exp. cost · Exp. retail · Exp. GP · Link</td><td><b>Automatic</b> from JobTread and the pricing tool, every 2 hours and whenever a client approves or someone presses Order sheet. Don't type in these columns; your edits would be overwritten.</td></tr>
       <tr><td>Order status · PO # · Order date · Ship/ETA · Received date · Actual cost · Notes</td><td><b>You</b> (PM / purchasing). Never overwritten by the sync.</td></tr>
-      <tr><td>Actual GP · variance</td><td><b>Formulas</b> from what you type against what was expected.</td></tr>
+      <tr><td>Actual GP · the totals in rows 1–4</td><td><b>Formulas</b> from what you type against what was expected. Removed rows are left out of the totals.</td></tr>
     </tbody>
   </table></div>
   <h3>7.2 Rules</h3>
   <ul>
-    <li><b>Nothing is deleted.</b> When an item comes off the job, its row is struck through and marked Removed, with the date. A change shows as a struck-through old row and a new row.</li>
+    <li><b>Nothing is deleted.</b> When an item comes off the job, its row is struck through, greyed and marked Removed, with the date. If it comes back, the strike is lifted and the log says Restored. A swapped product shows as the old row struck through and a new row.</li>
     <li><b>Every tab shows</b> date created and by whom, last update and by whom (the sync or a person).</li>
     <li><b>The Change log tab</b> records every automatic change: what, old → new, when, triggered by whom.</li>
-    <li><b>Summary tab:</b> per job, expected retail, expected cost, expected margin, actual cost to date, actual gross profit and the variance — the live margin view for the owners.</li>
+    <li><b>Summary tab:</b> per job, expected retail, expected cost, expected GP and GP %, actual cost to date, actual GP and actual GP %, readiness, and a link to each job's tab — the live margin view for the owners.</li>
   </ul>
 </section>
 
 <section>
-  <h2>Don't</h2>
+  <h2 data-desc="The four mistakes that cause wrong orders.">Don't</h2>
   <ul>
     <li>Mark a selection Approved yourself — the client approves by signing.</li>
     <li>Create a second job or a pile of draft "Selection" documents for the same client.</li>
@@ -157,7 +161,7 @@
 </section>
 
 <section>
-  <h2>Change log</h2>
+  <h2 data-desc="What changed in each version and why.">Change log</h2>
   <div class="tbl"><table>
     <thead><tr><th>Version</th><th>Date</th><th>Changes</th></tr></thead>
     <tbody>
@@ -169,5 +173,6 @@
 
 </main>
 <footer><div class="wrap"><p>Source of truth: this page (playbook.ktubtu.com), maintained in the TeamLivingston repository under playbook/.</p></div></footer>
+<script src="/assets/fold.js" defer></script>
 </body>
 </html>
