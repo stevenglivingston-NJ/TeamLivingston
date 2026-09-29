@@ -6,6 +6,39 @@ This environment manages operations for two business groups:
 - **KTUBTU** — Kitchen Tune-Up (KTU) and Bath Tune-Up (BTU) franchise locations in Bloomfield, NJ
 - **Jatalia** — Jatalia / Earthwise brand operations
 
+## Where things live (canonical map, 2026-09-28)
+
+**Nothing runs on anyone's computer.**
+- Code lives in four GitHub repos.
+- It runs on Cloudflare and Supabase.
+- Secrets live in Cloudflare Worker secrets, Supabase (`app_secrets`, function secrets) or the Claude cloud environment's env vars.
+
+Before assuming something is "in TeamLivingston", check this table. The client-facing apps live in `ktu-pricing-build`.
+
+| System | Live at | Code | Runs on | Deploys |
+|---|---|---|---|---|
+| **Design Journey client portal**<br>Style quiz, invite links, designer brief `/brief/…`, post-consult survey `/f/k` `/f/b`, rep tool `/send`, journeys and funnel `/send/journeys`, tier cheat sheets `/tiers`, Pick the look `/tiers/pick` | design.ktubtu.com | `stevenglivingston-NJ/ktu-pricing-build` → `portal/` | Cloudflare Worker `ktubtu-design`<br>KV `PORTAL` 6cbe1ee64f1a42039864231f72c81d30 | `.github/workflows/deploy-portal.yml` on push to main, or `npx wrangler deploy` from `portal/` |
+| **Pricing app** | pricing.ktubtu.com | `ktu-pricing-build` → `app/` | Cloudflare Worker `ktubtu-pricing`<br>KV `STATE` eac228b23726485389a6236be9f72e0a<br>JobTread holds the engine | `deploy-worker.yml` (paths `app/**`) |
+| **Order sheets + Job Tracker** (buy list per job from JobTread's finalized estimate + approved selections; Google Sheet with a tab per job, order status, actual cost/GP, strikethrough on removal, change log) | Order sheet at pricing.ktubtu.com/o/&lt;token&gt;. Tracker: Google Sheet "Job Tracker — KTU & BTU (live)" `1z-gqWRY1jFKir9tZeAslAwE1JzpGpCmiGuXYJLs8aag` in Drive `.Project Management` | `ktu-pricing-build` → `app/src/orders.js`, `app/src/sheets.js` | Pricing Worker. KV `ordersheet:<jobId>`, `ordertok:<token>`, `notify:config` (recipients; edit in Admin → Notifications). Worker secrets `GOOGLE_SHEETS_REFRESH_TOKEN`, `GOOGLE_OAUTH_CLIENT_ID/SECRET` | With the pricing app. Rebuilt on each client acceptance and every 2 h on the `45 */2` cron (`ordersheet:_lastRefresh`) |
+| **Design Journey invite, booking text and survey templates** | Pasted into ServiceMinder | `ktu-pricing-build/portal/email/build.py`, which writes `{ktu,btu}-invite.html`, `-subject.txt`, `-invite-sms*.txt` | ServiceMinder sends them | Re-run `build.py`, zip `index.html` and upload to ServiceMinder. **The repo is the source of truth**; ServiceMinder only holds copies |
+| **Style quiz content** | Inside the portal | Rounds and tips: `portal/tools/style_rounds.py`<br>Build: `build_quiz.py`<br>Evidence: `portal/docs/DESIGN-JOURNEY-QUIZ-EVIDENCE.md`<br>Photos: from `ktu-lookbook/img` | Portal KV `flag:quiz_v2` = `"true"` switches it on | Rebuild, then deploy the portal |
+| **Live browser checks** for the portal | none | `ktu-pricing-build/portal/tools/e2e/` (see its README) | Any Claude cloud session (Playwright is pre-installed) | none |
+| **Lookbooks** | lookbook.ktubtu.com | `stevenglivingston-NJ/ktu-lookbook` | Built by its GitHub Action | `.github/workflows/publish.yml`: on push, daily cron, or a `catalogue-changed` dispatch |
+| **Supabase functions for this repo**<br>`consult-sms-reply`, `consult-feedback`, `dispatch-notify`, `consult-completion-tagger`, `sm-agent-sync`, `jc-forecast-sync`, `rep-card`, `ingest-email`, `admin-users` | Supabase project `tguwpswcneywvscxzyef` | `TeamLivingston/supabase/functions/` | Supabase Edge Functions | Supabase CLI or MCP `deploy_edge_function` |
+| **Supabase function `queue-notify`** (designer email queue) | same project | `ktu-pricing-build/supabase-functions/` | Supabase | `deploy-supabase-functions.yml` |
+| **Axyom intranet** (Tech Stack tab carries the current diagrams of the whole setup) | dash.goaxyom.com | `stevenglivingston-NJ/KTUBTU-Intranet` → `index.html` + `worker.js`. **Not** this repo's `intranet/`, which was archived 2026-09-13 (see `intranet/ARCHIVED.md`) | Cloudflare Worker `ktubtuintranet` | Automatic on push to `main` (Cloudflare Workers Builds) |
+| **Playbook** (Lead to Last Nail, BTU Handover SOP BTU-OPS-001, KTU Handover Standard V2, Selections & Order Sheet, Systems & Where Things Live) | playbook.ktubtu.com | This repo, `playbook/` (see its README) | Cloudflare Pages `ktu-playbook` | `npx wrangler pages deploy . --project-name ktu-playbook --branch main` from `playbook/`. Linked from the intranet Playbook tab |
+| **Design mocks** (Design Journey canvas) | https://claude.ai/artifact/JkYyRXszcHyy6EWwwRm7ZA | none | claude.ai | Edited from a Claude session |
+
+**Deploy rules. Both were learned the hard way on 2026-09-28.**
+1. **Only deploy code that contains current `main`.** Merge `origin/main` into your branch first. `wrangler deploy` uploads your working tree, so a stale branch silently reverts other sessions' live work. On 2026-09-28 that took `/tiers/pick` down for about 30 minutes.
+2. **Merge what you deploy.** If the live site runs code that isn't on `main`, the next deploy from `main` undoes it.
+
+**GitHub Actions account block (2026-09-27 ~22:45 → cleared by 2026-09-29).**
+- **Symptom, if it recurs:** every Actions job in every private repo fails within 3 seconds, with `runner_id 0` and no logs.
+- **Cause:** GitHub refuses to start jobs at the account level (billing: minutes used up with a $0 spending limit, or a failed payment). Fix it in GitHub → Settings → Billing and plans. While blocked, deploy by hand from a Claude cloud session (`npx wrangler deploy` with `CLOUDFLARE_API_TOKEN`).
+- **2026-09-29:** `deploy-worker.yml` runs succeed again. `deploy-supabase-functions.yml` still fails, but that is a separate cause: its repo secret `SUPABASE_ACCESS_TOKEN` returns 401 and must be renewed. Until then, deploy `queue-notify` with the Supabase MCP `deploy_edge_function`.
+
 ## MCP Servers
 
 ### KTUBTU Servers
@@ -95,6 +128,8 @@ Direct-access helpers (curl/CLI, NOT registered MCP servers — no bootstrap nee
   sm.sh               → ServiceMinder Open API over curl
   gmb.sh              → Google Business Profile over curl (mints its own OAuth token)
   lead-sweep.py       → daily ad-response / missed-lead / booking-integrity sweep
+  hl-field-sync.py    → SM→HighLevel proposal tags + SM Last Proposal Date/Status
+                        (fill-missing only; runs in the office-address Routine)
   tracking-audit.py   → daily tracking-health sweep (GTM/GA4/Ads/HL/Clarity/Meta
                         config drift — paused conv tags, wrong-brand containers,
                         foreign ids, unattributed leads); Paid runs it first,
@@ -205,6 +240,23 @@ level, none cost-related. The **only** write surface is a contact note, so the
 intranet queues one (`jc_sm_note_log`, status `pending`) after a person confirms
 which SM proposal it attaches to, and the sync posts it server-side. The browser
 never holds an SM key — SM authenticates with its ApiKey inside the request body.
+
+**`hl-field-sync.py` — keeps HighLevel's proposal fields filled from ServiceMinder (2026-09-22).**
+Runs inside the office-address Routine (`trig_01QqB9tL5vcAMsrtRdiLqYiw`), once a day on
+the 12:00 UTC fire. For every SM contact whose proposals changed in the last 3 days it
+finds the HighLevel contact (phone → email, name-guarded) and fills only what's missing:
+tag `has proposal`, tag `won` (if signed and no won-family tag yet), and the DATE/TEXT
+fields `SM Last Proposal Date` / `SM Last Proposal Status`. Never removes a tag, never
+touches another field, never creates/deletes a contact. Ambiguous phone matches (name
+differs) are skipped and reported. Do **not** use the older `Proposal Date Sent` /
+`Proposal Status` fields for filtering: they are TEXT, sparsely filled, and the legacy
+SM→HL sync writes a status-change date into them (audit 2026-09-22).
+
+```
+python3 mcp-servers/hl-field-sync.py --dry-run          # report only
+python3 mcp-servers/hl-field-sync.py                    # last 3 days, both brands
+python3 mcp-servers/hl-field-sync.py --full             # re-backfill everything
+```
 
 **`ghl.sh` — HighLevel without MCP registration.** `bootstrap.sh` runs from the
 Cloud environment's setup script, so when that step doesn't run (or runs after

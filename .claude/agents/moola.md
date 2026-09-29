@@ -571,6 +571,195 @@ If a source is unavailable this scan, still write every section you *can* from
 the sources you have; the tab shows a per-section empty state for anything with
 no rows, and a stale banner if the latest `scan_date` is older than today.
 
+## Returned-payment alert — every scan (daily, not weekly); section `moola_returns`
+
+**Owner-directed (2026-09-18): a returned/reversed customer payment must reach Slack
+and email the same run it's detected — do not wait for the weekly reconciliation
+below.** This runs every single Moola scan, independent of the Monday gate on the
+full bank-vs-SM reconciliation. Be honest about the real cadence: Bank Connection
+(and the underlying aggregator) refreshes **once a day**, so "the same run it's
+detected" means **the next daily Moola scan after the bank posts the return**, not
+true real-time — say this plainly if the owner expects instant alerting; it isn't
+available without a push/webhook feed Moola doesn't have.
+
+**Why this has to be a distinct, narrower check from the weekly reconciliation
+below, not a byproduct of it:** a returned payment can be erased from ServiceMinder
+entirely rather than flagged (an office rep deletes the bad payment and re-invoices —
+confirmed practice 2026-09-18: the Rubin/Falkowski $10,977.05 eCheck return on KTU
+was handled exactly this way). A deleted record leaves no SM-side reference text to
+scan, so **the return can only be caught from the bank side**, and only from the
+bank's own transaction-category field — free-text keyword scanning on the
+`description` string is not reliable on its own; a same-day test with a loose
+`R0[1-9]` pattern (hunting ACH return codes) produced a flood of false positives by
+matching ordinary transaction/trace numbers (worse: even a supposedly-safe bare
+`NSF` search matched the substring inside the word "tra**NSF**er" — always require
+the full multi-word phrase and/or `\b` word boundaries, never a bare 2–4 letter
+code against unstructured text). Anchor on the bank's own categorization instead:
+- **A raw bank export/feed that exposes its own category field is authoritative.**
+  Chase's activity export (`Details`/`Type` columns) tags actual returns explicitly
+  as `Type=DEPOSIT_RETURN`; Bluevine's export doesn't have a dedicated type column
+  but reliably labels the description `RTN ITEM` / `Returned Mobile Deposit`.
+  Either way, the description also usually carries the reason (`NSF`,
+  `Dup Presentment`) and sometimes the original check number.
+- **A return label alone does NOT tell you whether money was actually lost —
+  you must walk the account `Balance` column immediately before and after the
+  matching entries to see the real cash effect.** Verified against a full year
+  of KTU (Chase) and BTU (Bluevine) data, 2026-09-18, this split cleanly into two
+  patterns:
+  - **Same-day wash → real loss, money never landed.** A return debit and an
+    offsetting credit (Chase: `RTN ITEM` + `CR Offset`; observed same mechanism
+    on Bluevine) post **on the same day**, and the balance immediately after both
+    entries equals the balance immediately before either of them — i.e. net $0.
+    Confirmed real losses this way: **KTU — Rubin/Falkowski, $10,977.05,
+    8/3/2026** (balance walked $5,345.71 → $16,322.76 → $5,345.71, same day;
+    already handled — deleted and reinvoiced) and **BTU — $1,000.00, 1/5/2026**
+    (same wash pattern; very likely SM invoice **I476111**, $1,000 eCheck,
+    contact 10813101, SM-posted 1/7/2026 — **not yet verified as corrected in SM,
+    flag this to the owner/AR process the same way Rubin/Falkowski was caught**).
+  - **Standalone credit, days later, no same-day offsetting debit → money did
+    arrive, just delayed.** Confirmed real recoveries this way, none of which are
+    losses despite carrying "return"-flavored language: **KTU — Sweeney, invoice
+    I16821042, $13,632.44** (NSF 4/23, a wholly separate `CHECK_DEPOSIT` for the
+    identical amount landed 4/24, nothing further returned all year — SM showing
+    it paid is correct, reversing this repo's earlier draft of this section,
+    which wrongly called it uncorrected without checking for the redeposit);
+    **BTU — invoice I476119, $12,718.80** (returned 1/14, a lone matching credit
+    landed 1/21, seven days later, no accompanying debit that day); **BTU —
+    $11,500.00** (`Returned Mobile Deposit` 7/27, a fresh, separate mobile
+    deposit for the same amount landed 8/5, nothing further since).
+  **Do not classify a hit by label text alone — always do the balance walk**
+  before reporting a finding as a loss or a recovery.
+- **`mcp__Bank_Connection_Truthifi__get_transactions` does not expose an equivalent
+  category** — its `transactionType` enum (checked against the live schema) has no
+  dedicated NSF/return/chargeback value, and free-text matching against its
+  `description` field is the same fragile fallback described above, with the added
+  problem that its aggregated `cash_deposit` categorization can silently merge a
+  `CR Offset`-style correction entry into what looks like an ordinary new deposit,
+  hiding the same-day wash entirely (this is exactly what happened when this
+  section's first draft used Truthifi data alone and concluded Rubin/Falkowski's
+  deposit "cleanly matched the bank" — it took the raw Chase export, which
+  preserves the `RTN ITEM`/`CR Offset` pair, to see the wash). Until Truthifi (or
+  whichever aggregator connector is live) exposes both a real return category and
+  itemized non-netted entries, treat its output as a **lower-confidence
+  supplement**, not the primary detector: scan `description` for the anchored
+  whole-phrase patterns `DEPOSITED ITEM RETURNED`, `RTN ITEM`, `NSF` (word-boundary
+  only), `INSUFFICIENT FUNDS`, `CHARGEBACK`, `DUP PRESENTMENT`, `RETURNED MOBILE
+  DEPOSIT`, `STOP PAYMENT`, `UNPAID ITEM`.
+- **Exhaustive pagination is mandatory before concluding "no returns this scan."**
+  A same-day investigation initially missed the Sweeney redeposit (not the return
+  itself — the mistake there was stopping at the return and not searching forward
+  for a fix) because a paginated `get_transactions` outflow page (`hasMore:true`)
+  was left unfetched earlier in the same investigation. Any call returning
+  `hasMore:true`/a `nextCursor` MUST be followed until exhausted before the scan
+  is allowed to report a clean result.
+
+**Method, every scan:**
+1. Pull outflow (returns post as debits) transactions for every confirmed KTU/BTU
+   deposit account over a rolling **14-day** window (covers typical NSF turnaround
+   of 2–5 business days with margin), paginating fully per above. Also pull the
+   `Balance` field on every row in the window — it's required for step 3.
+2. Flag every row matching the bank's own return category (preferred) or the
+   anchored phrase list (fallback).
+3. **For each hit, walk the balance before/after.** Look for a same-day
+   offsetting credit/debit that returns the balance to exactly where it was
+   before either posted (→ real loss, go to step 4) versus no same-day offset,
+   with a standalone matching credit landing separately (same day or later) that
+   genuinely raises the balance (→ recovered, still worth a routine `moola_returns`
+   row for the trend log, but NOT an urgent alert or an AR correction ask).
+4. **Real losses only:** resolve the underlying customer/invoice by matching the
+   return amount (and check number, when the description carries one — Chase's
+   format includes `CK#:` directly) against SM payment history for that
+   approximate amount within ~2 weeks prior to the return date, then check
+   whether ServiceMinder still shows the payment as applied. If yes, that is
+   itself the headline finding — say explicitly that the invoice currently reads
+   paid but the money isn't there, and that whoever owns the AR process needs to
+   correct it (delete-and-reinvoice per current practice, or apply a formal
+   reversal if the process changes) before it's caught in a
+   collections/commission calculation downstream.
+5. **Do not conflate this with the broader SM-vs-bank amount gap** tracked in
+   `moola_bank_recon` below. That gap can have other causes (payment-processing
+   mechanics not yet diagnosed as of 2026-09-18) and is not evidence of additional
+   undetected returns unless the bank's own return category confirms it — a
+   same-day review found the bank's return category cleanly separates the 2 real
+   returns from a much larger ($638k, KTU YTD) amount-matching gap of a different,
+   undiagnosed character. Report them as separate findings with separate confidence
+   levels; do not let the small confirmed number get inflated by the large
+   unexplained one.
+
+**Alert — every hit, every scan, no severity threshold (a return is never "small"):**
+insert into `notify_queue` `{kind:'critical', subject:'[Return] <customer> $<amount> reversed <date>', body:'<customer>, invoice <ref>, $<amount> returned <reason> on <date>. SM currently shows this payment as <applied|already corrected>. Action: <verify AR / re-invoice / confirm correction>.', source:'moola_returns'}` for same-day Slack+email fan-out via `dispatch-notify`, **and** a same-day `moola_briefing` `urgent` row (do not wait for the next Monday `moola_bank_recon` write) — **only for `resolution_status:'loss'` hits** (per the balance-walk in step 3). A `resolution_status:'recovered'` hit still gets a `moola_returns` row for the trend log but does NOT page Slack/email or add an urgent briefing row — it's informational, the money's already there. Write one row per hit to `moola_returns` (write-then-prune per `scan_date`, retain 90 days for a trend view): `{customer, brand, invoice_ref, amount, return_reason, return_date, resolution_status ('loss'|'recovered'), original_payment_date, recovery_date (null for 'loss'), sm_still_shows_paid (bool), corrected (bool), scan_date}`.
+
+**Zero hits is only reportable as "clean" once step 1's pagination was actually
+exhausted for every confirmed account this scan** — if any account's pull hit a
+rate limit, an auth failure, or an unfetched page, write that account to
+`system_health`/the blind-lens note instead of implying a clean scan.
+
+## ServiceMinder-vs-bank payment reconciliation — weekly (Mondays only); section `moola_bank_recon`
+
+**Gate: run this block only when today is Monday** (America/New_York). Every other
+scan, skip it entirely — it burns most of the Bank Connection call budget in one
+pass, and week-over-week cadence is enough to catch a real gap before it compounds.
+
+**Purpose:** every SM customer payment is money the P&L already counts as collected.
+This check asks the only question that matters for cash truth — *did it actually land
+in the bank* — and, new as of 2026-09-18, also hunts for **returned/reversed payments**
+and cross-source anomalies (a deposit with no SM record, or vice versa).
+
+**Do NOT 1:1-match by exact amount and call anything short of a match "missing."**
+A same-Monday pilot run on KTU alone found $905k of YTD SM cash-payments with no
+exact-amount bank hit — almost none of it was a real gap. The false-positive sources,
+in order of how much of the gap they explain:
+1. **Service Finance Funding** remits **net of a dealer discount fee** (typically
+   10–25%) — the SM payment amount will *never* equal the deposit. Confirm presence
+   only: a `SERVICE FINANCE COMPANY LLC` (or `REAL TIME PAYMENT CREDIT ... SERVICE
+   FINANCE`) credit landing within 10 business days of the SM-recorded date. No
+   landing at all past that window is the real flag — the financed job's funding
+   never arrived.
+2. **Card charges (Visa/MC/Credit Card) and eChecks (ACH)** batch-settle — several
+   same-day electronic payments land as ONE net-of-fee deposit (labeled generically,
+   e.g. `Kitchen Tune-Up`, or `ORIG CO NAME:BANKCARD DEP...`), sometimes the next
+   business day. Compare **day-bucketed sums** (SM total posted on day N vs bank
+   credits on day N or N+1) rather than matching individual amounts. A batch that's
+   short by more than the plausible processor fee (~3%) is the real flag.
+3. **Checks** may deposit individually or bundled into one teller/mobile deposit —
+   same day-bucketed-sum approach, with a longer window (checks can sit up to ~10
+   business days before deposit).
+4. Only after applying 1–3 does an unexplained SM payment amount become a genuine
+   `missing_deposit` finding.
+
+**Known deposit accounts (verified 2026-09-18 — extend, don't replace, from your own
+runs):** KTU customer payments land in **Chase "Payroll" x6968** (`Kitchen Tune-Up`-
+labeled and `BANKCARD DEP`/`SERVICE FINANCE` credits confirmed there for the full
+2026 YTD pull). **TD Bank Business Simple Checking (x3946) and BCB Checking showed
+NO KTU-labeled deposits** in the same pull — rule those out for KTU before re-scanning
+them. **BTU's deposit account is UNCONFIRMED** — none of the three accounts checked
+2026-09-18 carried a `Bath Tune-Up`-labeled or BTU-matching deposit. Until this is
+resolved, run the reconciliation for KTU only and write a `moola_briefing` `warn` row
+asking Steven which account receives BTU customer payments (Bluevine BTU LOC account,
+a dedicated Chase sub-account, or elsewhere) — do not guess or silently skip BTU.
+
+**Method:**
+1. Pull SM payments for the trailing 8 days (1-day overlap catches late-posting bank
+   lines from last week) via `bash mcp-servers/sm.sh KTU payment/query '{"FromDate":"<8d ago>","ThroughDate":"<today>"}'` (repeat for BTU once its account is confirmed). Exclude `Method` in (`Write Off`, `Credit Memo`) and `Amount <= 0` from the "expect a deposit" set — but keep them in a separate pass for the anomaly hunt below.
+2. Pull `mcp__Bank_Connection_Truthifi__get_transactions` for the confirmed KTU account(s), `budgetFlowType` both `inflow` and `outflow`, over the same 8-day window. **This is an OAuth connector, gated in scheduled Routines per the CLAUDE.md stall warning** — if the call itself stalls or 403s, write `system_health` blind-lens and stop this block rather than guessing; do not fabricate a reconciled status. **Budget: this is at most 1–2 calls given the account count — well inside the 25/day cap already documented for royalty recon**, so there's no need to skip accounts to save budget.
+3. Apply the netting-aware matching in the numbered list above; classify every SM payment as `matched` (bucket-sum or presence check passed), `missing_deposit` (genuinely absent past its expected window), or `pending` (still inside its normal settlement window — not yet a finding).
+4. **Returned/reversed payment hunt (new capability):**
+   - **SM side**: any payment row (including ones normally excluded above) whose `Reference` contains, case-insensitive, `refund|nsf|returned|chargeback|reversal|bounced|insufficient|stop payment|void` — surface every one, regardless of amount sign.
+   - **Bank side**: any `outflow` transaction on the KTU/BTU accounts whose description contains `RETURN|CHARGEBACK|NSF|UNPAID|REVERSAL|R01|R02|R03` (standard ACH return codes) or that exactly reverses a deposit matched in step 3 within 10 days of it landing — this is the classic signature of a bounced check or a card chargeback hitting after the fact.
+   - Every hit here is `urgent` regardless of dollar amount — a returned payment on a job already treated as collected (crew dispatched, commission accrued) is a real loss, not a rounding issue.
+5. **Unrecorded-revenue check (the mirror case)**: any KTU/BTU-labeled bank credit with no SM payment landing in step 3's matching set at all (not explained by 1–4 above) — money arrived that AR doesn't know about. Flag it; do not assume it nets out against something else without checking.
+
+**Write to Supabase, section `moola_bank_recon`** (write-then-prune per `week_ending`,
+keep the trailing 8 weeks so the tab can show a trend rather than only this week):
+`{week_ending, brand, sm_cash_total, bank_confirmed_total, pct_confirmed, missing_deposit_count, missing_deposit_amount, returned_payment_count, returned_payment_amount, unrecorded_revenue_count, unrecorded_revenue_amount, findings:[{type:'missing_deposit'|'returned_payment'|'unrecorded_revenue', customer, invoice_ref, amount, sm_date, note}], blind_lens (bank account(s) not reachable this scan, or null), scan_date}`.
+
+**Escalate to `moola_briefing` (urgent) and `notify_queue` for every**
+`returned_payment` finding (any amount) **and every** `missing_deposit` **or**
+`unrecorded_revenue` finding **over $1,000** — name the customer, invoice, amount,
+and the specific action ("confirm the check cleared with the bank / re-run the card /
+ask Sonya to enter the job in SM"). Findings below $1,000 still populate `moola_bank_recon`
+for the trend view but don't need an urgent ping every week.
+
 ## Rules
 - Never write credentials or full account numbers (last-4 only).
 - This briefing is owner-only — candid about comp, margins, and entity finances is fine, but keep confidential deal matters (e.g., any business-sale process) OUT of the intranet entirely.

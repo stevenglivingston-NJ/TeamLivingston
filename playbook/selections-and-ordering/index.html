@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Selections &amp; Order Sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<link rel="stylesheet" href="/assets/playbook.css">
+<link rel="stylesheet" href="/assets/fold.css">
+</head>
+<body>
+<nav class="pbnav" aria-label="Playbook"><div class="in">
+  <b>Playbook</b>
+  <a href="/">Library</a>
+  <a href="/lead-to-last-nail/">Lead to Last Nail</a>
+  <a href="/btu-handover-sop/">BTU Handover SOP</a>
+  <a href="/ktu-handover-standard/">KTU Handover Standard</a>
+  <a href="/selections-and-ordering/" aria-current="page">Selections &amp; Order Sheet</a>
+  <a href="/systems/">Systems</a>
+  <a class="ext" href="https://ktubtu.com">KTUBTU.com</a>
+  <a href="https://dash.goaxyom.com/">Intranet ↗</a>
+</div></nav>
+
+<header class="mast"><div class="wrap">
+  <div class="eyebrow">KTU · BTU · JobTread · pricing.ktubtu.com</div>
+  <h1>Selections &amp; Order Sheet</h1>
+  <p class="dek">How selections are recorded so the client can sign them, purchasing can order from them without a phone call, and the job's real margin is known. One line standard for both brands.</p>
+  <div class="meta">
+    <span><b>Version</b> 2.0 · Sept 29, 2026</span>
+    <span><b>Replaces</b> Selections Checklist (Sept 23, 2026)</span>
+    <span><b>Owners</b> Sales (the sheet) · PM (ordering and the tracker)</span>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+<section>
+  <div class="rule-box"><span class="k">The rule</span>If it isn't on the signed Selection Sheet, it doesn't get ordered. Every line is orderable as written: make, model/SKU, finish, quantity with unit, and one decided source. A "TBD" on a signed sheet is an unpriced change order waiting to happen.</div>
+  <p>The brand standards say the same thing in their own words: <a href="/btu-handover-sop/">BTU-OPS-001 §5</a> and <a href="/ktu-handover-standard/">KTU Handover Standard item 10</a> ("the selection sheet is a deliverable, not a tracking document").</p>
+</section>
+
+<section>
+  <h2 data-desc="Client picks, the signed Selection Sheet, and the order sheet + Job Tracker: where each lives and what it is for.">1. Three records, three jobs</h2>
+  <div class="cards">
+    <div class="card"><h3>Client picks</h3><p><b>Where:</b> JobTread job → Selections tab (simple selections), or the pricing tool's client selection link.</p><p>Where the client chooses. One decision per sheet ("Choose your faucet"), every final pick ticked. It is a preference, not a signature, and never the order record.</p></div>
+    <div class="card"><h3>Selection Sheet (signed)</h3><p><b>Where:</b> JobTread job → Documents → New → Selections → template "Order Sheet — final selections (PDF)".</p><p>The signed, printable buy list. Built once the picks are final; prices hidden and excluded from the budget total (the proposal carries pricing). Signed the same day as the Design Packet.</p></div>
+    <div class="card"><h3>Order sheet &amp; Job Tracker</h3><p><b>Where:</b> pricing tool → job → Order sheet, mirrored to the Google Sheet "Job Tracker — KTU &amp; BTU" in .Project Management.</p><p>Built from JobTread's finalized estimate plus the approved selections. Where the PM orders from, tracks each order, and records actual costs.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2 data-desc="The line standard: make, model/SKU, finish, quantity with unit, one source, fit notes, supplied-by.">2. Every line on the Selection Sheet</h2>
+  <ul class="check">
+    <li><b>Group</b> = the category (Faucet, Lighting, Floor tile, Grout, Trim…), one group per category.</li>
+    <li><b>Name</b> = make + model/collection + finish + SKU. Never just "Mirror".</li>
+    <li><b>Item &amp; area</b> for anything used in more than one place: "Wall tile – shower walls &amp; tub surround".</li>
+    <li><b>Description</b> = model/SKU, key sizes or specs, then <code>Buy: [store] — [link]</code>. One store, decided.</li>
+    <li><b>Fit notes</b> where they matter: faucet holes, drain side, rough-in, opening size, valve body matched to trim.</li>
+    <li><b>Quantity + unit</b> (each, box, sq ft, linear ft, gallon). Tile includes overage: 10% standard, 15% for diagonal, herringbone, large-format or patterned.</li>
+    <li><b>Supplied by</b> BTU/KTU or the client (client-supplied items carry a delivery-by date; the client owns their warranty).</li>
+    <li><b>Status</b> New · Existing – KEEP · Existing – REUSE/REINSTALL.</li>
+    <li><b>Cost code</b> = the specific one (Plumbing: Bath Fixture, Electrical: Bathroom Fixture, Paint…), cost type <b>Selection</b>.</li>
+    <li><b>Photo</b> attached. A screenshot is fine, but it doesn't replace the SKU.</li>
+    <li><b>Clean link</b>: cut everything after <code>?</code> unless it picks the finish (e.g. <code>piid=</code>, <code>uid=</code>).</li>
+  </ul>
+  <div class="cards">
+    <div class="card" style="border-left:4px solid var(--stop)"><h3>Can't order</h3><p><b>Faucet</b><br>[500-character Home Depot ad link] · no qty · one photo</p></div>
+    <div class="card" style="border-left:4px solid var(--ok)"><h3>Orderable</h3><p><b>Delta Saylor 8" widespread 2-handle faucet — Champagne Bronze (3536-CZMPU-DST)</b><br>Includes pop-up drain. 3-hole, 4"–16" centers. Buy: Build.com — build.com/delta-3536-mpu-dst/s1864377 · Qty 1 Each</p></div>
+  </div>
+</section>
+
+<section>
+  <h2 data-desc="Install materials and small parts that are easy to miss and delay jobs.">3. The categories people forget</h2>
+  <p>Every category is marked <b>selected</b> or <b>N/A</b>. None are left blank. The bathroom list is <a href="/btu-handover-sop/">BTU-OPS-001 §5.2</a>; these are the ones missed most often, on both brands:</p>
+  <ul>
+    <li><b>Install materials:</b> grout (type and color), Schluter/edge trim (profile and finish), floor transitions, waterproofing, backer board, wet-wall adhesive, thin-set, caulk color-matched to grout, sealer.</li>
+    <li><b>Plumbing guts:</b> the rough-in valve body that matches the trim, shut-off valves/stops, supply lines, drains.</li>
+    <li><b>Shower details:</b> niche size and ledge, bench or seat, glass (new or reused), drain style and finish.</li>
+    <li><b>Paint:</b> brand, color name and code, sheen for walls, ceiling and trim.</li>
+    <li><b>Kitchen accessories:</b> rollouts, lazy Susans, organizers and panel-ready appliance pulls, with quantities in the proposal (KTU item 4).</li>
+    <li><b>Lighting:</b> every fixture on the drawing, including ceiling fixtures being replaced.</li>
+  </ul>
+  <div class="note"><span class="k">Why this list exists</span>On Sept 28 the PM had to send a sold job back for a niche ledge, grout colors, Schluter finish, a ceiling light and the countertop material. Every one of those belongs on the sheet before signature.</div>
+</section>
+
+<section>
+  <h2 data-desc="Default stores and vendors by category, so every line has one decided source.">4. Where to buy (defaults)</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Category</th><th>Default store</th></tr></thead>
+    <tbody>
+      <tr><td>Plumbing fixtures, faucets, toilets, shower doors</td><td>Build.com (Ferguson)</td></tr>
+      <tr><td>Tile, trim profiles, grout, waterproofing, niches</td><td>The Tile Shop</td></tr>
+      <tr><td>Store-only brands (Behr, Home Decorators Collection, Glacier Bay)</td><td>Home Depot</td></tr>
+      <tr><td>Decor, lighting, mirrors, hardware</td><td>The store on the client's pick</td></tr>
+      <tr><td>Cabinet doors and boxes (KTU)</td><td>The tier's vendor — Elias / Conestoga / Northern Contours per the tier sold</td></tr>
+    </tbody>
+  </table></div>
+  <p>Anything over 4 weeks' lead time is flagged <em>before</em> the client signs (the PM's long-lead / avoid list).</p>
+</section>
+
+<section>
+  <h2 data-desc="The pre-signature checklist, and what happens after the client signs.">5. Before the sheet goes for signature</h2>
+  <ol>
+    <li>Nothing is open. No "TBD", "not selected", "client to decide" or "see if X has it".</li>
+    <li>Anything over allowance goes out as a change order first.</li>
+    <li>The JobTread estimate lines match the sheet (same mirror, same sconce, same quantities) — the order sheet is built from the estimate, so a mismatch shows up as a wrong order.</li>
+    <li>The Design Packet is at the same revision and will be signed the same day.</li>
+    <li>Signature is on (the template does this).</li>
+  </ol>
+  <p><b>After the client signs:</b> download both PDFs, save them to the job's Drive folder with the standard file names, upload them to JobTread, and send the Handover Email (<a href="/btu-handover-sop/#7-2">template</a>). Purchasing orders from the signed sheet only.</p>
+</section>
+
+<section>
+  <h2 data-desc="How the order sheet is built from JobTread, what &quot;Needs info&quot; means, and who receives it.">6. The order sheet (pricing tool)</h2>
+<div class="note" id="status-order-sheet" style="background:var(--ok-soft);border-left-color:var(--ok)"><span class="k" style="color:var(--ok)">Status — live (Sept 29, 2026)</span>The order sheet is live in the pricing tool. Open the job → <b>Order sheet</b>, or use the link in the order email.</div>
+  <p>When a client approves selections in the pricing tool, it builds the job's order sheet from <b>JobTread's finalized estimate</b> — quantities, costs and prices as quoted — and pairs each estimate line with the product the client chose for it.</p>
+  <ul>
+    <li><b>One row per item</b>: category, item, chosen product (make/model/finish), SKU, source, link, quantity and unit, expected unit cost, expected cost, expected retail, expected margin.</li>
+    <li><b>Grouped by vendor</b>, so each group is one purchase order.</li>
+    <li><b>Needs info</b> on any line missing SKU, finish, quantity or source. The sheet only reads <b>Ready to order</b> when there are none — the tool enforces the same rule as the Production Gate.</li>
+    <li><b>Labor, fees and services</b> (delivery, sink cutout, project fee) appear for margin but are marked "not ordered". Install materials on the estimate (grout, setting materials, paint) show as <b>Needs info</b> until the sheet names them; general supplies show "Supplies — confirm"; materials a sub supplies (heated-floor mat) show "Sub supplies — confirm spec".</li>
+    <li>It drafts the Handover Email for Sales and sends the order-sheet notice to the recipients set in the pricing tool's admin screen (default TLivingston@kitchentuneup.com, both brands). The PM (Mayra) places orders for both brands.</li>
+    <li>The approved selections are written back to the JobTread job as a selections document. The job also gets a comment with the order sheet link whenever the sheet's status changes (not on every refresh).</li>
+    <li>Anyone on the team can rebuild it: open the job in the pricing tool → <b>Order sheet</b>. It also refreshes itself from JobTread every 2 hours, so a quantity fixed in JobTread reaches the sheet and the tracker.</li>
+  </ul>
+  <div class="note"><span class="k">Known data gap</span>JobTread catalog items have no vendor or SKU field. The tool reads SKUs from item names and sources from links in the description, and anything it can't find is <b>Needs info</b>. The permanent fix is filling in make, model/SKU and a "Buy:" link on the catalog items themselves.</div>
+</section>
+
+<section id="tracker">
+  <h2 data-desc="The live tracker: what updates itself, what you type, strikethrough on removal, change log, Summary tab.">7. The Job Tracker (Google Sheet)</h2>
+<div class="note" id="status-tracker"><span class="k">Status — connecting (Sept 29, 2026)</span>The workbook is set up in .Project Management and the sync is built. Its first automatic fill is waiting on Google Sheets access being switched on for our Google account. Until your job has its own tab, log orders, ship dates and actual costs on the job in JobTread.</div>
+  <p><b>Where:</b> Google Drive (ktubloomfieldnj) → <b>.Project Management</b> → "Job Tracker — KTU &amp; BTU (live)". One workbook, a tab per finalized job, a Summary tab and a Change log tab. It is the live job tracker from ordering to closeout.</p>
+  <h3>7.1 What updates itself, and what you type</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Columns</th><th>Filled by</th></tr></thead>
+    <tbody>
+      <tr><td>Status · Needs · Vendor / source · Category · Product · SKU · Qty · Unit · Budget line · Exp. unit cost · Exp. cost · Exp. retail · Exp. GP · Link</td><td><b>Automatic</b> from JobTread and the pricing tool, every 2 hours and whenever a client approves or someone presses Order sheet. Don't type in these columns; your edits would be overwritten.</td></tr>
+      <tr><td>Order status · PO # · Order date · Ship/ETA · Received date · Actual cost · Notes</td><td><b>You</b> (PM / purchasing). Never overwritten by the sync.</td></tr>
+      <tr><td>Actual GP · the totals in rows 1–4</td><td><b>Formulas</b> from what you type against what was expected. Removed rows are left out of the totals.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>7.2 Rules</h3>
+  <ul>
+    <li><b>Nothing is deleted.</b> When an item comes off the job, its row is struck through, greyed and marked Removed, with the date. If it comes back, the strike is lifted and the log says Restored. A swapped product shows as the old row struck through and a new row.</li>
+    <li><b>Every tab shows</b> date created and by whom, last update and by whom (the sync or a person).</li>
+    <li><b>The Change log tab</b> records every automatic change: what, old → new, when, triggered by whom.</li>
+    <li><b>Summary tab:</b> per job, expected retail, expected cost, expected GP and GP %, actual cost to date, actual GP and actual GP %, readiness, and a link to each job's tab — the live margin view for the owners.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 data-desc="The four mistakes that cause wrong orders.">Don't</h2>
+  <ul>
+    <li>Mark a selection Approved yourself — the client approves by signing.</li>
+    <li>Create a second job or a pile of draft "Selection" documents for the same client.</li>
+    <li>Put eight categories in one pick list on the Selections tab — the client will tick one.</li>
+    <li>Order from a rendering, a text message or an unsigned draft.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 data-desc="What changed in each version and why.">Change log</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Version</th><th>Date</th><th>Changes</th></tr></thead>
+    <tbody>
+      <tr><td class="num">2.0</td><td class="num">2026-09-29</td><td>Merged the Selections Checklist with BTU-OPS-001 §5 and KTU Handover Standard item 10; added fields (item &amp; area, supplied by, status, overage), the forgotten-categories list, the order sheet and the Job Tracker. Published to playbook.ktubtu.com.</td></tr>
+      <tr><td class="num">1.0</td><td class="num">2026-09-23</td><td>Selections Checklist: two documents, line standard, default stores.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+</main>
+<footer><div class="wrap"><p>Source of truth: this page (playbook.ktubtu.com), maintained in the TeamLivingston repository under playbook/.</p></div></footer>
+<script src="/assets/fold.js" defer></script>
+</body>
+</html>
