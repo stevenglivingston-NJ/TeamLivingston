@@ -289,6 +289,18 @@ that covers **ordinary** Bash in scheduled runs — which is why `sb.sh` works. 
 does **not** override the account-level connector classifier that gates `mcp__*`
 calls. Repo settings cannot fix this; only avoiding the gated call can.
 
+> **Open question, 2026-09-29 — this may now be out of date.** `.claude/settings.json`'s
+> `permissions.allow` list was extended the same day (PR #197) to name four
+> `mcp__serviceminder__query_*` tools plus `mcp__Supabase__execute_sql`
+> explicitly, with a commit message claiming this "prevents the stall condition."
+> If a named `permissions.allow` entry really does pre-approve a specific
+> `mcp__*` tool for Auto mode, the "repo settings cannot fix this" claim above is
+> wrong and the real fix for every stall below is one allowlist line, not a
+> standing "never call this" instruction in the agent spec. Unconfirmed as of
+> this note — no scheduled fire has yet proven a previously-stalling `mcp__*`
+> tool now completes after being added to `permissions.allow`. Verify against a
+> live fire before trusting either claim over the other.
+
 > **Correction, 2026-09-21 — `bypassPermissions` does NOT cover destructive
 > Bash.** Foreman was found hung four days with a **`Bash`** `pending_action`,
 > not an `mcp__*` one:
