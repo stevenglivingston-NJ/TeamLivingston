@@ -1,6 +1,19 @@
 {
   "permissions": {
-    "defaultMode": "bypassPermissions"
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Bash(bash mcp-servers/sb.sh *)",
+      "Bash(bash mcp-servers/sm.sh *)",
+      "Bash(bash mcp-servers/ghl.sh *)",
+      "Bash(bash mcp-servers/gmb.sh *)",
+      "Bash(python3 mcp-servers/*)",
+      "Bash(curl *)",
+      "mcp__Supabase__execute_sql",
+      "mcp__serviceminder__query_appointments",
+      "mcp__serviceminder__query_invoices",
+      "mcp__serviceminder__query_payments",
+      "mcp__serviceminder__query_proposals"
+    ]
   },
   "hooks": {
     "SessionStart": [
