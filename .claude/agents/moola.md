@@ -587,20 +587,26 @@ below, not a byproduct of it:** a returned payment can be erased from ServiceMin
 entirely rather than flagged (an office rep deletes the bad payment and re-invoices —
 confirmed practice 2026-09-18: the Rubin/Falkowski $10,977.05 eCheck return on KTU
 was handled exactly this way). A deleted record leaves no SM-side reference text to
-scan, so **the return can only be caught from the bank side**, and only from the
-bank's own transaction-category field — free-text keyword scanning on the
-`description` string is not reliable on its own; a same-day test with a loose
-`R0[1-9]` pattern (hunting ACH return codes) produced a flood of false positives by
-matching ordinary transaction/trace numbers (worse: even a supposedly-safe bare
-`NSF` search matched the substring inside the word "tra**NSF**er" — always require
-the full multi-word phrase and/or `\b` word boundaries, never a bare 2–4 letter
-code against unstructured text). Anchor on the bank's own categorization instead:
-- **A raw bank export/feed that exposes its own category field is authoritative.**
-  Chase's activity export (`Details`/`Type` columns) tags actual returns explicitly
-  as `Type=DEPOSIT_RETURN`; Bluevine's export doesn't have a dedicated type column
-  but reliably labels the description `RTN ITEM` / `Returned Mobile Deposit`.
-  Either way, the description also usually carries the reason (`NSF`,
-  `Dup Presentment`) and sometimes the original check number.
+scan, so **the return can only be caught from the bank side** — but not by relying
+on category/label text, which is where two earlier drafts of this section both went
+wrong in opposite directions (first: label text is fragile — a same-day test with a
+loose `R0[1-9]` pattern hunting ACH return codes flooded on ordinary transaction/
+trace numbers, and a supposedly-safe bare `NSF` search matched the substring inside
+the word "tra**NSF**er"; then: wrongly concluding Bank Connection couldn't see the
+transaction at all, when it was present all along and simply lacked a distinguishing
+label). **The reliable signal is the same-day equal-and-opposite amount pattern**,
+detectable straight off `mcp__Bank_Connection_Truthifi__get_transactions` — see the
+primary detector in the method below. Treat any category/label text (Truthifi's
+`transactionType`, or a raw export's own field) as a corroborating bonus when it
+happens to be available, never a precondition:
+- **A raw bank export/feed that exposes its own category field is a helpful bonus,
+  not a requirement.** Chase's activity export (`Details`/`Type` columns) tags
+  actual returns explicitly as `Type=DEPOSIT_RETURN`; Bluevine's export doesn't
+  have a dedicated type column but reliably labels the description `RTN ITEM` /
+  `Returned Mobile Deposit`. Either way, the description also usually carries the
+  reason (`NSF`, `Dup Presentment`) and sometimes the original check number — use
+  it to skip straight to a confirmed classification when it's on hand, but the
+  same-day amount-match above works without it.
 - **A return label alone does NOT tell you whether money was actually lost —
   you must walk the account `Balance` column immediately before and after the
   matching entries to see the real cash effect.** Verified against a full year
@@ -612,10 +618,11 @@ code against unstructured text). Anchor on the bank's own categorization instead
     entries equals the balance immediately before either of them — i.e. net $0.
     Confirmed real losses this way: **KTU — Rubin/Falkowski, $10,977.05,
     8/3/2026** (balance walked $5,345.71 → $16,322.76 → $5,345.71, same day;
-    already handled — deleted and reinvoiced) and **BTU — $1,000.00, 1/5/2026**
-    (same wash pattern; very likely SM invoice **I476111**, $1,000 eCheck,
-    contact 10813101, SM-posted 1/7/2026 — **not yet verified as corrected in SM,
-    flag this to the owner/AR process the same way Rubin/Falkowski was caught**).
+    already handled — deleted and reinvoiced) and **BTU — Peter Brina and Jo'Anne
+    Bajzath, $1,000.00, 1/5/2026** (same wash pattern; SM invoice **I476111**,
+    $1,000 eCheck, contact 10813101, SM-posted 1/7/2026 — **as of 2026-09-29 not
+    yet verified as corrected in SM; flag this to the owner/AR process the same
+    way Rubin/Falkowski was caught**).
   - **Standalone credit, days later, no same-day offsetting debit → money did
     arrive, just delayed.** Confirmed real recoveries this way, none of which are
     losses despite carrying "return"-flavored language: **KTU — Sweeney, invoice
@@ -629,22 +636,41 @@ code against unstructured text). Anchor on the bank's own categorization instead
     deposit for the same amount landed 8/5, nothing further since).
   **Do not classify a hit by label text alone — always do the balance walk**
   before reporting a finding as a loss or a recovery.
-- **`mcp__Bank_Connection_Truthifi__get_transactions` does not expose an equivalent
-  category** — its `transactionType` enum (checked against the live schema) has no
-  dedicated NSF/return/chargeback value, and free-text matching against its
-  `description` field is the same fragile fallback described above, with the added
-  problem that its aggregated `cash_deposit` categorization can silently merge a
-  `CR Offset`-style correction entry into what looks like an ordinary new deposit,
-  hiding the same-day wash entirely (this is exactly what happened when this
-  section's first draft used Truthifi data alone and concluded Rubin/Falkowski's
-  deposit "cleanly matched the bank" — it took the raw Chase export, which
-  preserves the `RTN ITEM`/`CR Offset` pair, to see the wash). Until Truthifi (or
-  whichever aggregator connector is live) exposes both a real return category and
-  itemized non-netted entries, treat its output as a **lower-confidence
-  supplement**, not the primary detector: scan `description` for the anchored
-  whole-phrase patterns `DEPOSITED ITEM RETURNED`, `RTN ITEM`, `NSF` (word-boundary
-  only), `INSUFFICIENT FUNDS`, `CHARGEBACK`, `DUP PRESENTMENT`, `RETURNED MOBILE
-  DEPOSIT`, `STOP PAYMENT`, `UNPAID ITEM`.
+- **`mcp__Bank_Connection_Truthifi__get_transactions` DOES carry this transaction —
+  it is fully self-servable through Bank Connection, no raw bank export needed.**
+  An earlier draft of this section wrongly concluded Truthifi "never surfaced" the
+  Rubin/Falkowski entry; that was from checking only the inflow side and only the
+  `description` text. Re-verified 2026-09-29, outflow side, same account/date: the
+  `RTN ITEM` debit is right there — `{"date":"2026-08-03","description":"Kitchen
+  Tune-Up","amount":10977.05,"transactionType":"payment_from_account"}`. Truthifi's
+  `transactionType` enum genuinely has no NSF/return/chargeback value, and it does
+  strip Chase's `RTN ITEM`/`CR Offset` annotation down to the generic counterparty
+  name — so **label text (Truthifi's or the raw bank's) is not the detection
+  signal** — but the transaction itself is present on both the inflow and outflow
+  side, indistinguishable by category from an ordinary deposit and an ordinary
+  outgoing payment.
+  **The actual, fully-automatable signal is the pattern, not the label: an inflow
+  and an outflow of the identical amount posting on the same calendar day, on the
+  same account.** Detect it by amount-matching same-day inflow against same-day
+  outflow (exact cents match) for every account in the scan window — a hit is a
+  same-day-wash candidate regardless of what either leg is labeled. This is exactly
+  how Rubin/Falkowski ($10,977.05) and the BTU $1,000.00 item were found, and it
+  requires nothing beyond `mcp__Bank_Connection_Truthifi__get_transactions` pulled
+  for both `budgetFlowType` directions over the same window.
+  Free-text phrase matching (`DEPOSITED ITEM RETURNED`, `RTN ITEM`, `NSF`
+  word-boundary-only, `INSUFFICIENT FUNDS`, `CHARGEBACK`, `DUP PRESENTMENT`,
+  `RETURNED MOBILE DEPOSIT`, `STOP PAYMENT`, `UNPAID ITEM`) is still worth running
+  as a **corroborating signal** when a raw bank export happens to be available (it
+  narrows same-day amount-match coincidences to genuine returns, and catches the
+  delayed-redeposit class directly) — but the same-day amount-match test is the
+  one that must run every scan regardless of which data source is live, because
+  it's the one proven to work off Bank Connection alone.
+  **False-positive check:** an inflow/outflow pair of the same amount on the same
+  day can occasionally be coincidence (e.g. a round-number transfer unrelated to
+  any customer payment) rather than a real wash. Before escalating a same-day-match
+  hit as a loss, confirm an SM payment exists for that amount within the prior
+  ~2 weeks (step 4) — a same-day match with no corresponding SM payment at all is
+  noise, not a finding.
 - **Exhaustive pagination is mandatory before concluding "no returns this scan."**
   A same-day investigation initially missed the Sweeney redeposit (not the return
   itself — the mistake there was stopping at the return and not searching forward
@@ -653,19 +679,31 @@ code against unstructured text). Anchor on the bank's own categorization instead
   `hasMore:true`/a `nextCursor` MUST be followed until exhausted before the scan
   is allowed to report a clean result.
 
-**Method, every scan:**
-1. Pull outflow (returns post as debits) transactions for every confirmed KTU/BTU
-   deposit account over a rolling **14-day** window (covers typical NSF turnaround
-   of 2–5 business days with margin), paginating fully per above. Also pull the
-   `Balance` field on every row in the window — it's required for step 3.
-2. Flag every row matching the bank's own return category (preferred) or the
-   anchored phrase list (fallback).
-3. **For each hit, walk the balance before/after.** Look for a same-day
-   offsetting credit/debit that returns the balance to exactly where it was
-   before either posted (→ real loss, go to step 4) versus no same-day offset,
-   with a standalone matching credit landing separately (same day or later) that
-   genuinely raises the balance (→ recovered, still worth a routine `moola_returns`
-   row for the trend log, but NOT an urgent alert or an AR correction ask).
+**Method, every scan — fully self-servable via `mcp__Bank_Connection_Truthifi__get_transactions` + ServiceMinder, no raw bank export required:**
+1. Pull **both** `budgetFlowType` directions (inflow and outflow — the same-day
+   match in step 2 needs both) for every confirmed KTU/BTU deposit account over a
+   rolling **14-day** window (covers typical NSF turnaround of 2–5 business days
+   with margin), paginating fully per above (`hasMore`/`nextCursor` exhausted
+   before the scan may report clean). Pull `Balance` too when the connector
+   returns it — useful confirmation, not required for detection.
+2. **Primary detector — same-day amount match:** for each inflow, check for an
+   outflow of the identical amount (exact cents) on the same calendar day, same
+   account. Any hit is a same-day-wash candidate, regardless of how either leg is
+   labeled — this is the check that actually works off Bank Connection alone (see
+   above). **Secondary/corroborating detector** — when the connector's
+   `description` field carries the bank's own return language (label text varies
+   by institution/feed): flag rows matching the anchored phrase list. Either
+   detector's hits feed step 3.
+3. **Classify each hit.** A same-day amount-match (step 2's primary detector) with
+   no separate matching credit landing later is the wash pattern → real loss, go
+   to step 4. A phrase-matched hit (or a same-day match) that also has a
+   **standalone** matching credit landing separately (same day or later, with no
+   offsetting debit that day) → money arrived, recovered — still worth a routine
+   `moola_returns` row for the trend log, but NOT an urgent alert or an AR
+   correction ask. When `Balance` is available, walking it before/after confirms
+   either classification directly (net $0 across the pair = loss; a net increase
+   = recovered) — use it to settle an ambiguous case, not as a precondition for
+   running the check.
 4. **Real losses only:** resolve the underlying customer/invoice by matching the
    return amount (and check number, when the description carries one — Chase's
    format includes `CK#:` directly) against SM payment history for that
