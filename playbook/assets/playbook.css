@@ -1,0 +1,86 @@
+/* Shared look for the playbook's document pages. Tokens match Lead to Last Nail (index.html),
+   which keeps its own inline styles; this file styles the SOPs and standards beside it. */
+:root{
+  --paper:#EFF1EF;--surface:#FBFCFB;--surface-2:#E6E9E7;--ink:#141A20;--ink-2:#39434E;--muted:#697682;
+  --rule:#CFD5D3;--rule-soft:#DEE3E1;--accent:#23406B;--accent-soft:#E3E9F2;--brass:#8A6A2C;
+  --ok:#1C6E52;--ok-soft:#DDEBE5;--warn:#9A6A12;--warn-soft:#F2E9D6;--stop:#993528;--stop-soft:#F3E0DC;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --f-data:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#101418;--surface:#171D23;--surface-2:#1F262E;--ink:#E7EBEE;--ink-2:#B7C0C8;--muted:#8794A0;
+  --rule:#2C353E;--rule-soft:#242C34;--accent:#8FB0DE;--accent-soft:#1B2836;--brass:#C7A45F;
+  --ok:#63BE9B;--ok-soft:#152720;--warn:#D6A63F;--warn-soft:#2A2113;--stop:#E08475;--stop-soft:#2C1915;}}
+:root[data-theme="dark"]{
+  --paper:#101418;--surface:#171D23;--surface-2:#1F262E;--ink:#E7EBEE;--ink-2:#B7C0C8;--muted:#8794A0;
+  --rule:#2C353E;--rule-soft:#242C34;--accent:#8FB0DE;--accent-soft:#1B2836;--brass:#C7A45F;
+  --ok:#63BE9B;--ok-soft:#152720;--warn:#D6A63F;--warn-soft:#2A2113;--stop:#E08475;--stop-soft:#2C1915;}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:16.5px;line-height:1.62;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+h1,h2,h3,h4{font-family:var(--f-display);text-wrap:balance;line-height:1.16;letter-spacing:-.012em;margin:0}
+p{margin:0 0 12px;max-width:72ch}
+.wrap{max-width:1040px;margin:0 auto;padding:0 28px}
+
+/* playbook nav — the same bar on every page */
+.pbnav{background:var(--ink);color:var(--surface)}
+.pbnav .in{max-width:1120px;margin:0 auto;padding:8px 28px;display:flex;flex-wrap:wrap;gap:4px 18px;align-items:center;font-family:var(--f-data);font-size:12px}
+.pbnav b{letter-spacing:.14em;text-transform:uppercase;font-size:11px;color:#C7A45F;margin-right:6px}
+.pbnav a{color:#DCE3EA;text-decoration:none;padding:3px 0;border-bottom:1px solid transparent}
+.pbnav a:hover{border-bottom-color:#DCE3EA}
+.pbnav a[aria-current="page"]{color:#fff;border-bottom-color:#C7A45F}
+.pbnav .ext{margin-left:auto}
+
+.mast{background:var(--surface);border-bottom:1px solid var(--rule)}
+.mast .wrap{padding-top:44px;padding-bottom:32px;display:grid;gap:18px}
+.eyebrow{font-family:var(--f-data);font-size:11.5px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--brass)}
+h1{font-size:clamp(32px,5.4vw,54px);font-weight:700;letter-spacing:-.026em}
+.dek{font-size:19px;color:var(--ink-2);max-width:64ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px 24px;font-family:var(--f-data);font-size:12px;color:var(--muted)}
+.meta b{color:var(--ink-2);font-weight:600}
+
+main{padding:10px 0 60px}
+section{padding:34px 0 8px;border-top:1px solid var(--rule-soft)}
+section:first-of-type{border-top:none}
+h2{font-size:clamp(23px,3vw,30px);font-weight:700;margin-bottom:14px}
+h3{font-size:19px;font-weight:600;margin:22px 0 10px}
+ul,ol{margin:0 0 14px;padding-left:22px;max-width:74ch}
+li+li{margin-top:5px}
+code{font-family:var(--f-data);font-size:13px;background:var(--surface-2);padding:1px 5px;border-radius:3px}
+
+.rule-box{background:var(--accent-soft);border-left:4px solid var(--accent);padding:14px 18px;border-radius:4px;margin:14px 0 18px;max-width:78ch}
+.rule-box .k{display:block;font-family:var(--f-data);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:600;margin-bottom:4px}
+.note{background:var(--warn-soft);border-left:4px solid var(--warn);padding:12px 16px;border-radius:4px;margin:12px 0 16px;max-width:78ch;font-size:15.5px}
+.note .k{display:block;font-family:var(--f-data);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--warn);font-weight:600;margin-bottom:3px}
+.new{font-family:var(--f-data);font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ok);background:var(--ok-soft);padding:1px 6px;border-radius:3px;vertical-align:2px;white-space:nowrap}
+
+.tbl{overflow-x:auto;border:1px solid var(--rule);border-radius:6px;background:var(--surface);margin:10px 0 18px}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:560px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+thead th{font-family:var(--f-data);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--surface-2);border-bottom:1px solid var(--rule)}
+tbody tr:last-child td{border-bottom:none}
+td.num{font-family:var(--f-data);white-space:nowrap}
+
+.check{list-style:none;padding-left:0}
+.check li{position:relative;padding-left:28px}
+.check li::before{content:"";position:absolute;left:0;top:5px;width:15px;height:15px;border:1.5px solid var(--brass);border-radius:3px}
+
+.template{font-family:var(--f-data);font-size:13.5px;line-height:1.6;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:16px 18px;white-space:pre-wrap;max-width:78ch;margin:10px 0 18px;color:var(--ink-2)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px;margin:12px 0 18px}
+.card{background:var(--surface);border:1px solid var(--rule-soft);border-radius:6px;padding:16px 18px}
+.card h3{margin:0 0 6px;font-size:17px}
+.card p{font-size:15px;color:var(--ink-2);margin:0 0 8px}
+.card a.go{font-family:var(--f-data);font-size:12px}
+
+footer{border-top:1px solid var(--rule);background:var(--surface);padding:28px 0 44px}
+footer p{font-family:var(--f-data);font-size:12px;color:var(--muted);max-width:80ch;line-height:1.7}
+
+@media (max-width:760px){
+  .wrap,.pbnav .in{padding-left:16px;padding-right:16px}
+  .pbnav .ext{margin-left:0}
+  body{font-size:16px}
+}
+@media print{.pbnav{display:none}body{background:#fff}section{break-inside:avoid-page}}

@@ -1,0 +1,409 @@
+__CONFIG__ {
+    conversationReason "This company is located in Bloomfield New Jersey and serves local community and surrounding areas.   {{contact.first_name}} is connecting with you about your remodel services and to schedule a free in home consultation with designer. \n\nYou only schedule for services that include our core services with it being tub to shower conversion, shower to tub conversion, new shower, new tub, vanity or full bath remodels. We do not do reglazing or relining of tubs. We do all areas of the bathroom if it's a part of a project involving our core service however we do not do flooring, countertops, accessories etc as a stand alone. All these can be done in conjunction with core services. If outside our core services explain that this is typically done as part of a service related to our core services. We only do repairs on jobs we have sold. \nIf kitchen services are requested, advise this is done via Kitchen Tune-Up and share link www.ktubloomfield.com/schedule for contact to book appointment. \n    "
+    businessInformation "{{custom_values.ktu_playbook}}{{custom_values.objections_toolkit_shape_up_your_sales_approach_handling_objections}}{{custom_values.bath_tuneup_refacing_manual_2023_v6}}{{custom_values.core_services_guide_623_us}}\nKitchen remodeling website: {{custom_values.kitchen_website}}\nBathroom remodeling website: {{custom_values.bathroom_website}}\nYou are a friendly and conversational receptionist and your goal is to engage with the incoming leads, build a rapport, collect info about their project and offer assistance. We don't offer repairs for jobs we haven't installed. \nYour email address is {{location.email}}"
+    prohibitedWords {
+        Cheap
+        cheapest
+        -
+    }
+    followUp active=true smart=false repeat=false varianceMinutes=0 {
+        state name="Default" isDefault=true repeatFinal=false order=0 {
+            sequence order=0 duration=3 unit="week"
+        }
+    }
+}
+Source id="sourceNode" {
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="a1efdf46-a85f-4d5d-bbc8-636d974f04d1"
+    __position -1272.9995 -1057.1978
+}
+Booking id="ba6fe8ee-545d-41d1-a127-a1b667796f1c" {
+    Title "Booking"
+    __dynamicVariables
+    Description "Book a 2 hour appointment at {{location.full_address}} with the contact."
+    Prompt "Share soonest available times. Consultations take up to 2 hours and are in-home with the designer. "
+    CalendarName "Consultation Calendar"
+    FailedTag "AI Appointment error"
+    CalendarId "IezEuyUywqr1OL7tjHEk"
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="3f8f5ec3-1b13-49b7-9a51-03ecb5eab890"
+    __position 1477.6086 -1027.0366
+}
+MultiObjective id="eb177088-8831-4f76-8e12-80d53d1d4d7e" {
+    Objectives {
+        _ {
+            Variable "contact.email"
+            Title "Get Email "
+            Description "Ask for the contact's email address. Let them know we will use it to send their consultation confirmation and any helpful information before their appointment. Only ask once. If they decline, move on without it and continue to the next step. Never ask for the same information twice. Ensure email is validated. "
+            Prompt "Ensure email address is valid format. "
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="ed1fc5fb-b0c9-43df-b809-5989e3e39142-1778383490782-1778383601624-1778383659176"
+    __position -299.21945 -1208.1473
+}
+MultiObjective id="166b4528-b656-44f5-b156-d48a02e1fea5" {
+    Objectives {
+        _ {
+            Variable "contact.address"
+            Title "Get Full Address"
+            Description "Get the contact's full address"
+            Prompt "Ask for the contact's full address including street, city, and zip code. Explain that we need it to confirm we service their area and so our designer knows where to come for the free in-home consultation. Only ask once. If they say they are in Manhattan, Brooklyn, Queens, the Bronx, Staten Island, any NYC borough, Hudson County, or Bergen County, politely let them know we do not service their area, thank them for reaching out, and end the conversation. Do not continue collecting information from out-of-area leads. If they provide an address in our service area, confirm it and move forward to booking."
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="56c10648-0d94-42e2-84bf-d38db2334a60"
+    __position -633.8646 -1082.6465
+}
+MultiObjective id="9d7af021-6e8e-4aee-a485-b50990ead47e" {
+    Objectives {
+        _ {
+            Variable "contact.phone"
+            Title "Get Phone"
+            Description "Ask for the contact's phone number so we can send their consultation reminder and stay in touch. Only ask once. If they decline, say no, or ask not to be called, accept it immediately, move on, and do not ask again. Never ask for the same information twice. If they provide a number, confirm it back to them and move forward."
+            Prompt "Ensure it is 10 or 11 digits"
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="ed1fc5fb-b0c9-43df-b809-5989e3e39142-1778383490782-1778383601624-1778383659176-1778383940259"
+    __position -497.6186 -1372.0795
+}
+MultiObjective id="a1efdf46-a85f-4d5d-bbc8-636d974f04d1" {
+    Objectives {
+        _ {
+            Variable "contact.first_name"
+            Title "Get First Name"
+            Description "Get the contact's first name if {{contact.first_name}} "
+            Prompt "Get contact's first name so you can use throughout conversation "
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="1da54e82-edb8-42df-8cc3-bdf43f38f577"
+    __position -1114.9626 -1072.5697
+}
+ModifyTags id="3f8f5ec3-1b13-49b7-9a51-03ecb5eab890" {
+    Title "Add AI Booked Tag"
+    TagsToAdd {
+        _ {
+            Tag "AI Booked Kitchen"
+        }
+        _ {
+            Tag "ai stop"
+        }
+    }
+    TagsToRemove
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="4f40a1bc-30b5-4fff-8267-308f6a057fdd"
+    __position 1834.1696 -1095.5388
+}
+SaveConversation id="4f40a1bc-30b5-4fff-8267-308f6a057fdd" {
+    SummarizeConversation true
+    Variable "contact.notes_contact"
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="228127fd-ebd2-41b3-ad9a-e0f5c33b6463"
+    __position 2101.0857 -1108.882
+}
+Booking id="bcda4208-2523-4e0f-99de-6c989e362671" {
+    Title "Booking"
+    Description "Book a 2 hour appointment at {{location.full_address}} with the contact."
+    CalendarName "Consultation Calendar"
+    __dynamicVariables
+    Prompt "Share soonest available times. Consultations take up to 2 hours and are in-home with the designer. In a polite manner let customer know we ask for all home owners to be present during consult. When a contact responds with “Yes” or “OK” to a slot offer, the bot should book them immediately."
+    CalendarId "kEW9PFmXRzujFf6rQUPp"
+    FailedTag "AI Appointment error"
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="6b802d1f-d149-4ba7-9549-6ad9919b3f3e"
+    __position -62.675694 -1353.9414
+}
+ModifyTags id="54f437df-01ab-45aa-bd27-318adf88cab1" {
+    Title "AI Booked Bath"
+    TagsToAdd {
+        _ {
+            Tag "AI Booked bath"
+        }
+        _ {
+            Tag "ai stop"
+        }
+    }
+    TagsToRemove
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="28dc068a-9267-4b5a-a568-be5709484634"
+    __position 188.66881 -1440.6567
+}
+SaveConversation id="6b802d1f-d149-4ba7-9549-6ad9919b3f3e" {
+    SummarizeConversation true
+    Variable "contact.notes_contact"
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="54f437df-01ab-45aa-bd27-318adf88cab1"
+    __position 65.79279 -1195.9497
+}
+Conversation id="28dc068a-9267-4b5a-a568-be5709484634" {
+    ExtraPrompt "Final Confirmation recapping {{nodes.bcda4208-2523-4e0f-99de-6c989e362671.booked}} and invite the lead to reply with any questions. Thank them and let them know they'll hear from their designer a day or 2 before the appointment and will also see a quick design quiz coming through. This will guide them and rep. Any questions in the interim, don't hesitate to reach out. "
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="EOC"
+    __position 232.43932 -1296.3733
+}
+Conversation id="228127fd-ebd2-41b3-ad9a-e0f5c33b6463" {
+    ExtraPrompt "Final Confirmation recapping {{nodes.ba6fe8ee-545d-41d1-a127-a1b667796f1c.booked}} . Thank them and let them know they'll hear from their designer a day or 2 before the appointment and will also see a quick design quiz coming through. This will guide them and rep. Any questions in the interim, don't hesitate to reach out. "
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="EOC"
+    __position 2285.9045 -1120.4902
+}
+MultiObjective id="1da54e82-edb8-42df-8cc3-bdf43f38f577" {
+    Objectives {
+        _ {
+            Variable "contact.notes_contact"
+            Title "Get ProjectNotesContact"
+            Description "determine the scope of {{contact.first_name}}'s bath remodel project "
+            Prompt "Ask one question at a time"
+            MaxAttempts 1
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="30c2e566-6e25-4f94-ac64-3c3d9e13ef01"
+    __position -944.932 -1073.4799
+}
+End id="13b77904-17c2-420a-b490-c7e6341da33c" {
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="EOC"
+    __position -471.2452 -767.5163
+}
+AISwitch id="30c2e566-6e25-4f94-ac64-3c3d9e13ef01" {
+    UseAI true
+    NonAiCases {
+        _ {
+            ExpressionOperator "LessThan"
+        }
+    }
+    __dynamicVariables
+    Description "Is customer interested in a bath remodel "
+    AiCases {
+        _ {
+            CaseName "Interested in Bath Remodel"
+        }
+        _ {
+            CaseName "Not interested in bath remodel"
+        }
+    }
+    Title "Customer intent"
+    isScenarioDescendant false
+    activeAiInScenario false
+    AiCases:1 handle="13b77904-17c2-420a-b490-c7e6341da33c"
+    AiCases:0 handle="eb177088-8831-4f76-8e12-80d53d1d4d7e-1778383441992"
+    __position -828.6009 -1038.759
+}
+ScenarioAggression id="10d27a57-0c2b-4f4f-a254-b8f0743913f1" {
+    AllowReEntry ""
+    Priority 90
+    Threshold 7
+    Description "The contact is being aggressive or is showing signs of high anger or annoyance."
+    Title "Aggression"
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="4e1f88d2-75c7-4917-94da-e7e911d26658"
+    __position -664.0 -565.0
+}
+End id="4e1f88d2-75c7-4917-94da-e7e911d26658" {
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="EOC"
+    __position -556.0 -565.0
+}
+ScenarioCustom id="cb640a81-0220-4ec0-8ad8-64d425061fa4" {
+    AllowReEntry ""
+    Priority 50
+    Threshold 7
+    Description "If customer is not interested"
+    Title "Not interested "
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="afc4f707-c125-442c-9343-d7814fcbe6b3"
+    __position -614.0 -335.0
+}
+End id="afc4f707-c125-442c-9343-d7814fcbe6b3" {
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="EOC"
+    __position -442.0 -317.0
+}
+End id="66eff6c7-29dd-4b7d-8d74-ed03f99d20e6" {
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="EOC"
+    __position 356.0 -1313.0
+}
+ScenarioCustom id="d7ad14ef-0b89-423b-908f-4c2a5ea97155" {
+    AllowReEntry ""
+    Priority 50
+    Threshold 7
+    Description "If the client mentions along the lines that someone has already reached out or they have already spoken to someone or have an appointment or made any contact with our representative already. "
+    Title "Already booked or spoken to someone"
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="4839f4aa-a8f7-4721-9b65-03ca54cb5ffd"
+    __position -675.99457 -49.41452
+}
+End id="4839f4aa-a8f7-4721-9b65-03ca54cb5ffd" {
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="EOC"
+    __position -443.68652 -80.38892
+}
+ScenarioCustom id="a13c228f-bb49-4cb5-adef-117450fd38d7" {
+    AllowReEntry ""
+    Priority 50
+    Threshold 7
+    Description " {{contact.appointment_date_and_time}}  or{{contact.last_appointment_date_and_time}}  is set and has a value representing appointment date or time"
+    Title "Stop if client has an appointment"
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="82b93a2c-483a-4650-9833-adf1999d51cf"
+    __position -34.0 -638.3334
+}
+End id="82b93a2c-483a-4650-9833-adf1999d51cf" {
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="EOC"
+    __position 238.0 -630.3334
+}
+ScenarioCustom id="02967243-5373-4dc8-95f2-da5534a0e237" {
+    AllowReEntry ""
+    Priority 50
+    Threshold 7
+    Description " {{contact.tags}}  contains ai stop or any variation of that tag "
+    Title "If tags contain AI stop"
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="f55afb21-9fb9-4297-bc99-dce5300e5511"
+    __position 54.0 -174.33334
+}
+End id="f55afb21-9fb9-4297-bc99-dce5300e5511" {
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="EOC"
+    __position 204.0 -216.33334
+}
+MultiObjective id="eb177088-8831-4f76-8e12-80d53d1d4d7e-1778383441992" {
+    Objectives {
+        _ {
+            Variable "contact.name"
+            Title "Get Full name "
+            Description "Refer to contact with their {{contact.first_name}} and collect their last name to book the appointment. Explain that we need it to confirm the appointment. "
+            Prompt "Ensure email address is valid format. "
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="ed1fc5fb-b0c9-43df-b809-5989e3e39142-1778383490782"
+    __position -879.5415 -1318.3397
+}
+SetField id="ed1fc5fb-b0c9-43df-b809-5989e3e39142-1778383490782" {
+    UseAI true
+    Variable "contact.name"
+    FieldValueExpression "Update {{contact.first_name}}  {{contact.last_name}} and {{contact.name}} fields with collected information"
+    __dynamicVariables
+    AiDescription "Update {{contact.first_name}}  {{contact.last_name}} and {{contact.name}} fields with collected information"
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="166b4528-b656-44f5-b156-d48a02e1fea5"
+    __position -780.85675 -1311.8326
+}
+SetField id="ed1fc5fb-b0c9-43df-b809-5989e3e39142-1778383490782-1778383601624" {
+    UseAI true
+    Variable "contact.address"
+    FieldValueExpression "Update {{contact.first_name}}  {{contact.last_name}} and {{contact.name}} fields with collected information"
+    __dynamicVariables
+    AiDescription "  Update {{contact.state}} {{contact.address1}} {{contact.city}} {{contact.address}} {{contact.postal_code}} fields with collected contact address. Ensure you validate and update with the validated information. If it doesn't validate properly and you need to clarify, go ahead and do so before moving forward. "
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="9d7af021-6e8e-4aee-a485-b50990ead47e"
+    __position -316.6938 -1085.9008
+}
+SetField id="ed1fc5fb-b0c9-43df-b809-5989e3e39142-1778383490782-1778383601624-1778383659176" {
+    UseAI false
+    Variable "contact.email"
+    FieldValueExpression "{{contact.email}} "
+    __dynamicVariables
+    AiDescription "  Update {{contact.state}} {{contact.address1}} {{contact.city}} {{contact.address}} {{contact.postal_code}} fields with collected contact address. Ensure you validate and update with the validated information. If it doesn't validate properly and you need to clarify, go ahead and do so before moving forward. "
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="bcda4208-2523-4e0f-99de-6c989e362671"
+    __position -119.02277 -1132.8973
+}
+SetField id="ed1fc5fb-b0c9-43df-b809-5989e3e39142-1778383490782-1778383601624-1778383659176-1778383940259" {
+    UseAI false
+    Variable "contact.phone"
+    FieldValueExpression "{{contact.email}} "
+    __dynamicVariables
+    AiDescription "  Update {{contact.state}} {{contact.address1}} {{contact.city}} {{contact.address}} {{contact.postal_code}} fields with collected contact address. Ensure you validate and update with the validated information. If it doesn't validate properly and you need to clarify, go ahead and do so before moving forward. "
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="eb177088-8831-4f76-8e12-80d53d1d4d7e"
+    __position -403.33722 -1366.136
+}
+Comparator id="56c10648-0d94-42e2-84bf-d38db2334a60" {
+    ExpressionOperator "LessThan"
+    UseAI true
+    isScenarioDescendant false
+    activeAiInScenario false
+    __dynamicVariables
+    Title "Within Service area "
+    AIExpression "Only proceed if customer is within service area. If not, apologize and thank client letting them know we will reach out if anything changes.  "
+    True handle="ed1fc5fb-b0c9-43df-b809-5989e3e39142-1778383490782-1778383601624"
+    False handle="cb4a304f-6b3a-4b82-9eec-b05bb2ab9e5a"
+    __position -488.41837 -975.0938
+}
+End id="cb4a304f-6b3a-4b82-9eec-b05bb2ab9e5a" {
+    isScenarioDescendant false
+    activeAiInScenario false
+    Next handle="EOC"
+    __position -46.82795 -914.5467
+}
