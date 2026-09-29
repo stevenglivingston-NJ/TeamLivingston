@@ -25,8 +25,8 @@ Before assuming something is "in TeamLivingston", check this table. The client-f
 | **Lookbooks** | lookbook.ktubtu.com | `stevenglivingston-NJ/ktu-lookbook` | Built by its GitHub Action | `.github/workflows/publish.yml`: on push, daily cron, or a `catalogue-changed` dispatch |
 | **Supabase functions for this repo**<br>`consult-sms-reply`, `consult-feedback`, `dispatch-notify`, `consult-completion-tagger`, `sm-agent-sync`, `jc-forecast-sync`, `rep-card`, `ingest-email`, `admin-users` | Supabase project `tguwpswcneywvscxzyef` | `TeamLivingston/supabase/functions/` | Supabase Edge Functions | Supabase CLI or MCP `deploy_edge_function` |
 | **Supabase function `queue-notify`** (designer email queue) | same project | `ktu-pricing-build/supabase-functions/` | Supabase | `deploy-supabase-functions.yml` |
-| **Axyom intranet** | dash.goaxyom.com | This repo, `intranet/` (see Dashboards below) | Cloudflare | `intranet/DEPLOY.md` |
-| `KTUBTU-Intranet` repo | none | `stevenglivingston-NJ/KTUBTU-Intranet` | none | Original intranet build brief. **Not used** by the portal or the pricing app |
+| **Axyom intranet** | dash.goaxyom.com | `stevenglivingston-NJ/KTUBTU-Intranet` → `index.html` + `worker.js`. **Not** this repo's `intranet/`, which was archived 2026-09-13 (see `intranet/ARCHIVED.md`) | Cloudflare Worker `ktubtuintranet` | Automatic on push to `main` (Cloudflare Workers Builds) |
+| **Playbook** (Lead to Last Nail, BTU Handover SOP BTU-OPS-001, KTU Handover Standard V2, Selections & Order Sheet) | playbook.ktubtu.com | This repo, `playbook/` (see its README) | Cloudflare Pages `ktu-playbook` | `npx wrangler pages deploy . --project-name ktu-playbook --branch main` from `playbook/`. Linked from the intranet Playbook tab |
 | **Design mocks** (Design Journey canvas) | https://claude.ai/artifact/JkYyRXszcHyy6EWwwRm7ZA | none | claude.ai | Edited from a Claude session |
 
 **Deploy rules. Both were learned the hard way on 2026-09-28.**
