@@ -50,6 +50,14 @@ Run these in parallel:
 - **CompanyCam** — `search_projects` by name and by street fragment. Grab the
   `project_id` and `photo_count` of the real match (ignore ZZ TEST / zero-photo
   stubs). The project may also list a JobTread integration and a "Job N" number.
+  **When more than one real (non-test, non-zero-photo) project matches the same
+  customer/address — this happens, e.g. a re-created project after a JobTread
+  resync — do NOT just take the first result.** Pull each candidate's most
+  recent photo timestamp (not just its photo count — two duplicates can have the
+  identical count) and use the one with the most recent activity as the ground
+  truth for `company_cam_status`/pacing. Report the stale duplicate's project_id
+  too, as a CompanyCam data-hygiene flag (it should be archived/merged), so it
+  doesn't get picked again on the next run.
 - **JobTread** — get org id once: `{"currentGrant":{"organization":{"id":{}}}}`.
   KTU/BTU share one org ("Kitchen Tune-Up Bloomfield"). Then find the job (see
   Step 3 for the query quirks) — it is often named **"Job N"** by number, not by
