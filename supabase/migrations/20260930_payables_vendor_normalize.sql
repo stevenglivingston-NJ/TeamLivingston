@@ -45,6 +45,8 @@ insert into public.vendor_aliases(kind, match, vendor) values
   ('email','asapstoneworks@gmail.com','ASAP Stonework LLC'),
   ('email','1325jmtt@gmail.com','Touch of Class'),
   ('name','touch of class','Touch of Class'),
+  ('email','hightide7@verizon.net','RJohnson Electrical'),
+  ('name','rjohnson electrical','RJohnson Electrical'),
   ('name','asap stonework llc','ASAP Stonework LLC'),
   ('name','a.rossi & son plumbing heating & cooling','A. Rossi & Son Plumbing Heating & Cooling')
 on conflict (kind, match) do update set vendor = excluded.vendor;

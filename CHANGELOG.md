@@ -5,6 +5,7 @@ Add an entry with every change; the **Tekki** agent mirrors this to the intranet
 (Tech Stack tab). Format: `YYYY-MM-DD · who · WHERE (repo/system) · WHAT — detail [link]`.
 
 ## 2026-09-30
+- **2026-09-30 · Claude Code (for Steven) · Supabase (pg_cron) · Cron run-log retention** — purged `cron.job_run_details` (264K rows since July, queries timing out) to 7 days; new daily `cron-log-cleanup` job keeps it there. [#232]
 - **2026-09-30 · Claude Code (for Steven) · TeamLivingston + Supabase · Scripted jobs moved from Claude routines to pg_cron** — appointments-sync, jc-forecast-sync, office-address-check (edge functions); morning_health_digest, ap_recon_digest, cancel_watch_run, sm_hl_recon_run (SQL + `http`). Matching Claude routines disabled. [#232]
 - **2026-09-30 · Claude Code (for Steven) · Supabase (payables) · Emailed bills get real vendor names; non-bills kept out of AP** — `vendor_aliases` + `payables_normalize_email()` on insert; Melio notices → `payment_notice`, marketing/shipping → `not_a_bill`, forwarded copies → `duplicate`; `payables_reconciled` excludes them; Moola spec updated. [#232]
 - **2026-09-30 · Claude Code (for Steven) · TeamLivingston · Require-CHANGELOG check + PR template** — CI nudge to keep this log current. [#pending]
