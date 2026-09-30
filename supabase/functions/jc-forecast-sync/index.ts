@@ -31,14 +31,18 @@ async function loadKeys(): Promise<void> {
   SM_KEYS.BTU = Deno.env.get("SM_KEY_BTU") ?? "";
   if (JT_KEY && SM_KEYS.KTU && SM_KEYS.BTU) return;
 
+  // app_secrets (also RLS-on / zero policies) is where the other functions keep
+  // the ServiceMinder keys; the JobTread key was added there 2026-09-30.
   const rows = await sb(
     `select key, value from dispatch_config ` +
-      `where key in ('jc_jobtread_grant_key','jc_sm_key_ktu','jc_sm_key_btu')`,
+      `where key in ('jc_jobtread_grant_key','jc_sm_key_ktu','jc_sm_key_btu') ` +
+      `union all select key, value from app_secrets ` +
+      `where key in ('JOBTREAD_GRANT_KEY','SM_KEY_KTU','SM_KEY_BTU')`,
   );
   for (const r of Array.isArray(rows) ? rows : []) {
-    if (r.key === "jc_jobtread_grant_key" && !JT_KEY) JT_KEY = r.value;
-    if (r.key === "jc_sm_key_ktu" && !SM_KEYS.KTU) SM_KEYS.KTU = r.value;
-    if (r.key === "jc_sm_key_btu" && !SM_KEYS.BTU) SM_KEYS.BTU = r.value;
+    if ((r.key === "jc_jobtread_grant_key" || r.key === "JOBTREAD_GRANT_KEY") && !JT_KEY) JT_KEY = r.value;
+    if ((r.key === "jc_sm_key_ktu" || r.key === "SM_KEY_KTU") && !SM_KEYS.KTU) SM_KEYS.KTU = r.value;
+    if ((r.key === "jc_sm_key_btu" || r.key === "SM_KEY_BTU") && !SM_KEYS.BTU) SM_KEYS.BTU = r.value;
   }
 }
 
