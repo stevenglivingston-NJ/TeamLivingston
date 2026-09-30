@@ -123,6 +123,8 @@ begin
     values (new.job_id, new.id, 'add', coalesce(new.product, new.item), act);
     return new;
   elsif tg_op = 'DELETE' then
+    -- the whole job is being deleted (cascade): its history goes with it, nothing to record
+    if not exists (select 1 from jc_jobs where id = old.job_id) then return old; end if;
     insert into ord_history (job_id, line_id, action, old_value, actor)
     values (old.job_id, old.id, 'delete', coalesce(old.product, old.item), act);
     return old;

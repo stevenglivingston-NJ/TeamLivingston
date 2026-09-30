@@ -269,3 +269,39 @@ begin
   returning * into l;
   return public.ord_line_json(l, pf);
 end $$;
+
+-- job delete cascades cleanly (audit skips lines whose job is going)
+create or replace function public.ord_lines_audit() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare o jsonb; n jsonb; k text; act text := public.ord_actor();
+  skip text[] := array['updated_at','updated_by','created_at','created_by','auto','sort','overridden','needs'];
+begin
+  if tg_op = 'INSERT' then
+    insert into ord_history (job_id, line_id, action, new_value, actor)
+    values (new.job_id, new.id, 'add', coalesce(new.product, new.item), act);
+    return new;
+  elsif tg_op = 'DELETE' then
+    -- the whole job is being deleted (cascade): its history goes with it, nothing to record
+    if not exists (select 1 from jc_jobs where id = old.job_id) then return old; end if;
+    insert into ord_history (job_id, line_id, action, old_value, actor)
+    values (old.job_id, old.id, 'delete', coalesce(old.product, old.item), act);
+    return old;
+  end if;
+  o := to_jsonb(old); n := to_jsonb(new);
+  for k in select jsonb_object_keys(n) loop
+    continue when k = any(skip);
+    if (o->k) is distinct from (n->k) then
+      insert into ord_history (job_id, line_id, action, field, old_value, new_value, actor)
+      values (new.job_id, new.id,
+              case when k = 'removed_at' and new.removed_at is not null then 'remove'
+                   when k = 'removed_at' then 'restore'
+                   when coalesce(current_setting('ord.mode', true),'') = 'sync' then 'sync'
+                   when k = any(new.overridden) and not (k = any(old.overridden)) then 'override'
+                   when k = any(old.overridden) and not (k = any(new.overridden)) then 'revert'
+                   else 'edit' end,
+              k, o->>k, n->>k, act);
+    end if;
+  end loop;
+  new.updated_at := now(); new.updated_by := act;
+  return new;
+end $$;
