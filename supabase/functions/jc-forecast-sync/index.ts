@@ -102,9 +102,12 @@ function num(v: unknown): number | null {
 // --- category mapping -------------------------------------------------------
 // JCA categories: direct_materials | contract_labor | employee_labor |
 //                 sales_commission | other
+// Stems (plumb, electric, carpent, deliver, demo, decommission) take a suffix:
+// a closing \b on a bare stem never matched "Plumbing" / "Electrical".
 const LABOR_RX =
-  /\b(labor|labour|install(ation)?|shop|demo|deliver|freight|handling|carpent|plumb|electric|tile setter|painting labor)\b/i;
-const COMMISSION_RX = /commission/i;
+  /\b(labor|labour|install(ation|ed|ing)?|shop|demo\w*|deliver\w*|freight|handling|carpent\w*|plumb\w*|electric\w*|decommission\w*|tile setter|painting labor)\b/i;
+// Word-start anchor: "Decommission a tub" is plumbing, not a sales commission.
+const COMMISSION_RX = /\bcommission/i;
 const FEE_RX = /\b(fee|permit|dumpster|general conditions|overhead|contingency)\b/i;
 
 const JT_COSTTYPE_MAP: Record<string, string> = {
