@@ -29,7 +29,7 @@
   <h1>Selections &amp; Order Sheet</h1>
   <p class="dek">How selections are recorded so the client can sign them, purchasing can order from them without a phone call, and the job's real margin is known. One line standard for both brands.</p>
   <div class="meta">
-    <span><b>Version</b> 2.0 · Sept 29, 2026</span>
+    <span><b>Version</b> 2.2 · Sept 30, 2026</span>
     <span><b>Replaces</b> Selections Checklist (Sept 23, 2026)</span>
     <span><b>Owners</b> Sales (the sheet) · PM (ordering and the tracker)</span>
   </div>
@@ -173,6 +173,7 @@
         <li>Change any number the JobTread sync provides (quantity, product, SKU, expected cost). Your number is kept on every later sync; the purple edge shows it, and <b>↺ JT</b> puts JobTread's value back.</li>
         <li><b>+ Add a client</b>: from JobTread, or by hand for work outside the automation. <b>+ Add line</b> for anything not on the estimate.</li>
         <li>Removing a line strikes it through; nothing is deleted. <b>History</b> shows who changed what, by login.</li>
+        <li><b>Signature before any order, here too.</b> On an unsigned job a red banner says <i>Do not order</i>, and a line can't be marked ordered or given a PO #, order date or confirmation. A JobTread job unlocks when its final Selection Sheet is signed in JobTread (then <b>↻ Refresh from JobTread</b>). A job added by hand or from ServiceMinder has no JobTread sheet: once the client has signed the paper Selection Sheet, tick <b>Signed (paper)</b> and say where the signed sheet is. Your name and the time are recorded, and it can be undone.</li>
       </ul></li>
   </ul>
   <h3>8.1 Purchases, invoices and profit</h3>
@@ -208,6 +209,7 @@
   <div class="tbl"><table>
     <thead><tr><th>Version</th><th>Date</th><th>Changes</th></tr></thead>
     <tbody>
+      <tr><td class="num">2.2</td><td class="num">2026-09-30</td><td>Signature before any order: client approval on the link is a pre-order review; order sheet reads Awaiting signed sheet until JobTread's Selection Sheet is signed; the workbook enforces it, with a Signed (paper) tick for jobs made by hand.</td></tr>
       <tr><td class="num">2.1</td><td class="num">2026-09-30</td><td>Added §8 orders.ktubtu.com: order sheet and workbook, overrides, manual clients and lines, purchases into job costing, invoice linking, the ServiceMinder purchases note, per-person access.</td></tr>
       <tr><td class="num">2.0</td><td class="num">2026-09-29</td><td>Merged the Selections Checklist with BTU-OPS-001 §5 and KTU Handover Standard item 10; added fields (item &amp; area, supplied by, status, overage), the forgotten-categories list, the order sheet and the Job Tracker. Published to playbook.ktubtu.com.</td></tr>
       <tr><td class="num">1.0</td><td class="num">2026-09-23</td><td>Selections Checklist: two documents, line standard, default stores.</td></tr>
