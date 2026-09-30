@@ -29,7 +29,7 @@
   <h1>Selections &amp; Order Sheet</h1>
   <p class="dek">How selections are recorded so the client can sign them, purchasing can order from them without a phone call, and the job's real margin is known. One line standard for both brands.</p>
   <div class="meta">
-    <span><b>Version</b> 2.0 · Sept 29, 2026</span>
+    <span><b>Version</b> 2.2 · Sept 30, 2026</span>
     <span><b>Replaces</b> Selections Checklist (Sept 23, 2026)</span>
     <span><b>Owners</b> Sales (the sheet) · PM (ordering and the tracker)</span>
   </div>
@@ -45,7 +45,7 @@
 <section>
   <h2 data-desc="Client picks, the signed Selection Sheet, and the order sheet + Job Tracker: where each lives and what it is for.">1. Three records, three jobs</h2>
   <div class="cards">
-    <div class="card"><h3>Client picks</h3><p><b>Where:</b> JobTread job → Selections tab (simple selections), or the pricing tool's client selection link.</p><p>Where the client chooses. One decision per sheet ("Choose your faucet"), every final pick ticked. It is a preference, not a signature, and never the order record.</p></div>
+    <div class="card"><h3>Client picks</h3><p><b>Where:</b> JobTread job → Selections tab (simple selections), or the pricing tool's client selection link.</p><p>Where the client chooses. One decision per sheet ("Choose your faucet"), every final pick ticked. It is a preference, not a signature, and never the order record. On the pricing tool's link the client can also leave a note on any line, send a product link for the designer to research, and <b>approve</b> — approval starts the final design; it is not a signature.</p></div>
     <div class="card"><h3>Selection Sheet (signed)</h3><p><b>Where:</b> JobTread job → Documents → New → Selections → template "Order Sheet — final selections (PDF)".</p><p>The signed, printable buy list. Built once the picks are final; prices hidden and excluded from the budget total (the proposal carries pricing). Signed the same day as the Design Packet.</p></div>
     <div class="card"><h3>Order sheet &amp; Job Tracker</h3><p><b>Where:</b> pricing tool → job → Order sheet, mirrored to the Google Sheet "Job Tracker — KTU &amp; BTU" in .Project Management.</p><p>Built from JobTread's finalized estimate plus the approved selections. Where the PM orders from, tracks each order, and records actual costs.</p></div>
   </div>
@@ -117,12 +117,23 @@
   <h2 data-desc="How the order sheet is built from JobTread, what &quot;Needs info&quot; means, and who receives it.">6. The order sheet (pricing tool)</h2>
 <div class="note" id="status-order-sheet" style="background:var(--ok-soft);border-left-color:var(--ok)"><span class="k" style="color:var(--ok)">Status — live (Sept 29, 2026)</span>The order sheet is live in the pricing tool. Open the job → <b>Order sheet</b>, or use the link in the order email.</div>
   <p>When a client approves selections in the pricing tool, it builds the job's order sheet from <b>JobTread's finalized estimate</b> — quantities, costs and prices as quoted — and pairs each estimate line with the product the client chose for it.</p>
+  <div class="note" id="signature-rule" style="border-left-color:var(--bad,#c2410c)"><span class="k">Signature before any order (Sept 30, 2026)</span>Until the final Selection Sheet is <b>signed in JobTread</b>, the order sheet reads <b>Awaiting signed sheet</b> and is a <b>pre-order review</b> only: check lead times and missing info, place nothing. The pricing tool refuses <b>Ready for order</b> and refuses marking a line Ordered, Shipped or Received until the signature is there. The approval email says "Pre-order review — DO NOT ORDER"; the signature sends "Signed — ready to order".</div>
+  <h3>The client's selection link, stage by stage</h3>
+  <ol>
+    <li><b>Sent</b> — the designer shares the curated sheet (one link per job).</li>
+    <li><b>In progress</b> — the client and designer work it together. Every change is logged: old value → new value, who (client or team), when.</li>
+    <li><b>Approved</b> — the client approves. Blocked while a decision is open or a research link is unanswered. The orderers get a pre-order review; the designer gets the approval email.</li>
+    <li><b>Final design &amp; rendering</b> — the design request goes out (re-sent automatically if one was sent before).</li>
+    <li><b>Final design presented</b> — the designer marks it. The client has <b>one round of changes</b> after approving; anything after that round, or after signing, is recorded as a <b>change order requested</b> and tracked to written or declined.</li>
+    <li><b>Signed</b> — read from the signed "Order Sheet — final selections (PDF)" in JobTread, never set by hand. Ordering opens once the PM passes the Production Gate.</li>
+  </ol>
+  <p>Every client change and every stage move is emailed to the designer and the pricing tool's "selections" recipients, batched: one email per burst of edits. The tool's <b>working-copy PDF</b> is stamped "not signed, not an order" — the only signed sheet is the JobTread one.</p>
   <ul>
     <li><b>One row per item</b>: category, item, chosen product (make/model/finish), SKU, source, link, quantity and unit, expected unit cost, expected cost, expected retail, expected margin.</li>
     <li><b>Grouped by vendor</b>, so each group is one purchase order.</li>
     <li><b>Needs info</b> on any line missing SKU, finish, quantity or source. The sheet only reads <b>Ready to order</b> when there are none — the tool enforces the same rule as the Production Gate.</li>
     <li><b>Labor, fees and services</b> (delivery, sink cutout, project fee) appear for margin but are marked "not ordered". Install materials on the estimate (grout, setting materials, paint) show as <b>Needs info</b> until the sheet names them; general supplies show "Supplies — confirm"; materials a sub supplies (heated-floor mat) show "Sub supplies — confirm spec".</li>
-    <li>It drafts the Handover Email for Sales and sends the order-sheet notice to the recipients set in the pricing tool's admin screen (default TLivingston@kitchentuneup.com, both brands). The PM (Mayra) places orders for both brands.</li>
+    <li>When the final Selection Sheet is signed, it sends the "Signed — ready to order" notice to the recipients set in the pricing tool's admin screen (default TLivingston@kitchentuneup.com, both brands) and drafts the Handover Email for Sales. The PM (Mayra) places orders for both brands.</li>
     <li>The approved selections are written back to the JobTread job as a selections document. The job also gets a comment with the order sheet link whenever the sheet's status changes (not on every refresh).</li>
     <li>Anyone on the team can rebuild it: open the job in the pricing tool → <b>Order sheet</b>. It also refreshes itself from JobTread every 2 hours, so a quantity fixed in JobTread reaches the sheet and the tracker.</li>
   </ul>
@@ -162,6 +173,7 @@
         <li>Change any number the JobTread sync provides (quantity, product, SKU, expected cost). Your number is kept on every later sync; the purple edge shows it, and <b>↺ JT</b> puts JobTread's value back.</li>
         <li><b>+ Add a client</b>: from JobTread, or by hand for work outside the automation. <b>+ Add line</b> for anything not on the estimate.</li>
         <li>Removing a line strikes it through; nothing is deleted. <b>History</b> shows who changed what, by login.</li>
+        <li><b>Signature before any order, here too.</b> On an unsigned job a red banner says <i>Do not order</i>, and a line can't be marked ordered or given a PO #, order date or confirmation. A JobTread job unlocks when its final Selection Sheet is signed in JobTread (then <b>↻ Refresh from JobTread</b>). A job added by hand or from ServiceMinder has no JobTread sheet: once the client has signed the paper Selection Sheet, tick <b>Signed (paper)</b> and say where the signed sheet is. Your name and the time are recorded, and it can be undone.</li>
       </ul></li>
   </ul>
   <h3>8.1 Purchases, invoices and profit</h3>
@@ -197,6 +209,7 @@
   <div class="tbl"><table>
     <thead><tr><th>Version</th><th>Date</th><th>Changes</th></tr></thead>
     <tbody>
+      <tr><td class="num">2.2</td><td class="num">2026-09-30</td><td>Signature before any order: client approval on the link is a pre-order review; order sheet reads Awaiting signed sheet until JobTread's Selection Sheet is signed; the workbook enforces it, with a Signed (paper) tick for jobs made by hand.</td></tr>
       <tr><td class="num">2.1</td><td class="num">2026-09-30</td><td>Added §8 orders.ktubtu.com: order sheet and workbook, overrides, manual clients and lines, purchases into job costing, invoice linking, the ServiceMinder purchases note, per-person access.</td></tr>
       <tr><td class="num">2.0</td><td class="num">2026-09-29</td><td>Merged the Selections Checklist with BTU-OPS-001 §5 and KTU Handover Standard item 10; added fields (item &amp; area, supplied by, status, overage), the forgotten-categories list, the order sheet and the Job Tracker. Published to playbook.ktubtu.com.</td></tr>
       <tr><td class="num">1.0</td><td class="num">2026-09-23</td><td>Selections Checklist: two documents, line standard, default stores.</td></tr>
