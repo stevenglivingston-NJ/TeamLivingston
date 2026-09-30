@@ -1,0 +1,14 @@
+# Change log
+
+Every change to a tool, flow, integration or deploy — **who / what / when / where**. Newest first.
+Add an entry with every change; the **Tekki** agent mirrors this to the intranet Change Log
+(Tech Stack tab). Format: `YYYY-MM-DD · who · WHERE (repo/system) · WHAT — detail [link]`.
+
+## 2026-09-30
+- **2026-09-30 · Claude Code (for Steven) · ktu-pricing-build + Supabase · Client selection link: stages, change log, notes, research tasks, change orders, batched alerts; signature before any order** — approval is a pre-order review; the order sheet reads Awaiting signed sheet until the JobTread Selection Sheet is signed; one round of changes then change-order requests; cron `*/5` replaces `45 */2`. [ktu-pricing-build#29]
+- **2026-09-30 · Claude Code (for Steven) · Supabase + orders.ktubtu.com · Workbook enforces the signature rule** — `jc_jobs.selections_signed` (from JobTread, or a named "Signed (paper)" tick for jobs with no JobTread job); `ord_save_line` refuses placing an order on an unsigned job; lines already ordered stay editable. Migration `20260930d_orders_signature_rule.sql`. [#234]
+- **2026-09-30 · Claude Code (for Steven) · TeamLivingston playbook · Selections & Order Sheet: signature rule and the selection-link stages** [#234]
+- **2026-09-30 · Claude Code (for Steven) · TeamLivingston · Require-CHANGELOG check + PR template** — CI nudge to keep this log current. [#pending]
+- **2026-09-30 · Claude Code (for Steven) · TeamLivingston · Tekki owns the change log; Playbook "Tools & How-To" page** — Tekki mirrors each repo's CHANGELOG.md to the intranet and flags undocumented changes; new playbook page with flow diagram + how-tos, deployed to playbook.ktubtu.com. [#233]
+
+<!-- Add new entries above this line, newest first. -->
