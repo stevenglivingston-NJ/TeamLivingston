@@ -131,7 +131,7 @@
 
 <section id="tracker">
   <h2 data-desc="The live tracker: what updates itself, what you type, strikethrough on removal, change log, Summary tab.">7. The Job Tracker (Google Sheet)</h2>
-<div class="note" id="status-tracker"><span class="k">Status — connecting (Sept 29, 2026)</span>The workbook is set up in .Project Management and the sync is built. Its first automatic fill is waiting on Google Sheets access being switched on for our Google account. Until your job has its own tab, log orders, ship dates and actual costs on the job in JobTread.</div>
+<div class="note" id="status-tracker" style="background:var(--ok-soft);border-left-color:var(--ok)"><span class="k" style="color:var(--ok)">Status — live (Sept 30, 2026)</span>The workbook fills itself from JobTread every 2 hours and matches the order page both ways. Anything you type here also reaches orders.ktubtu.com and job costing.</div>
   <p><b>Where:</b> Google Drive (ktubloomfieldnj) → <b>.Project Management</b> → "Job Tracker — KTU &amp; BTU (live)". One workbook, a tab per finalized job, a Summary tab and a Change log tab. It is the live job tracker from ordering to closeout.</p>
   <h3>7.1 What updates itself, and what you type</h3>
   <div class="tbl"><table>
@@ -151,6 +151,37 @@
   </ul>
 </section>
 
+<section id="orders">
+  <h2 data-desc="orders.ktubtu.com: the home list, the order sheet, the workbook, who can see costs, and how purchases reach job costing and ServiceMinder.">8. orders.ktubtu.com — ordering, purchases and profit</h2>
+  <p><b>orders.ktubtu.com</b> is the team's ordering front door. Sign in with your pricing.ktubtu.com login.</p>
+  <ul>
+    <li><b>Home</b> (<code>/</code>): every job with an order sheet, what's left to order, what's late.</li>
+    <li><b>Order sheet</b> (open a job): set each line's order status, PO #, order date, ETA, received date, actual cost, who ordered it and how it was paid. It saves as you go and matches the Job Tracker both ways. Under the expected cost, <b>max $X</b> is the buy sheet's spend ceiling: the most you can pay and still hold the 50% floor. It turns red when the actual cost goes over. (The old buy-sheet site, purchasing.ktubloomfield.com, now opens orders.)</li>
+    <li><b>Workbook</b> (<code>/w</code>, or <b>Workbook</b> on any order sheet): the whole job as an editable sheet.
+      <ul>
+        <li>Change any number the JobTread sync provides (quantity, product, SKU, expected cost). Your number is kept on every later sync; the purple edge shows it, and <b>↺ JT</b> puts JobTread's value back.</li>
+        <li><b>+ Add a client</b>: from JobTread, or by hand for work outside the automation. <b>+ Add line</b> for anything not on the estimate.</li>
+        <li>Removing a line strikes it through; nothing is deleted. <b>History</b> shows who changed what, by login.</li>
+      </ul></li>
+  </ul>
+  <h3>8.1 Purchases, invoices and profit</h3>
+  <ul>
+    <li>An <b>actual cost</b> on a line is the purchase: vendor, date purchased (order date) and amount. It goes straight into job costing, the same numbers as the intranet Job Costing tab and Monthly reporting. Enter a purchase once, on its line.</li>
+    <li>When the vendor's invoice reaches ktubtubilling@ and is matched to the job, the line links to it automatically if the vendor and the amount or PO match. The invoice amount then counts instead, so nothing is counted twice. You can also pick the invoice on the line.</li>
+    <li><b>Expected vs actual GP</b> per job and across jobs is on the workbook for people with cost access.</li>
+  </ul>
+  <h3>8.2 ServiceMinder job costing</h3>
+  <p>ServiceMinder has no way for other systems to write into a proposal's job costing (Margins). On a job's workbook, <b>Post to ServiceMinder</b> puts a note on the client's ServiceMinder contact listing each purchase (vendor · date purchased · actual amount) against the proposal number. <b>Copy</b> gives the same lines to paste into the proposal's Margins.</p>
+  <h3>8.3 Who can see what</h3>
+  <p>Set per person in <b>pricing.ktubtu.com → Admin → Users</b>:</p>
+  <ul>
+    <li><b>Orders</b>: see and work orders.</li>
+    <li><b>Costs &amp; profit</b>: see and enter costs, actual amounts and GP.</li>
+    <li><b>Job costing</b>: the intranet invoice queue and payment release.</li>
+  </ul>
+  <p>Someone without Costs &amp; profit sees orders with the money columns hidden and cannot enter an actual cost.</p>
+</section>
+
 <section>
   <h2 data-desc="The four mistakes that cause wrong orders.">Don't</h2>
   <ul>
@@ -166,6 +197,7 @@
   <div class="tbl"><table>
     <thead><tr><th>Version</th><th>Date</th><th>Changes</th></tr></thead>
     <tbody>
+      <tr><td class="num">2.1</td><td class="num">2026-09-30</td><td>Added §8 orders.ktubtu.com: order sheet and workbook, overrides, manual clients and lines, purchases into job costing, invoice linking, the ServiceMinder purchases note, per-person access.</td></tr>
       <tr><td class="num">2.0</td><td class="num">2026-09-29</td><td>Merged the Selections Checklist with BTU-OPS-001 §5 and KTU Handover Standard item 10; added fields (item &amp; area, supplied by, status, overage), the forgotten-categories list, the order sheet and the Job Tracker. Published to playbook.ktubtu.com.</td></tr>
       <tr><td class="num">1.0</td><td class="num">2026-09-23</td><td>Selections Checklist: two documents, line standard, default stores.</td></tr>
     </tbody>
