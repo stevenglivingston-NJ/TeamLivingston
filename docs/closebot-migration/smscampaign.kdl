@@ -1,0 +1,180 @@
+__CONFIG__ {
+    conversationReason "This company is located in Bloomfield New Jersey and serves local community and surrounding areas.   {{contact.first_name}} is connecting with you about your remodel services and to schedule a free in home consultation with designer.  The initial message from customer is \n    {{contact.initial_message_from_sms_campaign}}"
+    businessInformation "{{custom_values.ktu_playbook}}{{custom_values.objections_toolkit_shape_up_your_sales_approach_handling_objections}}{{custom_values.bath_tuneup_refacing_manual_2023_v6}}{{custom_values.core_services_guide_623_us}}\nKitchen remodeling website: {{custom_values.kitchen_website}}\nBathroom remodeling website: {{custom_values.bathroom_website}}\nYou are a friendly and conversational receptionist and your goal is to engage with the incoming leads, build a rapport, collect info about their project and offer assistance. We don't offer repairs for jobs we haven't installed. "
+    prohibitedWords {
+        Cheap
+        cheapest
+        -
+    }
+    followUp active=true smart=false repeat=false varianceMinutes=0
+}
+Source id="sourceNode" {
+    Next handle="e0d665f2-8406-47c0-9015-85e490f771d5"
+    __position -1505.0023 -1010.3935
+}
+Booking id="ba6fe8ee-545d-41d1-a127-a1b667796f1c" {
+    Title "Booking"
+    __dynamicVariables
+    Description "Book a 2 hour appointment at {{location.full_address}} with the contact."
+    Prompt "Share soonest available times. Consultations take up to 2 hours and are in-home with the designer. "
+    CalendarName "Consultation Calendar"
+    FailedTag "AI Appointment error"
+    CalendarId "IezEuyUywqr1OL7tjHEk"
+    Next handle="3f8f5ec3-1b13-49b7-9a51-03ecb5eab890"
+    __position 220.24527 -1011.02563
+}
+MultiObjective id="eb177088-8831-4f76-8e12-80d53d1d4d7e" {
+    Objectives {
+        _ {
+            Variable "contact.email"
+            Title "Get Email "
+            Description "Get the contact's email for consultation reminders and to send relevant communication and details. "
+            Prompt "Ensure email address is valid format. "
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    Next handle="9d7af021-6e8e-4aee-a485-b50990ead47e"
+    __position -400.58868 -978.65
+}
+MultiObjective id="166b4528-b656-44f5-b156-d48a02e1fea5" {
+    Objectives {
+        _ {
+            Variable "contact.address"
+            Title "Get Full Address"
+            Description "Get the contact's full address"
+            Prompt "Get contacts full address which should include street name, city and zip. You don't need the state as you only operate in New Jersey. "
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    Next handle="ed1fc5fb-b0c9-43df-b809-5989e3e39142"
+    __position -130.0232 -1020.6401
+}
+MultiObjective id="9d7af021-6e8e-4aee-a485-b50990ead47e" {
+    Objectives {
+        _ {
+            Variable "contact.phone"
+            Title "Get Phone"
+            Description "Get the contact's phone"
+            Prompt "Ensure it is 10 or 11 digits"
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    Next handle="166b4528-b656-44f5-b156-d48a02e1fea5"
+    __position -244.48569 -1054.7975
+}
+MultiObjective id="a1efdf46-a85f-4d5d-bbc8-636d974f04d1" {
+    Objectives {
+        _ {
+            Variable "contact.first_name"
+            Title "Get First Name"
+            Description "Get the contact's first name if {{contact.first_name}} "
+            Prompt "Get contact's first name so you can use throughout conversation. Incorporate context from initial message {{contact.initial_message_from_sms_campaign}}"
+            MaxAttempts 3
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    Next handle="1da54e82-edb8-42df-8cc3-bdf43f38f577"
+    __position -1095.6061 -893.9266
+}
+ModifyTags id="3f8f5ec3-1b13-49b7-9a51-03ecb5eab890" {
+    Title "Add AI Booked Tag"
+    TagsToAdd {
+        _ {
+            Tag "AI Booked Kitchen"
+        }
+        _ {
+            Tag "ai stop"
+        }
+    }
+    TagsToRemove
+    __dynamicVariables
+    Next handle="4f40a1bc-30b5-4fff-8267-308f6a057fdd"
+    __position 341.5377 -1010.98956
+}
+SaveConversation id="4f40a1bc-30b5-4fff-8267-308f6a057fdd" {
+    SummarizeConversation true
+    Variable "contact.notes_contact"
+    __dynamicVariables
+    Next handle="228127fd-ebd2-41b3-ad9a-e0f5c33b6463"
+    __position 461.711 -1001.11615
+}
+SaveConversation id="6b802d1f-d149-4ba7-9549-6ad9919b3f3e" {
+    SummarizeConversation true
+    Variable "contact.projectnotescontact"
+    __dynamicVariables
+    Next handle="ba6fe8ee-545d-41d1-a127-a1b667796f1c"
+    __position 102.20338 -1017.4489
+}
+Conversation id="228127fd-ebd2-41b3-ad9a-e0f5c33b6463" {
+    ExtraPrompt "Final Confirmation recapping {{nodes.ba6fe8ee-545d-41d1-a127-a1b667796f1c.booked}} . Thank them and let them know they'll hear from their designer a day or 2 before the appointment and will also see a quick design quiz coming through. This will guide them and rep. Any questions in the interim, don't hesitate to reach out. "
+    __dynamicVariables
+    Next handle="EOC"
+    __position 580.4905 -997.84814
+}
+MultiObjective id="1da54e82-edb8-42df-8cc3-bdf43f38f577" {
+    Objectives {
+        _ {
+            Variable "contact.projectnotescontact"
+            Title "Get ProjectNotesContact"
+            Description "determine the scope of {{contact.first_name}}'s Kitchen remodel project "
+            Prompt "Ask one question at a time"
+            MaxAttempts 1
+            Sensitivity 50
+            SkipIfNotBlank true
+        }
+    }
+    __dynamicVariables
+    Next handle="5fc5fbf1-da37-45a7-a05c-8a26bf4dd7fd"
+    __position -902.18274 -867.0233
+}
+SetField id="ed1fc5fb-b0c9-43df-b809-5989e3e39142" {
+    UseAI false
+    Variable "contact.address"
+    FieldValueExpression "{{nodes.166b4528-b656-44f5-b156-d48a02e1fea5.result[0]}}"
+    __dynamicVariables
+    Next handle="6b802d1f-d149-4ba7-9549-6ad9919b3f3e"
+    __position -20.094803 -1019.14307
+}
+AISwitch id="5fc5fbf1-da37-45a7-a05c-8a26bf4dd7fd" {
+    UseAI true
+    NonAiExpressionLeftValue ""
+    __dynamicVariables
+    Description "Is customer interested in a kitchen remodel "
+    Title "Customer intent"
+    AiCases {
+        _ {
+            CaseName "Interested in remodel, design or appointment"
+        }
+        _ {
+            CaseName "Not Interested in Kitchen Remodel"
+        }
+    }
+    AiCases:0 handle="eb177088-8831-4f76-8e12-80d53d1d4d7e"
+    AiCases:1 handle="51373617-2ad2-4887-b91d-9b68051c4812"
+    __position -706.2983 -860.9774
+}
+End id="51373617-2ad2-4887-b91d-9b68051c4812" {
+    Next handle="EOC"
+    __position -334.40378 -711.0636
+}
+Comparator id="e0d665f2-8406-47c0-9015-85e490f771d5" {
+    ExpressionOperator "Equal"
+    UseAI ""
+    Title "If SMS Campaign"
+    __dynamicVariables
+    ExpressionLeftValue "{{contact.tags}}"
+    ExpressionRightValue "SMSCAMPAIGN"
+    True handle="a1efdf46-a85f-4d5d-bbc8-636d974f04d1"
+    __position -1287.2203 -1021.4277
+}

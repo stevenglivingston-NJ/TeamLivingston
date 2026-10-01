@@ -1,7 +1,7 @@
 # Target-Market Map — Multifamily Kitchen Repositioning (North Jersey)
 
 Maintained by the **Prospect** agent (`.claude/agents/prospect.md`).
-Last updated: 2026-08-12.
+Last updated: 2026-09-12.
 
 ## 1. Geography
 
@@ -46,6 +46,31 @@ suburbs, and post-stabilization renovation targets.
   leasing-office/amenity millwork, turnover scopes, overflow subcontracting,
   and future preconstruction relationships.
 
+- **Tier 5 (senior & age-restricted) — added 2026-09-12:** age-restricted,
+  senior, assisted-living and independent-living housing anywhere in Essex,
+  Bergen, Passaic, Morris and Union. Three distinct sub-types, each with its
+  own buying motion:
+  - *Publicly owned senior housing* — housing-authority buildings designated
+    elderly/disabled, typically 1960s-70s stock on HUD Capital Fund money.
+    Bought by sealed bid; see Tier 6. Highest scope fit we have: dated
+    kitchens plus a genuine ADA/aging-in-place bath need.
+  - *LIHTC age-restricted development* — NJHMFA 9% "Age-Friendly Senior Cycle"
+    and 4% filings. Named sponsor, unit count and phone are public at
+    application, 12-24 months before anyone else is selling. Relationship
+    play; an application is **not** an award and must never be described as
+    funded.
+  - *Private-pay senior living operators* — assisted living, memory care,
+    CCRCs. No bid process, rolling apartment refresh between residents plus
+    common-area capital. Talk to the Executive Director, not the sales office.
+- **Tier 6 (public & institutional bid work) — added 2026-09-12:** housing
+  authorities, county and municipal agencies, boards of education, and any
+  LIHTC/HUD-funded rehab. Distinct from every other tier because access is
+  gated, not relational: prevailing wage, certified payroll, PWCR
+  registration, and bid/payment/performance bonds. Only surface these once
+  the registration and bonding gates are cleared — an unbiddable lead is not
+  a lead. Occupied **moderate rehab** is the single best scope match in this
+  tier: unit-by-unit kitchen and bath replacement, phased, residents in place.
+
 ### Deprioritize / exclude
 
 Single-family (unless affluent-buyer renovation intent + referral source);
@@ -75,6 +100,19 @@ score is extremely high.
    secondary market and suburban nodes; named developer/GC/architect/owner rep/
    interior designer/millwork sub/leasing agent; stage; any public signal that
    kitchen/cabinet/millwork/appliance procurement is not yet awarded.
+
+5. **Senior & institutional (added 2026-09-12):** NJHMFA LIHTC applicant,
+   reservation and award lists (both cycles, plus rolling 4%); housing
+   authority board minutes and capital improvement plans; HUD Capital Fund
+   award announcements; certificate-of-need and assisted-living licensure
+   filings; senior-living operator expansion and renovation press. Age of
+   stock matters more here than elsewhere — a 1960s elderly/disabled building
+   is a standing opportunity even with no transaction signal.
+6. **Public bid (added 2026-09-12):** open solicitations on the NJ Purchasing
+   Group (BidNet Direct) for participating housing authorities, counties and
+   municipalities; per-authority procurement pages; NJ DPMC advertisements.
+   Report these as *solicitations with a due date*, never as leads to
+   "develop" — the action is bid or no-bid, and the deadline is the story.
 
 ## 4. Offer → target mapping
 

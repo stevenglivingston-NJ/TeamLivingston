@@ -82,7 +82,7 @@ fill the gaps:**
    MCP, Meta Ads MCP, GA4/GMB/Bing via Zapier. These are the actual dollars spent,
    real-time, per campaign. Never let a bank/card-transaction number override or
    average against a live platform number for a channel the platform itself reports.
-2. **Bank/card-transaction matching (the `mkt_spend` / `mkt_spend_summary` dataset —
+2. **Bank/card-transaction matching (the `marketing_spend_monthly` view over bank-classified `bank_transactions`; `mkt_spend` is a frozen July hand-scan —
    Chase/Brex/Bluevine memo-string matching) is a FALLBACK, used only to capture
    spend that has NO platform API**: print/magazine placements (City Lifestyle,
    Premmedia, Major League Media), direct mail (SendJim), sponsorships, incentives
@@ -98,6 +98,11 @@ fill the gaps:**
 - **Google Ads MCP**: `query_campaigns` (spend, CPL, conv), `query_keywords`
   (min_spend filter to focus), `query_search_terms` (wasted-spend hunt),
   `query_negative_keywords` (coverage), `query_geo_performance` (town-level ROI),
+  `query_ads` (ad/creative-level: ad_strength, status, final URLs, RSA headline/
+  description text — see §4), `query_call_assets` (account- and campaign-level
+  call assets, phone number + status — see "Phone routing"),
+  `query_conversion_actions` (goal-by-goal tracking-health audit — see §2/§0),
+  `query_change_history` (who changed what, 30-day window),
   `query_lsa_account` + `query_lsa_leads` (Local Services leads and lead quality —
   requires `GOOGLE_ADS_LOGIN_CUSTOMER_ID` (MCC id) in env; if unset both calls
   error — flag it as an environment gap, don't silently skip LSA).
@@ -144,16 +149,31 @@ fill the gaps:**
   Accounts: KTU **2579406186**, BTU **4477036900**, BTU LSA **4668735878**,
   MCC **936-671-0070**. (`4278203845` is not under this MCC — 403, skip it.)
 
-  What this unlocks, none of it available through the MCP:
+  **Full account inventory, verified 2026-09-13** (`listAccessibleCustomers`
+  on this login returns 6 total, not the 4 above): the MCC itself
+  (`9366710070`, "KTU/BTU Reporting"); a dormant legacy account
+  `4278203845` ("KTU Bloomfield NJ" — every campaign PAUSED/REMOVED, $0/30d,
+  last active ~2023, deliberately not monitored, not a gap); and
+  `7159460368` ("Earthwise Seed Co. Google Ads2") — a live, ~$300k/30d
+  Jatalia account that is **Harvest's, not yours** — never report on or
+  recommend changes to it, just don't be surprised it's reachable on this
+  same login if you ever enumerate accessible customers.
+
+  What this still unlocks that the MCP does not expose as a tool:
   | Resource | Answers |
   |---|---|
   | `campaign.primary_status` + `primary_status_reasons` | why a campaign served $0 — billing vs paused vs policy, instead of guessing |
-  | `change_event` (30-day max window) | who changed what, with actor email — settles "did the agency touch this?" |
-  | `conversion_action` | category, PRIMARY vs secondary, counting rules — the weekly conversion-signal integrity check |
   | `shared_set` / `shared_criterion` / `campaign_criterion` | negative-keyword coverage across shared lists |
-  | `asset` where `asset.type='CALL'` | call assets, and whether a stray number is still live |
-  | `ad_group_ad` | final URLs + ad_strength for the creative-level pass |
   | `metrics.search_*_impression_share` (on `campaign`) | **top-of-page & absolute-top share** — see §1b |
+
+  Four items formerly in this table now have first-class MCP tools instead —
+  use these, not raw GAQL, and only fall back to the escape hatch if the tool
+  itself errors: `change_event` → `query_change_history` (30-day max window,
+  actor email, old/new values); `conversion_action` → `query_conversion_actions`
+  (category, PRIMARY vs secondary, counting rules, plus pre-built findings);
+  `asset` where `asset.type='CALL'` → `query_call_assets` (account- and
+  campaign-level, added 2026-09-14); `ad_group_ad` → `query_ads` (final URLs,
+  ad_strength, RSA headline/description text, added 2026-09-14).
 
 - **Microsoft Clarity — Data Export API.** Env `CLARITY_KTU_TOKEN`,
   `CLARITY_BTU_TOKEN` (Bearer).
@@ -161,12 +181,26 @@ fill the gaps:**
   **Hard limits: last 1–3 days only, 10 calls per project per day** — budget exactly
   three cuts (URL, Device, Source) and do not re-pull. Gives sessions, scroll depth,
   dead/rage clicks, engagement, bot share.
-- **Meta Ads MCP**: `ads_insights_performance_trend` (trend by campaign),
-  `ads_insights_anomaly_signal` (spikes/drops you'd otherwise miss),
-  `ads_insights_industry_benchmark` + `ads_insights_auction_ranking_benchmarks`
-  (are we beating the market or buying expensive auctions),
-  `ads_get_opportunity_score` (Meta's own prioritized fixes — triage, don't
-  blindly accept), `ads_get_errors` (delivery blockers).
+- **Meta Ads MCP** (`mcp__Facebook-Ads__*` — direct connector, run every session):
+  Pull in this order every run — do NOT skip:
+  1. `ads_get_ad_accounts` → confirm the active ad account id for KTU/BTU (Meta
+     runs both brands under Steven's Business Manager).
+  2. `ads_insights_performance_trend` — spend, impressions, CPM, CTR, leads by
+     campaign for yesterday + trailing 7d + trailing 30d.
+  3. `ads_insights_anomaly_signal` — any spend spike or drop vs baseline; surface
+     all findings, not just the top one.
+  4. `ads_insights_industry_benchmark` + `ads_insights_auction_ranking_benchmarks`
+     — are we beating the market CPM/CTR or buying expensive auctions?
+  5. `ads_get_opportunity_score` — Meta's own prioritized fixes; triage each,
+     don't blindly accept.
+  6. `ads_get_errors` — delivery blockers on any active ad/ad-set; name the
+     blocked creative and the exact unblock step.
+  7. `ads_get_creatives` + `ads_get_ad_preview` on the top-spending ads — identify
+     fatigue (frequency >3 + falling CTR) and name which creative to pause and
+     which hook to iterate.
+  **If Meta returns an error or empty result, say so explicitly in the brief —
+  do NOT silently omit the Meta section.** A missing Meta section is always a
+  gap to flag, never acceptable as "nothing to report."
 - **GA4 — direct MCP. ✅ LIVE (verified end-to-end 2026-08-21). Use this, not Zapier.**
   `mcp-servers/google-analytics/server.py` calls the GA4 Data API
   (`analyticsdata.googleapis.com`) directly: `run_report`, `get_channel_performance`,
@@ -413,10 +447,13 @@ Every campaign verdict must drill to the ad/creative that's driving it:
   what's actually running; frequency + CTR decay for fatigue; `ads_get_errors` and
   `ads_get_opportunity_score` for delivery **blockers** — name the blocked ad and the
   unblock step. Call winners and losers by creative (hook/format/offer), not campaign.
-- **Google**: the local google-ads MCP is campaign/keyword-level only — **known
-  blocker**: it lacks ad/RSA-asset queries. Route ad-level pulls through Zapier's
-  Google Ads actions; if neither path works, say "creative-level blind on Google" in
-  the brief rather than silently reporting campaign averages.
+- **Google**: `query_ads` (fixed 2026-09-14 — the local google-ads MCP previously had
+  no ad-level tool at all). Per-ad type, `ad_strength` (PENDING/NO_ADS/POOR/AVERAGE/
+  GOOD/EXCELLENT), status, final URLs, and — for RESPONSIVE_SEARCH_AD ads — the
+  headline/description text with pinned slot, plus standard metrics. A POOR/AVERAGE
+  `ad_strength` on a high-spend ad is a direct §6c quality-score/landing-page tie-in —
+  name it. Only fall back to Zapier's Google Ads actions or "creative-level blind on
+  Google" if `query_ads` itself errors.
 - Recommendations must be creative-specific: which ad to pause, which hook to iterate,
   which asset combination the data says to scale.
 
@@ -424,10 +461,10 @@ Every campaign verdict must drill to the ad/creative that's driving it:
 Organic is 84% of pipeline — check it daily so paid decisions don't fly blind:
 - **GMB rankings & queries**: gmb-mcp search-keywords + performance metrics (local
   stdio; Zapier GBP actions as the cloud fallback).
-- **Competitive trends**: Semrush (`organic_research`, `keyword_research`,
-  `tracking_research`) and Ahrefs (`rank-tracker-competitors-domains`) vs the named
+- **Competitive trends**: Ahrefs (`rank-tracker-competitors-domains`) vs the named
   local competitors for "kitchen remodeling / cabinet refacing / bath remodel +
-  Bloomfield/Essex County" terms.
+  Bloomfield/Essex County" terms. Use Meta's `ads_insights_industry_benchmark` and
+  `ads_insights_auction_ranking_benchmarks` for paid competitive benchmarks.
 - Deliver a verdict, not data: **meeting / beating / losing to** each key competitor,
   which terms moved, and whether paid should defend a term organic is losing.
 
@@ -461,62 +498,14 @@ would get free (see the Operating Rules on protecting organic).
 impressions to **budget** vs to **rank**. This turns "we're not showing enough" into
 a specific, correct action.
 
-**f. Coverage vs the market.** Where SEMrush units allow, use `keyword_research` for
-the gap (volume/KD/CPC) and compare our real CPC against market CPC — paying well
-above market signals a quality/relevance problem, not just competition. When SEMrush
-is dark, substitute **GMB `search-keywords`** (first-party query intent, no quota)
-and say that's what you used.
+**f. Coverage vs the market.** Use **GMB `search-keywords`** (first-party query
+intent, no quota) for coverage gaps, and compare our real Google Ads CPC against
+Meta's `ads_insights_auction_ranking_benchmarks` for cross-channel market CPC
+context. Paying well above market on a term signals a quality/relevance problem.
 
 **g. LSA category coverage** — LSA has no keywords, only categories/services; confirm
 the enabled set still matches what we actually sell and want to sell.
 
-### 6b. SEMrush — paid competitive intelligence (weekly, Mondays)
-
-SEMrush is not just Organic's tool; it is the only source that shows **what
-competitors are buying and what they're paying**, which is context no first-party
-platform can give you. Workflow for every SEMrush pull: **discovery tool →
-`get_report_schema` → `execute_report`**, `database='us'`. Tool names are exact —
-`mcp__Semrush__*`:
-
-- **`paid_search_research`** — the highest-value one for you. For each named local
-  competitor domain: the keywords triggering their **Google Ads**, their ad
-  positions, estimated CPCs and paid traffic, **their actual ad copy (titles +
-  descriptions)**, and historical PPC trend. Use it to answer: who else is bidding
-  our money terms, are they escalating or retreating, and what offer/hook is their
-  ad copy leading with vs ours. A competitor newly entering "cabinet refacing +
-  Essex County" explains a rank-lost impression-share spike far better than guessing.
-- **`competitors_research`** — who actually competes in **paid** (not just organic),
-  keyword overlap between us and them, and market rankings. Use it to keep the
-  competitor list evidence-based rather than a hardcoded list that goes stale.
-- **`keyword_research`** — volume, difficulty, intent, CPC benchmarks for terms we
-  buy or are considering. Cross-check our real Google Ads CPC against SEMrush's
-  market CPC: paying well above market on a term is a quality-score/ad-rank tell.
-- **`domain_overview`** — competitor paid keyword/traffic/cost totals and trend; the
-  fastest read on whether a rival is scaling paid up or down.
-- **`traffic_overview`** — competitor total visits, engagement, and **acquisition
-  channel mix** (how much of their demand is paid vs organic vs direct vs social).
-  This is the cleanest way to see whether a rival's growth is bought or earned.
-- **`audience_research`** — competitor visitor demographics (age, income, geography).
-  Feeds §7b's town/demo targeting and §7d high-touch work with real audience data
-  instead of assumption.
-- Skip **`shopping_research`** — PLA/Shopping is ecommerce, i.e. Harvest's, not yours.
-
-Budget it: SEMrush API units are finite and shared with Organic. Run this block
-**weekly (Mondays)**, not daily; on other days reuse Monday's read and say so.
-**Coordinate with Organic** — Organic owns the organic-side SEMrush pulls
-(`organic_research`, `backlinks_research`, `site_audit`, `position_tracking`); you
-own the **paid** side. Don't both spend units on the same report.
-
-⚠️ **KNOWN FAILURE MODE — SEMrush units run out account-wide.** Verified 2026-08-21:
-every SEMrush tool, including cheap discovery calls, returned *"active Semrush
-subscription, but does not have enough API units."* There is no cheaper SEMrush call
-to fall back to. Detect it with your first call, report it as a tracking/coverage gap
-in the brief (top-up: **https://www.semrush.com/mcp-access**), and **keep working** —
-your first-party sources are unaffected and cover most of the competitive question:
-`query_search_terms` (what we're actually matching), `query_geo_performance`,
-`auction_insight`-style rank-lost signal from §1c, and Meta's
-`ads_insights_industry_benchmark` / `ads_insights_auction_ranking_benchmarks`. Say
-which sources produced the read so it isn't mistaken for SEMrush data.
 
 ### 7. Channel expansion scouting (weekly, data-grounded)
 Once a week (or when a signal appears), scan for channels the businesses SHOULD be in,
@@ -552,7 +541,7 @@ Include a close-rate-by-town view so a town that gets clicks but never signs is
 visible (demographics alone — the Territories view — can't show this).
 
 ### 7c. Market landscape (quarterly; ported from CMO Intelligence)
-Once a quarter: zip-level demand pockets (Semrush/Ahrefs keyword volume + observed
+Once a quarter: zip-level demand pockets (Ahrefs keyword volume + observed
 proposal density → opportunity gaps where demand exists but we don't), seasonality
 curve vs our spend pacing, and the keyword landscape tables (volume/difficulty/CPC)
 for both brands. Three verdicts max — where to expand, where we're over-indexed,
@@ -609,7 +598,7 @@ Yesterday: $X spend | Y leads (forms + CALLS + QR) | $Z CPL (Δ vs 7d avg) — p
 💰 REALLOCATION                — move $ from ___ to ___ because ___
 🏆 AUCTION POSITION            — impression share / top / abs-top per Search campaign,
                                  and whether each loss is BUDGET-lost or RANK-lost
-🕵️ COMPETITOR PAID (weekly)    — who's bidding our terms, their ad copy/offer, CPC vs ours
+🕵️ COMPETITOR PAID             — Meta benchmarks vs market; first-party CPC vs market avg
 🎨 CREATIVE                    — winning/fatigued ads by name + delivery blockers
 🧪 LANDING PAGES & FUNNELS     — Clarity findings on paid pages; leads/revenue by funnel
 🗺️ ORGANIC & COMPETITORS       — GMB rank moves; meeting/beating/losing vs key rivals
@@ -635,6 +624,15 @@ The brief also lands in `intranet_records` so it appears in the owner's reportin
 and so **Moola can pressure-test your reallocations** (Moola reads section
 `paid_brief` by design). Write via the curl helper `bash mcp-servers/sb.sh '<SQL>'`
 (service role, curl→PostgREST, not permission-gated — anon REST will 401), project `tguwpswcneywvscxzyef`:
+
+**LSA's per-brand deep dive (§1d) is separate from `paid_brief`'s top-10 cap —
+it already publishes to its own section, confusingly named `organic_lsa`
+(verified live 2026-09-13, e.g. rows for KTU/BTU with `phone_responsiveness`,
+`periods.WTD/MTD/YTD`, `account.reviews`). That name is a historical
+mislabel — LSA is Paid's audit per §1d, not Organic's — but do NOT rename or
+duplicate it without checking the intranet frontend for what actually reads
+that section name; flag the naming to Steven instead of silently fixing it.
+Keep writing there; do not also create a `paid_lsa` section.
 1. Build rows in memory first — max 10: yesterday's headline numbers row, each
    🚨 must-action, each 💰 reallocation verdict, tracking-integrity status, and
    (when produced) the monthly 🎯 combo verdicts. Fields shape:
@@ -643,24 +641,103 @@ and so **Moola can pressure-test your reallocations** (Moola reads section
 2. INSERT today's rows, and only after success prune older `scan_date` rows from
    section `paid_brief`. Never delete first; if the insert fails, yesterday's rows
    stay (stale beats blank). Always ≥1 row.
+   **If the INSERT itself errors, don't silently fall through to step 3 — that
+   turned a same-day, attributable failure into a 4-day-old mystery once
+   (2026-09-03 → 09-07, caught only by the next freshness sweep, by which point
+   the routine had already reported itself SUCCEEDED). Immediately write one row
+   to `system_health` (`{"agent":"paid_brief","severity":"urgent","title":"paid_brief
+   insert failed","detail":"<the curl/PostgREST error>","checked_at":"<now>"}`) and
+   append one line to the Slack digest — e.g. "⚠️ paid_brief write failed this run,
+   yesterday's numbers are showing" — so a bad run is visible same-day, not
+   discovered a week later as unexplained staleness.**
 3. Separately, write back any `mkt_high_touch` rows you researched in step 7d —
    UPDATE in place, never delete-and-reinsert; those rows carry team-entered columns
    you must not lose. This section has no other writer, so if you skip it nothing
    else will fill it.
 
-## Phone routing — the truth to check against
+### 10b. Keyword-level detail (sections `ppc_*`) — the retired dashboard's job
 
-An unanswered or IVR'd line wastes the whole click. Verify these against live call
-assets (`asset.type='CALL'`) and the site, and flag any drift:
+The `ktu-team-dashboard` held keyword-, ad- and campaign-level PPC that `paid_brief`
+does not: it was deleted 2026-09-09 (it was publicly readable), and its data was loaded
+into `intranet_records` as a **2026-07-02 snapshot** so nothing was lost. Those rows carry
+`"source":"team-dashboard-snapshot"` and `"is_snapshot":true`. **You are now the live
+writer for them.** Same crash-safe rule as `paid_brief`: INSERT first, prune after.
 
-| Number | Role | Must route to |
+| Section | One row per | Key fields beyond the common shape |
+|---|---|---|
+| `ppc_keywords` | keyword | `keyword`, `match_type`, `quality_score`, `spend`, `clicks`, `conversions`, `cpa`; `kind` = `top_keyword` or `spend_trap` |
+| `ppc_negatives` | wasted search term | `search_term`, `spend`, `clicks`, `conversions`; `kind` = `negative_candidate` |
+| `ppc_campaigns` | campaign | `name`, `status`, `channel_type`, `budget_daily`, `spend`, `conversions`, `cpa` |
+| `ppc_impression_share` | campaign, and month | `impression_share`, `lost_to_budget`, `lost_to_rank`; `kind` = `by_campaign` or `by_month` |
+| `ppc_actions` | recommendation | `type`, `priority`, `action`, `impact`, `confidence`, `difficulty`, `detail` |
+
+Every row takes `scan_date` and a brand tag, exactly like `paid_brief`. Keep each section
+to what a human will read — roughly 10 keywords, 25 negatives, all campaigns.
+
+**Google Ads is reachable (verified 2026-09-28: `gads.sh test_connection` ok for KTU and
+BTU).** In scheduled runs call it only through `bash mcp-servers/gads.sh <tool> '<json>'`
+(`query_keywords`, `query_negative_keywords`, `query_search_terms`, `query_campaigns`,
+`query_ads`, `query_lsa_periods` …) — never the `mcp__google-ads__*` tools, which hang a
+scheduled run. If a call errors, write nothing for that section, keep the old rows (stale
+and labelled beats blank), and say which call failed and why in the brief.
+
+**Once you write live rows, drop the snapshot.** After a successful insert for a section,
+prune rows in it where `fields->>'is_snapshot' = 'true' OR fields->>'source' = 'team-dashboard-snapshot'` (the 09-09 load carries only the `source` tag). That is the only thing that
+clears them, and it must happen after the insert succeeds, never before.
+
+**Register with the freshness watchdog only once you are genuinely feeding these.**
+`check_agent_freshness()` alarms on any tracked section that misses its `due_hour`;
+adding them while the data is frozen would alarm every hour and teach everyone to ignore
+`system_health`.
+
+## Phone routing — target end-state (decided 2026-09-13, PENDING PPC implementation)
+
+**Steven's decision: unify each brand onto ONE number across every surface, and
+replace the call-center IVR with Verizon's carrier-level spam filter.** This is
+the target Paid should measure drift against going forward — it is NOT yet live,
+so don't report the pre-migration numbers below as a failure until the PPC
+manager confirms the cutover.
+
+| Brand | Unified number | Every surface (Site, LSA, PPC/Google Ads call assets, GBP) | Spam handling |
+|---|---|---|---|
+| KTU | **(973) 521-8442** | All KTU surfaces route here | Verizon carrier-level filter (replaces the call-center IVR) |
+| BTU | **(973) 798-9756** | All BTU surfaces route here | Verizon carrier-level filter (replaces the call-center IVR) |
+
+- **Retire**: (973) 521-1182 (KTU legacy IVR line, already PAUSED at account level)
+  and (973) 381-2877 — the latter is **not dormant**: live-verified 2026-09-14 as
+  ENABLED on 6 active KTU campaigns at the campaign-asset level (see the
+  pre-migration table below for the exact list). **Destination confirmed by
+  Steven (2026-09-14): 381-2877 rings to the same direct call center as
+  8442** — so it is not a misroute risk today, but it is a **live duplicate
+  number splitting call-conversion attribution** across two lines for the
+  same destination on those 6 campaigns. Both numbers must be fully removed
+  from every paid path — including campaign-level overrides, not just
+  account defaults — once the migration lands, so all KTU call-tracking
+  consolidates onto 8442.
+- **Why Verizon over the IVR**: the call center added an IVR gate after spam-call
+  complaints; carrier-level filtering (Verizon Call Filter) blocks likely spam
+  before it rings through, without adding a "press 1" step that costs attribution
+  and adds friction for real customers — unlike the IVR, it doesn't touch calls
+  that get through.
+- **Status: awaiting PPC-manager execution** — no MCP tool changes live phone
+  numbers; this table exists so Paid's daily drift-check has the right target the
+  moment the cutover happens. Until then, keep checking against the pre-migration
+  state below and do not flag the pre-migration numbers as newly broken.
+
+## Phone routing — pre-migration state (the truth to check against until cutover)
+
+An unanswered or IVR'd line wastes the whole click. Verify these with `query_call_assets`
+(added 2026-09-14 — account- and campaign-level `asset.type='CALL'` in one call, no
+hand-built GAQL needed) and the site, and flag any drift:
+
+| Number | Role | Must route to (pre-migration) |
 |---|---|---|
 | (973) 521-8442 | KTU — ALL Google paid (site, call asset, LSA) | Answered call center, **no IVR** |
-| (973) 521-1182 | KTU — legacy, **goes to IVR** | Remove from paid paths |
+| (973) 521-1182 | KTU — legacy, **goes to IVR** | Account-level call asset is PAUSED — correctly out of the account default, but retires fully in the target state above |
 | (973) 566-5882 / (973) 528-8654 | KTU tracking lines | Call center |
 | (973) 798-9756 | BTU primary (call-conversion tracked) | Call center |
-| (973) 521-0688 | BTU — **published on BTU's Google profile**; re-pointed to the call center, no IVR (Steven, week of 2026-08-17) | Call center. **Verify call-conversion tracking follows it** — it was previously the untracked fallback |
-| (973) 381-2877 | Stray KTU Google call asset | Confirm or remove |
+| (973) 521-0688 | BTU — **published on BTU's Google profile**; re-pointed to the call center, no IVR (Steven, week of 2026-08-17) | Call center. **Verify call-conversion tracking follows it** — it was previously the untracked fallback. Retires in favor of 798-9756 in the target state above |
+| (973) 381-2877 | **NOT a dormant stray — live-verified 2026-09-14 via `query_call_assets`: ENABLED as a campaign-level call asset on 6 active KTU campaigns** (001/002-S Territory 1/2, both "Search - Territory" campaigns, 004-S-Kitchen Tune Up, 008-S-KTU-December 2025 — PAUSED on 3 others incl. 004-S-Brand, 009-S-Cabinet Refacing). **Destination confirmed by Steven 2026-09-14: rings to the direct call center — same destination as 8442**, so this is a duplicate-number/attribution-fragmentation issue, not a misroute | Not urgent as a routing fault, but **must** still be removed from every one of those 6 campaigns as part of the cutover (not just account-level settings) so KTU call-conversion data stops splitting across two numbers for the same line |
 
 **Which surface carries which number — verified 2026-08-22.** These are separate
 systems with separate phone settings. Do not infer one from another; an earlier
@@ -670,8 +747,8 @@ audit wrongly read a GBP phone as if it were the LSA phone.
 |---|---|---|---|
 | **LSA profile** | (973) 521-8442 | (973) 798-9756 | ✅ correct (owner-confirmed) |
 | **Google Ads call assets** (account-level) | (973) 521-8442 ENABLED, 521-1182 PAUSED | (973) 798-9756 ENABLED | ✅ correct |
-| **Google Business Profile** | (973) 521-1182 | (973) 521-0688 | 🔴 **wrong** |
-| **Franchise site** `/bloomfield-nj` | (973) 521-1182 ×4 `tel:` | (973) 521-0688 ×4 `tel:` | 🔴 **wrong** |
+| **Google Business Profile** | (973) 521-1182 | (973) 521-0688 | 🔴 **wrong pre-migration; both retire to the unified number above once GBP is updated** |
+| **Franchise site** `/bloomfield-nj` | (973) 521-1182 ×4 `tel:` | (973) 521-0688 ×4 `tel:` | 🔴 **wrong pre-migration; both retire to the unified number above once the site is updated** |
 | **ktubloomfield.com** (own domain) | (973) 521-8442 | — | ✅ correct |
 
 **The LSA phone is NOT readable from any API here.** The Local Services API
@@ -782,7 +859,11 @@ watch, not as evidence about which number is configured where.
 - 🟡 **HighLevel trigger-link / QR-scan stats** not exposed directly — read contact
   tags/attribution fields; if that yields no scan data, report QR as a tracking gap,
   not zero leads.
-- 🟡 **google-ads MCP has no ad/creative-level queries** (campaign/keyword/geo/LSA
-  only) — use Zapier Google Ads actions for ad-level; otherwise state "creative-level
-  blind on Google" in the brief. Candidate fix: add `query_ads` / RSA asset
-  performance to `/root/code/google-ads-mcp/server.py`.
+- 🟢 **google-ads MCP now has ad/creative-level queries** (`query_ads`,
+  `query_call_assets` — added 2026-09-14 to `mcp-servers/google-ads/server.py`,
+  live-verified against KTU/BTU/EARTHWISE). This closes the "creative-level blind
+  on Google" gap this note used to describe; Zapier is now a fallback only if
+  `query_ads` itself errors. (There is also a **retired**, unmaintained
+  google-ads MCP copy in the separate `ktubtu-mcp-deploy` repo — do not port
+  fixes there or treat its output as current; see that repo's
+  `google-ads/README.md`.)
