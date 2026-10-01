@@ -179,8 +179,13 @@ ServiceMinder** (an appointment nobody is scheduled to attend). Goldeneye reads
 the JSON and publishes it — it does not re-derive the analysis.
 
 ```
-python3 mcp-servers/lead-sweep.py --days 2 --out /tmp/lead-sweep.json
+python3 mcp-servers/lead-sweep.py --days 2 --rollup-days 7 --out /tmp/lead-sweep.json
 ```
+
+Calls are also rolled up per tracking number over 7 days (`buckets.call_tracking_7d`,
+added 2026-10-01): a line that rings out on two different days is graded a routing
+fault, and Goldeneye keeps a durable `📞 LINE` row in `system_coverage` for it until
+the line has a clean, verified week. Closing a callout never clears the line.
 
 It self-tests every pipe first and reports failures in `degradations`; an empty
 bucket next to a degradation is **unverified, not clean**. All HTTP goes through

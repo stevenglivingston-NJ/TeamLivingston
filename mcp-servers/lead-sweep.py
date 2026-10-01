@@ -23,6 +23,12 @@ Usage
   python3 mcp-servers/lead-sweep.py                # trailing 7 days
   python3 mcp-servers/lead-sweep.py --days 1       # since yesterday
   python3 mcp-servers/lead-sweep.py --out sweep.json
+  python3 mcp-servers/lead-sweep.py --days 2 --rollup-days 7   # Goldeneye's run
+
+Calls are pulled over max(--days, --rollup-days). Every bucket keeps the --days
+window; buckets.call_tracking_7d adds a per-number rollup over --rollup-days,
+because a 48-hour window on a quiet line is one or two calls — too few to tell
+a broken forward from a bad afternoon.
 
 Requires env (Cloud environment secrets):
   GHL_PIT_KTU / GHL_PIT_BTU     HighLevel per-location Private Integration Tokens
@@ -427,16 +433,23 @@ def self_test() -> list[str]:
 # the sweep
 # --------------------------------------------------------------------------
 
-def sweep(days: int) -> dict:
+def sweep(days: int, rollup_days: int = 7) -> dict:
     now = datetime.now(timezone.utc)
     since = now - timedelta(days=days)
     since_ms = int(since.timestamp() * 1000)
+    # Calls are pulled over the wider of the two windows; everything else is
+    # still judged on `since`.
+    wide = now - timedelta(days=max(days, rollup_days))
+    wide_ms = int(wide.timestamp() * 1000)
+    week_calls: list[dict] = []
     today = datetime.now(ET).date()
 
     report = {
         "generated_at": now.isoformat(),
         "window_days": days,
         "window_start_et": since.astimezone(ET).strftime("%Y-%m-%d %I:%M%p"),
+        "rollup_days": max(days, rollup_days),
+        "rollup_start_et": wide.astimezone(ET).strftime("%Y-%m-%d %I:%M%p"),
         "degradations": self_test(),
         "brands": {},
         "buckets": {
@@ -448,6 +461,7 @@ def sweep(days: int) -> dict:
             "booking_date_mismatch": [],
             "duplicate_contacts": [],
             "call_tracking": [],
+            "call_tracking_7d": [],
             "service_recovery": [],
             "list_damage": [],
         },
@@ -455,13 +469,14 @@ def sweep(days: int) -> dict:
 
     for brand in ("KTU", "BTU"):
         try:
-            convs = fetch_conversations(brand, since_ms)
+            convs = fetch_conversations(brand, wide_ms)
         except Exception as exc:
             report["degradations"].append(f"HighLevel {brand} conversation pull failed: {exc}")
             continue
 
         stats = {
-            "conversations_touched": len(convs),
+            "conversations_touched": sum(
+                1 for c in convs if (c.get("lastMessageDate") or 0) >= since_ms),
             "inbound_conversations": 0,
             "opt_outs": 0,
             "dnd_events": 0,
@@ -481,10 +496,13 @@ def sweep(days: int) -> dict:
                 msgs = fetch_messages(brand, conv["id"])
             except Exception:
                 continue
+            # Conversations last touched before `since` are here only for the
+            # call rollup; they must not feed the window's other buckets.
+            in_window = (conv.get("lastMessageDate") or 0) >= since_ms
 
             inbound_recent = [
                 m for m in msgs
-                if m.get("direction") == "inbound"
+                if in_window and m.get("direction") == "inbound"
                 and m.get("dateAdded", "") >= since.isoformat()
             ]
             if inbound_recent:
@@ -501,17 +519,16 @@ def sweep(days: int) -> dict:
 
             # --- calls -----------------------------------------------------
             source = None
-            for m in msgs:
+            for i, m in enumerate(msgs):
                 if m.get("messageType") != "TYPE_CALL":
                     continue
-                if m.get("dateAdded", "") < since.isoformat():
+                if m.get("dateAdded", "") < wide.isoformat():
                     continue
                 if m.get("direction") != "inbound":
                     continue
                 dur = ((m.get("meta") or {}).get("call") or {}).get("duration")
                 dur = dur if isinstance(dur, (int, float)) else 0
                 status = m.get("status")
-                stats["calls_total"] += 1
                 if source is None:
                     try:
                         source = (ghl_v2(brand, f"/contacts/{conv['contactId']}")
@@ -519,17 +536,31 @@ def sweep(days: int) -> dict:
                     except Exception:
                         source = None
                 track = source if (source or "").startswith("+") else "(direct / untracked)"
-                by_tracking[track]["total"] += 1
 
                 if status == "no-answer":
                     kind = "no_answer"
-                    stats["calls_no_answer"] += 1
                 elif dur >= ABANDON_SECONDS:
                     kind = "answered"
-                    stats["calls_answered"] += 1
                 else:
                     kind = "abandoned"
-                    stats["calls_abandoned"] += 1
+
+                # Did anyone reach back out after a missed call? Any outbound
+                # human message or call on the thread afterwards counts.
+                returned = kind == "answered" or any(
+                    n.get("direction") == "outbound"
+                    and n.get("messageType") in REAL_MSG_TYPES
+                    for n in msgs[i + 1:])
+                week_calls.append({
+                    "brand": brand, "track": track, "iso": m.get("dateAdded", ""),
+                    "phone": phone, "name": name, "kind": kind, "dur": dur,
+                    "returned": returned})
+
+                if m.get("dateAdded", "") < since.isoformat():
+                    continue  # rollup only — the window's buckets stop here
+                stats["calls_total"] += 1
+                stats[{"no_answer": "calls_no_answer", "answered": "calls_answered",
+                       "abandoned": "calls_abandoned"}[kind]] += 1
+                by_tracking[track]["total"] += 1
                 by_tracking[track][kind] += 1
 
                 if kind == "answered":
@@ -670,6 +701,27 @@ def sweep(days: int) -> dict:
             })
     b["call_tracking"].sort(key=lambda r: ({"red": 0, "amber": 1, "green": 2}[r["status"]],
                                            -r["calls"]))
+    b["call_tracking_7d"] = rollup_calls(week_calls, report["rollup_days"])
+
+    # Fold the week onto each number's window row, and give a number that was
+    # quiet in the window but faulty this week a row of its own — otherwise a
+    # broken line drops off the card on any day nobody happens to call it.
+    rank = {"red": 0, "amber": 1, "green": 2}
+    week_by = {(w["brand"], w["number"]): w for w in b["call_tracking_7d"]}
+    for row in b["call_tracking"]:
+        w = week_by.pop((row["brand"], row["number"]), None)
+        row["week"] = w
+        row["overall_status"] = min(
+            [row["status"]] + ([w["status"]] if w else []), key=rank.get)
+    for (brand, number), w in week_by.items():
+        if w["status"] == "green":
+            continue
+        b["call_tracking"].append({
+            "brand": brand, "number": number, "calls": 0, "answered": 0,
+            "abandoned": 0, "rang_out": 0, "answer_rate_pct": None,
+            "status": "green", "unanswered": [], "action": w["action"],
+            "week": w, "overall_status": w["status"]})
+    b["call_tracking"].sort(key=lambda r: (rank[r["overall_status"]], -r["calls"]))
 
     # --- list damage rollup ------------------------------------------------
     for brand, s in report["brands"].items():
@@ -685,6 +737,93 @@ def sweep(days: int) -> dict:
 
     report["rag"] = grade(report)
     return report
+
+
+def rollup_calls(calls: list[dict], rollup_days: int) -> list[dict]:
+    """Per tracking number over the rollup window, worst first.
+
+    One ring-out is a bad moment. Ring-outs on two different days, or a line
+    answering under 60% of five-plus calls, is a forward that is broken — the
+    call centre does not have two bad days on one number and none on the rest.
+    """
+    # The same call can sit on two threads; count it once.
+    seen, uniq = set(), []
+    for c in calls:
+        key = (c["brand"], digits(c["phone"]), c["iso"])
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(c)
+
+    by = defaultdict(list)
+    for c in uniq:
+        by[(c["brand"], c["track"])].append(c)
+
+    out = []
+    for (brand, number), cs in by.items():
+        cs.sort(key=lambda c: c["iso"])
+        n = len(cs)
+        answered = sum(c["kind"] == "answered" for c in cs)
+        rang_out = [c for c in cs if c["kind"] == "no_answer"]
+        missed = [c for c in cs if c["kind"] != "answered"]
+        ringout_days = sorted({et_stamp(c["iso"])[:9] for c in rang_out})
+        rate = round(100 * answered / n)
+
+        unanswered = []
+        unrecovered = 0
+        for c in missed:
+            booked = bool(has_any_appointment(digits(c["phone"]))) if digits(c["phone"]) else False
+            if not (c["returned"] or booked):
+                unrecovered += 1
+            unanswered.append({
+                "date": et_stamp(c["iso"]),
+                "caller": mask(c["phone"]),
+                "who": short_name(c["name"], c["phone"]),
+                "outcome": ("rang out, never answered" if c["kind"] == "no_answer"
+                            else f"caller hung up after {int(c['dur'])}s"),
+                "returned": c["returned"],
+                "booked": booked,
+            })
+
+        if len(ringout_days) >= 2 or (n >= 5 and rate < 60):
+            status, verdict = "red", "routing fault suspected"
+        elif rang_out or unrecovered or rate < 80:
+            status, verdict = "amber", "watch"
+        else:
+            status, verdict = "green", "healthy"
+
+        if status == "red":
+            action = (f"Line fault: rang out on {len(ringout_days)} day(s) this week. "
+                      "Dial it during business hours, check the forward destination, "
+                      "ring timeout and overflow — then log the result.")
+        elif unrecovered:
+            action = (f"{unrecovered} missed caller(s) never called back or booked — "
+                      "work the list below.")
+        elif status == "amber":
+            action = "Watch — not yet a pattern."
+        else:
+            action = "Answering cleanly."
+
+        out.append({
+            "brand": brand,
+            "number": number,
+            "days": rollup_days,
+            "calls": n,
+            "answered": answered,
+            "abandoned": sum(c["kind"] == "abandoned" for c in cs),
+            "rang_out": len(rang_out),
+            "ringout_days": ringout_days,
+            "answer_rate_pct": rate,
+            "unrecovered": unrecovered,
+            "last_missed": et_stamp(missed[-1]["iso"]) if missed else None,
+            "status": status,
+            "verdict": verdict,
+            "unanswered": unanswered,
+            "action": action,
+        })
+    rank = {"red": 0, "amber": 1, "green": 2}
+    out.sort(key=lambda r: (rank[r["status"]], -r["rang_out"], -r["calls"]))
+    return out
 
 
 def audit_calendar(brand: str, today) -> tuple[list[dict], list[dict]]:
@@ -919,6 +1058,14 @@ def grade(report: dict) -> dict:
         if s["opt_outs"] >= 25:
             amber_reasons.append(f"{brand} took {s['opt_outs']} opt-outs")
 
+    # A faulty line over the week is amber, not red: today's ring-outs already
+    # page on their own, and a line fixed on Monday must not page all week.
+    for w in b.get("call_tracking_7d", []):
+        if w["status"] == "red":
+            amber_reasons.append(
+                f"{w['brand']} {w['number']} rang out on {len(w['ringout_days'])} "
+                f"day(s) in {w['days']}d — routing fault suspected")
+
     if b["duplicate_contacts"]:
         amber_reasons.append(
             f"{len(b['duplicate_contacts'])} duplicate ServiceMinder record(s)")
@@ -936,6 +1083,8 @@ def grade(report: dict) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=7)
+    ap.add_argument("--rollup-days", type=int, default=7,
+                    help="per-number call rollup window (buckets.call_tracking_7d)")
     ap.add_argument("--out")
     args = ap.parse_args()
 
@@ -945,7 +1094,7 @@ def main() -> int:
         print(json.dumps({"error": f"missing env: {', '.join(missing)}"}), file=sys.stderr)
         return 1
 
-    report = sweep(args.days)
+    report = sweep(args.days, args.rollup_days)
     text = json.dumps(report, indent=1)
     if args.out:
         with open(args.out, "w") as fh:
