@@ -1,4 +1,4 @@
-// Axyom notify_queue dispatcher — v7. Email (HighLevel) + targeted Slack.
+// Axyom notify_queue dispatcher — v10. Email (HighLevel) + targeted Slack.
 //
 // Why this exists: notification delivery used to depend on scheduled agent
 // sessions whose MCP connectors flap at startup — pings sat pending for hours.
@@ -26,6 +26,20 @@
 // actually delivered, failures land in `result.partial_failures`, and only a
 // total blackout across every configured channel errors the row.
 //
+// v8: a 200 from HighLevel only means the email was queued. sendEmail now reads the message
+// back and treats status "failed" as a failure, so it lands in partial_failures instead of
+// `via` (every KTU email failed silently 2026-07-06 → 2026-09-27: "email service is expired").
+//
+// v9: when the primary HighLevel location's email fails (KTU's email service expired, 2026-09-27),
+// retry once through a fallback location whose email works — the BTU location. Token: the
+// GHL_PIT_FALLBACK function secret (preferred) or app_secrets HL_TOKEN_BTU; location: app_secrets
+// HL_LOCATION_BTU (or dispatch_config ghl_fallback_pit / ghl_fallback_location_id). No token = no-op.
+// The fallback sends with that location's default From. The row records `email(fallback)`.
+//
+// v10: dispatch_config.slack_aliases maps an alert address to the Slack login it belongs to, so
+// Steven's slivingston@kitchentuneup.com alerts reach his DM (his Slack login is his Gmail)
+// instead of the fallback channel.
+//
 // Secrets (preferred over the dispatch_config table, so they never land in
 // backups/dumps/query logs):
 //   GHL_PIT          HighLevel Private Integration Token — `supabase secrets set GHL_PIT=...`
@@ -41,6 +55,7 @@
 //   slack_bot_token    Slack bot token — fallback only; prefer the SLACK_BOT_TOKEN secret
 //   slack_channel_id   Channel to post to when a DM can't be opened / no recipient match
 //   slack_webhook_url  Legacy incoming webhook, used only when no bot token is configured
+//   slack_aliases      JSON {"alert@address": "slack-login@address"} -- DM people whose Slack email differs
 //   cron_secret        Shared secret pg_cron sends as the x-cron-secret header
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -59,6 +74,14 @@ async function loadConfig(): Promise<Record<string, string>> {
   if (!cfg.slack_bot_token) {
     const { data: s } = await sb.from("app_secrets").select("value").eq("key", "SLACK_BOT_TOKEN").maybeSingle();
     if (s?.value) cfg.slack_bot_token = s.value;
+  }
+  const envFallback = Deno.env.get("GHL_PIT_FALLBACK");
+  if (envFallback) cfg.ghl_fallback_pit = envFallback;
+  if (!cfg.ghl_fallback_pit || !cfg.ghl_fallback_location_id) {
+    const { data: f } = await sb.from("app_secrets").select("key,value").in("key", ["HL_TOKEN_BTU", "HL_LOCATION_BTU"]);
+    const m = Object.fromEntries((f ?? []).map((r) => [r.key, r.value]));
+    cfg.ghl_fallback_pit ||= m.HL_TOKEN_BTU || "";
+    cfg.ghl_fallback_location_id ||= m.HL_LOCATION_BTU || "";
   }
   return cfg;
 }
@@ -90,6 +113,34 @@ async function sendEmail(c: Record<string, string>, to: string, subject: string,
     }),
   });
   if (!msg.ok) throw new Error("GHL email send failed: " + (await msg.text()).slice(0, 200));
+  // A 200 here only means HighLevel QUEUED the email. Delivery can still fail inside HighLevel —
+  // from 2026-07-06 to 2026-09-27 every KTU email failed with "Configured email service is expired"
+  // while this function recorded it as sent. Read the email back and fail loudly instead.
+  const mj = await msg.json().catch(() => ({}));
+  const emailId = mj?.emailMessageId || mj?.messageId;
+  if (!emailId) return;
+  await new Promise((r) => setTimeout(r, 2000));
+  const chk = await fetch(`https://services.leadconnectorhq.com/conversations/messages/email/${emailId}`, {
+    headers: { ...auth, Version: "2021-04-15" },
+  });
+  const em = (await chk.json().catch(() => ({})))?.emailMessage;
+  if (em?.status === "failed") throw new Error("GHL email failed: " + String(em.error || "unknown").slice(0, 150));
+}
+
+/** Primary location first; on any failure, once more through the fallback location. */
+async function sendEmailAny(c: Record<string, string>, to: string, subject: string, body: string): Promise<string> {
+  try {
+    await sendEmail(c, to, subject, body);
+    return `email:${to}`;
+  } catch (primary) {
+    if (!c.ghl_fallback_pit || !c.ghl_fallback_location_id || c.ghl_fallback_location_id === c.ghl_location_id) throw primary;
+    try {
+      await sendEmail({ ...c, ghl_pit: c.ghl_fallback_pit, ghl_location_id: c.ghl_fallback_location_id, email_from: "" }, to, subject, body);
+    } catch (fb) {
+      throw new Error(`${String(primary).slice(0, 110)} ; fallback: ${String(fb).slice(0, 110)}`);
+    }
+    return `email(fallback):${to}`;
+  }
 }
 
 type SlackUser = { id: string; name: string; display: string; email: string };
@@ -128,6 +179,14 @@ async function slackUsers(token: string): Promise<SlackUser[]> {
   } while (cursor);
   userCache = out;
   return out;
+}
+
+/** dispatch_config.slack_aliases: {"work@address": "slack-login@address"} for people whose Slack
+ *  account uses a different email than the one alerts are addressed to (Steven's alerts go to
+ *  slivingston@kitchentuneup.com; his Slack login is his Gmail). Explicit on purpose: guessing by
+ *  name would send "slivingston" alerts to Miguel's slivingston@bathtune-up.com. */
+function slackEmailFor(c: Record<string, string>, email: string | null): string | null {
+  try { const m = JSON.parse(c.slack_aliases || "{}"); return m[(email || "").toLowerCase()] || email; } catch { return email; }
 }
 
 function matchUser(users: SlackUser[], email: string | null, subject: string): SlackUser | null {
@@ -178,7 +237,7 @@ async function sendSlack(
   }
 
   const users = await slackUsers(token);
-  const target = matchUser(users, r.recipient_email ?? null, r.subject || "");
+  const target = matchUser(users, slackEmailFor(c, r.recipient_email ?? null), r.subject || "");
   const blocks = slackBlocks(text, taskId);
 
   if (target) {
@@ -229,7 +288,7 @@ Deno.serve(async (req) => {
 
       const [slackResult, emailResult] = await Promise.allSettled([
         sendSlack(c, r),
-        c.ghl_pit ? sendEmail(c, to, r.subject || "Axyom", r.body || "") : Promise.resolve(null),
+        c.ghl_pit ? sendEmailAny(c, to, r.subject || "Axyom", r.body || "") : Promise.resolve(null),
       ]);
 
       // Record only the channels that actually delivered — see the v7 note above.
@@ -240,7 +299,7 @@ Deno.serve(async (req) => {
       }
       if (c.ghl_pit) {
         if (emailResult.status === "fulfilled") {
-          via.push(`email:${to}`);
+          via.push(String(emailResult.value));
         } else {
           failures.push("email: " + String(emailResult.reason).slice(0, 150));
         }
@@ -258,7 +317,7 @@ Deno.serve(async (req) => {
         .update({
           status: "sent",
           sent_at: new Date().toISOString(),
-          result: { via: via.join("+"), dispatcher: "edge-v7", ...(failures.length ? { partial_failures: failures } : {}) },
+          result: { via: via.join("+"), dispatcher: "edge-v10", ...(failures.length ? { partial_failures: failures } : {}) },
         })
         .eq("id", r.id)
         .eq("status", "pending");
@@ -278,5 +337,5 @@ Deno.serve(async (req) => {
       results.push({ id: r.id, ok: false, error: String(e).slice(0, 120) });
     }
   }
-  return Response.json({ processed: results.length, results, v: 7 });
+  return Response.json({ processed: results.length, results, v: 10 });
 });

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Tools &amp; How-To</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<link rel="stylesheet" href="/assets/playbook.css">
+<link rel="stylesheet" href="/assets/fold.css">
+</head>
+<body>
+<nav class="pbnav" aria-label="Playbook"><div class="in">
+  <b>Playbook</b>
+  <a href="/">Library</a>
+  <a href="/lead-to-last-nail/">Lead to Last Nail</a>
+  <a href="/selections-and-ordering/">Selections &amp; Order Sheet</a>
+  <a href="/systems/">Systems</a>
+  <a href="/dev-tools/" aria-current="page">Tools &amp; How-To</a>
+  <a href="https://dash.goaxyom.com/">Intranet ↗</a>
+</div></nav>
+
+<header class="mast"><div class="wrap">
+  <div class="eyebrow">KTU · BTU · JobTread · pricing.ktubtu.com</div>
+  <h1>Tools &amp; How-To</h1>
+  <p class="dek">How to run the tools behind our selections, ordering and pricing — so a non-author can operate any of them. Every tool here has a source repo, a way to run it, and what to check afterward. When a tool changes, its section here changes too.</p>
+</div></header>
+
+<main class="wrap">
+
+  <h2 data-desc="The rule: a change isn't done until its how-to and the change log are updated.">1. The documentation rule</h2>
+  <div class="body">
+    <p>When you change a tool or a flow: <b>(1)</b> update its section on this page (add or refresh a diagram if the flow isn't obvious), <b>(2)</b> add a line to the repo's <code>CHANGELOG.md</code> (who / what / when / where), and <b>(3)</b> if a system, integration or deploy changed, update <code>KTUBTU-Intranet/docs/DEVELOPER.md</code>. The <b>Tekki</b> agent mirrors every <code>CHANGELOG.md</code> to the intranet's Change Log (Tech Stack tab) and flags changes that shipped without their how-to.</p>
+  </div>
+
+  <h2 data-desc="How a client's picks become a signed selection document, photos in JobTread, and a buy list.">2. The selections and ordering flow</h2>
+  <div class="body">
+    <svg viewBox="0 0 860 150" role="img" aria-label="Flow: pricing app to JobTread to client to order sheet" style="max-width:100%;height:auto;font-family:Archivo,sans-serif;font-size:13px">
+      <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a8f98"/></marker></defs>
+      <g fill="#1a1d28" stroke="#30363d">
+        <rect x="8"   y="46" width="150" height="58" rx="8"/>
+        <rect x="214" y="46" width="150" height="58" rx="8"/>
+        <rect x="420" y="46" width="150" height="58" rx="8"/>
+        <rect x="626" y="46" width="150" height="58" rx="8"/>
+      </g>
+      <g fill="#e7ebee" text-anchor="middle">
+        <text x="83"  y="70">Rep builds sheet</text><text x="83"  y="88" fill="#8a8f98">pricing.ktubtu.com</text>
+        <text x="289" y="70">Publish → JobTread</text><text x="289" y="88" fill="#8a8f98">doc + photos attach</text>
+        <text x="495" y="70">Client approves</text><text x="495" y="88" fill="#8a8f98">/s/&lt;token&gt;</text>
+        <text x="701" y="70">Order sheet</text><text x="701" y="88" fill="#8a8f98">/o/&lt;token&gt; + email</text>
+      </g>
+      <g stroke="#8a8f98" stroke-width="1.5" marker-end="url(#ar)" fill="none">
+        <path d="M160 75 H212"/><path d="M366 75 H418"/><path d="M572 75 H624"/>
+      </g>
+    </svg>
+    <p>Each option's photo is attached to the JobTread selection document <b>at publish</b> (the resolved photo the client sees — bundled, or the catalogue item's scraped vendor image). The order sheet is rebuilt from JobTread on approval and every 2 hours.</p>
+  </div>
+
+  <h2 data-desc="The PM's buy list from JobTread: units per line, companion flags, where it appears.">3. Order sheet</h2>
+  <div class="body">
+    <p><b>What:</b> the buy list per job, built from what JobTread sold + the client chose — never re-typed. Each line shows its unit (LF / sq ft / each) and price; a <b>"needed but not quoted or selected"</b> callout flags companions a pick needs (a shower fixture's rough-in valve, a countertop's edge/cutout/seam, a toilet's wax ring).</p>
+    <p><b>Where:</b> <code>pricing.ktubtu.com/o/&lt;token&gt;</code> (link is in the ready-to-order email) and the CSV export. Also written into the JobTread job comment.</p>
+    <p><b>Source:</b> <code>ktu-pricing-build/app/src/orders.js</code> (build) + <code>index.html</code> (page/email). <b>Runs:</b> automatically on client approval and on the 2-hourly refresh — no manual step. To add a companion rule, edit <code>COMPANIONS</code> in <code>orders.js</code>.</p>
+  </div>
+
+  <h2 data-desc="How product photos get onto the JobTread selection document, and the one-off backfill.">4. Selection photos in JobTread</h2>
+  <div class="body">
+    <p><b>Going forward:</b> nothing to run — the pricing app attaches each chosen option's photo when the selection document is published (<code>attachCustomImages</code> in <code>ktu-pricing-build/app/src/index.js</code>). It resolves the photo the client already sees: the bundled <code>img-map.json</code> image, else the catalogue item's own scraped vendor photo (in its JobTread description, e.g. <code>… | img https://…</code>).</p>
+    <p><b>One-off backfill</b> for documents published before that (draft docs only — JobTread locks pending/approved). From <code>ktubtu-automations</code>:</p>
+    <pre><code>python3 tools/backfill_ktu_selection_images.py            # dry run — reports coverage
+python3 tools/backfill_ktu_selection_images.py --apply    # attach the resolved photos
+python3 tools/backfill_ktu_selection_images.py --job &lt;id&gt;  # one job only</code></pre>
+    <p><b>Check after:</b> open the JobTread selection document — each option should carry a photo file. Items with no photo anywhere (drawn edge profiles, materials kits) stay blank, which is correct.</p>
+  </div>
+
+  <h2 data-desc="Deploy rules for the pricing app, intranet and playbook.">5. Deploying</h2>
+  <div class="body">
+    <p><b>Golden rules:</b> only deploy code that contains current <code>main</code> (merge first), and merge what you deploy (or the next deploy from <code>main</code> undoes it).</p>
+    <ul>
+      <li><b>Pricing app</b> (<code>ktubtu-pricing</code>): from <code>ktu-pricing-build/app/</code> — <code>bash check.sh</code>, then <code>npm install</code> and <code>npx wrangler deploy</code> (needs <code>CLOUDFLARE_API_TOKEN</code>).</li>
+      <li><b>Intranet</b>: push to <code>main</code> → deploys automatically.</li>
+      <li><b>Playbook</b>: from <code>TeamLivingston/playbook/</code> — <code>npx wrangler pages deploy . --project-name ktu-playbook --branch main</code>.</li>
+    </ul>
+  </div>
+
+</main>
+<script src="/assets/fold.js"></script>
+</body>
+</html>

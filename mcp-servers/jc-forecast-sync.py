@@ -82,9 +82,12 @@ def q(v):
 # --- category mapping -------------------------------------------------------
 # JCA categories: direct_materials | contract_labor | employee_labor |
 #                 sales_commission | other
-LABOR_RX = re.compile(r"\b(labor|labour|install(ation)?|shop|demo|deliver|freight|"
-                      r"handling|carpent|plumb|electric|tile setter|painting labor)\b", re.I)
-COMMISSION_RX = re.compile(r"commission", re.I)
+# Stems (plumb, electric, carpent, deliver, demo, decommission) take a suffix:
+# a closing \b on a bare stem never matched "Plumbing" / "Electrical".
+LABOR_RX = re.compile(r"\b(labor|labour|install(ation|ed|ing)?|shop|demo\w*|deliver\w*|freight|"
+                      r"handling|carpent\w*|plumb\w*|electric\w*|decommission\w*|tile setter|painting labor)\b", re.I)
+# Word-start anchor: "Decommission a tub" is plumbing, not a sales commission.
+COMMISSION_RX = re.compile(r"\bcommission", re.I)
 FEE_RX = re.compile(r"\b(fee|permit|dumpster|general conditions|overhead|contingency)\b", re.I)
 
 JT_COSTTYPE_MAP = {
@@ -198,15 +201,25 @@ def lines_from_jt(items):
         if not name:
             continue
         ctype = ((it.get("costType") or {}) or {}).get("name")
-        qty = num(it.get("quantity")) or 0
+        # JobTread treats a NULL quantity as 1 in its own cost/price rollups
+        # (vendor-confirmed 2026-09-10: unit cost 100 / unit price 130 with no
+        # quantity rolls up as cost 100 and price 130). So the fallback below
+        # must use the same effective quantity -- multiplying by a literal 0
+        # recorded cost 0 against the FULL price, which flatters gross margin
+        # and makes the 45% gate less likely to escalate a job that deserves it.
+        # NULL and an explicit 0 are NOT the same thing here: null means 1,
+        # while a deliberate 0 zeroes both cost and price. `qty or 1` conflated
+        # them, so an item zeroed on purpose still carried a full unit of cost.
+        raw_qty = num(it.get("quantity"))
+        eff_qty = 1 if raw_qty is None else raw_qty
         ucost = num(it.get("unitCost"))
         cost = num(it.get("cost"))
         price = num(it.get("price"))
         cat = categorize(name, cost_type=ctype)
         out.append({
-            "description": name[:400], "category": cat, "qty": qty or 1,
+            "description": name[:400], "category": cat, "qty": eff_qty,
             "unit_cost": ucost,
-            "forecasted_cost": cost if cost is not None else ((qty * ucost) if ucost else None),
+            "forecasted_cost": cost if cost is not None else ((eff_qty * ucost) if ucost is not None else None),
             "amount_charged": price,
             "cost_code": ((it.get("costCode") or {}) or {}).get("name"),
             "source_line_id": str(it.get("id") or ""),
@@ -281,6 +294,9 @@ def main():
     print(f"\n{'APPLIED' if apply else 'DRY RUN'}: "
           f"{tot_sm} SM proposal lines across {jobs_sm} jobs; "
           f"{tot_jt} JobTread cost items across {jobs_jt} jobs")
+    if apply and not a.job:
+        log_run(tot_sm + tot_jt > 0, len(jobs), tot_sm, tot_jt,
+                None if tot_sm + tot_jt > 0 else "zero lines across all jobs")
     if apply:
         # placeholder category rows are superseded once real lines land
         # NOTE: SM proposal lines carry PRICE but (on KTU) almost never UnitCost,
@@ -293,5 +309,26 @@ def main():
            "and coalesce(r.forecasted_cost,0) > 0)")
         print("estimate rows dropped only where real COSTED lines exist")
 
+def log_run(ok, jobs_done=0, sm_lines=0, jt_lines=0, error=None):
+    """The run logs ITSELF. The routine used to ask the model to write this row afterwards; from
+    2026-09-23 the scheduled sessions ended "succeeded" in ~16 s having written nothing, and the
+    job-costing data went stale for days with every run marked green. Now the only way a run leaves
+    no row is if Python never started — which the routine's freshness check catches."""
+    detail = json.dumps({"via": os.environ.get("JC_SYNC_VIA", "routine"), **({"error": str(error)[:500]} if error else {})})
+    sb("insert into jc_sync_runs (mode, ok, jobs_done, sm_lines, jt_lines, detail) values "
+       f"('jobs', {str(bool(ok)).lower()}, {int(jobs_done)}, {int(sm_lines)}, {int(jt_lines)}, {q(detail)}::jsonb)")
+    if ok:
+        r = sb("update jc_jobs set forecast_synced_at = now() where id is not null")   # pg-safeupdate rejects an UPDATE with no WHERE
+        if isinstance(r, dict) and r.get("code"):
+            raise RuntimeError(f"could not stamp forecast_synced_at: {r.get('message')}")
+
 if __name__ == "__main__":
-    main()
+    applying = "--apply" in sys.argv and "--dry-run" not in sys.argv
+    try:
+        main()
+    except Exception as e:
+        if applying:
+            try: log_run(False, error=e)
+            except Exception: pass
+        print(f"FAILED: {e}", file=sys.stderr)
+        sys.exit(1)
