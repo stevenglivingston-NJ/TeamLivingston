@@ -124,6 +124,7 @@ OWN_NUMBERS = {
     "9735215397", "8883422451", "9735429305", "9733812877", "9733812681",
     "9735665882", "9738335069", "9735218971", "9735592992", "9733105682",
     "9733469262",
+    "9735215897",  # Montclair baseball field sign (KTU tracking line)
 }
 
 
@@ -178,6 +179,14 @@ def sm(brand: str, endpoint: str, payload: dict) -> dict:
 
 def digits(phone: str | None) -> str:
     return "".join(c for c in (phone or "") if c.isdigit())[-10:]
+
+
+def full_phone(phone: str | None) -> str:
+    """(973) 555-1234 — the intranet card carries the full number so the team
+    can call back without looking it up (owner directive, 2026-08-03/24/25).
+    Slack keeps `phone_masked`."""
+    d = digits(phone)
+    return f"({d[:3]}) {d[3:6]}-{d[6:]}" if len(d) == 10 else (phone or "")
 
 
 def mask(phone: str | None) -> str:
@@ -573,6 +582,7 @@ def sweep(days: int, rollup_days: int = 7) -> dict:
                     "brand": brand,
                     "who": short_name(name, phone),
                     "phone_masked": mask(phone),
+                    "phone": full_phone(phone),
                     "when": et_stamp(m["dateAdded"]),
                     "detail": ("rang out, never answered" if kind == "no_answer"
                                else f"caller hung up after {int(dur)}s"),
@@ -593,6 +603,7 @@ def sweep(days: int, rollup_days: int = 7) -> dict:
                         "brand": brand,
                         "who": short_name(name, phone),
                         "phone_masked": mask(phone),
+                        "phone": full_phone(phone),
                         "when": et_stamp(m["dateAdded"]),
                         "said": body[:200],
                         "already_booked": bool(booked),
@@ -604,6 +615,7 @@ def sweep(days: int, rollup_days: int = 7) -> dict:
                         "brand": brand,
                         "who": short_name(name, phone),
                         "phone_masked": mask(phone),
+                        "phone": full_phone(phone),
                         "when": et_stamp(m["dateAdded"]),
                         "said": body[:200],
                         "action": "Service recovery — call before this becomes a review.",
@@ -625,6 +637,7 @@ def sweep(days: int, rollup_days: int = 7) -> dict:
                         "brand": brand,
                         "who": short_name(name, phone),
                         "phone_masked": mask(phone),
+                        "phone": full_phone(phone),
                         "when": et_stamp(last["dateAdded"]),
                         "hours_waiting": round(waited.total_seconds() / 3600, 1),
                         "said": body[:200],
@@ -691,7 +704,7 @@ def sweep(days: int, rollup_days: int = 7) -> dict:
                 "answer_rate_pct": rate,
                 "status": status,
                 "unanswered": [
-                    {"date": r["when"], "caller": r["phone_masked"],
+                    {"date": r["when"], "caller": r["phone_masked"], "phone": r["phone"],
                      "who": r["who"], "outcome": r["detail"]}
                     for r in unanswered],
                 "action": ("Test the forward on this number — call it and confirm "
@@ -778,6 +791,7 @@ def rollup_calls(calls: list[dict], rollup_days: int) -> list[dict]:
             unanswered.append({
                 "date": et_stamp(c["iso"]),
                 "caller": mask(c["phone"]),
+                "phone": full_phone(c["phone"]),
                 "who": short_name(c["name"], c["phone"]),
                 "outcome": ("rang out, never answered" if c["kind"] == "no_answer"
                             else f"caller hung up after {int(c['dur'])}s"),
@@ -884,6 +898,7 @@ def audit_calendar(brand: str, today) -> tuple[list[dict], list[dict]]:
                 "brand": brand,
                 "who": short_name(name, phone),
                 "phone_masked": mask(phone),
+                "phone": full_phone(phone),
                 "expected": f"{ev_date} {ev['startTime'][11:16]} ({cal.get('name')})",
                 "evidence": "confirmed on the HighLevel calendar",
             }
@@ -951,6 +966,7 @@ def audit_notes(brand: str, days: int) -> list[dict]:
             "brand": brand,
             "who": short_name(c.get("Name"), c.get("Phone")),
             "phone_masked": mask(c.get("Phone")),
+            "phone": full_phone(c.get("Phone")),
             "expected": "per call note (no calendar entry either)",
             "evidence": claim,
             "detail": "The customer believes they have an appointment. "
@@ -1010,6 +1026,7 @@ def audit_duplicates(brand: str, days: int) -> list[dict]:
             "brand": brand,
             "who": short_name(c.get("Name"), c.get("Phone")),
             "phone_masked": mask(c.get("Phone")),
+            "phone": full_phone(c.get("Phone")),
             "records": sorted(ids),
             "detail": "Two ServiceMinder records for one person: " + "; ".join(detail),
             "action": "Merge in the ServiceMinder UI, keeping the record that holds "
