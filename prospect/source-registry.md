@@ -26,8 +26,10 @@ Last updated: 2026-09-12.
 | Jersey Digs | Development news, project stages, developer names (heavy Newark/Essex coverage) | jerseydigs.com | stable |
 | RE-NJ (Real Estate NJ) | NJ CRE transactions, financings, development | re-nj.com | stable |
 | TAPinto (per-town editions) | Planning-board coverage, local development news | tapinto.net/towns/... | stable |
-| Montclair Local | Montclair development + planning coverage | montclairlocal.news | degraded (403 on fetch; headlines/dates via search snippets) |
-| ROI-NJ | NJ deal announcements | roi-nj.com | degraded (403 on fetch; snippets usable) |
+| Montclair Local | Montclair development + planning coverage | montclairlocal.news | degraded (403 on fetch historically; 2026-09-21: rate-limited 429 on repeated fetches — headlines/dates via search snippets) |
+| ROI-NJ | NJ deal announcements | roi-nj.com | stable as of 2026-09-21 (direct fetches succeeded this run) |
+| TAPinto (all town editions) | Planning-board coverage | tapinto.net | degraded (2026-09-21: 403 on direct fetch — search-snippet only) |
+| Essex News Daily | East Orange/Orange/Bloomfield-area news | essexnewsdaily.com | degraded (2026-09-21: site search returned zero indexed results this run — needs a direct site visit next cycle, not just a search-engine query) |
 | MyVeronaNJ | Verona council/board coverage | myveronanj.com | degraded (403 on fetch; snippets usable) |
 | Village Green NJ | Maplewood/South Orange development coverage | villagegreennj.com | stable |
 | Essex News Daily | East Orange/Orange/Bloomfield-area news | essexnewsdaily.com | verify |
