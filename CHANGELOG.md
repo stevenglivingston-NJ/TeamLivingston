@@ -4,6 +4,9 @@ Every change to a tool, flow, integration or deploy — **who / what / when / wh
 Add an entry with every change; the **Tekki** agent mirrors this to the intranet Change Log
 (Tech Stack tab). Format: `YYYY-MM-DD · who · WHERE (repo/system) · WHAT — detail [link]`.
 
+## 2026-10-01
+- **2026-10-01 · Claude Code (for Steven) · Playbook + CLAUDE.md · Job Tracker sheet is a read-only copy** — Selections & Order Sheet v2.4 §7 rewritten (why it stopped being two-way, what it is for, mid-October review); CLAUDE.md orders row says the same. Code in ktu-pricing-build `sheets.js`. [#pending]
+
 ## 2026-09-30
 - **2026-09-30 · Claude Code (for Steven) · Supabase + Playbook · Orders → JobTread write-back; "After the signature" runbook** — migration `20260930e_orders_jobtread_writeback.sql` (applied): `ord_lines.jt_*` columns, `ord_jt_pending/mark`, `ord_jt_jobs_due/job_mark`, `ord_jt_job_state`; `jt_pushed` hidden from people without cost access. Playbook Selections & Order Sheet v2.3 §9 (each step from signed sheet to start date: owner, deadline, where, what updates itself); BTU-OPS-001 §9.2–9.3 point at orders.ktubtu.com; home FAQ updated. [#pending]
 - **2026-09-30 · Claude Code (for Steven) · Playbook · One client-facing install number** — Lead to Last Nail stage 11 and BTU-OPS-001 §3 (v1.2) now say "install typically 60–90 days after the signed design and selections", the same line the new automatic welcome email (ktu-pricing-build `portal/email/build.py`) sends on deposit; stage 11 lists that email next to the 24-hour welcome call. [#pending]

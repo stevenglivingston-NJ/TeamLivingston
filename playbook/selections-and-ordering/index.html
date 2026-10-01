@@ -29,7 +29,7 @@
   <h1>Selections &amp; Order Sheet</h1>
   <p class="dek">How selections are recorded so the client can sign them, purchasing can order from them without a phone call, and the job's real margin is known. One line standard for both brands.</p>
   <div class="meta">
-    <span><b>Version</b> 2.3 · Sept 30, 2026</span>
+    <span><b>Version</b> 2.4 · Oct 1, 2026</span>
     <span><b>Replaces</b> Selections Checklist (Sept 23, 2026)</span>
     <span><b>Owners</b> Sales (the sheet) · PM (ordering and the tracker)</span>
   </div>
@@ -47,7 +47,7 @@
   <div class="cards">
     <div class="card"><h3>Client picks</h3><p><b>Where:</b> JobTread job → Selections tab (simple selections), or the pricing tool's client selection link.</p><p>Where the client chooses. One decision per sheet ("Choose your faucet"), every final pick ticked. It is a preference, not a signature, and never the order record. On the pricing tool's link the client can also leave a note on any line, send a product link for the designer to research, and <b>approve</b> — approval starts the final design; it is not a signature.</p></div>
     <div class="card"><h3>Selection Sheet (signed)</h3><p><b>Where:</b> JobTread job → Documents → New → Selections → template "Order Sheet — final selections (PDF)".</p><p>The signed, printable buy list. Built once the picks are final; prices hidden and excluded from the budget total (the proposal carries pricing). Signed the same day as the Design Packet.</p></div>
-    <div class="card"><h3>Order sheet &amp; Job Tracker</h3><p><b>Where:</b> pricing tool → job → Order sheet, mirrored to the Google Sheet "Job Tracker — KTU &amp; BTU" in .Project Management.</p><p>Built from JobTread's finalized estimate plus the approved selections. Where the PM orders from, tracks each order, and records actual costs.</p></div>
+    <div class="card"><h3>Order sheet &amp; Job Tracker</h3><p><b>Where:</b> orders.ktubtu.com (pricing tool → job → Order sheet), mirrored read-only to the Google Sheet "Job Tracker — KTU &amp; BTU" in .Project Management.</p><p>Built from JobTread's finalized estimate plus the approved selections. Where the PM orders from, tracks each order, and records actual costs.</p></div>
   </div>
 </section>
 
@@ -141,24 +141,20 @@
 </section>
 
 <section id="tracker">
-  <h2 data-desc="The live tracker: what updates itself, what you type, strikethrough on removal, change log, Summary tab.">7. The Job Tracker (Google Sheet)</h2>
-<div class="note" id="status-tracker" style="background:var(--ok-soft);border-left-color:var(--ok)"><span class="k" style="color:var(--ok)">Status — live (Sept 30, 2026)</span>The workbook fills itself from JobTread every 2 hours and matches the order page both ways. Anything you type here also reaches orders.ktubtu.com and job costing.</div>
-  <p><b>Where:</b> Google Drive (ktubloomfieldnj) → <b>.Project Management</b> → "Job Tracker — KTU &amp; BTU (live)". One workbook, a tab per finalized job, a Summary tab and a Change log tab. It is the live job tracker from ordering to closeout.</p>
-  <h3>7.1 What updates itself, and what you type</h3>
-  <div class="tbl"><table>
-    <thead><tr><th>Columns</th><th>Filled by</th></tr></thead>
-    <tbody>
-      <tr><td>Status · Needs · Vendor / source · Category · Product · SKU · Qty · Unit · Budget line · Exp. unit cost · Exp. cost · Exp. retail · Exp. GP · Link</td><td><b>Automatic</b> from JobTread and the pricing tool, every 2 hours and whenever a client approves or someone presses Order sheet. Don't type in these columns; your edits would be overwritten.</td></tr>
-      <tr><td>Order status · PO # · Order date · Ship/ETA · Received date · Actual cost · Notes</td><td><b>You</b> (PM / purchasing). Never overwritten by the sync.</td></tr>
-      <tr><td>Actual GP · the totals in rows 1–4</td><td><b>Formulas</b> from what you type against what was expected. Removed rows are left out of the totals.</td></tr>
-    </tbody>
-  </table></div>
-  <h3>7.2 Rules</h3>
+  <h2 data-desc="The Google Sheet is now a read-only copy of orders.ktubtu.com: what it shows, why nobody types in it, and when it gets reviewed.">7. The Job Tracker (Google Sheet) — read-only copy</h2>
+<div class="note" id="status-tracker" style="background:var(--warn-soft);border-left-color:var(--warn)"><span class="k" style="color:var(--warn)">Changed Oct 1, 2026</span>The sheet is a <b>read-only copy</b> of orders.ktubtu.com. Nothing typed in it reaches the record: the next sync puts the cell back. Every tab says so in row 4 and warns before you type. <b>Order from orders.ktubtu.com</b> (§8).</div>
+  <p><b>Where:</b> Google Drive (ktubloomfieldnj) → <b>.Project Management</b> → "Job Tracker — KTU &amp; BTU (live)". One workbook, a tab per finalized job, a Summary tab and a Change log tab, all refreshed from orders.ktubtu.com every 2 hours and whenever a client approves or someone presses Order sheet.</p>
+  <h3>7.1 Why it stopped being two-way</h3>
   <ul>
-    <li><b>Nothing is deleted.</b> When an item comes off the job, its row is struck through, greyed and marked Removed, with the date. If it comes back, the strike is lifted and the log says Restored. A swapped product shows as the old row struck through and a new row.</li>
-    <li><b>Every tab shows</b> date created and by whom, last update and by whom (the sync or a person).</li>
-    <li><b>The Change log tab</b> records every automatic change: what, old → new, when, triggered by whom.</li>
-    <li><b>Summary tab:</b> per job, expected retail, expected cost, expected GP and GP %, actual cost to date, actual GP and actual GP %, readiness, and a link to each job's tab — the live margin view for the owners.</li>
+    <li>The sheet existed because JobTread's API couldn't take purchase orders. orders.ktubtu.com is now the record (every line, every purchase, who and when), and it writes order status, dates and purchased cost back to JobTread itself.</li>
+    <li>A cell typed in the sheet was the one way around <b>signature before any order</b> (§3): the order page and the workbook refuse an order on an unsigned job; a spreadsheet can't.</li>
+    <li>Costs and GP in the sheet are visible to anyone with the Drive link. orders.ktubtu.com shows them only to people with cost access.</li>
+  </ul>
+  <h3>7.2 What it is for now</h3>
+  <ul>
+    <li>A spreadsheet view for anyone who wants one: filter, sort, print. Every column, including order status, PO, dates and actual cost, is written by the app from orders.ktubtu.com.</li>
+    <li><b>Nothing is deleted.</b> A row that leaves the job is struck through and marked Removed; restored rows say so. <b>The Change log tab</b> records every automatic change. <b>Summary tab:</b> per-job money and readiness with a link to each tab.</li>
+    <li><b>Review, mid-October 2026:</b> if nobody has opened the sheet in two weeks it is deleted along with its sync. If someone has, what they used it for (phone, sorting, the cross-job change feed) gets built into the workbook instead.</li>
   </ul>
 </section>
 
@@ -167,7 +163,7 @@
   <p><b>orders.ktubtu.com</b> is the team's ordering front door. Sign in with your pricing.ktubtu.com login.</p>
   <ul>
     <li><b>Home</b> (<code>/</code>): every job with an order sheet, what's left to order, what's late.</li>
-    <li><b>Order sheet</b> (open a job): set each line's order status, PO #, order date, ETA, received date, actual cost, who ordered it and how it was paid. It saves as you go and matches the Job Tracker both ways. Under the expected cost, <b>max $X</b> is the buy sheet's spend ceiling: the most you can pay and still hold the 50% floor. It turns red when the actual cost goes over. (The old buy-sheet site, purchasing.ktubloomfield.com, now opens orders.)</li>
+    <li><b>Order sheet</b> (open a job): set each line's order status, PO #, order date, ETA, received date, actual cost, who ordered it and how it was paid. It saves as you go; the Job Tracker sheet is a read-only copy of it. Under the expected cost, <b>max $X</b> is the buy sheet's spend ceiling: the most you can pay and still hold the 50% floor. It turns red when the actual cost goes over. (The old buy-sheet site, purchasing.ktubloomfield.com, now opens orders.)</li>
     <li><b>Workbook</b> (<code>/w</code>, or <b>Workbook</b> on any order sheet): the whole job as an editable sheet.
       <ul>
         <li>Change any number the JobTread sync provides (quantity, product, SKU, expected cost). Your number is kept on every later sync; the purple edge shows it, and <b>↺ JT</b> puts JobTread's value back.</li>
@@ -217,7 +213,7 @@
     <li><b>When</b>: a few seconds after you save on the order page or the workbook; anything missed goes on the 2-hourly refresh. Only changes are sent.</li>
     <li><b>If you edit those fields in JobTread</b>, your edit stays until the line changes again on orders — then orders' value is written. Keep ordering in orders so the two agree.</li>
     <li><b>If it fails</b>, the line's detail in the workbook says <i>JobTread not updated</i> and why; the schedule retries it every 6 hours.</li>
-    <li><b>JobTread can't take purchase orders</b> through its API, so the PO # and vendor stay in orders and the Job Tracker.</li>
+    <li><b>JobTread can't take purchase orders</b> through its API, so the PO # and vendor stay in orders.ktubtu.com (and show on the read-only Job Tracker copy).</li>
   </ul>
 </section>
 
@@ -236,6 +232,7 @@
   <div class="tbl"><table>
     <thead><tr><th>Version</th><th>Date</th><th>Changes</th></tr></thead>
     <tbody>
+      <tr><td class="num">2.4</td><td class="num">2026-10-01</td><td>The Job Tracker Google Sheet is a read-only copy of orders.ktubtu.com (§7 rewritten): nothing typed in it reaches the record, every tab carries a banner and warns before typing; review mid-October and delete if unused. §1 and §8 wording to match.</td></tr>
       <tr><td class="num">2.3</td><td class="num">2026-09-30</td><td>Added §9 After the signature: each step from signed sheet to start date, with owner, deadline (BTU-OPS-001 §9, KTU Handover Standard), where it's done and what updates itself; orders now writes line status, dates and purchased cost, and the Job Status, back to JobTread.</td></tr>
       <tr><td class="num">2.2</td><td class="num">2026-09-30</td><td>Signature before any order: client approval on the link is a pre-order review; order sheet reads Awaiting signed sheet until JobTread's Selection Sheet is signed; the workbook enforces it, with a Signed (paper) tick for jobs made by hand.</td></tr>
       <tr><td class="num">2.1</td><td class="num">2026-09-30</td><td>Added §8 orders.ktubtu.com: order sheet and workbook, overrides, manual clients and lines, purchases into job costing, invoice linking, the ServiceMinder purchases note, per-person access.</td></tr>
