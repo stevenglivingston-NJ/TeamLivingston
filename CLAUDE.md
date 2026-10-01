@@ -127,6 +127,14 @@ Direct-access helpers (curl/CLI, NOT registered MCP servers — no bootstrap nee
   ghl.sh              → HighLevel over curl, same endpoint as ghl-ktu / ghl-btu
   sm.sh               → ServiceMinder Open API over curl
   gmb.sh              → Google Business Profile over curl (mints its own OAuth token)
+  companycam.sh       → CompanyCam v2 REST API over curl (Bearer COMPANYCAM_TOKEN);
+                        usage: companycam.sh <path> [query-string], e.g.
+                        companycam.sh /v2/projects 'per_page=100&query=Hayes'
+  jobtread.sh         → JobTread Pave API over curl (JOBTREAD_GRANT_KEY, no OAuth)
+  gmail.sh            → Gmail API over curl for firstgentalent/ktubtubilling (mints
+                        its own OAuth token; needs a one-time human-minted refresh
+                        token per mailbox, see mcp-servers/.env.example)
+  slack.sh            → Slack chat.postMessage/DM over curl (Bearer SLACK_BOT_TOKEN)
   lead-sweep.py       → daily ad-response / missed-lead / booking-integrity sweep
   hl-field-sync.py    → SM→HighLevel proposal tags + SM Last Proposal Date/Status
                         (fill-missing only; runs in the office-address Routine)
@@ -375,22 +383,57 @@ non-interactive fire — decide from the run's own context (scheduled vs.
 interactive), not from what the last call returned.
 
 ```
-bash mcp-servers/sb.sh  'SELECT …'                          # Supabase
-bash mcp-servers/ghl.sh KTU contacts_get-contacts '{...}'   # HighLevel
-bash mcp-servers/sm.sh  KTU invoice/query '{"Take":50}'     # ServiceMinder
-bash mcp-servers/gmb.sh KTU info                            # Google Business Profile
-bash mcp-servers/gads.sh query_lsa_periods '{"location":"KTU"}'   # Google Ads + LSA
-bash mcp-servers/companycam.sh /v2/photos 'per_page=100'    # CompanyCam
-bash mcp-servers/clickup.sh tasks <list_id>                 # ClickUp
+bash mcp-servers/sb.sh         'SELECT …'                        # Supabase
+bash mcp-servers/ghl.sh        KTU contacts_get-contacts '{...}' # HighLevel
+bash mcp-servers/sm.sh         KTU invoice/query '{"Take":50}'   # ServiceMinder
+bash mcp-servers/gmb.sh        KTU info                          # Google Business Profile
+bash mcp-servers/gads.sh       query_lsa_periods '{"location":"KTU"}'  # Google Ads + LSA
+bash mcp-servers/companycam.sh /v2/photos 'per_page=100'         # CompanyCam
+bash mcp-servers/clickup.sh    tasks <list_id>                   # ClickUp
+bash mcp-servers/jobtread.sh   '{"organization":{"$":{"id":"22PB4XPxGZHK"},...}}'  # JobTread
+bash mcp-servers/gmail.sh      firstgentalent search '<gmail-query>'   # Gmail (firstgentalent/ktubtubilling)
+bash mcp-servers/slack.sh      dm <user_id> '<text>'             # Slack DM
 ```
 
-**`gads.sh` (added 2026-09-21) closed the last gap.** Google Ads was the only
-system in this stack without a curl escape hatch, which is exactly why Organic's
-`mcp__google-ads__query_lsa_periods` call was never migrated — and it hung that
-agent for **nine days**. The helper does not reimplement anything: it loads
-`google-ads/server.py` and calls the same function the MCP tool calls, so
-behaviour is identical by construction. `bash mcp-servers/gads.sh tools` lists
-all 14.
+**`gads.sh` (added 2026-09-21) closed the Google Ads gap.** Google Ads was the
+only system in this stack without a curl escape hatch, which is exactly why
+Organic's `mcp__google-ads__query_lsa_periods` call was never migrated — and
+it hung that agent for **nine days**. The helper does not reimplement
+anything: it loads `google-ads/server.py` and calls the same function the MCP
+tool calls, so behaviour is identical by construction. `bash mcp-servers/gads.sh
+tools` lists all 14.
+
+`companycam.sh` (job-costing labor sync, added 2026-09-18) and `jobtread.sh`
+(added 2026-09-13) close the remaining Foreman/job-costing stall points —
+CompanyCam uses the same `COMPANYCAM_TOKEN` Bearer auth as the stdio server,
+JobTread uses `JOBTREAD_GRANT_KEY` (grant-key auth inside the Pave query body,
+the same pattern already proven in `jc-forecast-sync.py`) instead of the OAuth
+connector. Both are live with no further setup — see each script's header.
+
+`gmail.sh` and `slack.sh` (added 2026-09-13) exist to close the remaining two
+stall points (Zapier Gmail search, `mcp__Slack__slack_send_message`) but each
+needs a one-time HUMAN step before they'll actually work — an agent cannot
+mint an OAuth consent or create a Slack app on its own:
+- **Gmail**: run `python3 mcp-servers/tools/get_refresh_token.py --preset
+  gmail-firstgentalent` and `--preset gmail-ktubtubilling` (once each, in a
+  browser logged into that mailbox), then paste the two tokens into
+  `GMAIL_REFRESH_TOKEN_FIRSTGENTALENT` / `GMAIL_REFRESH_TOKEN_KTUBTUBILLING`
+  in the Cloud environment's env vars. This also fixes a SEPARATE bug found
+  2026-09-13: the Zapier `gmail_new_email_matching_search` action itself was
+  returning 0 results on every query (including a bare unfiltered probe)
+  across at least two consecutive runs while the connections showed
+  `is_stale:false` — `gmail.sh` talks to the real Gmail API directly, so it
+  isn't exposed to that failure either.
+- **Slack**: set `SLACK_BOT_TOKEN` (scopes `chat:write`, `im:write`) as a
+  plain env var in the Cloud environment config. If a bot token already
+  exists for the `dispatch-notify` Edge Function (below), the same value
+  works here — it just also needs to be a session env var, not only a
+  Supabase function secret.
+Until those steps are done, `gmail.sh`/`slack.sh` fail fast with a clear
+`{"error":...}` — no hang, no stall — and the calling agent logs that as a
+known gap rather than treating the source as "down". Once both are set,
+**no Foreman data source depends on an `mcp__*` connector call in a scheduled
+run any more.**
 
 Diagnosing a stale board: read the Routine's `last_run.status`. `ABANDONED` +
 a session in `REQUIRES_ACTION` with a `pending_action` naming an `mcp__*` tool
