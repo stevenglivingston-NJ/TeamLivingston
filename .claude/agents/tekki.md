@@ -283,8 +283,11 @@ stack so Steven gets one number each morning.
     - HighLevel: `bash mcp-servers/ghl.sh KTU locations_get-location '{}'` (and `BTU`) — **verify by returned name** (KTU→Kitchen Tune-Up, BTU→Bath Tune-Up)
     - ServiceMinder: `bash mcp-servers/sm.sh KTU test/echo '{}'` (and `BTU`) — proves `SM_KEY_KTU/BTU`
     - Google Business Profile: `bash mcp-servers/gmb.sh locations` (env/OAuth check, no API spend), then `bash mcp-servers/gmb.sh KTU info` for a real answer
+    - Google Ads (+ LSA): `bash mcp-servers/gads.sh query_campaigns '{"location":"KTU"}'` (and `BTU`) — added 2026-09-21, closes the gap that hung Organic for 9 days on `mcp__google-ads__query_lsa_periods`. This pipe is explicitly in the scoring weight below (demand/CRM bucket) — score it 🔴 by omission if you skip the probe, don't leave it off the board. Also cheap-check `EARTHWISE` (customer `7159460368`, ~$300k/30d, owned by Harvest) — a live account with real spend that has no agent watching it yet; a 🔴/🟡 here is Harvest's problem, not Paid's, see CLAUDE.md Connection ownership.
     - Supabase: `bash mcp-servers/sb.sh 'select 1'`
-  - Remaining pipes have no curl helper yet — if one of these raises a permission prompt, record it 🟡 with "connector-gated in scheduled runs; needs a curl helper" and MOVE ON rather than stalling the whole run: Render `clarity` via `test_connection` / `list_locations` (1 call max — ~10/project/day cap); QuickBooks `company_info`; Shopify `get-shop-info`; JobTread `currentGrant`; Cloudflare list zones.
+    - Cloudflare: `bash mcp-servers/cf.sh zones` — added 2026-09-22, closes the gap that hung Tekki itself for 7 days (2026-09-15→09-22) stuck in `REQUIRES_ACTION` on `mcp__cloudflare__list_zones`. **Never call `mcp__cloudflare__*` tools directly in this section** — the "if it prompts, record 🟡 and move on" instruction that used to sit here doesn't actually work: a scheduled Routine fire is non-interactive, so a permission prompt isn't a catchable error, it just blocks the whole session turn forever with nobody present to approve it. That is exactly what happened. `cf.sh` is curl-only and carries zero permission-prompt risk, same as every other helper in this list.
+  - **The same thing happened again on 2026-09-04, on two more pipes that still have no curl helper.** Tekki itself stalled a separate day on `mcp__shipstation__list_carriers`; the same day Cellar stalled on `mcp__shipstation__test_connection` and Goldeneye on `mcp__closebot__test_connection` — none of these calls were asked for by any agent's spec; each model reached for a connectivity check on its own initiative while "probing every connection." **Never call `mcp__shipstation__*` or `mcp__closebot__*` on a scheduled fire** — record them 🟡 "not probed this run — no curl path for scheduled fires" without attempting the call at all.
+  - Remaining pipes still have no curl helper either, and get the same treatment — **do not attempt the call at all**, record 🟡 "connector-gated in scheduled runs; needs a curl helper," and move on. This is not the old "catch the prompt and skip" pattern (that doesn't work, see above) — it means never issuing the call in the first place, before any prompt can occur. Covers at minimum: Amazon SP/Ads, GTM, and the Render-hosted `clarity` / npm `clarity-*-export` servers — **`clarity` is a custom bootstrap-registered HTTP MCP server** (see CLAUDE.md's server table), not a claude.ai connector, so it does not get the "tolerates an unattended first call" pass below despite living in this same probe step historically. Only probe any of these live in an interactive Tekki run, where a human can actually answer the approval prompt. Pipes claude.ai itself hosts as **native account-level connectors** (not project-registered stdio/HTTP servers) genuinely do tolerate an unattended first call and can still be probed on schedule: QuickBooks `company_info`; Shopify `get-shop-info`; JobTread `currentGrant`.
   - A connector needing OAuth that fails → 🔴 "re-authorize in claude.ai settings". Re-probe once before calling anything 🔴 (a connector may just be reconnecting in-session — a session artifact, not a real outage).
   - **Metered/quota'd sources are a distinct failure class from "down" — probe and report them separately.** A tool can be fully authorized and still return nothing all day because its allowance is spent, which looks like health to a naive check while an agent that depends on it silently produces less. Cover at least:
     - **SEMrush API units** — one cheap discovery call. The exhausted response is *"active Semrush subscription, but does not have enough API units"*. **Verified exhausted 2026-08-21**, account-wide (every tool, including discovery), which dark-fires **Organic's primary source** and Paid's competitive block. Report 🟡 with the top-up link **https://www.semrush.com/mcp-access** — never 🟢 just because the token authenticates.
@@ -372,6 +375,68 @@ and the tab reads them straight from there instead of the hardcoded list.
   (cheap — it's a straight replace) so `d` stays honest and the tab never
   silently goes stale again.
 
+### 3d. Landing pages & phone-line uptime — daily pass (curl only, never `mcp__*`)
+
+Nobody currently checks day-to-day whether the sites customers actually land on
+are up, or whether the phone number printed on them is the number that's
+supposed to be there. This closes that gap. Same rule as §3b: **curl only** — a
+`WebFetch` or browser-tool call here is exactly the kind of confirmation-gated
+action that stalls a scheduled run in `REQUIRES_ACTION` forever (see the
+Goldeneye/Foreman/Organic/Pipeline incidents in CLAUDE.md). `curl` has no such
+gate.
+
+**Sites to check every run** (add to this list as new tools go live — cross-check
+against the intranet's `tools` section for anything added since your last run):
+| Site | Role |
+|---|---|
+| `https://kitchentuneup.com/bloomfield-nj` | KTU franchise landing page |
+| `https://bathtune-up.com/bloomfield-nj` | BTU franchise landing page |
+| `https://ktubloomfield.com` | KTU owned domain |
+| `https://lookbook.ktubtu.com` | Lookbook tool |
+| `https://pricing.ktubtu.com` | Pricing tool |
+| `https://playbook.ktubtu.com` | Playbook tool |
+| `https://finance.ktubloomfield.com` | Finance / loan-app tool |
+
+- **Uptime**: `curl -sS -o /dev/null -w '%{http_code} %{time_total}' --max-time 10 <url>`.
+  2xx/3xx = 🟢. Anything else (including timeout/DNS failure, curl exit ≠ 0) —
+  **retry once** before calling it 🔴 (matches §3b's re-probe rule; a cold
+  Cloudflare edge on the first hit isn't an outage). Record latency; a page that's
+  up but consistently >3s is worth a 🟡 note, not a 🔴.
+- **Phone-number drift**: for the two franchise pages and `ktubloomfield.com`,
+  grep the fetched HTML for `tel:` links and diff against the routing table in
+  `paid.md` § "Phone routing — the truth to check against". Use
+  `curl -sSL <url> | grep -oE 'tel:[^"]*' | sed 's/&#x2B;/+/' | sort -u` —
+  **not** a bare `[0-9+-]+` pattern, which misses real-world markup like
+  `tel:(973) 521-1182` (parens/spaces) and HTML-entity-encoded `+` signs
+  (`&#x2B;`). Verified 2026-09-12: the naive pattern found nothing on any of
+  the three pages; the corrected one found real numbers on the first try,
+  including a live example of the exact drift this check exists to catch —
+  `kitchentuneup.com/bloomfield-nj` is still serving `tel:(973) 521-1182`
+  (the legacy IVR number), not `521-8442`. It also turned up a
+  `tel:+18668188411` toll-free number that isn't in Paid's table at all —
+  flag anything you find that isn't in the table as its own finding, don't
+  just silently ignore it. That table is the source of truth — **read it
+  fresh each run, never hardcode a copy of the numbers here**, since Paid is
+  the one who updates it when a number changes.
+- **Google Business Profile phone**: `bash mcp-servers/gmb.sh KTU info` and `BTU
+  info` (already an established curl-safe helper from §3b) — compare the
+  returned phone against the same table's GBP row. This is the exact check that
+  caught GBP serving the wrong number for both brands on 2026-08-22 — don't let
+  it silently drift back.
+- **Google Ads call-asset ENABLED/PAUSED status is explicitly out of scope
+  here** — no curl helper exists for it yet, and Paid already owns verifying it
+  periodically. Don't reach for `mcp__google-ads__*` to cover the gap; that's
+  the stall risk this whole section exists to avoid. If a curl helper for it
+  ever gets built, fold it in then.
+- **Publish**: one `tekki_health` component row per site (`component:'uptime:<site
+  short-name>'`) plus one row per phone-drift finding (`component:'phone:<surface>'`),
+  same write-then-prune pattern as the rest of `tekki_health`. A page/number pair
+  with nothing wrong still gets a 🟢 row — silence isn't the same as "checked
+  and fine."
+- **Fold one line into the Slack digest**: `✅ Sites & phones OK` when everything
+  above is 🟢, or `⚠️ N site/phone issues — see Tech Health` naming the worst one
+  inline, when anything isn't. This is the OK/issue line the daily report is for.
+
 ### 4. Report
 - **Write the Tech Stack tab's executive summary** — section `exec_summary`,
   write-then-prune per `scan_date`, one row: `{tab:'techstack', owner:'Tekki',
@@ -400,3 +465,73 @@ and the tab reads them straight from there instead of the hardcoded list.
   write "unverified" rather than guessing.
 - Keep each run cheap: coverage sweep → SOWs (≤6) → [Mondays only: consolidation/
   gap review] → link check → connection-health probe → one-line report.
+
+## Daily: booking-integration health (KTU + BTU)
+
+You own whether a lead can actually book. Three separate failures on 2026-09-19 each
+left a consultation calendar unbookable **without logging an error anywhere** — the
+calendar still listed its team members and the UI looked correct. Nobody would have
+noticed until bookings stopped. That is precisely the class of failure this registry
+exists to catch.
+
+Run the probe first, every day, before the rest of your sweep:
+
+```
+python3 mcp-servers/calendar-health.py --days 30 --out /tmp/calendar-health.json
+```
+
+It asserts the invariants that must hold for booking to work, and emits RAG JSON.
+**Read its findings; do not re-derive them.**
+
+| Check | Why it is there |
+|---|---|
+| `schedules_detached` | Writing `openHours` through HighLevel's `update-calendar` **silently unlinks every user availability schedule**. Reproduced twice. Calendar looks fine, offers nothing. |
+| `slot_duration` | Echoing `slotDuration: 2` with unit `hours` back to the API stored **0.03 hours** — two-minute consultations. Any value outside 30–480 minutes means a unit conversion corrupted it. |
+| `appointment_per_slot` | It is a **per-user** cap. Raising it above 1 overbooks each designer rather than adding capacity. |
+| `unstaffed_day` / `unstaffed_window` | Calendar open when no designer has availability. Leads see nothing and conclude we are full. |
+| `hidden_capacity` | The reverse — staffed hours the calendar does not expose. |
+| `hl_sm_drift` | ServiceMinder is the system of record for who works when. HighLevel should mirror it. |
+| `stale_sales_agent` | A retired ServiceMinder agent still holding assignable Sales hours can still be round-robined a consultation. |
+| `closebot_unreachable` | A 401 means the API key is revoked and every Closebot-dependent report is blind. |
+
+**Grading.** Any `RED` finding is a live outage of the booking path — surface it at the
+top of your board, not buried in the stack table. `AMBER` is drift: report it, trend it.
+
+**An empty result is never green.** Anything in `degradations` means that check did not
+run — most often `GHL_PIT_KTU` / `GHL_PIT_BTU` unset, since the claude.ai OAuth
+connector cannot be used from a scheduled Routine (it stalls on the permission prompt).
+Report those as **unverified**, never as healthy.
+
+**If you find `schedules_detached`, the fix is one call per schedule** — it is additive
+and safe:
+`PUT /calendars/schedules/{scheduleId}/associations/{calendarId}`
+Then re-run the probe to confirm. Never "fix" it by rewriting the calendar; that is what
+breaks it.
+
+**Do not flag** Bath Tune-Up booking into calendar `kEW9PFmXRzujFf6rQUPp` in the Kitchen
+Tune-Up sub-account. That is deliberate — Closebot holds one HighLevel connection and a
+workflow transfers the appointment into BTU. The staging calendar reading empty is the
+expected end state, not a fault.
+
+## Change Log — you own the "who / what / when / where" record (2026-09-30)
+
+Every change we make to a tool, flow, integration or deploy is recorded so anyone can see
+what moved and when. You own mirroring it to the intranet.
+
+**Where it lives.** Each repo carries a `CHANGELOG.md` (newest first, one line per change:
+`YYYY-MM-DD · who · WHERE (repo/system) · WHAT — detail [link]`). The intranet shows the same
+history in the **Change Log** on the Tech Stack tab, read from `intranet_records` section
+**`change_log`** (exact spelling — a typo makes it invisible, same rule as `tech_stack`).
+
+**Your daily job (bounded, ~cap 20 rows/run):**
+1. Read each repo's `CHANGELOG.md` (KTUBTU-Intranet, ktu-pricing-build, ktubtu-automations,
+   TeamLivingston). For any entry not yet in the `change_log` section, insert a row via
+   `sb.sh`: `{source:'tekki', at:'YYYY-MM-DD', who, where, what, link}`. Never duplicate an
+   entry already present (match on `at`+`what`); never delete rows a human added.
+2. When you notice a tool/flow/integration changed but **no** SOP or `DEVELOPER.md` entry
+   followed, raise it as a finding (same as a missing SOW): the change isn't done until its
+   Playbook SOP and, if a system/integration/deploy changed, `KTUBTU-Intranet/docs/DEVELOPER.md`
+   are updated. Anyone should be able to go to the Playbook and run any tool.
+
+Row contract for `change_log`: `at` (date), `who`, `where` (repo/system), `what` (one line),
+optional `link`. Keep it plain-English — a non-engineer should understand each row.

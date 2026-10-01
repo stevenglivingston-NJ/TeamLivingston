@@ -1,11 +1,17 @@
 """
-Google Ads + Local Services MCP server for KTU + BTU.
+Google Ads + Local Services MCP server for KTU, BTU, and Jatalia/Earthwise.
 
 Two APIs wrapped in one server:
   - Google Ads API (search, display, brand, cabinet refacing, etc.) via google-ads SDK
   - Local Services API (LSA / "Google Guaranteed") via REST
 
-Both share the same OAuth refresh token (scope: adwords).
+All three brands share the same OAuth refresh token (scope: adwords) and the
+same Google login (firstgenerationusallc@gmail.com, confirmed 2026-09-13) —
+but NOT the same account hierarchy. KTU/BTU sit under the "KTU/BTU Reporting"
+MCC (GOOGLE_ADS_LOGIN_CUSTOMER_ID); Earthwise does not and must be queried
+without a login_customer_id header, or every call 403s. See
+`_MCC_MANAGED_ACCOUNTS` below — this is not optional, it is the fix for a
+real PERMISSION_DENIED verified live on 2026-09-13.
 
 Required env vars (set in ~/.claude/settings.json):
   GOOGLE_ADS_DEVELOPER_TOKEN  - from https://ads.google.com/aw/apicenter
@@ -30,7 +36,31 @@ mcp = FastMCP("google-ads")
 ACCOUNT_MAP: dict[str, str] = {
     "KTU": "2579406186",
     "BTU": "4477036900",
+    # Earthwise Seed Co. (Jatalia) — discovered 2026-09-13 via
+    # listAccessibleCustomers; was never wired in before, despite ~$300k/30d
+    # of live spend. Owned by Harvest, not Paid.
+    "EARTHWISE": "7159460368",
 }
+
+# Accounts that are clients of the "KTU/BTU Reporting" MCC
+# (GOOGLE_ADS_LOGIN_CUSTOMER_ID) and therefore require that MCC's id in the
+# login_customer_id header. Earthwise is NOT a client of this MCC — it is
+# reachable directly on the same OAuth login — so calling it WITH
+# login_customer_id set returns PERMISSION_DENIED (verified live 2026-09-13).
+# Any new brand added to ACCOUNT_MAP must be classified here explicitly;
+# guessing wrong fails loudly (PERMISSION_DENIED), it does not silently
+# return the wrong account's data.
+_MCC_MANAGED_ACCOUNTS: set[str] = {
+    "2579406186",  # KTU
+    "4477036900",  # BTU
+    "4668735878",  # BTU Local Ads (LSA) — also an MCC client, not in ACCOUNT_MAP directly
+}
+
+# 4278203845 ("KTU Bloomfield NJ") is a third account visible to this login —
+# a dormant legacy KTU account (every campaign PAUSED/REMOVED, $0 spend/30d,
+# last active ~2023). Deliberately excluded from ACCOUNT_MAP: it is not a
+# live reporting gap, just old agency scaffolding nobody archived. Revisit
+# only if Steven decides to formally close it out.
 
 LSA_ACCOUNT_MAP: dict[str, str] = {
     "KTU": "2579406186",
@@ -52,7 +82,11 @@ def _check_env() -> tuple[bool, list[str]]:
     return (not missing, missing)
 
 
-def _ads_client() -> GoogleAdsClient:
+def _ads_client(customer_id: str | None = None) -> GoogleAdsClient:
+    """Build a client. `customer_id`, when given, decides whether the KTU/BTU
+    MCC's login_customer_id is attached — see `_MCC_MANAGED_ACCOUNTS` above.
+    Omit it only for calls (like listAccessibleCustomers) that aren't scoped
+    to one customer."""
     config: dict[str, Any] = {
         "developer_token": os.environ["GOOGLE_ADS_DEVELOPER_TOKEN"],
         "refresh_token": os.environ["GOOGLE_ADS_REFRESH_TOKEN"],
@@ -61,7 +95,7 @@ def _ads_client() -> GoogleAdsClient:
         "use_proto_plus": True,
     }
     login_id = os.environ.get("GOOGLE_ADS_LOGIN_CUSTOMER_ID", "").strip()
-    if login_id:
+    if login_id and (customer_id is None or customer_id in _MCC_MANAGED_ACCOUNTS):
         config["login_customer_id"] = login_id.replace("-", "")
     return GoogleAdsClient.load_from_dict(config)
 
@@ -81,7 +115,8 @@ def _oauth_token() -> str:
 
 @mcp.tool()
 def list_locations() -> dict[str, Any]:
-    """List configured locations (KTU, BTU) and their Google Ads account IDs."""
+    """List configured locations (KTU, BTU, EARTHWISE) and their Google Ads
+    account IDs."""
     ok, missing = _check_env()
     return {"locations": list(ACCOUNT_MAP.keys()),
             "accounts": ACCOUNT_MAP,
@@ -93,7 +128,7 @@ def list_locations() -> dict[str, Any]:
 def test_connection(location: str) -> dict[str, Any]:
     """Smoke test: query a trivial campaign list to verify credentials."""
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     query = "SELECT customer.descriptive_name, customer.currency_code FROM customer LIMIT 1"
     for batch in ga.search_stream(customer_id=customer_id, query=query):
@@ -110,7 +145,7 @@ def query_keywords(location: str, days: int = 30, min_spend: float = 0,
     """Top keywords by spend. Returns keyword text, match type, ad group,
     campaign, spend, clicks, impressions, conversions, CTR, CPC, quality score."""
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     query = f"""
     SELECT
@@ -149,7 +184,7 @@ def query_keywords(location: str, days: int = 30, min_spend: float = 0,
 def query_search_terms(location: str, days: int = 30, limit: int = 100) -> dict[str, Any]:
     """Actual user search queries that triggered ads."""
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     query = f"""
     SELECT
@@ -181,7 +216,7 @@ def query_geo_performance(location: str, days: int = 30,
                           limit: int = 100) -> dict[str, Any]:
     """Geographic performance by city, region, country."""
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     query = f"""
     SELECT
@@ -212,7 +247,7 @@ def query_geo_performance(location: str, days: int = 30,
 def query_negative_keywords(location: str) -> dict[str, Any]:
     """List current negative keywords across the account."""
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     query = """
     SELECT
@@ -240,7 +275,7 @@ def query_campaigns(location: str, days: int = 30,
     """Campaign-level performance with budget, status, and metrics.
     status_filter: 'ENABLED', 'PAUSED', or empty for all."""
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     where = [f"segments.date DURING LAST_{days}_DAYS"]
     if status_filter:
@@ -303,7 +338,7 @@ def query_conversion_actions(location: str, days: int = 30,
     days: metrics window. include_removed: also list REMOVED actions.
     """
     customer_id = _resolve(location)
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
 
     # Config first, with NO date segment — an action with zero traffic must
@@ -510,7 +545,7 @@ def query_change_history(location: str, days: int = 14, limit: int = 200,
     LIMIT {limit}
     """
 
-    client = _ads_client()
+    client = _ads_client(customer_id)
     ga = client.get_service("GoogleAdsService")
     rows: list[dict[str, Any]] = []
     for r in ga.search(customer_id=customer_id, query=query):
@@ -709,7 +744,7 @@ def query_lsa_leads(location: str, days: int = 30) -> dict[str, Any]:
     # run unsegmented and be windowed here.
     query = (f"SELECT {LSA_LEAD_FIELDS} FROM local_services_lead "
              "ORDER BY local_services_lead.creation_date_time DESC")
-    service = _ads_client().get_service("GoogleAdsService")
+    service = _ads_client(cid).get_service("GoogleAdsService")
 
     leads: list[dict[str, Any]] = []
     total_in_account = 0
@@ -834,7 +869,7 @@ def query_lsa_periods(location: str, include_cost: bool = True) -> dict[str, Any
     # One unsegmented pull of full history, bucketed locally per window.
     query = (f"SELECT {LSA_LEAD_FIELDS} FROM local_services_lead "
              "ORDER BY local_services_lead.creation_date_time DESC")
-    service = _ads_client().get_service("GoogleAdsService")
+    service = _ads_client(cid).get_service("GoogleAdsService")
     leads: list[dict[str, Any]] = []
     for row in service.search(customer_id=cid, query=query):
         lead = row.local_services_lead
@@ -898,6 +933,355 @@ def query_lsa_periods(location: str, include_cost: bool = True) -> dict[str, Any
             "phone_responsiveness": report.get("phoneLeadResponsiveness"),
         })
     return out
+
+
+# =============================================================================
+# Conversion-action mutation
+# -----------------------------------------------------------------------------
+# Why this exists: the goal-based Google Ads UI HIDES several conversion-action
+# settings that still matter enormously for bidding, and offers no workaround:
+#   * "Include in Conversions" is not exposed at all for Import-from-clicks
+#     (offline upload) actions — verified blocked in the UI 2026-08-28 on
+#     'Scheduled Appointment (GHL)' (7065860044), which sits primary_for_goal
+#     TRUE but counts_in_conversions_metric FALSE: optimized against nothing
+#     and reported nowhere.
+#   * Google-hosted actions (Local actions - Directions, 6653504530) show
+#     "Not editable" for Action optimization in both view and edit mode.
+# The API has no such restriction. This tool reaches past the UI.
+#
+# It ALWAYS reads the action's current state first and returns before/after, so
+# a mutation on a live ad account is never a blind write.
+#
+# NOTE ON include_in_conversions_metric: Google has been migrating this field's
+# role to primary_for_goal. On some API versions it is output-only and the
+# mutate is rejected with a FieldError. The error is surfaced verbatim rather
+# than swallowed — if it comes back read-only, primary_for_goal is the lever.
+# =============================================================================
+
+_CV_FIELDS = (
+    "name", "status", "primary_for_goal", "include_in_conversions_metric",
+    "counting_type", "default_value", "always_use_default_value",
+    "click_lookback_days",
+)
+
+
+def _cv_snapshot(ga: Any, customer_id: str, action_id: int) -> dict[str, Any]:
+    query = f"""
+        SELECT conversion_action.id, conversion_action.name,
+               conversion_action.status, conversion_action.type,
+               conversion_action.category,
+               conversion_action.primary_for_goal,
+               conversion_action.include_in_conversions_metric,
+               conversion_action.counting_type,
+               conversion_action.click_through_lookback_window_days,
+               conversion_action.value_settings.default_value,
+               conversion_action.value_settings.always_use_default_value
+        FROM conversion_action
+        WHERE conversion_action.id = {int(action_id)}
+    """
+    for batch in ga.search_stream(customer_id=customer_id, query=query):
+        for row in batch.results:
+            c = row.conversion_action
+            return {
+                "id": c.id,
+                "name": c.name,
+                "status": _enum_name(c.status),
+                "type": _enum_name(c.type_),
+                "category": _enum_name(c.category),
+                "primary_for_goal": c.primary_for_goal,
+                "include_in_conversions_metric": c.include_in_conversions_metric,
+                "counting_type": _enum_name(c.counting_type),
+                "click_lookback_days": c.click_through_lookback_window_days,
+                "default_value": c.value_settings.default_value,
+                "always_use_default_value": c.value_settings.always_use_default_value,
+            }
+    return {}
+
+
+@mcp.tool()
+def mutate_conversion_action(
+    location: str,
+    action_id: int,
+    name: str | None = None,
+    status: str | None = None,
+    primary_for_goal: bool | None = None,
+    include_in_conversions_metric: bool | None = None,
+    counting_type: str | None = None,
+    default_value: float | None = None,
+    always_use_default_value: bool | None = None,
+    click_lookback_days: int | None = None,
+    validate_only: bool = False,
+) -> dict[str, Any]:
+    """Update one conversion action's settings — including the fields the
+    goal-based Google Ads UI refuses to expose.
+
+    Pass ONLY the fields you intend to change; everything omitted is left
+    untouched. Returns {"before": {...}, "after": {...}, "changed": [...]} so
+    the effect on a live account is always visible.
+
+    Field notes — each of these silently changes how money is spent:
+      primary_for_goal            True = Smart Bidding optimizes toward it.
+                                  False = observed only. Demoting a goal that
+                                  campaigns currently bid on will change
+                                  delivery immediately.
+      include_in_conversions_metric  Whether it counts in the "Conversions"
+                                  column. An action that is primary but
+                                  excluded is optimized against yet invisible
+                                  in reporting. May be output-only on some API
+                                  versions; the API error is returned verbatim.
+      counting_type               "ONE" (ONE_PER_CLICK) or "EVERY"
+                                  (MANY_PER_CLICK). EVERY on a lead form
+                                  double-counts repeat submitters and inflates
+                                  the bidding signal.
+      status                      "ENABLED", "REMOVED", or "HIDDEN". REMOVED is
+                                  how you retire a stale GA4 import or UA goal.
+      default_value /             Conversion value used when none is supplied.
+        always_use_default_value  A wrong default here misprices every bid.
+
+    validate_only: run Google's validation and report what WOULD change without
+    writing. Use it first on anything primary or currently spending.
+    """
+    ok, missing = _check_env()
+    if not ok:
+        return {"error": f"Missing env vars: {', '.join(missing)}"}
+
+    customer_id = _resolve(location)
+    client = _ads_client()
+    ga = client.get_service("GoogleAdsService")
+
+    before = _cv_snapshot(ga, customer_id, action_id)
+    if not before:
+        return {"error": f"No conversion action with id {action_id} in {location}. "
+                         "Use query_conversion_actions(include_removed=True) to list ids."}
+
+    service = client.get_service("ConversionActionService")
+    op = client.get_type("ConversionActionOperation")
+    ca = op.update
+    ca.resource_name = service.conversion_action_path(customer_id, action_id)
+
+    requested: dict[str, Any] = {}
+    paths: list[str] = []
+
+    if name is not None:
+        ca.name = name
+        paths.append("name")
+        requested["name"] = name
+    if status is not None:
+        key = status.upper().strip()
+        try:
+            ca.status = client.enums.ConversionActionStatusEnum[key]
+        except KeyError:
+            return {"error": f"Invalid status '{status}'. Use ENABLED, REMOVED or HIDDEN."}
+        paths.append("status")
+        requested["status"] = key
+    if primary_for_goal is not None:
+        ca.primary_for_goal = primary_for_goal
+        paths.append("primary_for_goal")
+        requested["primary_for_goal"] = primary_for_goal
+    if include_in_conversions_metric is not None:
+        ca.include_in_conversions_metric = include_in_conversions_metric
+        paths.append("include_in_conversions_metric")
+        requested["include_in_conversions_metric"] = include_in_conversions_metric
+    if counting_type is not None:
+        alias = {"ONE": "ONE_PER_CLICK", "EVERY": "MANY_PER_CLICK"}
+        key = alias.get(counting_type.upper().strip(), counting_type.upper().strip())
+        try:
+            ca.counting_type = client.enums.ConversionActionCountingTypeEnum[key]
+        except KeyError:
+            return {"error": f"Invalid counting_type '{counting_type}'. "
+                             "Use ONE / ONE_PER_CLICK or EVERY / MANY_PER_CLICK."}
+        paths.append("counting_type")
+        requested["counting_type"] = key
+    if default_value is not None:
+        ca.value_settings.default_value = float(default_value)
+        paths.append("value_settings.default_value")
+        requested["default_value"] = float(default_value)
+    if always_use_default_value is not None:
+        ca.value_settings.always_use_default_value = always_use_default_value
+        paths.append("value_settings.always_use_default_value")
+        requested["always_use_default_value"] = always_use_default_value
+    if click_lookback_days is not None:
+        ca.click_through_lookback_window_days = int(click_lookback_days)
+        paths.append("click_through_lookback_window_days")
+        requested["click_lookback_days"] = int(click_lookback_days)
+
+    if not paths:
+        return {"error": "No fields given to change. Pass at least one of: "
+                         + ", ".join(_CV_FIELDS),
+                "current": before}
+
+    client.copy_from(op.update_mask, client.get_type("FieldMask")(paths=paths))
+
+    try:
+        service.mutate_conversion_actions(
+            customer_id=customer_id, operations=[op],
+            validate_only=validate_only)
+    except Exception as exc:
+        # Surface the API's own message. A read-only field (notably
+        # include_in_conversions_metric on newer versions) reports itself here
+        # and must NOT be reported to the user as "done".
+        detail = str(exc)
+        errors = []
+        for err in getattr(getattr(exc, "failure", None), "errors", []) or []:
+            errors.append({
+                "message": err.message,
+                "field": ".".join(
+                    e.field_name for e in err.location.field_path_elements
+                ) if err.location.field_path_elements else None,
+            })
+        return {"error": "mutate rejected by Google Ads API",
+                "requested": requested, "detail": detail,
+                "errors": errors, "before": before}
+
+    if validate_only:
+        return {"validate_only": True, "valid": True,
+                "would_change": requested, "before": before,
+                "note": "Nothing was written. Re-run with validate_only=False to apply."}
+
+    after = _cv_snapshot(ga, customer_id, action_id)
+    changed = [k for k in before
+               if k in after and before[k] != after[k]]
+    return {"location": location, "action_id": action_id,
+            "requested": requested, "before": before, "after": after,
+            "changed": changed,
+            "warning": None if changed else
+            "The API accepted the mutate but no field actually changed — the "
+            "value was likely already set, or the field is silently ignored "
+            "on this action type."}
+
+def _text_assets(assets: Any) -> list[dict[str, Any]]:
+    """Extract text + pinned slot from a repeated AdTextAsset field (RSA
+    headlines/descriptions). `pinned` is None when the asset floats."""
+    out = []
+    for a in assets:
+        pinned = _enum_name(a.pinned_field)
+        out.append({
+            "text": a.text,
+            "pinned": None if pinned in ("UNSPECIFIED", "UNKNOWN") else pinned,
+        })
+    return out
+
+
+@mcp.tool()
+def query_ads(location: str, days: int = 30, limit: int = 100,
+             status_filter: str = "ENABLED") -> dict[str, Any]:
+    """Ad-level (ad_group_ad) performance — the creative detail the other
+    query_* tools don't reach. Closes the standing "creative-level blind on
+    Google" gap (paid.md §4 / Known Breakages) that previously required
+    Zapier or hand-built GAQL.
+
+    Returns per ad: campaign, ad group, ad type, ad_strength (RSA quality
+    signal that ties directly to landing-page-experience findings), status,
+    final URLs, and — for RESPONSIVE_SEARCH_AD ads only — the headline/
+    description text with its pinned slot (empty list for other ad types,
+    not an error). Use ad_strength plus CTR/cost-per-conversion together to
+    name the exact ad to pause or iterate, per §4.
+
+    status_filter: 'ENABLED', 'PAUSED', 'REMOVED', or empty for all.
+    """
+    customer_id = _resolve(location)
+    client = _ads_client(customer_id)
+    ga = client.get_service("GoogleAdsService")
+    where = [f"segments.date DURING LAST_{days}_DAYS"]
+    if status_filter:
+        where.append(f"ad_group_ad.status = '{status_filter.upper()}'")
+    query = f"""
+    SELECT
+      campaign.name, ad_group.name,
+      ad_group_ad.ad.id, ad_group_ad.ad.type,
+      ad_group_ad.ad.final_urls,
+      ad_group_ad.ad.responsive_search_ad.headlines,
+      ad_group_ad.ad.responsive_search_ad.descriptions,
+      ad_group_ad.ad_strength, ad_group_ad.status,
+      metrics.cost_micros, metrics.clicks, metrics.impressions,
+      metrics.conversions, metrics.ctr, metrics.average_cpc
+    FROM ad_group_ad
+    WHERE {' AND '.join(where)}
+    ORDER BY metrics.cost_micros DESC
+    LIMIT {limit}
+    """
+    rows = []
+    for batch in ga.search_stream(customer_id=customer_id, query=query):
+        for r in batch.results:
+            ad = r.ad_group_ad.ad
+            rows.append({
+                "campaign": r.campaign.name,
+                "ad_group": r.ad_group.name,
+                "ad_id": str(ad.id),
+                "ad_type": _enum_name(ad.type_),
+                "ad_strength": _enum_name(r.ad_group_ad.ad_strength),
+                "status": _enum_name(r.ad_group_ad.status),
+                "final_urls": list(ad.final_urls),
+                "headlines": _text_assets(ad.responsive_search_ad.headlines),
+                "descriptions": _text_assets(ad.responsive_search_ad.descriptions),
+                "spend": r.metrics.cost_micros / 1_000_000,
+                "clicks": r.metrics.clicks,
+                "impressions": r.metrics.impressions,
+                "conversions": r.metrics.conversions,
+                "ctr": r.metrics.ctr,
+                "avg_cpc": r.metrics.average_cpc / 1_000_000,
+            })
+    return {"location": location, "days": days, "rows": rows, "count": len(rows)}
+
+
+@mcp.tool()
+def query_call_assets(location: str) -> dict[str, Any]:
+    """Call assets (asset.type = CALL) at both account and campaign level:
+    the phone number, its enabled/paused/removed status, and — at campaign
+    level — which campaign it's linked to.
+
+    This is the tool the phone-routing audit (paid.md "Phone routing")
+    needs to verify a stray or wrong number isn't still live in a paid path,
+    without hand-building GAQL against the `asset` resource each run.
+
+    `country_code` is Google's region code for the number (e.g. 'US'), not a
+    dial prefix.
+    """
+    customer_id = _resolve(location)
+    client = _ads_client(customer_id)
+    ga = client.get_service("GoogleAdsService")
+
+    account_rows = []
+    query_account = """
+    SELECT
+      customer_asset.status,
+      asset.id, asset.call_asset.phone_number, asset.call_asset.country_code
+    FROM customer_asset
+    WHERE asset.type = 'CALL'
+    """
+    for batch in ga.search_stream(customer_id=customer_id, query=query_account):
+        for r in batch.results:
+            account_rows.append({
+                "asset_id": str(r.asset.id),
+                "phone_number": r.asset.call_asset.phone_number,
+                "country_code": r.asset.call_asset.country_code,
+                "status": _enum_name(r.customer_asset.status),
+            })
+
+    campaign_rows = []
+    query_campaign = """
+    SELECT
+      campaign.name, campaign_asset.status,
+      asset.id, asset.call_asset.phone_number, asset.call_asset.country_code
+    FROM campaign_asset
+    WHERE asset.type = 'CALL'
+    """
+    for batch in ga.search_stream(customer_id=customer_id, query=query_campaign):
+        for r in batch.results:
+            campaign_rows.append({
+                "campaign": r.campaign.name,
+                "asset_id": str(r.asset.id),
+                "phone_number": r.asset.call_asset.phone_number,
+                "country_code": r.asset.call_asset.country_code,
+                "status": _enum_name(r.campaign_asset.status),
+            })
+
+    return {
+        "location": location,
+        "account_level": account_rows,
+        "campaign_level": campaign_rows,
+        "count": len(account_rows) + len(campaign_rows),
+    }
 
 
 if __name__ == "__main__":

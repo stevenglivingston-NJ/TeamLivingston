@@ -1,4 +1,35 @@
-# Prospect Weekly Routine — one-time setup (copy-paste)
+# Prospect Weekly Routine
+
+> **STATUS 2026-09-12 — the Routine now exists. Do not create another one.**
+>
+> | | |
+> |---|---|
+> | Trigger ID | `trig_01WLqSj6mdyfAz5uFiTph5Z7` |
+> | Name | Prospect — weekly multifamily & senior lead scan |
+> | Cron | `35 12 * * 1` — Mondays 12:35 UTC (8:35am ET) |
+> | Model | `claude-sonnet-5` · fresh session per fire · Supabase MCP attached |
+> | First run | 2026-09-14 12:35 UTC |
+>
+> **Why 12:35 UTC and not the 11:00 UTC in the original plan below:** CLAUDE.md
+> documents a 09:00–11:20 UTC dead zone in which every enabled Routine silently
+> stopped writing after 2026-08-19. The originally specified `0 11 * * 1` sits
+> inside that band. 12:35 UTC is outside it, lands after the healthy 12:20 UTC
+> Yabra digest, and finishes before the freshness watchdog's due hour.
+>
+> **Related change:** `check_agent_freshness()` was updated the same day —
+> `prospect_report` moved from `max_age` 8 → 7 and `due_hour` 12 → 13, so a
+> single skipped Monday now alarms instead of staying silent until day 9.
+>
+> **Before this existed** the agent ran only when a human kicked it: 2026-08-12,
+> 08-25 and 09-07, a ~13-day cadence, each run preceded by a week of stale
+> alerts. That is the problem this Routine fixes.
+>
+> The prompt actually registered on the trigger also covers the Tier 5 (senior /
+> age-restricted) and Tier 6 (public bid) scans added to the target map on
+> 2026-09-12. The prompt preserved below is the **original** 2026-08 version,
+> kept for history — the live prompt is on the trigger.
+
+## Original one-time setup notes (historical)
 
 The Prospect agent is designed to refresh the intranet **Prospect** and
 **Prospecting** tabs every Monday via a Claude Code Remote **Routine** (CCR

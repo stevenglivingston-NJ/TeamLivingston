@@ -1,16 +1,36 @@
 # Axyom Intranet (`ktubtuintranet` Cloudflare Worker)
 
-> ## ⚠️ Reconciliation in progress (2026-08-18)
-> `ktubtuintranet.html` has been **reset to match the live worker byte-for-byte**,
-> so **deploying is now safe — it is a no-op against production.**
+> ## ⚠️ CORRECTION (2026-09-01): this path IS what serves production
+> The 2026-08-31 note below had the direction backwards. Fetching
+> dash.goaxyom.com showed it served THIS file byte for byte — the repo's
+> Cloudflare git integration was building, but its output was not what the
+> custom domain returned. Nothing built in KTUBTU-Intranet had ever reached
+> production.
 >
-> A month of repo-side work is NOT yet in this file. It is preserved in
-> `ktubtuintranet.repo-snapshot-2026-08-18.html` and is being ported back in
-> tab by tab. Read **[RECONCILIATION.md](RECONCILIATION.md)** before editing.
+> Both lineages have now been merged into KTUBTU-Intranet/index.html and this
+> file is a byte-for-byte copy of that merge, so the two paths agree and
+> deploying from here is a no-op against the repo.
 >
-> Until the port completes, deploying ships live's own content back to live —
-> harmless, but it does not yet restore the Cash Flow, Paid, Organic or Library
-> tabs.
+> Until a push to KTUBTU-Intranet main is CONFIRMED to change what
+> dash.goaxyom.com returns — confirmed by fetching it, not by a green build —
+> treat this as the deploy path of record. A successful Cloudflare build says
+> the code compiles, not that anyone can see it.
+
+> ## Superseded (2026-08-31) — kept for the record
+> The `KTUBTU-Intranet` repo's **Cloudflare Git integration deploys this same
+> worker (`ktubtuintranet`) on every push** to its active branch. That is the
+> primary deploy path. The 2026-08-18 doctrine below ("deploy only from here")
+> is dead: on 2026-08-31 this copy was six days stale and one `npm run deploy`
+> away from rolling production back over a day of shipped finance work.
+>
+> Rules now:
+> - **Edit in the `KTUBTU-Intranet` repo (`index.html`) and push** — that is
+>   the deploy.
+> - This manual path exists for emergencies only. `build.mjs` refuses to build
+>   if `ktubtuintranet.html` differs from the repo checkout
+>   (`INTRANET_REPO_HTML` overrides the path; `--force` overrides the guard).
+> - After any manual deploy, push the same content to the repo immediately or
+>   the next repo push silently reverts it.
 
 `ktubtuintranet.html` is the full single-file app served at **https://dash.goaxyom.com**.
 It was recovered from live on 2026-07-05, then the two copies forked (see

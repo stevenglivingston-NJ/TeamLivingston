@@ -170,6 +170,76 @@ Benchmark verdicts use the HFC numbers verbatim (GP 50–55%, Labor <15%, DM <30
 
 ---
 
+## 7a. UPDATE 2026-09-18 — the labor gap closes with real timesheets
+
+§7 below was written when "no per-job timesheets exist anywhere", so every tier of
+its evidence hierarchy (JobTread daily assignment > CompanyCam photo presence >
+install schedule > even split) was an *inference* about who was where. CompanyCam
+time tracking replaces that with clocked hours, which become the new top tier:
+`evidence = 'companycam hours'`, `source = 'companycam'`.
+
+**What did NOT change, and must not.** Hours are the **allocation key**, never a
+dollar source. Decision, Steven 2026-09-18:
+
+* CompanyCam returns hours and has **no pay-rate field anywhere in its API** — any
+  rate table would be our invention and would drift from real pay on the first
+  overtime week or raise.
+* The QBO/Gusto sweep in §7.1 **already** books the weekly lump into
+  `jc_actual_costs`. Hours × rate on top of that charges every job for labor
+  **twice**. Splitting the real payment makes double-counting structurally
+  impossible instead of something a reviewer has to notice.
+* §7.2's own contract — a person's week must sum to what they were actually paid —
+  is satisfied by pro-rata splitting *by construction*. Hours × rate cannot satisfy
+  it at all.
+
+So `jc_payroll_periods` holds the dollars, `jc_cc_time_entries` holds the hours, and
+`jc_allocate_week()` divides one by the other (largest-remainder rounding, so the
+week ties to cash exactly — verified against $1,337.77 across 7.33/11.17/4.50 hours,
+and against an 18%-burden W2 week).
+
+**Migration:** `supabase/migrations/20260918_companycam_labor.sql`.
+**Sync:** `mcp-servers/jc-labor-sync.py` (curl only — a scheduled Routine must never
+reach CompanyCam through an `mcp__*` tool; it would stall in `REQUIRES_ACTION`).
+
+**Two blockers that are real today, neither of them code:**
+1. **Zero hours are logged.** The plan is active on company 592669; nobody has
+   clocked in. Adoption is the project — crew + W2 field staff, per Steven.
+2. **CompanyCam time tracking is not exposed on its public API at all**, so the
+   scheduled curl pull cannot work and no credential change will make it. Settled
+   2026-09-18 after granting time-tracking permissions to the existing token
+   changed nothing: the token is **admin**, returns 200 on six other v2
+   endpoints, and returns 401 `Bad credentials` on the time-entry routes only —
+   live token, real route. There is no documented time-tracking endpoint, no
+   time-related OAuth scope (only read/write/destroy), and no time-tracking
+   webhook event. The MCP connector reads it through a non-public surface.
+   Opening it is a **request to CompanyCam**, not a setting.
+   → Ingest is `--from-json` meanwhile: export in an interactive session, feed
+   the file. A scheduled Routine must never call `mcp__*` (it stalls in
+   `REQUIRES_ACTION`), which is precisely why the pull cannot simply switch to
+   the connector.
+
+**ServiceMinder still cannot take costs — re-verified, not inherited from §0.** 15
+endpoint spellings probed 2026-09-18, all returning the empty-200 "no such endpoint"
+signature; custom fields are 48 contact-level + 1 appointment-level, none at proposal
+or job level. The §0 rejection of SM as a cost surface stands. What the intranet now
+does instead: a person confirms *which SM proposal* they are updating, previews the
+exact note, and queues it (`jc_sm_note_log.status='pending'`); the server-side sync
+posts it as a **contact note**. It is visible in SM and names the proposal, but it
+will not appear in the Margins panel and SM will not compute with it. The browser
+never holds an SM key, because SM authenticates with its ApiKey inside the body.
+
+**JobTread now receives actual cost lines**, which §0 correctly said did not exist
+there ("zero vendorBills, zero vendorOrders... no actual-cost data in JobTread at
+all"). `createCostItem` accepts `jobId` + `unitCost` + `hasFinalActualCost`, so
+labor actuals are written to the job budget. Steven chose **auto-write above 0.85
+match confidence** (2026-09-18) over the staged-confirm recommendation; the stated
+risk is that JobTread has no hard key to ServiceMinder and a same-surname collision
+writes real money into the wrong budget unwatched. Mitigation shipped with it:
+`jc_jobtread_cost_log` records the created cost-item id and the confidence every
+line went in at, so a bad match is reversible by query rather than hunted by hand.
+
+---
+
 ## 7. Closing the labor gap (the 56 × $0-labor jobs)
 
 Verified this session: JobTread contains **zero** vendor bills and **no KTU Labor-type cost lines at all** (53 of 207 2025 jobs have labor > $0 — nearly all BTU; KTU budgeted-but-no-labor + item-less KTU imports cover the ~56). Meanwhile QuickBooks carries the real money (~$215,623 subcontractor install labor, ~$201,126 payroll, 2025). The gap exists because **labor is paid from QBO/Melio/payroll, which never asks "which job?"** — and JobTread only ever received estimates.
@@ -308,3 +378,58 @@ no held state to enforce it.
 **Sequencing note:** this is only worth building once the queue is being worked
 daily — pushing 0 actuals into JobTread achieves nothing. Phase 2, after the
 QBO sync and the labor allocator.
+
+## 14. Autonomy — what runs itself, and what still needs a human (2026-09-10)
+
+The first build had a hidden dependency: several moving parts only advanced when
+somebody ran them. That is now closed. Nothing below depends on a workstation
+being switched on, and none of it is bound to a device.
+
+| Job | Runs on | Cadence | What it does |
+|---|---|---|---|
+| `jc-match-and-escalate` | **Supabase pg_cron** (in-database) | hourly, :35 | `jc_nightly()` → `jc_run_matcher()` + `jc_refresh_escalations()` |
+| Actuals ledger | **Postgres trigger** `payables_sync_actuals` | on every write | keeps `jc_actual_costs` in step with each payable's mapping |
+| Forecast (SOLD-side) ETL | **CCR Routine**, cloud environment, Haiku | daily 07:00 UTC | `jc-forecast-sync.py --apply`; logs to `jc_sync_runs` |
+
+**The actuals trigger is the important one.** `jc_actual_costs` used to be
+written only by the intranet's `jcConfirm()` handler, so anything that mapped a
+payable another way (the seed script, a future QBO sync, a hand-fix in SQL) left
+the invoice confirmed but absent from `jc_job_pnl`. The trigger makes the ledger
+a function of the payable's mapping state on every path, in both directions: map
+it and the cost lands on the job, un-map it and the cost comes straight back off.
+A human split (several `jc_actual_costs` rows against one payable) is never
+overwritten — the operator's allocation beats a generated one.
+
+**Observability.** `jc_sync_runs` records every ETL run and `jc_sync_health()`
+reports last-good-run, 24h failures, and the stalest job. A failed run is
+therefore visible as a failure rather than as quietly stale data — the exact trap
+described in the scheduling section of CLAUDE.md.
+
+### The serverless upgrade, ready but not wired
+
+`supabase/functions/jc-forecast-sync/index.ts` is a full port of the Python ETL
+to an Edge Function, with its pg_cron schedules written in
+`20260910b_jc_forecast_sync_schedule.sql`. It is the better long-term shape —
+no model, no session, no connector classifier, so it cannot stall — but it needs
+ServiceMinder and JobTread credentials available to Supabase, which the Routine
+does not (the Routine already runs where those keys live).
+
+To switch: set `SM_KEY_KTU`, `SM_KEY_BTU` and `JOBTREAD_GRANT_KEY` as Edge
+Function secrets (Supabase dashboard → Edge Functions → Secrets), deploy the
+function, re-run the schedules at the bottom of `20260910b`, and delete the
+"Job costing — nightly forecast sync" Routine. The function also accepts those
+keys from `dispatch_config` (`jc_sm_key_ktu`, `jc_sm_key_btu`,
+`jc_jobtread_grant_key`) as a fallback — that table is RLS-enabled with zero
+policies, so only the service role can read it. Function secrets take precedence
+where both exist.
+
+Until then the Routine is the live path and the Edge Function is dormant: its
+schedules are deliberately NOT registered, so it will not fire and log failures.
+
+### Still human, by design
+
+Confirming which job an invoice belongs to stays a person's decision — that is
+the control, not an inconvenience. Automation now guarantees the queue is
+current, the matcher has run, margins are recomputed and confirmed costs reach
+the P&L. It does not, and should not, decide that a Richelieu invoice belongs to
+the Mycka kitchen.

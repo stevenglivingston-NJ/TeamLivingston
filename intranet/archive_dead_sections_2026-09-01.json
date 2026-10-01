@@ -1,0 +1,820 @@
+[
+ {
+  "section": "diag_checkout",
+  "brand": "Both",
+  "sort_order": 0,
+  "fields": {
+   "probe": "2026-08-24-manual-clone",
+   "conclusion": "setup script did not run or did not clone, but cloning itself works",
+   "manual_clone": "succeeded",
+   "setup_log_found": "no",
+   "setup_version_line": "none"
+  },
+  "created_at": "2026-08-24T19:45:01.521463+00:00",
+  "updated_at": "2026-08-24T19:45:01.521463+00:00"
+ },
+ {
+  "section": "diag_checkout",
+  "brand": "Both",
+  "sort_order": 0,
+  "fields": {
+   "head": "2319f8f Merge #180",
+   "probe": "2026-08-24-with-source-url",
+   "repo_present": "yes",
+   "mcp_registered": "12 servers live",
+   "setup_log_found": "partial",
+   "setup_version_line": "found in setup.sh"
+  },
+  "created_at": "2026-08-24T20:03:49.859281+00:00",
+  "updated_at": "2026-08-24T20:03:49.859281+00:00"
+ },
+ {
+  "section": "diag_dark_agents",
+  "brand": "Both",
+  "sort_order": 0,
+  "fields": {
+   "fix": "Steven must move the Organic Routine off 10:00 UTC to a slot proven to work (e.g. 16:00 UTC) via the Routines UI - update_trigger is refused on http_api-created Routines. Re-check organic_report scan_date the day after the move to confirm.",
+   "run": "2026-08-24b",
+   "agent": "organic",
+   "root_cause": "Shared with paid/pipeline/tekki: Routine fire-time band 09:00-11:20 UTC, not a spec defect or credential gap. No hard-stop exists to explain silence, and every live dependency answers now. Mechanism inside the band still unconfirmed (CCR-side capacity/quota window is the leading unconfirmed theory per CLAUDE.md)",
+   "deps_missing": "SEMrush - account-wide unit exhaustion confirmed live 2026-08-24 ('does not have enough API units'); spec explicitly says do NOT abort on this, fall back to GMB/GA4 and publish a gap row",
+   "sb_read_back": "rows (17 rows in organic_report, max scan_date=2026-08-19) - post-fix read confirmed real rows, not ok-only",
+   "deps_reachable": "GMB KTU+BTU ok; Google Ads(LSA) KTU+BTU ok; Clarity KTU+BTU ok; ghl-ktu/ghl-btu ok (not agent's dep but env-shared); Supabase ok",
+   "hard_stop_clause": "none",
+   "spec_changed_since_0817": "none before the freeze; only post-freeze edits exist (#172 08-19 fixed LSA leads before the freeze window, #167/#172-175 landed 08-21..08-22, all AFTER organic_report last wrote 08-19 10:13Z)",
+   "differs_from_healthy_agent": "none in publish mechanism - identical sb.sh write-then-prune pattern to moola/cellar. Only structural difference found: Routine fire time. Organic Routine cron '0 10 * * *' (10:00 UTC) sits inside the 09:00-11:20 UTC dead-zone band; Moola fires 08:00 UTC and Cellar 06:00 UTC, both outside it"
+  },
+  "created_at": "2026-08-24T20:45:28.389394+00:00",
+  "updated_at": "2026-08-24T20:45:28.389394+00:00"
+ },
+ {
+  "section": "diag_dark_agents",
+  "brand": "Both",
+  "sort_order": 0,
+  "fields": {
+   "fix": "Reschedule Tekki's Routine off 09:00 UTC to outside the band (e.g. 15:00 UTC per CLAUDE.md's suggested mitigation) - Steven, Routines UI. Separately: delete the disabled duplicate 11:20 UTC 'Tekki daily sweep' Routine.",
+   "run": "2026-08-24b",
+   "agent": "tekki",
+   "root_cause": "Shared band cause with organic/paid/pipeline. Tekki is the cleanest single data point for the band theory: it went dark on the same date as the other three with zero preceding spec change, which rules out a spec-content explanation for at least this agent and weakens it for all four",
+   "deps_missing": "SEMrush exhausted - Tekki only touches this as a health-probe target (3b), not a publish blocker for its own sections",
+   "sb_read_back": "rows (10 rows in tekky_status, max scan_date=2026-08-19; tech_stack itself carries 51 rows but has no scan_date field to prune by, so it is not diagnostic of freshness) - post-fix read confirmed real rows",
+   "deps_reachable": "Supabase ok (SELECT 1 returned); ServiceMinder KTU+BTU ok; ghl-ktu/ghl-btu ok; Clarity KTU+BTU ok; Cloudflare ok",
+   "hard_stop_clause": "Closest candidate: 'If the server shows as still connecting, RETRY the search after ~60s...if truly unreachable, stop and say so plainly' (re: Supabase). Does not explain the freeze - Supabase is reachable now (SELECT 1 succeeded via sb.sh) and is the SAME project moola/foreman/cellar write to successfully every day",
+   "spec_changed_since_0817": "NONE before the freeze. tekki.md's prior edit predates 08-17; its next edits are PR #167 (08-21) and #178 (08-23), both AFTER tekky_status last wrote 2026-08-19 09:14Z. This is the strongest evidence against a spec-change root cause - Tekki froze with an untouched spec",
+   "differs_from_healthy_agent": "none in publish mechanism (same sb.sh pattern as moola/cellar/foreman). Tekki's enabled Routine cron '0 9 * * *' (09:00 UTC) is the earliest firing inside the dead-zone band; Moola fires 08:00 UTC, 40 minutes earlier and outside it. Also found a second, DISABLED, orphaned 'Tekki daily sweep' Routine (cron 11:20 UTC) - hygiene debt, not causal since disabled"
+  },
+  "created_at": "2026-08-24T20:45:29.886638+00:00",
+  "updated_at": "2026-08-24T20:45:29.886638+00:00"
+ },
+ {
+  "section": "diag_dark_agents",
+  "brand": "Both",
+  "sort_order": 0,
+  "fields": {
+   "fix": "Reschedule the enabled Paid Routine off 11:00 UTC to outside the band (e.g. 17:00 UTC per CLAUDE.md's suggested mitigation) - Steven, Routines UI. Separately: delete the disabled duplicate 06:00 UTC Paid Routine to restore one-Routine-per-agent.",
+   "run": "2026-08-24b",
+   "agent": "paid",
+   "root_cause": "Shared band cause, same as organic/pipeline/tekki. #159's 'next 11:08 UTC run' timing is suggestive but not proven causal: organic and tekki froze on the same date with NO matching spec edit at all, which argues against the spec content itself being the mechanism",
+   "deps_missing": "SEMrush - account-wide exhaustion confirmed live 2026-08-24; this is Paid's weekly (Monday-only) competitive block, not a daily blocker",
+   "sb_read_back": "rows (7 rows in paid_brief, max scan_date=2026-08-19) - post-fix read confirmed real rows",
+   "deps_reachable": "Google Ads KTU+BTU ok; ghl-ktu/ghl-btu ok; Clarity KTU+BTU ok; ServiceMinder KTU+BTU ok",
+   "hard_stop_clause": "none found. Step 0 explicitly instructs 'Fall back and keep working - do NOT abort the run' on SEMrush exhaustion. tracking-audit.py step-0 call was added by PR #178 on 08-23, four days AFTER the freeze began 08-19, so it cannot be the original cause; flagging it as an unverified NEW risk if it errors unhandled on future runs",
+   "spec_changed_since_0817": "PR #159 merged 2026-08-19 15:17 EDT (19:17Z), AFTER that day's successful write (11:23Z/07:23 EDT) - commit message states it 'takes effect on Paid's next 11:08 UTC run', i.e. the following in-band firing, which is exactly where the freeze begins",
+   "differs_from_healthy_agent": "none in publish mechanism (same sb.sh pattern as moola). Paid's enabled Routine cron '0 11 * * *' (11:00 UTC) sits inside the dead-zone band; Moola 08:00 UTC / Foreman 12:00 UTC sit outside it. Also found a second, DISABLED, orphaned Paid Routine ('...ROAS audit', cron 06:00 UTC) left over from an earlier schedule - hygiene debt, not itself causal since disabled"
+  },
+  "created_at": "2026-08-24T20:45:28.988218+00:00",
+  "updated_at": "2026-08-24T20:45:28.988218+00:00"
+ },
+ {
+  "section": "diag_dark_agents",
+  "brand": "Both",
+  "sort_order": 0,
+  "fields": {
+   "fix": "Reschedule Pipeline's Routine off 11:18 UTC to outside the band (e.g. 17:30 UTC per CLAUDE.md's suggested mitigation) - Steven, Routines UI.",
+   "run": "2026-08-24b",
+   "agent": "pipeline",
+   "root_cause": "Shared band cause. Same caveat as paid: #162's 'next run' timing coincides with the band's first blocked firing but is not proven causal given organic/tekki froze without any matching edit",
+   "deps_missing": "none required for Pipeline's own scope (it does not depend on SEMrush)",
+   "sb_read_back": "rows (6 rows in pipeline_briefing, max scan_date=2026-08-19) - post-fix read confirmed real rows",
+   "deps_reachable": "ServiceMinder KTU+BTU ok; ghl-ktu/ghl-btu ok; Clarity KTU+BTU ok",
+   "hard_stop_clause": "none found",
+   "spec_changed_since_0817": "PR #158 merged 2026-08-18 22:22 EDT (before that day's run, already live for the 08-19 success) and PR #162 merged 2026-08-19 18:03 EDT, AFTER that day's successful write (11:33Z/07:33 EDT) - commit message states it 'takes effect on Pipeline's next 11:18 UTC run', the following in-band firing where the freeze begins",
+   "differs_from_healthy_agent": "none in publish mechanism (same sb.sh pattern as moola/foreman). Pipeline's Routine cron '18 11 * * *' (11:18 UTC) sits inside the dead-zone band; Foreman 12:00 UTC sits just outside it (42 min later)"
+  },
+  "created_at": "2026-08-24T20:45:29.577583+00:00",
+  "updated_at": "2026-08-24T20:45:29.577583+00:00"
+ },
+ {
+  "section": "diag_goldeneye",
+  "brand": "Both",
+  "sort_order": 0,
+  "fields": {
+   "run": "2026-08-24-writepaths",
+   "closebot": "skipped - CLOSEBOT_API_KEY not set in environment (confirmed via bootstrap.sh output).",
+   "root_cause": "Not a schema or connector failure - Supabase writes and ServiceMinder reads both verified working live end-to-end. call_notes/contacts (steps 4d.1-4d.3): the daily routine appears to silently skip these writes - 16 legitimate Perceptionist notes flowed Jul28-Aug15 with zero landing in call_notes (0 rows ever), so this predates and is separate from the Aug16-24 forwarding gap. appointments (5c) stale since ~7/12 despite both dependencies now verified healthy - most likely the single long combined daily prompt (7 major steps) is running out of turns/budget before reaching 4d/5c/6, or erroring earlier without surfacing it. Recommend: split the routine into smaller scheduled steps or add an end-of-run row-count assertion per table so a silent skip fails loudly instead of reporting all-clear; re-run bootstrap.sh and confirm a fresh ServiceMinder MCP connection is picked up before relying on find_appointment; add a unique index on call_notes for Interaction-ID dedup; and Aug16-24 Perceptionist silence needs its own urgent degradation callout today, not an all-clear.",
+   "perceptionist": "rows=0 last 7d; NOT a route failure - Gmail/firstgentalent connection verified healthy (general inbox returns mail fine). 30d window found 16 legit forwards, steady Jul28-Aug15, then an abrupt 9-day silence Aug16-24. Upstream forwarding gap (Perceptionist or staff-forward), not Zapier/Gmail.",
+   "call_notes_schema": "ok - table exists with caller_name/caller_phone/brand/summary/disposition/follow_up/source/source_email_id/created_at as spec expects; but NO unique index on source_email_id or an interaction-id column, so ON CONFLICT dedup per spec 4d.1 is not actually possible today.",
+   "appointments_schema": "ok - appointment_id bigint present, all step-5c upsert columns present, next_action/next_action_by correctly excluded from the agent-owned set.",
+   "call_notes_test_write": "ok - insert+read-back+delete succeeded via direct Postgres. Separately: sb.sh (the curl/exec_sql helper agents are told to use) returns {\"ok\":true} for EVERY query including plain SELECTs - it can insert fine but cannot be used to verify a read, which may explain why prior runs never caught the empty table.",
+   "sm_appointments_sweep": "blocked - find_appointment (the appointment-notes tool 5b/5c depend on) is missing from the ServiceMinder MCP connection that was already live in-session; the tool exists in mcp-servers/serviceminder/server.py and only appears after bootstrap.sh registers a fresh connection. query_appointments itself is fully live and fresh for both KTU and BTU today.",
+   "appointments_conflict_index": "present - appointments_appointment_id_key unique index on appointment_id."
+  },
+  "created_at": "2026-08-24T03:12:15.814145+00:00",
+  "updated_at": "2026-08-24T03:12:15.814145+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 1,
+  "fields": {
+   "url": "https://jataliamarketplace.com",
+   "desc": "Consolidated Amazon / Walmart / Shopify / ShipStation ops view (Earthwise daily driver)",
+   "title": "Jatalia Ops Dashboard"
+  },
+  "created_at": "2026-07-03T00:22:50.495737+00:00",
+  "updated_at": "2026-07-03T00:22:50.495737+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 10,
+  "fields": {
+   "url": "https://docs.google.com/spreadsheets/d/1AIqiuypMm9gUmoyT8_Znhm74kHYML-TSEqTSotXpD_I/edit",
+   "desc": "Channel performance tracking (Google Sheet)",
+   "title": "Jatalia Performance Sheet"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 10,
+  "fields": {
+   "url": "https://docs.google.com/spreadsheets/d/1CavHr6p5Dq00hi6e1SvtiFIXAZw08K0AMEZkpKlGmpU/edit",
+   "desc": "Marketplace pricing model (Google Sheet)",
+   "title": "Jatalia Pricing File"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 10,
+  "fields": {
+   "url": "https://tsdr.uspto.gov/#caseNumber=99120938",
+   "desc": "Trademark application status",
+   "title": "Earthwise Trademark (USPTO 99120938)"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 10,
+  "fields": {
+   "url": "https://docs.google.com/spreadsheets/d/1QYosUVSWtPPoAC-21HmMa-JSr78TclZICg-E77A6DQo/edit",
+   "desc": "Master ASIN/SKU working sheet",
+   "title": "EarthWise Seeds \u2014 Amazon Working Table"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 11,
+  "fields": {
+   "url": "https://advertising.walmart.com/sp/view/report/advertiser/559584",
+   "desc": "Walmart ads reporting \u2014 advertiser 559584",
+   "title": "Walmart Connect Ad Center"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 11,
+  "fields": {
+   "url": "https://docs.google.com/document/d/1bV5LCqX6cRbkD1aGKu0oaR-8-hJDH_zRXcnMoes0GJ8/edit",
+   "desc": "Amazon A+ content drafts",
+   "title": "Jatalia A+ Content"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 13,
+  "fields": {
+   "url": "https://mail.google.com/mail/u/0/#search/Jatalia+Operating+Agreement",
+   "desc": "Refreshed 50/50 agreement w/ Jim \u2014 $5,200/mo operator draw, cost+10% supply, 4x buyout. DRAFT awaiting signature. Attachment: Jatalia_Operating_Agreement_FINAL.docx",
+   "title": "Jatalia Operating Agreement (draft, June 2026)"
+  },
+  "created_at": "2026-07-03T14:18:36.8328+00:00",
+  "updated_at": "2026-07-03T14:18:36.8328+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 94,
+  "fields": {
+   "url": "https://tsdr.uspto.gov/#caseNumber=99120938",
+   "desc": "Trademark status & document retrieval.",
+   "title": "USPTO Trademark (Earthwise/Jatalia)",
+   "source": "monday_scan_2026_07"
+  },
+  "created_at": "2026-07-17T00:27:35.403312+00:00",
+  "updated_at": "2026-07-17T00:27:35.403312+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 95,
+  "fields": {
+   "url": "https://dh.gs1us.org/ui/product/my-products",
+   "desc": "Product UPC / barcode management portal.",
+   "title": "GS1 US (Barcodes / UPC)",
+   "source": "monday_scan_2026_07"
+  },
+  "created_at": "2026-07-17T00:27:35.403312+00:00",
+  "updated_at": "2026-07-17T00:27:35.403312+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 96,
+  "fields": {
+   "url": "https://docs.google.com/spreadsheets/d/1QYosUVSWtPPoAC-21HmMa-JSr78TclZICg-E77A6DQo/edit",
+   "desc": "Amazon ops working sheet.",
+   "title": "Amazon Working Table",
+   "source": "monday_scan_2026_07"
+  },
+  "created_at": "2026-07-17T00:27:35.403312+00:00",
+  "updated_at": "2026-07-17T00:27:35.403312+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 97,
+  "fields": {
+   "url": "https://docs.google.com/document/d/1bV5LCqX6cRbkD1aGKu0oaR-8-hJDH_zRXcnMoes0GJ8/edit",
+   "desc": "A+ content copy doc.",
+   "title": "Amazon A+ Content",
+   "source": "monday_scan_2026_07"
+  },
+  "created_at": "2026-07-17T00:27:35.403312+00:00",
+  "updated_at": "2026-07-17T00:27:35.403312+00:00"
+ },
+ {
+  "section": "earth_docs",
+  "brand": "earth",
+  "sort_order": 98,
+  "fields": {
+   "url": "https://docs.google.com/spreadsheets/d/1CavHr6p5Dq00hi6e1SvtiFIXAZw08K0AMEZkpKlGmpU/edit",
+   "desc": "Marketplace pricing workbook.",
+   "title": "Jatalia Pricing (sheet)",
+   "source": "monday_scan_2026_07"
+  },
+  "created_at": "2026-07-17T00:27:35.403312+00:00",
+  "updated_at": "2026-07-17T00:27:35.403312+00:00"
+ },
+ {
+  "section": "earth_goldeneye",
+  "brand": "earth",
+  "sort_order": 2,
+  "fields": {
+   "title": "Earthwise: Walmart order auto-cancellation warning",
+   "detail": "Walmart Marketplace email warns of order auto-cancellation without immediate action. Action: check Seller Center orders + tracking uploads now.",
+   "source": "Gmail \u00b7 Walmart Marketplace",
+   "severity": "warn",
+   "scan_date": "2026-07-03"
+  },
+  "created_at": "2026-07-03T01:46:12.21276+00:00",
+  "updated_at": "2026-07-03T01:46:12.21276+00:00"
+ },
+ {
+  "section": "earth_reports",
+  "brand": "earth",
+  "sort_order": 4,
+  "fields": {
+   "url": "https://go.jataliamarketplace.com",
+   "name": "Jatalia Ops Dashboard",
+   "description": "Earthwise Seeds / Jatalia eCommerce operations dashboard. Password: Seedfull."
+  },
+  "created_at": "2026-07-02T21:30:53.453149+00:00",
+  "updated_at": "2026-07-02T21:30:53.453149+00:00"
+ },
+ {
+  "section": "earth_sow",
+  "brand": "earth",
+  "sort_order": 11,
+  "fields": {
+   "url": "",
+   "desc": "DocuSign-executed marketplace SOW: Amazon/Walmart/Lowe's ops + content, 3.25% rev-share (Sept 2025, re-executed Oct 2025)",
+   "title": "SOW \u2014 Earthwise Marketplace Management (eZdia, executed)"
+  },
+  "created_at": "2026-07-03T01:10:22.382115+00:00",
+  "updated_at": "2026-07-03T01:10:22.382115+00:00"
+ },
+ {
+  "section": "earth_vendors",
+  "brand": "earth",
+  "sort_order": 201,
+  "fields": {
+   "lead": "\u2014",
+   "notes": "Brad Curtis (SVP, account lead) \u00b7 Mohit Bangale (marketplace ops) \u00b7 Trish Moss (Walmart/Lowe's content PM) \u00b7 AR: shweta.j@ezdia.com",
+   "vendor": "eZdia Inc",
+   "category": "Marketplace management agency",
+   "ordering": "Weekly meetings; Amazon listing optimization, Walmart + Lowe's onboarding/ops, FBA replenishment, promotions",
+   "relationship": "Monthly retainer \u2014 billed to Jatalia Marketplace LLC"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_vendors",
+  "brand": "earth",
+  "sort_order": 202,
+  "fields": {
+   "lead": "\u2014",
+   "notes": "Vinay \u2014 vinay@sellerloop.ai",
+   "vendor": "SellerLoop",
+   "category": "Marketplace ads & analytics (eZdia-affiliated)",
+   "ordering": "Amazon ads management, OTDR analysis, targeted promotions",
+   "relationship": "Active"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_vendors",
+  "brand": "earth",
+  "sort_order": 203,
+  "fields": {
+   "lead": "\u2014",
+   "notes": "Jim Fucetola (founder) \u00b7 Paul Antenucci-Fucetola (COO \u2014 warehouse/fulfillment/invoicing) \u00b7 Angie Diaz (assistant)",
+   "vendor": "Earthwise Seed Co",
+   "category": "Brand + warehouse fulfillment partner",
+   "ordering": "Ships Amazon/Walmart/TikTok/Lowe's orders; invoices Jatalia monthly for shipping reimbursements",
+   "relationship": "50/50 partnership (agreement in progress)"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_vendors",
+  "brand": "earth",
+  "sort_order": 204,
+  "fields": {
+   "lead": "\u2014",
+   "notes": "Adam Chesbrough \u00b7 Noah Chesbrough \u00b7 Brian Healey (marketing)",
+   "vendor": "Arett Sales",
+   "category": "Lawn & garden distributor \u2014 partnership in progress",
+   "ordering": "\u2014",
+   "relationship": "1P/3P split: Arett keeps retail, we run 3P marketplaces for their owned brands"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_vendors",
+  "brand": "earth",
+  "sort_order": 205,
+  "fields": {
+   "lead": "\u2014",
+   "notes": "Eram Hayat (Sr. Analyst, onboarding POC) \u00b7 Christopher Skinner (seller recruitment)",
+   "vendor": "Lowe's Marketplace",
+   "category": "Marketplace channel (via Mirakl)",
+   "ordering": "Item onboarding via Mirakl connector",
+   "relationship": "Onboarding \u2014 first orders flowing"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_vendors",
+  "brand": "earth",
+  "sort_order": 206,
+  "fields": {
+   "lead": "\u2014",
+   "notes": "Rachel Nall (MCS) \u00b7 Neesha Mehta (MCS integration) \u00b7 Naomi Namboodiripad (Walmart Connect ads)",
+   "vendor": "Walmart Marketplace + Walmart Connect",
+   "category": "Marketplace + ads channel",
+   "ordering": "Order notifications via relay; WFS inventory; Walmart Connect advertiser 559584",
+   "relationship": "Active 3P seller (WFS)"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_vendors",
+  "brand": "earth",
+  "sort_order": 207,
+  "fields": {
+   "lead": "\u2014",
+   "notes": "Account rep contact: David Franklin (June 2026 outreach)",
+   "vendor": "Amazon (Seller Central / FBA)",
+   "category": "Primary marketplace channel",
+   "ordering": "FBA + FBM; SP-API connected for orders/inventory/reports",
+   "relationship": "Active \u2014 Jatalia Marketplace LLC seller account"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_vendors",
+  "brand": "earth",
+  "sort_order": 208,
+  "fields": {
+   "lead": "\u2014",
+   "notes": "Dan DiFusco \u2014 dan.difusco@mirakl.com \u00b7 plan GMV limits apply",
+   "vendor": "Mirakl",
+   "category": "Marketplace connector platform",
+   "ordering": "\u2014",
+   "relationship": "Used for Lowe's channel"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "earth_vendors",
+  "brand": "earth",
+  "sort_order": 209,
+  "fields": {
+   "lead": "\u2014",
+   "notes": "Automated ASIN change alerts",
+   "vendor": "Helium 10",
+   "category": "Amazon listing monitoring / optimization tool",
+   "ordering": "\u2014",
+   "relationship": "Active subscription"
+  },
+  "created_at": "2026-07-03T01:00:05.688245+00:00",
+  "updated_at": "2026-07-03T01:00:05.688245+00:00"
+ },
+ {
+  "section": "library_docs",
+  "brand": "Both",
+  "sort_order": 2,
+  "fields": {
+   "url": "https://drive.google.com/drive/folders/12FzF0FljZ7bHKC9bd-zFS9M3QRokVPDZ",
+   "title": "02 Sales & Pricing",
+   "source": "drive-librarian-seed",
+   "category": "02 Sales & Pricing",
+   "file_type": "folder",
+   "mapped_to": "Playbook",
+   "scan_date": "2026-07-07",
+   "description": "Drive folder \u2014 Librarian maps its files here every Monday",
+   "drive_folder": "02 Sales & Pricing"
+  },
+  "created_at": "2026-07-07T10:31:16.998512+00:00",
+  "updated_at": "2026-07-07T10:31:16.998512+00:00"
+ },
+ {
+  "section": "library_docs",
+  "brand": "Both",
+  "sort_order": 3,
+  "fields": {
+   "url": "https://drive.google.com/drive/folders/1oPK8CFQCfKQ-oq6Wbw5aUhBGeBUy8zBo",
+   "title": "03 Operations",
+   "source": "drive-librarian-seed",
+   "category": "03 Operations",
+   "file_type": "folder",
+   "mapped_to": "Daily Ops",
+   "scan_date": "2026-07-07",
+   "description": "Drive folder \u2014 Librarian maps its files here every Monday",
+   "drive_folder": "03 Operations"
+  },
+  "created_at": "2026-07-07T10:31:16.998512+00:00",
+  "updated_at": "2026-07-07T10:31:16.998512+00:00"
+ },
+ {
+  "section": "library_docs",
+  "brand": "Both",
+  "sort_order": 4,
+  "fields": {
+   "url": "https://drive.google.com/drive/folders/12-TzxYk_HL86Yn7SyOl9g3HZcmlndBr7",
+   "title": "04 Clients & Projects",
+   "source": "drive-librarian-seed",
+   "category": "04 Clients & Projects",
+   "file_type": "folder",
+   "mapped_to": "Clients",
+   "scan_date": "2026-07-07",
+   "description": "Drive folder \u2014 Librarian maps its files here every Monday",
+   "drive_folder": "04 Clients & Projects"
+  },
+  "created_at": "2026-07-07T10:31:16.998512+00:00",
+  "updated_at": "2026-07-07T10:31:16.998512+00:00"
+ },
+ {
+  "section": "library_docs",
+  "brand": "Both",
+  "sort_order": 5,
+  "fields": {
+   "url": "https://drive.google.com/drive/folders/1jL6mdAAEHXUJQsjMrhK7tn1NopzX7kRR",
+   "title": "05 Marketing & Media",
+   "source": "drive-librarian-seed",
+   "category": "05 Marketing & Media",
+   "file_type": "folder",
+   "mapped_to": "Marketing",
+   "scan_date": "2026-07-07",
+   "description": "Drive folder \u2014 Librarian maps its files here every Monday",
+   "drive_folder": "05 Marketing & Media"
+  },
+  "created_at": "2026-07-07T10:31:16.998512+00:00",
+  "updated_at": "2026-07-07T10:31:16.998512+00:00"
+ },
+ {
+  "section": "library_docs",
+  "brand": "Both",
+  "sort_order": 7,
+  "fields": {
+   "url": "https://drive.google.com/drive/folders/1NGdcmKCvj8XvBPICxudVRrBxxAfULxWD",
+   "title": "07 Vendors & Products",
+   "source": "drive-librarian-seed",
+   "category": "07 Vendors & Products",
+   "file_type": "folder",
+   "mapped_to": "Vendors",
+   "scan_date": "2026-07-07",
+   "description": "Drive folder \u2014 Librarian maps its files here every Monday",
+   "drive_folder": "07 Vendors & Products"
+  },
+  "created_at": "2026-07-07T10:31:16.998512+00:00",
+  "updated_at": "2026-07-07T10:31:16.998512+00:00"
+ },
+ {
+  "section": "library_docs",
+  "brand": "Both",
+  "sort_order": 8,
+  "fields": {
+   "url": "https://drive.google.com/drive/folders/1h1YaYOIfOjoH0WkkPwlGevQCiKxCv6En",
+   "title": "Project Management",
+   "source": "drive-librarian-seed",
+   "category": "Project Management",
+   "file_type": "folder",
+   "mapped_to": "Projects",
+   "scan_date": "2026-07-07",
+   "description": "Drive folder \u2014 Librarian maps its files here every Monday",
+   "drive_folder": ".Project Management"
+  },
+  "created_at": "2026-07-07T10:31:16.998512+00:00",
+  "updated_at": "2026-07-07T10:31:16.998512+00:00"
+ },
+ {
+  "section": "library_docs",
+  "brand": "Both",
+  "sort_order": 9,
+  "fields": {
+   "url": "https://drive.google.com/drive/folders/1ghLf-qIAxqVkEoOrmaV_XWJBINm2igwe",
+   "title": "KTU Resources",
+   "source": "drive-librarian-seed",
+   "category": "KTU Resources",
+   "file_type": "folder",
+   "scan_date": "2026-07-07",
+   "description": "Drive folder \u2014 Librarian maps its files here every Monday",
+   "drive_folder": "KTU Resources"
+  },
+  "created_at": "2026-07-07T10:31:16.998512+00:00",
+  "updated_at": "2026-07-07T10:31:16.998512+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "KTU",
+  "sort_order": 0,
+  "fields": {
+   "kind": "totals",
+   "caveat": "Spend now includes: Gen Exp & Mktng ACH (Google, BVM, Tremendous), Chase Payroll ACH (Meta $3,706.86 + Simpli.fi $2,252.07), Bluevine (FACEBK $155.64), Brex cards (Major League Media, Premmedia, SendJim). NOT yet visible: Divvy card merchant detail ($23,380.52 funded Jan-Feb) and Ramp (deny-listed). Annual budget remains an editable assumption.",
+   "funnel": "693 leads / 359 in-home consults / 49 invoiced customers YTD",
+   "phasing": "Budget phased to today = completed months at full plan + current month prorated by day-of-month. Measure spend against budget_phased_to_today, and display nominally as phased / annual (e.g. $34,394 / $60,000).",
+   "scan_date": "2026-07-05",
+   "mtd_actual": 0,
+   "ytd_actual": 20551.58,
+   "mtd_planned": 1200,
+   "revenue_ytd": 1300121.79,
+   "ytd_planned": 35400,
+   "ytd_variance": 24262.77,
+   "annual_budget": 60000,
+   "cost_per_lead": 29.66,
+   "current_month": "2026-07",
+   "mtd_plan_phased": 193.55,
+   "phased_variance": 13841.97,
+   "cost_per_customer": 419.42,
+   "revenue_goal_band": "8-9% of collected revenue",
+   "ytd_pct_of_budget": 31.5,
+   "ytd_pct_of_phased": 59.8,
+   "pct_of_year_phased": 57.3,
+   "annual_pct_committed": 18.6,
+   "cost_per_appointment": 57.25,
+   "spend_pct_of_revenue": 1.58,
+   "budget_phased_to_today": 34393.55
+  },
+  "created_at": "2026-07-05T07:12:12.083259+00:00",
+  "updated_at": "2026-07-05T07:12:12.083259+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "KTU",
+  "sort_order": 11,
+  "fields": {
+   "kind": "channel",
+   "channel": "Google Ads",
+   "scan_date": "2026-07-05",
+   "ytd_actual": 10513.23,
+   "pct_of_spend": 94.4
+  },
+  "created_at": "2026-07-05T07:12:45.275602+00:00",
+  "updated_at": "2026-07-05T07:12:45.275602+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "KTU",
+  "sort_order": 12,
+  "fields": {
+   "kind": "channel",
+   "channel": "Print",
+   "scan_date": "2026-07-05",
+   "ytd_actual": 499,
+   "pct_of_spend": 4.5
+  },
+  "created_at": "2026-07-05T07:12:45.275602+00:00",
+  "updated_at": "2026-07-05T07:12:45.275602+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "KTU",
+  "sort_order": 13,
+  "fields": {
+   "kind": "channel",
+   "channel": "Other",
+   "scan_date": "2026-07-05",
+   "ytd_actual": 125,
+   "pct_of_spend": 1.1
+  },
+  "created_at": "2026-07-05T07:12:45.275602+00:00",
+  "updated_at": "2026-07-05T07:12:45.275602+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "KTU",
+  "sort_order": 21,
+  "fields": {
+   "kind": "month",
+   "month": "2026-01",
+   "actual": 0,
+   "planned": 9000,
+   "variance": 9000,
+   "scan_date": "2026-07-05",
+   "pct_of_plan": 0.0
+  },
+  "created_at": "2026-07-05T07:12:45.275602+00:00",
+  "updated_at": "2026-07-05T07:12:45.275602+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "KTU",
+  "sort_order": 22,
+  "fields": {
+   "kind": "month",
+   "month": "2026-02",
+   "actual": 3438.35,
+   "planned": 9000,
+   "variance": 5561.65,
+   "scan_date": "2026-07-05",
+   "pct_of_plan": 38.2
+  },
+  "created_at": "2026-07-05T07:12:45.275602+00:00",
+  "updated_at": "2026-07-05T07:12:45.275602+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "KTU",
+  "sort_order": 23,
+  "fields": {
+   "kind": "month",
+   "month": "2026-03",
+   "actual": 1005.27,
+   "planned": 6000,
+   "variance": 4994.73,
+   "scan_date": "2026-07-05",
+   "pct_of_plan": 16.8
+  },
+  "created_at": "2026-07-05T07:12:45.275602+00:00",
+  "updated_at": "2026-07-05T07:12:45.275602+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "KTU",
+  "sort_order": 24,
+  "fields": {
+   "kind": "month",
+   "month": "2026-04",
+   "actual": 125,
+   "planned": 6000,
+   "variance": 5875,
+   "scan_date": "2026-07-05",
+   "pct_of_plan": 2.1
+  },
+  "created_at": "2026-07-05T07:12:45.275602+00:00",
+  "updated_at": "2026-07-05T07:12:45.275602+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "KTU",
+  "sort_order": 25,
+  "fields": {
+   "kind": "month",
+   "month": "2026-05",
+   "actual": 1000,
+   "planned": 3000,
+   "variance": 2000,
+   "scan_date": "2026-07-05",
+   "pct_of_plan": 33.3
+  },
+  "created_at": "2026-07-05T07:12:45.275602+00:00",
+  "updated_at": "2026-07-05T07:12:45.275602+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "KTU",
+  "sort_order": 26,
+  "fields": {
+   "kind": "month",
+   "month": "2026-06",
+   "actual": 5568.61,
+   "planned": 1200,
+   "variance": -4368.61,
+   "scan_date": "2026-07-05",
+   "pct_of_plan": 464.1
+  },
+  "created_at": "2026-07-05T07:12:45.275602+00:00",
+  "updated_at": "2026-07-05T07:12:45.275602+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "KTU",
+  "sort_order": 27,
+  "fields": {
+   "kind": "month",
+   "month": "2026-07",
+   "actual": 0,
+   "planned": 1200,
+   "variance": 1200,
+   "scan_date": "2026-07-05",
+   "pct_of_plan": 0.0
+  },
+  "created_at": "2026-07-05T07:12:45.275602+00:00",
+  "updated_at": "2026-07-05T07:12:45.275602+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "KTU",
+  "sort_order": 98,
+  "fields": {
+   "kind": "platform_reconciliation",
+   "source": "Google Ads MCP direct pull, cross-checked 2026-07-05",
+   "finding": "spend_pct_of_revenue (1.58% YTD) is understated \u2014 mkt_spend is built from bank/card-transaction name-matching, not live ad-platform data.",
+   "severity": "warn",
+   "scan_date": "2026-07-05",
+   "known_gaps": "Divvy card $23,380.52 (Jan-Feb) never itemized; Ramp transactions excluded (deny-listed); months with $0/near-$0 bank match (Jan, Apr) almost certainly reflect missing autopay capture, not zero spend.",
+   "recommendation": "Use Google Ads MCP (query_campaigns) as the primary spend source for Search/Display/LSA channels going forward; keep bank/card matching only for channels with no API (print, direct mail, events). Backfill Jan-May requires a Google Ads UI/reports export since the MCP date range is capped at 30 days.",
+   "live_google_ads_30d_spend": 5301.91,
+   "bank_matched_ytd_total_jan_jul": 10513.23
+  },
+  "created_at": "2026-07-05T17:29:46.212495+00:00",
+  "updated_at": "2026-07-05T17:29:46.212495+00:00"
+ },
+ {
+  "section": "mkt_spend_summary",
+  "brand": "BTU",
+  "sort_order": 98,
+  "fields": {
+   "kind": "platform_reconciliation",
+   "source": "Google Ads MCP direct pull, cross-checked 2026-07-05",
+   "finding": "BTU live Google Ads 30-day spend ($1,144.63) versus $0 BTU revenue recorded for July MTD is a real efficiency flag, not a tracking gap.",
+   "severity": "info",
+   "scan_date": "2026-07-05",
+   "live_google_ads_30d_spend": 1144.63
+  },
+  "created_at": "2026-07-05T17:29:46.212495+00:00",
+  "updated_at": "2026-07-05T17:29:46.212495+00:00"
+ },
+ {
+  "section": "tekki_findings",
+  "brand": "Both",
+  "sort_order": 0,
+  "fields": {
+   "owner": "tekki",
+   "title": "Closebot: 7 GHL sources for 2 locations \u2014 5 duplicate Bath Tune-Up entries, 1 unnamed Kitchen Tune-Up",
+   "detail": "Live check of the Closebot agency API (GET /agency/source, agency agn_TDG3VN71BCI35XN7) returned 8 sources for what should be two locations. Bath Tune-Up (0uWA8M5BzHrrcJftuaDe) has FIVE separate source records: src_16VMHVU5CCOHPAC7, src_24WVSJQXITOFM74O, src_K33N5LIO2QBMW3PN, src_L3IGFL677FXL3N5D, src_QB34844K4VMV14RK. Kitchen Tune-Up (nHLCxHPidnhV1NFzRtZZ) has two: src_L620TCZJBOL15MOG (named) and src_X6UYDWSPPFPH2M9O (name is null). The eighth is a webhook source, Text Campaign - House Mag. Duplicate sources per location risk double-handling inbound conversations and make bot-attribution ambiguous. Each source also carries its own GHL OAuth access token with conversations.write / contacts.write / calendars.write scope, so every redundant source is an extra live credential. Recommend consolidating BTU to one source, naming or removing the unnamed KTU source, and confirming which sourceId the booking bot actually runs on before deleting anything.",
+   "source": "Direct Closebot agency API check, 2026-08-24 \u2014 logged for Tekki tech-stack review",
+   "severity": "warn",
+   "logged_at": "2026-08-24"
+  },
+  "created_at": "2026-08-24T20:35:31.541865+00:00",
+  "updated_at": "2026-08-24T20:35:31.541865+00:00"
+ }
+]
