@@ -29,7 +29,7 @@
   <h1>Selections &amp; Order Sheet</h1>
   <p class="dek">How selections are recorded so the client can sign them, purchasing can order from them without a phone call, and the job's real margin is known. One line standard for both brands.</p>
   <div class="meta">
-    <span><b>Version</b> 2.2 · Sept 30, 2026</span>
+    <span><b>Version</b> 2.4 · Oct 1, 2026</span>
     <span><b>Replaces</b> Selections Checklist (Sept 23, 2026)</span>
     <span><b>Owners</b> Sales (the sheet) · PM (ordering and the tracker)</span>
   </div>
@@ -40,6 +40,21 @@
 <section>
   <div class="rule-box"><span class="k">The rule</span>If it isn't on the signed Selection Sheet, it doesn't get ordered. Every line is orderable as written: make, model/SKU, finish, quantity with unit, and one decided source. A "TBD" on a signed sheet is an unpriced change order waiting to happen.</div>
   <p>The brand standards say the same thing in their own words: <a href="/btu-handover-sop/">BTU-OPS-001 §5</a> and <a href="/ktu-handover-standard/">KTU Handover Standard item 10</a> ("the selection sheet is a deliverable, not a tracking document").</p>
+</section>
+
+<section id="appointment">
+  <h2 data-desc="How the selection appointment itself is run: the lookbook tier ladder, delta pricing, and the one-visit rule.">The selection appointment</h2>
+  <p>The sections below are about the <b>records</b>. This one is about the <b>meeting that produces them</b> — where the job stops being an idea and becomes an order. Everything after it (the vendor order, the delivery date, the install window) is downstream of what gets decided here.</p>
+  <ul class="check">
+    <li><b>Book it before you leave the close.</b> For a KTU reface the Handover Standard puts the selection appointment within <b>5 business days of contract</b>, with the order placed within 7. For a custom kitchen the signed Design Brief comes first, within 5 business days, before any drafting hours are spent.</li>
+    <li><b>Present from the lookbook</b> — <a href="https://lookbook.ktubtu.com/" target="_blank" rel="noopener">lookbook.ktubtu.com</a>, on the device, in the room. The tier ladder is the sales tool; a tool that isn&rsquo;t opened in front of the client isn&rsquo;t a tool.</li>
+    <li><b>The tier shown is the tier sold.</b> Showing Signature and writing Essential on the sheet produces a disappointed client on install day and a business absorbing the difference.</li>
+    <li><b>Upgrades are a delta over the included allowance</b>, and the delta must match what the pricing tool actually charges — not a remembered number. A wrong delta is margin lost silently; it only surfaces at job costing.</li>
+    <li><b>Only offer what exists.</b> The bath books&rsquo; lighting and toilet pages build from the live JobTread Showroom overnight, so a discontinued product can still be on screen. If a client picks something unorderable, that is a feed problem, not a client problem — flag it the same day.</li>
+    <li><b>Finish it in the single visit.</b> Track A targets 100% of the sheet in one appointment. If a second visit was needed, write down what forced it: that reason is the process defect, and it is the thing worth fixing.</li>
+    <li><b>Generate the packet from the tooling</b>, never by hand. If a packet needed hand-editing to be presentable, record what you had to fix.</li>
+  </ul>
+  <div class="note"><span class="k">Why this sits here</span>The line standard in §2 tells you what a finished line looks like. This section tells you how to run the hour that produces those lines. Both brands&rsquo; gates ultimately check the same thing: a sheet with no blanks, signed and dated, three weeks before job start.</div>
 </section>
 
 <section>
@@ -194,6 +209,33 @@
   <p>Someone without Costs &amp; profit sees orders with the money columns hidden and cannot enter an actual cost.</p>
 </section>
 
+<section id="after-signature">
+  <h2 data-desc="Signed sheet to start date: who does each step, by when, where in the tools, and what updates itself (including JobTread).">9. After the signature — order, receive, start date</h2>
+  <p>The deadlines are the brand standards' — <a href="/btu-handover-sop/#s-9-stages-6-8-welcome-ordering-receiving-installer-handover">BTU-OPS-001 §9</a> and the <a href="/ktu-handover-standard/">KTU Handover Standard</a>. This table is where each step happens and what you don't have to type twice.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Step</th><th>Who · by when</th><th>Where</th><th>Updates by itself</th></tr></thead>
+    <tbody>
+      <tr><td>1. Client signs the final Selection Sheet</td><td>Sales</td><td>JobTread (the client signs the document)</td><td>Order sheet stops reading <i>Awaiting signed sheet</i>; ordering unlocks. JobTread <b>Job Status → Order To Be Placed</b>.</td></tr>
+      <tr><td>2. Handover email + Production Gate</td><td>Sales sends; PM checks. BTU §7–8 · KTU: 3 business days</td><td>Email (BTU template §7.2); <b>Ready for order</b> on the order sheet once it passes</td><td>Ready for order pins a comment on the JobTread job and emails the order recipients.</td></tr>
+      <tr><td>3. Welcome letter (+ interim site visit)</td><td>PM · within 72 hours (BTU §9.1)</td><td>Email to the client, cc Sales</td><td>Nothing — send it yourself.</td></tr>
+      <tr><td>4. Get quotes where needed</td><td>PM</td><td>orders.ktubtu.com: line status <b>Quote requested / received</b></td><td>JobTread Job Status → Sent to Supplier for Quotation (if nothing is ordered yet).</td></tr>
+      <tr><td>5. Place every order</td><td>PM · BTU within 14 days of a complete handover (§9.2) · KTU Elias order within 5 business days</td><td>orders.ktubtu.com: status <b>Ordered</b>, PO #, order date, actual cost, ordered by, paid with</td><td>On the JobTread job's budget line: Status ✅Ordered, Date Ordered, Purchased Cost $. Job Status → Order Partially Placed, then Order Placed, each with a comment. Job Tracker row; job costing actuals.</td></tr>
+      <tr><td>6. Projected start week to the client</td><td>PM · within 1–2 weeks of the approvals, once ship dates are confirmed (§9.2)</td><td>Email, cc Sales</td><td>Nothing.</td></tr>
+      <tr><td>7. Receive and inspect each delivery</td><td>PM · within 2 business days of delivery (§9.3)</td><td>orders.ktubtu.com: status <b>Received</b> and the received date (problems: Backordered or Damaged / return, with a note)</td><td>JobTread budget line: Status Received, Date Received. Job Status → Some materials received. When every ordered line is in, a JobTread comment says <i>ready to schedule</i>.</td></tr>
+      <tr><td>8. Installer package, final start date, client prep</td><td>PM · start date to the client at least 5 business days ahead (§9.4–9.5)</td><td>JobTread schedule; set Job Status yourself from here on (Projects To Be Scheduled → Scheduled To Start)</td><td>Nothing past this point — scheduling is the PM's call.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>9.1 What orders writes back to JobTread</h3>
+  <ul>
+    <li><b>Per line, on the job's budget line</b> (not on the signed Selection Sheet, which JobTread locks once approved): Status (✅Ordered, Received, ➡️Order Ready To Be Placed or N/A), Schedule: Date Ordered, Schedule: Date Received, Purchased Cost $.</li>
+    <li><b>Per job</b>: Job Status, <b>forward only</b> and only through the ordering steps above. If the job is already further along, or someone set a status the ordering steps don't use, it is left alone.</li>
+    <li><b>When</b>: a few seconds after you save on the order page or the workbook; anything missed goes on the 2-hourly refresh. Only changes are sent.</li>
+    <li><b>If you edit those fields in JobTread</b>, your edit stays until the line changes again on orders — then orders' value is written. Keep ordering in orders so the two agree.</li>
+    <li><b>If it fails</b>, the line's detail in the workbook says <i>JobTread not updated</i> and why; the schedule retries it every 6 hours.</li>
+    <li><b>JobTread can't take purchase orders</b> through its API, so the PO # and vendor stay in orders and the Job Tracker.</li>
+  </ul>
+</section>
+
 <section>
   <h2 data-desc="The four mistakes that cause wrong orders.">Don't</h2>
   <ul>
@@ -209,6 +251,8 @@
   <div class="tbl"><table>
     <thead><tr><th>Version</th><th>Date</th><th>Changes</th></tr></thead>
     <tbody>
+      <tr><td class="num">2.4</td><td class="num">2026-10-01</td><td>Added <b>The selection appointment</b> ahead of §1 — how the meeting that produces these records is run: the lookbook tier ladder, tier shown is tier sold, delta pricing against the allowance, the Track A single-visit rule and its 5-business-day booking window, and what to do when the Showroom feed shows a product that can no longer be ordered. The numbered sections and their links are unchanged.</td></tr>
+      <tr><td class="num">2.3</td><td class="num">2026-09-30</td><td>Added §9 After the signature: each step from signed sheet to start date, with owner, deadline (BTU-OPS-001 §9, KTU Handover Standard), where it's done and what updates itself; orders now writes line status, dates and purchased cost, and the Job Status, back to JobTread.</td></tr>
       <tr><td class="num">2.2</td><td class="num">2026-09-30</td><td>Signature before any order: client approval on the link is a pre-order review; order sheet reads Awaiting signed sheet until JobTread's Selection Sheet is signed; the workbook enforces it, with a Signed (paper) tick for jobs made by hand.</td></tr>
       <tr><td class="num">2.1</td><td class="num">2026-09-30</td><td>Added §8 orders.ktubtu.com: order sheet and workbook, overrides, manual clients and lines, purchases into job costing, invoice linking, the ServiceMinder purchases note, per-person access.</td></tr>
       <tr><td class="num">2.0</td><td class="num">2026-09-29</td><td>Merged the Selections Checklist with BTU-OPS-001 §5 and KTU Handover Standard item 10; added fields (item &amp; area, supplied by, status, overage), the forgotten-categories list, the order sheet and the Job Tracker. Published to playbook.ktubtu.com.</td></tr>

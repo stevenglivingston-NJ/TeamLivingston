@@ -282,7 +282,7 @@ If anything comes up in the meantime, I'm your point of contact. – [PM]</div>
   <h3>9.2 Ordering (within 14 calendar days of a complete handover)</h3>
   <ul>
     <li>Place every order from the signed Selection Sheet only.</li>
-    <li><span class="new">v1.1</span> Log each order in the job's tab of the <a href="/selections-and-ordering/#tracker">Job Tracker</a> sheet: vendor, PO number, order date, confirmed ship date, tracking, actual cost. JobTread's API cannot record purchase orders, so the tracker is where order status lives; it refreshes the item list from JobTread automatically.</li>
+    <li><span class="new">v1.1</span> Log each order on the job's order sheet at <a href="/selections-and-ordering/#orders">orders.ktubtu.com</a>: vendor, PO number, order date, confirmed ship date, tracking, actual cost. The <a href="/selections-and-ordering/#tracker">Job Tracker</a> tab stays in step, and each line's status, dates and cost are written back to the JobTread job (<a href="/selections-and-ordering/#after-signature">what updates itself</a>). JobTread's API cannot record purchase orders, so the PO itself lives in orders.</li>
     <li>Request payment release from the Owner for vendor deposits. Payment timing is part of the 14 days, so ask early.</li>
     <li>Confirm stock and ship dates in writing from each vendor. For backorders or discontinued items, tell Sales and the client within 1 business day and offer a like-for-like substitute (substitutes need written client approval).</li>
     <li>Cross-check completeness: "Did we get a sink? A drain? The valve body for this trim?"</li>
@@ -293,7 +293,7 @@ If anything comes up in the meantime, I'm your point of contact. – [PM]</div>
     <li>Inspect for damage before signing freight receipts. Note damage on the bill of lading and photograph it.</li>
     <li>Open and verify model, finish, size and quantity against the Selection Sheet. Check tile lot/shade numbers match across boxes.</li>
     <li>Report damaged or incorrect items to the vendor the same day and reorder immediately.</li>
-    <li>Label and stage everything by project number in one location. Record received/missing status in the Job Tracker.</li>
+    <li>Label and stage everything by project number in one location. Record received/missing status on the order sheet (orders.ktubtu.com).</li>
   </ul>
   <h3>9.4 Installer Handover Package &amp; final start date</h3>
   <p>Once <b>all</b> materials are received and inspected (or the rest have a confirmed arrival before they're needed):</p>
@@ -426,7 +426,7 @@ If anything comes up in the meantime, I'm your point of contact. – [PM]</div>
   <div class="tbl"><table>
     <thead><tr><th>Version</th><th>Date</th><th>Changes</th></tr></thead>
     <tbody>
-      <tr><td class="num">1.2</td><td class="num">2026-09-30</td><td>Client-facing timeline is one number for every project: install typically 60–90 days after the signed approvals (§3 "What we tell the client"), matching the automatic welcome email sent on deposit and the rep's script in Lead to Last Nail stage 11. Internal milestone targets unchanged.</td></tr>
+      <tr><td class="num">1.2</td><td class="num">2026-09-30</td><td>Client-facing timeline is one number for every project: install typically 60–90 days after the signed approvals (§3 "What we tell the client"), matching the automatic welcome email sent on deposit and the rep's script in Lead to Last Nail stage 11. Internal milestone targets unchanged. §9.2–9.3: orders are logged on orders.ktubtu.com (the Job Tracker follows) and written back to JobTread — a tool pointer, the rules are unchanged.</td></tr>
       <tr><td class="num">1.1</td><td class="num">2026-09-29</td><td>From the PM's review of v1.0 (Mayra DaSilva, Sept 28): client acknowledgement becomes a welcome letter within 72 hours of approvals (timeline row 8, 9.1, KPI, open decision 4 settled); client-facing timelines added (4–8 weeks small/no-custom, 6–10 weeks all other bath jobs, from signed approvals); interim site visit to confirm dimensions until Rendr is verified; PM may rename external renderer files to the naming standard (4.3). Orders and actual costs are logged in the Job Tracker (9.2, 9.3, 11, KPI); the pricing tool drafts the Handover Email and generates the order sheet (5.3, 7.2). Open decision 6 (project numbers) added. Published to playbook.ktubtu.com.</td></tr>
       <tr><td class="num">1.0</td><td class="num">2026-09-22</td><td>Issued. Built from the PM working session (Sept 2026), the prior Sales→PM handoff draft (Mayra DaSilva, Sept 22), the Segal packet and selection sheet, and NKBA / remodeler pre-construction practice.</td></tr>
     </tbody>
