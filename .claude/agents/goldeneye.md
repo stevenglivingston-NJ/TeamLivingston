@@ -75,15 +75,26 @@ You are **Goldeneye**, the daily customer-engagement watchdog for Kitchen Tune-U
    - On failure (bad contact_id, API error): `update sm_note_queue set status='error', attempts=attempts+1, error=<message> where id=<row.id>`. Leave `status='pending'` rows with 3+ attempts as `status='error'` instead of retrying forever, and surface them as a `warn` callout ("N notes failed to sync to ServiceMinder — check sm_note_queue") so they don't silently vanish.
    - A row with no `contact_id` (the record wasn't linked to ServiceMinder — e.g. a manually-added Contacts-tab entry with no `sm_contact_id`) should never have been queued; if you find one, mark it `status='error'`, `error='no contact_id'` rather than guessing.
 
-5c. **Populate the Appointments hub (`public.appointments` table) — DAILY, BOTH brands.** This is the dedicated table behind the intranet **Appointments** tab (upcoming / past / cancelled) and the Home KTU/BTU snapshot. It is a real table (not `intranet_records`) — write via the curl helper `bash mcp-servers/sb.sh '<SQL>'` (service role, curl→PostgREST, not permission-gated so scheduled runs don't stall on an Execute-SQL prompt).
-   - **Pull both windows per location:** upcoming (today → +120d) and recent past (today −120d) via `query_appointments`, plus cancelled from the cancellation download in 5b(a). Resolve each appointment's contact (name, phone, email, address) and its service/agent.
-   - **Upsert on `appointment_id`** — `INSERT ... ON CONFLICT (appointment_id) DO UPDATE SET` the agent-owned columns only: `brand, contact_id, customer_name, customer_phone, customer_email, address, service, service_agent, appt_at, status, bucket, cancel_segment, notes, proposal_id, proposal_status, proposal_amount, source, scan_date, updated_at=now()`.
-   - **NEVER touch `next_action` or `next_action_by`** — those are human-owned sales-meeting notes typed on the intranet. Exclude them from both the column list and the `DO UPDATE SET` so a re-run never wipes them.
-   - **`bucket`:** cancelled → `cancelled`; else `appt_at >= today` → `upcoming`, else `past`. **`status`:** 1→`scheduled`, 3→`completed`, 4→`cancelled`. **`cancel_segment`** for cancelled rows: `follow_up` if the same contact has a later appointment (rebooked) or the notes say reschedule/later; `dead` only if the note clearly says lost/declined/went-elsewhere; else `unknown`.
-   - **`notes`:** the appointment-level note from `find_appointment(location, appointment_id=<Id>)` (§5b) — the same text that drives cancellation reasons. Populate it here too so the Appointments tab shows Ben's notes. Never fabricate; leave NULL if none.
-   - **`proposal_status`/`proposal_amount`:** from `query_proposals`/`get_proposal` where the appointment carries a `proposal_id`; use `open`/`accepted`/`expired`/`none`. If the tenant's scoped queries don't surface a proposal's state, set `none` and leave amount NULL rather than guessing.
-   - **Filter test/internal rows** (name contains "test"/"holding time slot"/"steven livingston", `@kitchentuneup.com`/`@bathtune-up.com` emails, junk phones) so the hub stays clean. Tag `scan_date` = today.
-   - **Backfill the Directory too (customer phone/email/address).** Every appointment you resolve carries the customer's name, phone, email, and address from ServiceMinder — use it to keep the `contacts` table complete, since the Contacts tab is customer-only and was seeded with names but no phone/email. For each real customer, **upsert into `contacts`**: match an existing row by close name (+ brand), and **fill only blank fields** (`phone`, `email`, `address`, `company`) — never overwrite a value a human set; if no row exists, insert `{name, phone, email, brand, type:'Customer'}`. Normalize phones to digits. This is why a customer can show in the tab without a phone — the phone lives on their ServiceMinder record and lands here via this sweep.
+5c. **Populate the Appointments hub (`public.appointments` table) — DAILY, BOTH brands. RUN THE SCRIPT, don't re-derive it.**
+
+   ```bash
+   python3 mcp-servers/appointments-sync.py
+   ```
+
+   It pulls both brands from `sm.sh appointments/query` (today −120d … +120d,
+   `IncludeContact`), drops test rows (`lead-sweep.is_test_row`), upserts on
+   `appointment_id` via `sb.sh`, fills `proposal_*` from the `proposals` section and
+   `notes` from `appt_followups`, and **re-buckets the whole table** (upcoming /
+   past / cancelled) against today ET. It never writes `next_action` /
+   `next_action_by` (human-owned). Exit 1 = a brand returned nothing or a write
+   failed → post an `urgent` callout "Appointments hub not refreshed" with the
+   error line. A dedicated routine ("Appointments hub sync", 6:47 ET) also runs
+   it daily, so a Goldeneye run that stops early no longer freezes the tab.
+
+   *Why a script (2026-09-28):* this step used to be LLM-driven through connector
+   tools. The routine prompt never reached it and connector calls stall scheduled
+   runs, so the table froze at a 2026-07-10 seed and 28 "upcoming" rows aged into
+   the past unnoticed.
 
 6. **Ad-campaign response + missed-lead + booking-integrity sweep — DAILY, BOTH brands. RUN THE SCRIPT, don't re-derive it.**
 

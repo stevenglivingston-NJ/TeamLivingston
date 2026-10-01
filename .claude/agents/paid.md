@@ -82,7 +82,7 @@ fill the gaps:**
    MCP, Meta Ads MCP, GA4/GMB/Bing via Zapier. These are the actual dollars spent,
    real-time, per campaign. Never let a bank/card-transaction number override or
    average against a live platform number for a channel the platform itself reports.
-2. **Bank/card-transaction matching (the `mkt_spend` / `mkt_spend_summary` dataset —
+2. **Bank/card-transaction matching (the `marketing_spend_monthly` view over bank-classified `bank_transactions`; `mkt_spend` is a frozen July hand-scan —
    Chase/Brex/Bluevine memo-string matching) is a FALLBACK, used only to capture
    spend that has NO platform API**: print/magazine placements (City Lifestyle,
    Premmedia, Major League Media), direct mail (SendJim), sponsorships, incentives
@@ -674,15 +674,15 @@ writer for them.** Same crash-safe rule as `paid_brief`: INSERT first, prune aft
 Every row takes `scan_date` and a brand tag, exactly like `paid_brief`. Keep each section
 to what a human will read — roughly 10 keywords, 25 negatives, all campaigns.
 
-**When Google Ads is unavailable, write nothing and say so.** The OAuth has been failing
-`invalid_client` since 2026-08-24 (a bad *client secret*, not an expired token, so
-re-authorising will not fix it), and `ktubtu-mcp-google-ads` on Render is **suspended by
-its owner**. Both need Steven. Until then the July snapshot rows stand — stale and clearly
-labelled beats blank or invented. Say plainly in the brief that keyword detail is frozen
-and why; do not silently omit it.
+**Google Ads is reachable (verified 2026-09-28: `gads.sh test_connection` ok for KTU and
+BTU).** In scheduled runs call it only through `bash mcp-servers/gads.sh <tool> '<json>'`
+(`query_keywords`, `query_negative_keywords`, `query_search_terms`, `query_campaigns`,
+`query_ads`, `query_lsa_periods` …) — never the `mcp__google-ads__*` tools, which hang a
+scheduled run. If a call errors, write nothing for that section, keep the old rows (stale
+and labelled beats blank), and say which call failed and why in the brief.
 
 **Once you write live rows, drop the snapshot.** After a successful insert for a section,
-prune rows in it where `fields->>'is_snapshot' = 'true'`. That is the only thing that
+prune rows in it where `fields->>'is_snapshot' = 'true' OR fields->>'source' = 'team-dashboard-snapshot'` (the 09-09 load carries only the `source` tag). That is the only thing that
 clears them, and it must happen after the insert succeeds, never before.
 
 **Register with the freshness watchdog only once you are genuinely feeding these.**
