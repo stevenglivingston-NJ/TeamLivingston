@@ -142,19 +142,36 @@ while d <= axis_end:
 
 # ---- pull shipments (per marketplace store; store_id filter is server-side) -
 allsh = []
-win = {"created_at_start": PULL_START + "T00:00:00Z",
-       "created_at_end": PULL_END + "T23:59:59Z"}
+# ShipStation v2 rejects deep pages (HTTP 400 at page 22 x 500 on the full
+# 14-month window, 2026-09-26/28), which aborted every sweep. Pull one calendar
+# month at a time so no window needs more than a handful of pages.
+def month_windows(start_iso, end_iso):
+    a = dt.date.fromisoformat(start_iso)
+    z = dt.date.fromisoformat(end_iso)
+    while a <= z:
+        nxt = (a.replace(day=1) + dt.timedelta(days=32)).replace(day=1)
+        b = min(nxt - dt.timedelta(days=1), z)
+        yield {"created_at_start": a.isoformat() + "T00:00:00Z",
+               "created_at_end": b.isoformat() + "T23:59:59Z"}
+        a = nxt
+
+seen_ids = set()
 for store_id in sorted(set(STORES)):
     cnt = 0
-    page, pages = 1, 1
-    while page <= pages and page <= 120:        # 120 * 500 = 60k cap per store
-        data = server._get("/shipments", params=dict(
-            win, store_id=store_id, page=page, page_size=500))
-        pages = data.get("pages", 1) or 1
-        batch = data.get("shipments", []) or []
-        allsh += batch
-        cnt += len(batch)
-        page += 1
+    for win in month_windows(PULL_START, PULL_END):
+        page, pages = 1, 1
+        while page <= pages and page <= 40:
+            data = server._get("/shipments", params=dict(
+                win, store_id=store_id, page=page, page_size=500))
+            pages = data.get("pages", 1) or 1
+            for sh in data.get("shipments", []) or []:
+                key = sh.get("shipment_id")
+                if key in seen_ids:
+                    continue
+                seen_ids.add(key)
+                allsh.append(sh)
+                cnt += 1
+            page += 1
     print(f"  {store_id} ({STORES[store_id]}): {cnt} shipments", file=sys.stderr)
 print(f"pulled {len(allsh)} marketplace shipments", file=sys.stderr)
 

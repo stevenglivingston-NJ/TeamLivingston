@@ -86,6 +86,23 @@ you enforce daily:
     $15,145 sat Open; the job was done.) Duplicates inflate the open-AR total — subtract
     them and say so. Only treat an Open invoice as real AR when its proposal has no paid
     twin.
+  - **Notes on a job, a proposal or a visit: read `sm_notes`, not the appointment.**
+    `find_appointment(...).Notes` is null in practice — the ServiceMinder Open API
+    cannot see appointment notes at all (verified 2026-08-29 on appt `51051472`).
+    They reach us only through the Liquid feed, mirrored into the `sm_notes` table
+    along with contact and proposal notes:
+    ```
+    bash mcp-servers/sb.sh "select source, title, body, private, authored_by, authored_at
+                              from sm_notes
+                             where contact_id = <id> or appointment_id = <id> or proposal_id = <id>
+                             order by authored_at desc nulls last"
+    ```
+    This is where a rep's "measured, needs a soffit removed" or "homeowner's husband
+    wasn't there, revisit" lives — exactly the field intelligence a scope-gap review
+    needs and could not previously reach. `private` notes are mirrored too; use them
+    for your own judgement but never quote one into a customer-facing artefact.
+    See `CLAUDE.md` § "ServiceMinder notes — where they actually live".
+- **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
 - **CompanyCam** — ⚠️ **use `mcp-servers/companycam.sh`, NOT `mcp__companycam__*`.**
   On 2026-09-21 this run stalled with `mcp__companycam__test_connection` queued
   behind a blocked Bash call; the connector prompt is unanswerable on a
@@ -99,6 +116,17 @@ you enforce daily:
   Filter by `modified_since=<yesterday>` client-side, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).
+  **Duplicate CompanyCam projects for the same customer/address are a known,
+  recurring failure mode — confirmed live on 2026-09-15 (Mycka, 5 Roosevelt Pl:
+  two projects, both 15 photos, one dormant since 08-10 and one with photos
+  from that same day). A matching photo_count does NOT mean you found the same
+  project twice — it can mean you found a stale duplicate that happens to tie.**
+  If address-matching (or `search_projects`) surfaces more than one live project
+  for a job, do not resolve it by picking the first/only result returned —
+  check every candidate's latest photo timestamp and use the most recent one as
+  the job's `company_cam_status` source. Name the stale duplicate's project_id
+  in the write-up so it can be archived in CompanyCam; otherwise the same wrong
+  project gets re-picked every run.
 - **HighLevel** for appointment/context enrichment. ✅ Both brands live via the
   OAuth connector `mcp__High_Level__*` (verified 2026-08-17, agency-scoped):
   `search_operations`/`execute_operation` with `locationId` per call — KTU
@@ -1119,7 +1147,7 @@ section — stale beats blank):
   `goal_assessment`, `goal_note`, `pay_pct`, `payment_status`, `est_timeline`,
   `est_completion`, `project_steps`, `service_type`, `est_labor_hours`,
   `est_labor_cost`, `labor_rate`) is yours to recompute fresh each run — this
-  mirrors the existing `status`-preservation carve-out on `btu_ordering` below.
+  mirrors the status-preservation rule orders.ktubtu.com applies to person-entered fields.
 - `foreman_timeline` — the dated milestone plan (§2c); **one row per milestone
   per active project**, so the Project Timeline page can render a per-project
   Gantt: `{project, brand, track ('A'|'B'), seq (1..N integer),
@@ -1132,7 +1160,7 @@ section — stale beats blank):
   `foreman_board`/`client_status` project name exactly (the page joins on it).
   **Preserve `planned_end_override` and `actual_date`** when re-generating —
   merge by project+milestone, never blindly overwrite a human date edit
-  (same discipline as `btu_ordering`'s `status`). Sort by `seq` (sort_order).
+  (same discipline as person-entered fields on orders.ktubtu.com). Sort by `seq` (sort_order).
 - `project_pipeline` — **the headline Projects-tab board (§2f).** One row per
   active project, sorted RED → AMBER → GREEN then open balance desc. Fields:
   `{project, brand, track, rag, rag_reason, bucket, stage, blocking_gate,
@@ -1182,15 +1210,24 @@ section — stale beats blank):
   jobtread_job_id, sm_contact_id, flags, scan_date}`, sorted by outstanding desc.
   Join ServiceMinder invoices/payments (money truth) to JobTread jobs; flag sold
   clients with no JT job, overdue 40%/10% tranches, and SM↔JT total mismatches.
-- `btu_ordering` — the assistant PM's ordering board; refresh whenever a BTU
-  JobTread job is sold (closedOn set): match it to the accepted ServiceMinder
-  proposal (compare totals → `invoice_match`), extract ORDERABLE MATERIAL lines only
-  (exclude labor/install/demo/permits/dumpster/shipping/fees/markup/internal), one
-  row per item: `{job, jobtread_number, sm_proposal_id, sold_total, invoice_match,
-  item, tier, qty, unit, unit_cost, extended_cost, customer_price, budget_note,
-  category, status, scan_date}`. PRESERVE the `status` field of existing rows when
-  refreshing (the PM marks items ordered from the intranet) — merge by job+item,
-  never blindly overwrite.
+- **Orders feed (replaces the old `btu_ordering` section, retired 2026-09-30).** Ordering
+  now lives on orders.ktubtu.com (Supabase `ord_lines` on the `jc_jobs` spine). JobTread-built
+  order sheets feed it automatically; Foreman covers the gap JobTread can't: a **sold BTU job
+  whose material list exists only on the accepted ServiceMinder proposal**. For each such job
+  (skip any job that already has JobTread order lines — check
+  `select 1 from ord_lines l join jc_jobs j on j.id=l.job_id where j.sm_proposal_id=<id> and l.source_key ~ '^(sel|line):'`),
+  extract ORDERABLE MATERIAL lines only (exclude labor/install/demo/permits/dumpster/shipping/
+  fees/markup/internal) and push them with ONE call per job through `sb.sh`:
+  ```
+  bash mcp-servers/sb.sh "select ord_sync_job(null, '<job json>'::jsonb, '<lines json>'::jsonb, 'Foreman (ServiceMinder feed)', 'sm')"
+  ```
+  - job json: `{"brand":"BTU","customer":"<client>","sm_proposal_id":"<id>","sm_contact_id":"<id>","contract_total":<sold>}`
+  - each line: `{"source_key":"sm:<proposal_id>:<item-slug>","kind":"product","section":"<category>","item":"<item>","qty":<n|null>,"unit":"<unit>","exp_unit_cost":<n|null>,"exp_cost":<n|null>,"exp_retail":<customer price|null>,"category":"direct_materials","needs":["no cost on the proposal"] if no cost}`
+  - Keep the slug stable (lowercase, non-alphanumerics → "-", max 60) so a re-run updates
+    instead of duplicating; a line that leaves the proposal is struck through automatically.
+  - Never send order status, PO, dates or actual cost — those belong to the people working
+    orders.ktubtu.com and the sync never overwrites them. Do NOT write `btu_ordering` any more,
+    and do not push placeholder "MATERIAL LIST PENDING" rows; list such jobs in the brief instead.
 - `foreman_pacing` — the per-job **pacing detail** the intranet renders **when a job
   is clicked in the job tracker** (the §2e `job-pacing` output). One row per active
   job, keyed to the tracker rows (`foreman_board`/`client_status`) by
@@ -1222,8 +1259,11 @@ exact next step → $ impact) · ⚠️ watching · 💰 margin flags · 🚚 ve
 
 ### 7a. Daily Slack pacing brief → Steven + Mayra
 After publishing `foreman_pacing`, DM the pacing brief to **Steven**
-(`U017U4G26RY`) and **Mayra** (`U09J3M80YRL`) with `mcp__Slack__slack_send_message`
-(channel_id = each user id — send to both). Keep it **self-contained**: the intranet
+(`U017U4G26RY`) and **Mayra** (`U09J3M80YRL`) with `bash mcp-servers/slack.sh dm
+<user_id> '<text>'` — send to both. **Never use `mcp__Slack__slack_send_message` in
+the scheduled run** (classifier-gated, stalls a non-interactive fire — see "Known
+breakages" below); if `SLACK_BOT_TOKEN` isn't set yet, `slack.sh` fails fast and you
+record that once in `foreman_briefing` instead of hanging. Keep it **self-contained**: the intranet
 holds the full detail and the interactive artifact link is **private** (not viewable
 by anyone with the link), so never rely on a link Mayra can't open. Format — a
 one-line header (today's date + active-job count), then one line per job,
@@ -1255,6 +1295,52 @@ publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
   every route in its chain fails. (No Zapier app exists for ServiceMinder.)
 
 ## Known breakages / preconditions (verified 2026-07-03 — re-verify each run)
+
+**Blanket rule (2026-09-13): never call an `mcp__*` tool in the daily run — reach every
+system through its curl helper.** Every one of Foreman's data sources now has a
+direct-curl path that a scheduled fire can use with zero permission prompts and zero
+MCP-registration dependency (`bash mcp-servers/<helper>.sh ...`):
+
+| System | Helper | Status |
+|---|---|---|
+| ServiceMinder | `sm.sh` | live |
+| HighLevel | `ghl.sh` | live |
+| Supabase (publish) | `sb.sh` | live |
+| Google Business Profile | `gmb.sh` | live |
+| CompanyCam | `companycam.sh` | live (Bearer `COMPANYCAM_TOKEN`, same auth as the MCP server; usage `companycam.sh <path> [query-string]`, e.g. `companycam.sh /v2/projects 'per_page=100'`) |
+| JobTread | `jobtread.sh` | live (new 2026-09-13 — grant-key auth via `JOBTREAD_GRANT_KEY`, same pattern already proven in `jc-forecast-sync.py`) |
+| Gmail (firstgentalent / ktubtubilling) | `gmail.sh` | **built, not yet usable** — needs a one-time human step, see below |
+| Slack (daily pacing DM) | `slack.sh` | **built, not yet usable** — needs a one-time human step, see below |
+
+Use `mcp__*` tools ONLY in an interactive/ad-hoc session where a human can answer a
+permission prompt — never inside the scheduled daily-run instructions below. Where this
+doc still shows an `mcp__ghl-*`/`mcp__Gmail__`/`mcp__CompanyCam__`/`mcp__JobTread__`/
+`mcp__Zapier__`/`mcp__Slack__` call, read it as "use the matching `.sh` helper instead"
+— the tool names are kept in the prose only where the equivalent helper doesn't have a
+1:1 call shape and a translation note is useful.
+
+**Gmail (`gmail.sh`) and Slack (`slack.sh`) close the LAST TWO stall points, but each
+needs one human action first (an agent cannot mint these — they require an interactive
+OAuth consent / a Slack app):**
+- **Gmail**: run once per mailbox, in a browser logged into that Google account:
+  `python3 mcp-servers/tools/get_refresh_token.py --preset gmail-firstgentalent` and
+  `--preset gmail-ktubtubilling`. Paste the two printed values into the Cloud
+  environment's env vars as `GMAIL_REFRESH_TOKEN_FIRSTGENTALENT` /
+  `GMAIL_REFRESH_TOKEN_KTUBTUBILLING` (client id/secret default to the existing
+  `GOOGLE_ADS_CLIENT_ID`/`_SECRET`). This also fixes the SEPARATE bug where Zapier's
+  `gmail_new_email_matching_search` action itself has been returning 0 results on every
+  query for at least two consecutive runs (2026-09-12, 2026-09-13) — `gmail.sh` talks to
+  the real Gmail API directly, sidestepping that broken trigger entirely, not just the
+  permission prompt.
+- **Slack**: set `SLACK_BOT_TOKEN` (scopes `chat:write`, `im:write`) as a plain env var
+  in the Cloud environment config. If one already exists for the `dispatch-notify` Edge
+  Function (see CLAUDE.md), the SAME token works here — it just needs to also be set as
+  a session env var, not only a Supabase function secret.
+Until both are set, `gmail.sh`/`slack.sh` fail fast with a clear `{"error":...}` (no
+hang, no classifier prompt) — treat that as "not configured yet", record it once in
+`foreman_briefing`, and keep going with everything else. Do NOT fall back to
+`mcp__Zapier__*` or `mcp__Slack__*` for these in a scheduled run — that reintroduces the
+exact stall this section exists to prevent.
 
 - 🔴 **Never write a destructive shell command in a scheduled run — `bypassPermissions`
   does NOT cover them.** On 2026-09-21 this agent hung for four days on its own
@@ -1304,11 +1390,22 @@ publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
   live. If it genuinely 401s/drops, fall back to JobTread pace + CompanyCam
   inference + Gmail vendor watch and mark money columns "blocked — ServiceMinder
   down this run".
-- 🟢 **Vendor invoices**: `ktubtubilling@gmail.com` via the Zapier Gmail connection
-  labeled "Claude MCP" (see Vendor watch). Confirm the connection answers for that
-  address before relying on it; fall back to the main Gmail connector.
-- 🟡 **CompanyCam & JobTread stdio MCPs** live at `/root/code` (Steven's Mac) —
-  in cloud, use the Zapier routes above before declaring a gap.
+- 🟢 **Vendor invoices**: `ktubtubilling@gmail.com` via `bash mcp-servers/gmail.sh
+  ktubtubilling search '<query>'` once `GMAIL_REFRESH_TOKEN_KTUBTUBILLING` is set (see
+  the blanket rule above). Until then this is a known gap — say so explicitly in
+  `foreman_briefing` rather than reporting vendor rows as clean.
+- 🟢 **CompanyCam**: `bash mcp-servers/companycam.sh GET /projects '{"query":"<name>"}'`,
+  `.../projects/<id>/photos`, `.../photos '{"modified_since":"..."}'` etc. — no MCP
+  registration needed, same auth (`COMPANYCAM_TOKEN`) as the stdio server.
+- 🟢 **JobTread**: `bash mcp-servers/jobtread.sh '<pave-query-json>'` — same Pave API,
+  authenticated with `JOBTREAD_GRANT_KEY` instead of the OAuth connector. Note: a
+  grant-key query has no `currentGrant` context (that's tied to a logged-in user's
+  session) — query `organization`/`job` directly by known id instead
+  (org `22PB4XPxGZHK`). `costItems`/`documents` sum aggregates return null for every
+  job in this org (verified 2026-09-13, not a query bug) — this org simply has no
+  budget line items attached in JobTread; keep using ServiceMinder `UnitCost` +
+  the labor-rate estimate (§3) as the cost source, and note "no JobTread estimate on
+  file" rather than reporting $0.
 - 🟢 **CompanyCam covers BOTH brands** — the subscription lives under the KTU account,
   but BTU projects are captured in the same CompanyCam account. Do NOT report BTU as
   "unphotographed / undocumented by tool scope." If a BTU job lacks photos, that's a
@@ -1342,13 +1439,17 @@ publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
 - 🟡 **QuickBooks**: Intuit connector = FGUSA books only; Oracabessa/BTU + Jatalia
   via their Zapier QBO connections.
 - 🟢 **Slack + Google Drive required for the daily pacing task** (§2e/§7a). The
-  `job-pacing` skill reads the design packet & Selections from the KTU Google Drive,
-  and the brief is DM'd via Slack (Steven `U017U4G26RY`, Mayra `U09J3M80YRL`). The
-  dedicated **"Foreman — daily job pacing → Slack + intranet"** trigger grants both
-  connectors alongside ServiceMinder/JobTread/CompanyCam/Supabase. If a run lacks
-  Slack, publish `foreman_pacing` anyway and flag the send failure in
-  `foreman_briefing`; if Google Drive is missing, fall back to the ServiceMinder
-  invoice scope for that job and mark the finish specs "Drive unavailable this run".
+  `job-pacing` skill reads the design packet & Selections from the KTU Google Drive
+  (still a connector — `mcp__Google-Drive__*` is read-only and has not been observed
+  stalling a scheduled run the way write/search-heavy connectors have, but treat any
+  future stall there the same way: fall back and say so). The pacing brief itself is
+  sent via `bash mcp-servers/slack.sh dm <user_id> '<text>'` (Steven `U017U4G26RY`,
+  Mayra `U09J3M80YRL`) once `SLACK_BOT_TOKEN` is set — see the blanket rule above.
+  Until then, publish `foreman_pacing` anyway and flag the send as "not sent —
+  SLACK_BOT_TOKEN not configured" in `foreman_briefing`; never call `mcp__Slack__*` in
+  the scheduled run as a substitute. If Google Drive is missing, fall back to the
+  ServiceMinder invoice scope for that job and mark the finish specs "Drive
+  unavailable this run".
 
 ## Guardrails
 

@@ -3,7 +3,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 /**
  * Public consult-feedback intake: POST /consult-feedback
  * Body: { brand, contact_id, appt_id, hl_user_id, agent_name, rating,
- *         missing_items[], feedback_text, callback_requested }
+ *         missing_items[], feedback_text, callback_requested, decision? }
+ *
+ * rating is a fully labeled 1-5 scale (survey v2, 2026-09-27) -- see RATING below.
+ * decision is optional: "ready" | "need_info" | "not_now".
  *
  * verify_jwt is OFF (called from a public post-consult survey with no user
  * session). This function holds the service-role key directly, so unlike
@@ -11,14 +14,14 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
  * service-role caller.
  *
  * - Validates types (rating int 1-5, feedback_text <= 2000 chars).
- * - Inserts into consult_feedback. appt_id is unique; on a duplicate submit
- *   we detect the unique-violation (Postgres code 23505) from PostgREST and
- *   return 200 { ok:true, note:"already received" } rather than an error, so
- *   a retried survey POST is harmless.
+ * - Inserts into consult_feedback. appt_id is unique; a second answer for the same
+ *   appointment (a text-message rating, then detail added through the survey link)
+ *   UPDATES the row: rating replaced, comments appended, callback/decision merged,
+ *   and it only alerts again if it adds a callback request or "needs more information".
  * - Forwards the same JSON to the brand's HighLevel inbound webhook
  *   (HL_FEEDBACK_WEBHOOK_KTU/BTU in app_secrets — placeholders until Steven
  *   supplies the real URLs), retried once on failure, logged not fatal.
- * - rating <= 3 OR callback_requested -> inserts a notify_queue alert row
+ * - rating <= 3 OR callback_requested OR decision = need_info -> inserts a notify_queue alert row
  *   directly (this function already holds service-role access, so it does
  *   not need to go through the queue-notify HTTP function, which exists for
  *   *external* non-service-role callers).
@@ -39,6 +42,15 @@ const svcHeaders = {
 // existing notify_queue rows — slivingston@kitchentuneup.com is the
 // established address for this kind of operational alert).
 const STEVEN_EMAIL = "slivingston@kitchentuneup.com";
+
+// The survey's labeled scale (design.ktubtu.com/feedback, portal/src/feedback.js) -- keep in step.
+const RATING: Record<number, string> = {
+  5: "Superb — covered every detail", 4: "Very good — just a few gaps", 3: "Good — some questions left open",
+  2: "Fair — I've seen better", 1: "Poor — not what I expected",
+};
+const DECISION: Record<string, string> = {
+  ready: "Ready to move forward", need_info: "Still undecided — needs more information", not_now: "Not moving forward right now",
+};
 
 const CORS = {
   "Content-Type": "application/json",
@@ -71,6 +83,8 @@ function toHlPayload(row: Record<string, unknown>): Record<string, unknown> {
     ...row,
     missing_items: missing.join(", "),
     callback_requested: row.callback_requested ? "Yes" : "No",
+    rating_label: RATING[row.rating as number] ?? "",
+    decision: row.decision ? DECISION[row.decision as string] ?? row.decision : "",
   };
 }
 
@@ -95,6 +109,27 @@ async function forwardToHighLevel(brand: string, payload: Record<string, unknown
   }
 }
 
+// Low rating, a callback request, or an undecided client who needs more information:
+// alert straight into notify_queue so someone follows up.
+async function queueAlert(brand: string, row: Record<string, unknown>, rating: number, missingItems: string[] | null,
+                          feedbackText: string | null, callbackRequested: boolean, decision: string | null) {
+  const needInfo = decision === "need_info";
+  const items = (missingItems ?? []).join(", ") || "none noted";
+  const tags = [callbackRequested ? "callback requested" : null, needInfo ? "needs more information" : null].filter(Boolean).join(" – ");
+  const subject = `Consult feedback ALERT (${brand}) – ${rating}/5 ${RATING[rating]?.split(" — ")[0] ?? ""}${tags ? " – " + tags : ""}`;
+  const body =
+    `Consult feedback ALERT (${brand}) – rep ${row.agent_name ?? "unknown"}, ${rating}/5 (${RATING[rating] ?? ""}), ` +
+    `decision: ${decision ? DECISION[decision] : "not answered"}, ` +
+    `missing: ${items}, comment: ${feedbackText ?? "(none)"}, ` +
+    `callback: ${callbackRequested ? "yes" : "no"}, SM contact ${row.contact_id ?? "unknown"}, appt ${row.appt_id}`;
+  const alertRes = await fetch(`${SUPA}/rest/v1/notify_queue`, {
+    method: "POST",
+    headers: svcHeaders,
+    body: JSON.stringify({ kind: "consult_feedback_alert", recipient_email: STEVEN_EMAIL, subject, body, source: "consult-feedback", status: "pending" }),
+  });
+  if (!alertRes.ok) console.error("consult-feedback: notify_queue insert failed", await alertRes.text());
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json(405, { error: "POST only" });
@@ -117,6 +152,8 @@ Deno.serve(async (req) => {
 
   const missingItems = Array.isArray(b.missing_items) ? b.missing_items.map(String) : null;
   const callbackRequested = Boolean(b.callback_requested);
+  const decision = b.decision == null || b.decision === "" ? null : String(b.decision);
+  if (decision != null && !(decision in DECISION)) return json(400, { error: "decision must be ready, need_info or not_now" });
   const contactId = b.contact_id != null ? Number(b.contact_id) : null;
   const apptId = b.appt_id != null ? Number(b.appt_id) : null;
   if (apptId == null || !Number.isFinite(apptId)) return json(400, { error: "appt_id required" });
@@ -131,6 +168,7 @@ Deno.serve(async (req) => {
     missing_items: missingItems,
     feedback_text: feedbackText,
     callback_requested: callbackRequested,
+    decision,
   };
 
   const insertRes = await fetch(`${SUPA}/rest/v1/consult_feedback`, {
@@ -143,7 +181,24 @@ Deno.serve(async (req) => {
     const text = await insertRes.text();
     // Postgres unique_violation surfaces as PostgREST code 23505.
     if (insertRes.status === 409 || text.includes("23505")) {
-      return json(200, { ok: true, note: "already received" });
+      // Second answer for the same appointment: a client who replied to the survey TEXT with a
+      // number, then used the link to add detail. Update the row (web answer wins on rating;
+      // comments are appended) instead of dropping the detail on the floor.
+      const prevRes = await fetch(`${SUPA}/rest/v1/consult_feedback?appt_id=eq.${apptId}&select=feedback_text,missing_items,callback_requested,decision`, { headers: svcHeaders });
+      const prev = (await prevRes.json().catch(() => []))?.[0] ?? {};
+      const patch: Record<string, unknown> = {
+        rating,
+        callback_requested: Boolean(prev.callback_requested) || callbackRequested,
+        feedback_text: [prev.feedback_text, feedbackText].filter(Boolean).join(" | ") || null,
+      };
+      if (missingItems?.length) patch.missing_items = missingItems;
+      if (decision) patch.decision = decision;
+      const up = await fetch(`${SUPA}/rest/v1/consult_feedback?appt_id=eq.${apptId}`, { method: "PATCH", headers: svcHeaders, body: JSON.stringify(patch) });
+      if (!up.ok) { console.error("consult-feedback: update failed", up.status, (await up.text()).slice(0, 300)); return json(200, { ok: true, note: "already received" }); }
+      // Only alert again when this answer adds something to act on.
+      const newlyActionable = (callbackRequested && !prev.callback_requested) || (decision === "need_info" && prev.decision !== "need_info");
+      if (newlyActionable) await queueAlert(brand, row, rating as number, missingItems, feedbackText, callbackRequested, decision);
+      return json(200, { ok: true, note: "updated" });
     }
     console.error("consult-feedback: insert failed", insertRes.status, text.slice(0, 500));
     return json(502, { error: "insert failed" });
@@ -152,27 +207,8 @@ Deno.serve(async (req) => {
   // Forward to HighLevel (best-effort, retried once, never blocks the response's success).
   await forwardToHighLevel(brand, row);
 
-  // Low-rating or callback-requested alert straight into notify_queue.
-  if (rating <= 3 || callbackRequested) {
-    const items = (missingItems ?? []).join(", ") || "none noted";
-    const subject = `Consult feedback ALERT (${brand}) – ${rating}/5${callbackRequested ? " – callback requested" : ""}`;
-    const body =
-      `Consult feedback ALERT (${brand}) – rep ${row.agent_name ?? "unknown"}, ${rating}/5, ` +
-      `missing: ${items}, comment: ${feedbackText ?? "(none)"}, ` +
-      `callback: ${callbackRequested ? "yes" : "no"}, HL contact ${row.contact_id ?? "unknown"}`;
-    const alertRes = await fetch(`${SUPA}/rest/v1/notify_queue`, {
-      method: "POST",
-      headers: svcHeaders,
-      body: JSON.stringify({
-        kind: "consult_feedback_alert",
-        recipient_email: STEVEN_EMAIL,
-        subject,
-        body,
-        source: "consult-feedback",
-        status: "pending",
-      }),
-    });
-    if (!alertRes.ok) console.error("consult-feedback: notify_queue insert failed", await alertRes.text());
+  if ((rating as number) <= 3 || callbackRequested || decision === "need_info") {
+    await queueAlert(brand, row, rating as number, missingItems, feedbackText, callbackRequested, decision);
   }
 
   return json(200, { ok: true });

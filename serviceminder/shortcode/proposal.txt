@@ -1,0 +1,26 @@
+---SM-NOTES-JSON-BEGIN---
+{
+"source": "proposal",
+"brand": "{organization.name}",
+"proposal_id": "{proposal.id}",
+"appointment_id": "{appointment.id}",
+"contact_id": "{contact.id}",
+"subject_label": "{contact.name}",
+"service": "{service.name}",
+"status": "{proposal.status}",
+"subtotal": "{proposal.subtotal}",
+"accepted_date": "{proposal.accepted_date}",
+"owner": "{proposal.owner_name}",
+"phone": "{contact.phone}",
+"email": "{contact.email}"
+}
+---SM-NOTES-JSON-END---
+---SM-TEXT:notes_summary---
+{proposal.notes}
+---SM-TEXT-END---
+---SM-TEXT:notes_summary---
+{proposal.notes_summary}
+---SM-TEXT-END---
+---SM-TEXT:cancel_reason---
+{proposal.decline_reason}
+---SM-TEXT-END---
