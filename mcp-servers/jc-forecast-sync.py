@@ -82,9 +82,12 @@ def q(v):
 # --- category mapping -------------------------------------------------------
 # JCA categories: direct_materials | contract_labor | employee_labor |
 #                 sales_commission | other
-LABOR_RX = re.compile(r"\b(labor|labour|install(ation)?|shop|demo|deliver|freight|"
-                      r"handling|carpent|plumb|electric|tile setter|painting labor)\b", re.I)
-COMMISSION_RX = re.compile(r"commission", re.I)
+# Stems (plumb, electric, carpent, deliver, demo, decommission) take a suffix:
+# a closing \b on a bare stem never matched "Plumbing" / "Electrical".
+LABOR_RX = re.compile(r"\b(labor|labour|install(ation|ed|ing)?|shop|demo\w*|deliver\w*|freight|"
+                      r"handling|carpent\w*|plumb\w*|electric\w*|decommission\w*|tile setter|painting labor)\b", re.I)
+# Word-start anchor: "Decommission a tub" is plumbing, not a sales commission.
+COMMISSION_RX = re.compile(r"\bcommission", re.I)
 FEE_RX = re.compile(r"\b(fee|permit|dumpster|general conditions|overhead|contingency)\b", re.I)
 
 JT_COSTTYPE_MAP = {

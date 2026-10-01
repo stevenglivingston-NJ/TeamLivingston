@@ -82,7 +82,7 @@ fill the gaps:**
    MCP, Meta Ads MCP, GA4/GMB/Bing via Zapier. These are the actual dollars spent,
    real-time, per campaign. Never let a bank/card-transaction number override or
    average against a live platform number for a channel the platform itself reports.
-2. **Bank/card-transaction matching (the `mkt_spend` / `mkt_spend_summary` dataset —
+2. **Bank/card-transaction matching (the `marketing_spend_monthly` view over bank-classified `bank_transactions`; `mkt_spend` is a frozen July hand-scan —
    Chase/Brex/Bluevine memo-string matching) is a FALLBACK, used only to capture
    spend that has NO platform API**: print/magazine placements (City Lifestyle,
    Premmedia, Major League Media), direct mail (SendJim), sponsorships, incentives
@@ -674,15 +674,15 @@ writer for them.** Same crash-safe rule as `paid_brief`: INSERT first, prune aft
 Every row takes `scan_date` and a brand tag, exactly like `paid_brief`. Keep each section
 to what a human will read — roughly 10 keywords, 25 negatives, all campaigns.
 
-**When Google Ads is unavailable, write nothing and say so.** The OAuth has been failing
-`invalid_client` since 2026-08-24 (a bad *client secret*, not an expired token, so
-re-authorising will not fix it), and `ktubtu-mcp-google-ads` on Render is **suspended by
-its owner**. Both need Steven. Until then the July snapshot rows stand — stale and clearly
-labelled beats blank or invented. Say plainly in the brief that keyword detail is frozen
-and why; do not silently omit it.
+**Google Ads is reachable (verified 2026-09-28: `gads.sh test_connection` ok for KTU and
+BTU).** In scheduled runs call it only through `bash mcp-servers/gads.sh <tool> '<json>'`
+(`query_keywords`, `query_negative_keywords`, `query_search_terms`, `query_campaigns`,
+`query_ads`, `query_lsa_periods` …) — never the `mcp__google-ads__*` tools, which hang a
+scheduled run. If a call errors, write nothing for that section, keep the old rows (stale
+and labelled beats blank), and say which call failed and why in the brief.
 
 **Once you write live rows, drop the snapshot.** After a successful insert for a section,
-prune rows in it where `fields->>'is_snapshot' = 'true'`. That is the only thing that
+prune rows in it where `fields->>'is_snapshot' = 'true' OR fields->>'source' = 'team-dashboard-snapshot'` (the 09-09 load carries only the `source` tag). That is the only thing that
 clears them, and it must happen after the insert succeeds, never before.
 
 **Register with the freshness watchdog only once you are genuinely feeding these.**
@@ -859,6 +859,29 @@ watch, not as evidence about which number is configured where.
 - 🟡 **HighLevel trigger-link / QR-scan stats** not exposed directly — read contact
   tags/attribution fields; if that yields no scan data, report QR as a tracking gap,
   not zero leads.
+- 🟡 **google-ads MCP has no ad/creative-level queries** (campaign/keyword/geo/LSA
+  only) — use Zapier Google Ads actions for ad-level; otherwise state "creative-level
+  blind on Google" in the brief. Candidate fix: add `query_ads` / RSA asset
+  performance to `/root/code/google-ads-mcp/server.py`.
+
+## Finding format — structured fields, not prose (2026-09-01)
+
+The intranet now renders findings as cards with a metrics table, copy/email
+buttons, and an assignment lifecycle. It lays out STRUCTURED FIELDS and does
+not parse prose — a metric buried in a sentence renders as a sentence.
+
+Alongside title/detail/severity/kind/brand/source/scan_date, emit:
+
+- `metrics`: object of {label: value} — every number the finding rests on.
+  "$381.87 / 1,266 impr / 44 clicks" belongs here, not in a sentence.
+- `change`: one sentence — what moved.
+- `why`: one sentence — why anyone should care.
+- `action`: one sentence — the next physical step. If there is no action,
+  severity is info, not urgent: urgency with no action is decoration.
+
+`detail` stays for narrative that genuinely is narrative. Do NOT restate the
+metrics inside it. Legacy prose-only rows still render, so nothing breaks if
+one run slips — but the card is only scannable when the numbers are fields.
 - 🟢 **google-ads MCP now has ad/creative-level queries** (`query_ads`,
   `query_call_assets` — added 2026-09-14 to `mcp-servers/google-ads/server.py`,
   live-verified against KTU/BTU/EARTHWISE). This closes the "creative-level blind

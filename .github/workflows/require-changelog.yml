@@ -1,0 +1,37 @@
+name: Require CHANGELOG
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+permissions:
+  contents: read
+jobs:
+  require-changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require a CHANGELOG.md entry when tool/flow code changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          set -euo pipefail
+          if printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'no-changelog'; then
+            echo "Label 'no-changelog' present — skipping the CHANGELOG requirement."; exit 0
+          fi
+          git fetch --no-tags --depth=1 origin "$BASE_SHA" 2>/dev/null || true
+          files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          echo "Files changed in this PR:"; echo "$files"
+          code_re='^(app/|portal/|supabase-functions/|supabase/functions/|mcp-servers/|tools/|tuneup-funnel/|\.claude/agents/|playbook/|worker\.js|index\.html)'
+          if printf '%s\n' "$files" | grep -qE "$code_re"; then
+            if printf '%s\n' "$files" | grep -qx 'CHANGELOG.md'; then
+              echo "CHANGELOG.md updated — thanks."
+            else
+              echo "::error::This PR changes tool/flow code but does not update CHANGELOG.md. Add one line (YYYY-MM-DD - who - WHERE - WHAT [link]) to CHANGELOG.md, or add the 'no-changelog' label if this change genuinely needs none."
+              exit 1
+            fi
+          else
+            echo "No tool/flow code paths changed — CHANGELOG not required."
+          fi

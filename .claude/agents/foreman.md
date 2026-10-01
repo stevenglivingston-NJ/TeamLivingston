@@ -86,6 +86,23 @@ you enforce daily:
     $15,145 sat Open; the job was done.) Duplicates inflate the open-AR total — subtract
     them and say so. Only treat an Open invoice as real AR when its proposal has no paid
     twin.
+  - **Notes on a job, a proposal or a visit: read `sm_notes`, not the appointment.**
+    `find_appointment(...).Notes` is null in practice — the ServiceMinder Open API
+    cannot see appointment notes at all (verified 2026-08-29 on appt `51051472`).
+    They reach us only through the Liquid feed, mirrored into the `sm_notes` table
+    along with contact and proposal notes:
+    ```
+    bash mcp-servers/sb.sh "select source, title, body, private, authored_by, authored_at
+                              from sm_notes
+                             where contact_id = <id> or appointment_id = <id> or proposal_id = <id>
+                             order by authored_at desc nulls last"
+    ```
+    This is where a rep's "measured, needs a soffit removed" or "homeowner's husband
+    wasn't there, revisit" lives — exactly the field intelligence a scope-gap review
+    needs and could not previously reach. `private` notes are mirrored too; use them
+    for your own judgement but never quote one into a customer-facing artefact.
+    See `CLAUDE.md` § "ServiceMinder notes — where they actually live".
+- **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
 - **CompanyCam** — ⚠️ **use `mcp-servers/companycam.sh`, NOT `mcp__companycam__*`.**
   On 2026-09-21 this run stalled with `mcp__companycam__test_connection` queued
   behind a blocked Bash call; the connector prompt is unanswerable on a
@@ -1130,7 +1147,7 @@ section — stale beats blank):
   `goal_assessment`, `goal_note`, `pay_pct`, `payment_status`, `est_timeline`,
   `est_completion`, `project_steps`, `service_type`, `est_labor_hours`,
   `est_labor_cost`, `labor_rate`) is yours to recompute fresh each run — this
-  mirrors the existing `status`-preservation carve-out on `btu_ordering` below.
+  mirrors the status-preservation rule orders.ktubtu.com applies to person-entered fields.
 - `foreman_timeline` — the dated milestone plan (§2c); **one row per milestone
   per active project**, so the Project Timeline page can render a per-project
   Gantt: `{project, brand, track ('A'|'B'), seq (1..N integer),
@@ -1143,7 +1160,7 @@ section — stale beats blank):
   `foreman_board`/`client_status` project name exactly (the page joins on it).
   **Preserve `planned_end_override` and `actual_date`** when re-generating —
   merge by project+milestone, never blindly overwrite a human date edit
-  (same discipline as `btu_ordering`'s `status`). Sort by `seq` (sort_order).
+  (same discipline as person-entered fields on orders.ktubtu.com). Sort by `seq` (sort_order).
 - `project_pipeline` — **the headline Projects-tab board (§2f).** One row per
   active project, sorted RED → AMBER → GREEN then open balance desc. Fields:
   `{project, brand, track, rag, rag_reason, bucket, stage, blocking_gate,
@@ -1193,15 +1210,24 @@ section — stale beats blank):
   jobtread_job_id, sm_contact_id, flags, scan_date}`, sorted by outstanding desc.
   Join ServiceMinder invoices/payments (money truth) to JobTread jobs; flag sold
   clients with no JT job, overdue 40%/10% tranches, and SM↔JT total mismatches.
-- `btu_ordering` — the assistant PM's ordering board; refresh whenever a BTU
-  JobTread job is sold (closedOn set): match it to the accepted ServiceMinder
-  proposal (compare totals → `invoice_match`), extract ORDERABLE MATERIAL lines only
-  (exclude labor/install/demo/permits/dumpster/shipping/fees/markup/internal), one
-  row per item: `{job, jobtread_number, sm_proposal_id, sold_total, invoice_match,
-  item, tier, qty, unit, unit_cost, extended_cost, customer_price, budget_note,
-  category, status, scan_date}`. PRESERVE the `status` field of existing rows when
-  refreshing (the PM marks items ordered from the intranet) — merge by job+item,
-  never blindly overwrite.
+- **Orders feed (replaces the old `btu_ordering` section, retired 2026-09-30).** Ordering
+  now lives on orders.ktubtu.com (Supabase `ord_lines` on the `jc_jobs` spine). JobTread-built
+  order sheets feed it automatically; Foreman covers the gap JobTread can't: a **sold BTU job
+  whose material list exists only on the accepted ServiceMinder proposal**. For each such job
+  (skip any job that already has JobTread order lines — check
+  `select 1 from ord_lines l join jc_jobs j on j.id=l.job_id where j.sm_proposal_id=<id> and l.source_key ~ '^(sel|line):'`),
+  extract ORDERABLE MATERIAL lines only (exclude labor/install/demo/permits/dumpster/shipping/
+  fees/markup/internal) and push them with ONE call per job through `sb.sh`:
+  ```
+  bash mcp-servers/sb.sh "select ord_sync_job(null, '<job json>'::jsonb, '<lines json>'::jsonb, 'Foreman (ServiceMinder feed)', 'sm')"
+  ```
+  - job json: `{"brand":"BTU","customer":"<client>","sm_proposal_id":"<id>","sm_contact_id":"<id>","contract_total":<sold>}`
+  - each line: `{"source_key":"sm:<proposal_id>:<item-slug>","kind":"product","section":"<category>","item":"<item>","qty":<n|null>,"unit":"<unit>","exp_unit_cost":<n|null>,"exp_cost":<n|null>,"exp_retail":<customer price|null>,"category":"direct_materials","needs":["no cost on the proposal"] if no cost}`
+  - Keep the slug stable (lowercase, non-alphanumerics → "-", max 60) so a re-run updates
+    instead of duplicating; a line that leaves the proposal is struck through automatically.
+  - Never send order status, PO, dates or actual cost — those belong to the people working
+    orders.ktubtu.com and the sync never overwrites them. Do NOT write `btu_ordering` any more,
+    and do not push placeholder "MATERIAL LIST PENDING" rows; list such jobs in the brief instead.
 - `foreman_pacing` — the per-job **pacing detail** the intranet renders **when a job
   is clicked in the job tracker** (the §2e `job-pacing` output). One row per active
   job, keyed to the tracker rows (`foreman_board`/`client_status`) by

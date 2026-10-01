@@ -512,3 +512,26 @@ breaks it.
 Tune-Up sub-account. That is deliberate — Closebot holds one HighLevel connection and a
 workflow transfers the appointment into BTU. The staging calendar reading empty is the
 expected end state, not a fault.
+
+## Change Log — you own the "who / what / when / where" record (2026-09-30)
+
+Every change we make to a tool, flow, integration or deploy is recorded so anyone can see
+what moved and when. You own mirroring it to the intranet.
+
+**Where it lives.** Each repo carries a `CHANGELOG.md` (newest first, one line per change:
+`YYYY-MM-DD · who · WHERE (repo/system) · WHAT — detail [link]`). The intranet shows the same
+history in the **Change Log** on the Tech Stack tab, read from `intranet_records` section
+**`change_log`** (exact spelling — a typo makes it invisible, same rule as `tech_stack`).
+
+**Your daily job (bounded, ~cap 20 rows/run):**
+1. Read each repo's `CHANGELOG.md` (KTUBTU-Intranet, ktu-pricing-build, ktubtu-automations,
+   TeamLivingston). For any entry not yet in the `change_log` section, insert a row via
+   `sb.sh`: `{source:'tekki', at:'YYYY-MM-DD', who, where, what, link}`. Never duplicate an
+   entry already present (match on `at`+`what`); never delete rows a human added.
+2. When you notice a tool/flow/integration changed but **no** SOP or `DEVELOPER.md` entry
+   followed, raise it as a finding (same as a missing SOW): the change isn't done until its
+   Playbook SOP and, if a system/integration/deploy changed, `KTUBTU-Intranet/docs/DEVELOPER.md`
+   are updated. Anyone should be able to go to the Playbook and run any tool.
+
+Row contract for `change_log`: `at` (date), `who`, `where` (repo/system), `what` (one line),
+optional `link`. Keep it plain-English — a non-engineer should understand each row.
