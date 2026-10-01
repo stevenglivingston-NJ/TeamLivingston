@@ -1,42 +1,36 @@
 # Axyom Intranet (`ktubtuintranet` Cloudflare Worker)
 
-> ## 🔴 `npm run deploy` does NOT match what's live (found 2026-08-31)
-> The live Worker serves the intranet HTML as a **Workers Asset**
-> (`env.ASSETS.fetch(request)`), and `worker.js` also runs a small `/api/ghl`
-> proxy (GHL contact search, bearer-auth'd against Supabase) in front of it.
-> This repo's `build.mjs` instead produces a single-file worker with the HTML
-> inlined and **no GHL proxy at all** — `npm run deploy` as written would
-> regress the proxy and likely break asset serving, because `wrangler.jsonc`
-> here had no `assets` stanza either. Both are now fixed:
-> - `wrangler.jsonc` gained an `assets` block (`directory: ./public`,
->   `binding: ASSETS`, SPA fallback) matching what's live.
-> - `worker.js` is **gitignored** (as before) but must be the GHL-proxy
->   script, not build.mjs's output, until build.mjs is rewritten to produce
->   it. Fetch the live one with the Cloudflare MCP's `workers_get_worker_code`
->   (`scriptName: "ktubtuintranet"`) if you don't have a copy — it changes
->   rarely, only when the GHL proxy itself changes.
-> - Correct deploy, until `npm run deploy` is fixed to do this automatically:
->   `mkdir -p public && cp ktubtuintranet.html public/index.html && npx wrangler deploy`,
->   then verify with `node tools/drift-check.mjs` and a manual curl of
->   `/api/ghl/health` (expect `401 {"error":"unauthorized"}`, not `404`/`500`
->   — a wrong response there means the proxy didn't deploy).
+> ## ⚠️ CORRECTION (2026-09-01): this path IS what serves production
+> The 2026-08-31 note below had the direction backwards. Fetching
+> dash.goaxyom.com showed it served THIS file byte for byte — the repo's
+> Cloudflare git integration was building, but its output was not what the
+> custom domain returned. Nothing built in KTUBTU-Intranet had ever reached
+> production.
 >
-> This was discovered adding the Activity Log tab, not caused by it — the
-> drift predates this session. `npm run deploy`/`build.mjs` should be fixed
-> to generate the correct worker.js so this stops being a manual step; that
-> wasn't done here to keep this change to what was asked.
+> Both lineages have now been merged into KTUBTU-Intranet/index.html and this
+> file is a byte-for-byte copy of that merge, so the two paths agree and
+> deploying from here is a no-op against the repo.
+>
+> Until a push to KTUBTU-Intranet main is CONFIRMED to change what
+> dash.goaxyom.com returns — confirmed by fetching it, not by a green build —
+> treat this as the deploy path of record. A successful Cloudflare build says
+> the code compiles, not that anyone can see it.
 
-> ## ⚠️ Reconciliation in progress (2026-08-18)
-> `ktubtuintranet.html` has been **reset to match the live worker byte-for-byte**,
-> so **deploying is now safe — it is a no-op against production.**
+> ## Superseded (2026-08-31) — kept for the record
+> The `KTUBTU-Intranet` repo's **Cloudflare Git integration deploys this same
+> worker (`ktubtuintranet`) on every push** to its active branch. That is the
+> primary deploy path. The 2026-08-18 doctrine below ("deploy only from here")
+> is dead: on 2026-08-31 this copy was six days stale and one `npm run deploy`
+> away from rolling production back over a day of shipped finance work.
 >
-> A month of repo-side work is NOT yet in this file. It is preserved in
-> `ktubtuintranet.repo-snapshot-2026-08-18.html` and is being ported back in
-> tab by tab. Read **[RECONCILIATION.md](RECONCILIATION.md)** before editing.
->
-> Until the port completes, deploying ships live's own content back to live —
-> harmless, but it does not yet restore the Cash Flow, Paid, Organic or Library
-> tabs.
+> Rules now:
+> - **Edit in the `KTUBTU-Intranet` repo (`index.html`) and push** — that is
+>   the deploy.
+> - This manual path exists for emergencies only. `build.mjs` refuses to build
+>   if `ktubtuintranet.html` differs from the repo checkout
+>   (`INTRANET_REPO_HTML` overrides the path; `--force` overrides the guard).
+> - After any manual deploy, push the same content to the repo immediately or
+>   the next repo push silently reverts it.
 
 `ktubtuintranet.html` is the full single-file app served at **https://dash.goaxyom.com**.
 It was recovered from live on 2026-07-05, then the two copies forked (see
@@ -104,20 +98,3 @@ copies forked; see RECONCILIATION.md. Treat the diff-against-live step as
 mandatory, not advisory — and prefer automating it (a scheduled curl + diff that
 writes a `system_health` row on mismatch) over relying on memory, since the
 Cloudflare dashboard editor can change production without touching this repo.
-
-## ⚠️ 2026-08-30 — `npm run deploy` is UNSAFE right now
-
-The repo file and live have forked in both directions (nine live-only tabs,
-ten repo-only tabs — see RECONCILIATION.md). Deploying from
-`ktubtuintranet.html` today would remove nine tabs from production.
-
-Until that is reconciled, ship additively:
-
-```bash
-curl -s https://dash.goaxyom.com > /tmp/live.html
-node tools/apply-report-scheduler.mjs /tmp/live.html /tmp/live.patched.html   # or your own patch
-node -e "…build worker.js from /tmp/live.patched.html…"
-npx wrangler deploy
-```
-
-and apply the same patch to `ktubtuintranet.html` so the repo keeps up.

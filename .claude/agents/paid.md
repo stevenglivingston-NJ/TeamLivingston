@@ -859,6 +859,29 @@ watch, not as evidence about which number is configured where.
 - 🟡 **HighLevel trigger-link / QR-scan stats** not exposed directly — read contact
   tags/attribution fields; if that yields no scan data, report QR as a tracking gap,
   not zero leads.
+- 🟡 **google-ads MCP has no ad/creative-level queries** (campaign/keyword/geo/LSA
+  only) — use Zapier Google Ads actions for ad-level; otherwise state "creative-level
+  blind on Google" in the brief. Candidate fix: add `query_ads` / RSA asset
+  performance to `/root/code/google-ads-mcp/server.py`.
+
+## Finding format — structured fields, not prose (2026-09-01)
+
+The intranet now renders findings as cards with a metrics table, copy/email
+buttons, and an assignment lifecycle. It lays out STRUCTURED FIELDS and does
+not parse prose — a metric buried in a sentence renders as a sentence.
+
+Alongside title/detail/severity/kind/brand/source/scan_date, emit:
+
+- `metrics`: object of {label: value} — every number the finding rests on.
+  "$381.87 / 1,266 impr / 44 clicks" belongs here, not in a sentence.
+- `change`: one sentence — what moved.
+- `why`: one sentence — why anyone should care.
+- `action`: one sentence — the next physical step. If there is no action,
+  severity is info, not urgent: urgency with no action is decoration.
+
+`detail` stays for narrative that genuinely is narrative. Do NOT restate the
+metrics inside it. Legacy prose-only rows still render, so nothing breaks if
+one run slips — but the card is only scannable when the numbers are fields.
 - 🟢 **google-ads MCP now has ad/creative-level queries** (`query_ads`,
   `query_call_assets` — added 2026-09-14 to `mcp-servers/google-ads/server.py`,
   live-verified against KTU/BTU/EARTHWISE). This closes the "creative-level blind
