@@ -19,24 +19,25 @@ Before assuming something is "in TeamLivingston", check this table. The client-f
 |---|---|---|---|---|
 | **Design Journey client portal**<br>Style quiz, invite links, designer brief `/brief/…`, post-consult survey `/f/k` `/f/b`, rep tool `/send`, journeys and funnel `/send/journeys`, tier cheat sheets `/tiers`, Pick the look `/tiers/pick` | design.ktubtu.com | `stevenglivingston-NJ/ktu-pricing-build` → `portal/` | Cloudflare Worker `ktubtu-design`<br>KV `PORTAL` 6cbe1ee64f1a42039864231f72c81d30 | `.github/workflows/deploy-portal.yml` on push to main, or `npx wrangler deploy` from `portal/` |
 | **Pricing app** | pricing.ktubtu.com | `ktu-pricing-build` → `app/` | Cloudflare Worker `ktubtu-pricing`<br>KV `STATE` eac228b23726485389a6236be9f72e0a<br>JobTread holds the engine | `deploy-worker.yml` (paths `app/**`) |
+| **Orders — orders.ktubtu.com** (order sheets, order status, purchases, profitability)<br>Home list `/`, order sheet `/o/<token>`, **workbook `/w`** (every line editable with override + ↺ JobTread value, manual clients/lines, costs & GP, invoices, history by login, ServiceMinder purchases note). Google Sheet "Job Tracker — KTU & BTU (live)" `1z-gqWRY1jFKir9tZeAslAwE1JzpGpCmiGuXYJLs8aag` is a **read-only mirror** since 2026-10-01 (banner on every tab, warning-only protection; typed cells are put back by the next sync, nothing is imported). Review ~2026-10-15: if nobody opens it, delete it, `sheets.js` and the Worker's `GOOGLE_SHEETS_REFRESH_TOKEN` | orders.ktubtu.com (also pricing.ktubtu.com/o/&lt;token&gt;) | `ktu-pricing-build` → `app/src/orders.js` (builder), `orders-ui.js` (home + sheet pages), `ordersdb.js` (Supabase bridge), `public/orders.html` (workbook), `sheets.js`. DB: `TeamLivingston/supabase/migrations/20260930_orders.sql`, `20260930b_orders_item_bridge.sql` | Pricing Worker + **Supabase `ord_lines` / `ord_history` on the `jc_jobs` spine = the record**. A line's actual cost is mirrored into `jc_actual_costs` (source `order_line`) unless linked to a confirmed payable (the invoice counts instead). KV `ordersheet:`/`orderstatus:` are the page's cache; Supabase values win when newer. Permissions: `profiles.orders_access` / `profit_access` / `jc_access`, ticked in pricing.ktubtu.com → Admin → Users. Worker → DB via `QUEUE_NOTIFY_SECRET` (hash in `dispatch_config`) | With the pricing app. Built on client acceptance, finalized selections, the Refresh button, buy sheets with selection lines, and a rotating 12-job slice every 2 h (the `*/5` cron's :45 tick on even UTC hours, `ordersheet:_lastRefresh`). **Signature before any order (2026-09-30):** a sheet reads *Awaiting signed sheet*; the order page and the `/w` workbook (`ord_save_line`, migration `20260930d`) refuse Ordered/PO/order date until the final Selection Sheet is signed — from JobTread (`jc_jobs.selections_signed`, set by the Worker on every sync) or, for a job with no JobTread job, a named "Signed (paper)" tick. The Google tracker can no longer bypass it (read-only since 2026-10-01). **Folded in 2026-09-30:** purchasing.ktubloomfield.com (btu-purchasing Worker, `ktubtu-automations/infra/purchasing`) now redirects here — `buy_sheet.py` still publishes to KV `SHEETS`/`PURCHASING` and each order line shows its spend ceiling + basis; Foreman's `btu_ordering` board is retired — Foreman feeds ServiceMinder-only jobs via `ord_sync_job(..., 'sm')` (keys `sm:`). Invoice→line matching rides the hourly `jc-match-and-escalate` cron. SM purchase notes post from the same tick. **JobTread write-back (2026-09-30, migration `20260930e`):** each line's Status / Date Ordered / Date Received / Purchased Cost $ go to the job's **budget** cost item (items on an approved Customer Order are locked; `sel:` lines resolve via `jobCostItem`), and the job's "Job Status" moves forward only through Order To Be Placed → … → Some materials received, each move with a job comment; all received = comment only. `ordersdb.js pushJobTread` runs after order-page saves, on `POST /api/orders/jt-push/:jtJob` from the workbook, and on the 2-hourly refresh; only changes (vs `ord_lines.jt_pushed`) are sent |
 | **Design Journey invite, booking text and survey templates** | Pasted into ServiceMinder | `ktu-pricing-build/portal/email/build.py`, which writes `{ktu,btu}-invite.html`, `-subject.txt`, `-invite-sms*.txt` | ServiceMinder sends them | Re-run `build.py`, zip `index.html` and upload to ServiceMinder. **The repo is the source of truth**; ServiceMinder only holds copies |
 | **Style quiz content** | Inside the portal | Rounds and tips: `portal/tools/style_rounds.py`<br>Build: `build_quiz.py`<br>Evidence: `portal/docs/DESIGN-JOURNEY-QUIZ-EVIDENCE.md`<br>Photos: from `ktu-lookbook/img` | Portal KV `flag:quiz_v2` = `"true"` switches it on | Rebuild, then deploy the portal |
 | **Live browser checks** for the portal | none | `ktu-pricing-build/portal/tools/e2e/` (see its README) | Any Claude cloud session (Playwright is pre-installed) | none |
 | **Lookbooks** | lookbook.ktubtu.com | `stevenglivingston-NJ/ktu-lookbook` | Built by its GitHub Action | `.github/workflows/publish.yml`: on push, daily cron, or a `catalogue-changed` dispatch |
 | **Supabase functions for this repo**<br>`consult-sms-reply`, `consult-feedback`, `dispatch-notify`, `consult-completion-tagger`, `sm-agent-sync`, `jc-forecast-sync`, `rep-card`, `ingest-email`, `admin-users` | Supabase project `tguwpswcneywvscxzyef` | `TeamLivingston/supabase/functions/` | Supabase Edge Functions | Supabase CLI or MCP `deploy_edge_function` |
 | **Supabase function `queue-notify`** (designer email queue) | same project | `ktu-pricing-build/supabase-functions/` | Supabase | `deploy-supabase-functions.yml` |
-| **Axyom intranet** | dash.goaxyom.com | `stevenglivingston-NJ/KTUBTU-Intranet` → `index.html` + `worker.js`. **Not** this repo's `intranet/`, which was archived 2026-09-13 (see `intranet/ARCHIVED.md`) | Cloudflare Worker `ktubtuintranet` | Automatic on push to `main` (Cloudflare Workers Builds) |
-| **Playbook** (Lead to Last Nail, BTU Handover SOP BTU-OPS-001, KTU Handover Standard V2, Selections & Order Sheet) | playbook.ktubtu.com | This repo, `playbook/` (see its README) | Cloudflare Pages `ktu-playbook` | `npx wrangler pages deploy . --project-name ktu-playbook --branch main` from `playbook/`. Linked from the intranet Playbook tab |
+| **Axyom intranet** (Tech Stack tab carries the current diagrams of the whole setup) | dash.goaxyom.com | `stevenglivingston-NJ/KTUBTU-Intranet` → `index.html` + `worker.js`. **Not** this repo's `intranet/`, which was archived 2026-09-13 (see `intranet/ARCHIVED.md`) | Cloudflare Worker `ktubtuintranet` | Automatic on push to `main` (Cloudflare Workers Builds) |
+| **Playbook** (Lead to Last Nail, BTU Handover SOP BTU-OPS-001, KTU Handover Standard V2, Selections & Order Sheet, Systems & Where Things Live) | playbook.ktubtu.com | This repo, `playbook/` (see its README) | Cloudflare Pages `ktu-playbook` | `npx wrangler pages deploy . --project-name ktu-playbook --branch main` from `playbook/`. Linked from the intranet Playbook tab |
 | **Design mocks** (Design Journey canvas) | https://claude.ai/artifact/JkYyRXszcHyy6EWwwRm7ZA | none | claude.ai | Edited from a Claude session |
 
 **Deploy rules. Both were learned the hard way on 2026-09-28.**
 1. **Only deploy code that contains current `main`.** Merge `origin/main` into your branch first. `wrangler deploy` uploads your working tree, so a stale branch silently reverts other sessions' live work. On 2026-09-28 that took `/tiers/pick` down for about 30 minutes.
 2. **Merge what you deploy.** If the live site runs code that isn't on `main`, the next deploy from `main` undoes it.
 
-**GitHub Actions account block (since 2026-09-27 ~22:45 UTC).**
-- **Symptom:** every Actions job in every private repo (`ktu-pricing-build` deploys, `ktu-lookbook` publish) fails within 3 seconds, with `runner_id 0` and no logs.
-- **Cause:** GitHub refuses to start jobs at the account level. That is a billing block (included minutes used up with a $0 spending limit, or a failed payment), not a code error. Fix it in GitHub → Settings → Billing and plans.
-- **Until it's fixed:** deploys only happen by hand from a Claude cloud session (`npx wrangler deploy`, using `CLOUDFLARE_API_TOKEN` from the env), and the lookbook doesn't rebuild.
+**GitHub Actions account block (2026-09-27 ~22:45 → cleared by 2026-09-29).**
+- **Symptom, if it recurs:** every Actions job in every private repo fails within 3 seconds, with `runner_id 0` and no logs.
+- **Cause:** GitHub refuses to start jobs at the account level (billing: minutes used up with a $0 spending limit, or a failed payment). Fix it in GitHub → Settings → Billing and plans. While blocked, deploy by hand from a Claude cloud session (`npx wrangler deploy` with `CLOUDFLARE_API_TOKEN`).
+- **2026-09-29:** `deploy-worker.yml` runs succeed again. **2026-10-01:** `deploy-supabase-functions.yml` works again too — its repo secret `SUPABASE_ACCESS_TOKEN` is now a Supabase *personal access token* (`sbp_` + 40 hex, from supabase.com/dashboard/account/tokens). The project's publishable key (`sb_publishable_…`) or secret key (`sb_secret_…`) will not work; the workflow now fails with the value's length and first 4 characters if the wrong kind is pasted.
 
 ## MCP Servers
 
@@ -178,8 +179,13 @@ ServiceMinder** (an appointment nobody is scheduled to attend). Goldeneye reads
 the JSON and publishes it — it does not re-derive the analysis.
 
 ```
-python3 mcp-servers/lead-sweep.py --days 2 --out /tmp/lead-sweep.json
+python3 mcp-servers/lead-sweep.py --days 2 --rollup-days 7 --out /tmp/lead-sweep.json
 ```
+
+Calls are also rolled up per tracking number over 7 days (`buckets.call_tracking_7d`,
+added 2026-10-01): a line that rings out on two different days is graded a routing
+fault, and Goldeneye keeps a durable `📞 LINE` row in `system_coverage` for it until
+the line has a clean, verified week. Closing a callout never clears the line.
 
 It self-tests every pipe first and reports failures in `degradations`; an empty
 bucket next to a degradation is **unverified, not clean**. All HTTP goes through
@@ -646,7 +652,7 @@ anything personal or financial → owner-only sections**, sourced from the
 personal drive via Zapier. Financial doc links live in `docs_finance`, which is
 RLS-locked to `is_admin()`.
 
-## ServiceMinder notes — where they actually live (canonical; verified 2026-08-25)
+## ServiceMinder notes — where they actually live (canonical; verified 2026-08-29)
 
 Every agent that reports a cancellation reason, a call summary, or "what the customer
 said" reads this. **There are three separate places notes live, none of them reliably
@@ -654,9 +660,126 @@ populated, so check all three and merge.** Earlier specs asserted one source was
 truth" and another was "always empty" — both claims were over-generalised from single
 samples and were wrong. Report which source each note came from.
 
+> ### 🔴 Appointment notes are INVISIBLE to the Open API — read `sm_notes` instead
+>
+> Verified 2026-08-29 on KTU appointment `51051472` (Garret Starr, cancelled 8/20).
+> The SM UI shows a rep note that **is** the cancellation reason —
+> *"Client wrote 'I tried to write in and tell them I wanted it last week. Not this
+> week' and then I both called client with no answer and also texted him advising
+> that we can reschedule if he'd still like. No reply back"* — and every API path
+> is blind to it: `appointments/find` → `Notes: null`, `appointments/query` has no
+> note field, the org download has no Notes column, and the contact carries only
+> the intake blurb.
+>
+> **ServiceMinder's Liquid layer can see them.** `serviceminder/liquid/*.liquid`
+> emit notes as JSON into `inbox_emails`; `intranet/scripts/ingest_sm_notes.py`
+> upserts them into the **`sm_notes`** table (identity `brand, source, sm_note_id`).
+>
+> **So: query `sm_notes` first.** It is the merged, untruncated home for all three
+> note types and it is the only place appointment notes exist at all. Fall back to
+> the API sources below only for what it hasn't mirrored yet.
+>
+> ```sql
+> select source, title, body, private, authored_by, authored_at, ingested_via
+>   from sm_notes where contact_id = <id> order by authored_at desc nulls last;
+> ```
+>
+> Two things to know about it:
+> - **`ingested_via='api'` rows have NO author and NO date.** `contacts/locate`
+>   returns only `{Id, Title, Body, Private}` — no `CreatedBy`/`CreatedOn`. Only
+>   `ingested_via='liquid'` rows carry attribution. Don't report "no date" as
+>   suspicious; it's the API's limit.
+> - **An empty `source='appointment'` group means "not fed yet", not "the rep wrote
+>   nothing."** Until the Liquid templates are installed in the SM UI (once per
+>   brand — it cannot be done via API), appointment notes only exist for events
+>   after install. Never present that absence as silence from the rep.
+>
+> #### `appointments/find` DOES show a `Notes` field. It is a WRITE field, not data.
+>
+> This looks like a live lead every time someone re-reads the API, so here is the
+> experiment that settles it (run 2026-08-29):
+>
+> ```
+> POST appointments/find {"AppointmentId":51051472,"Notes":"reschedule"}
+>   -> Slots: 1,  echoed Notes: 'reschedule'
+> POST appointments/find {"AppointmentId":51051472,"Notes":"zzzz-nonexistent-qqqq"}
+>   -> Slots: 1,  echoed Notes: 'zzzz-nonexistent-qqqq'
+> ```
+>
+> Whatever you send comes back verbatim and changes nothing — nonsense text does
+> not filter the appointment out. `Notes` sits in the response beside
+> `IncludeCompleted`, `SearchDate`, `SkipConflictChecks` and `UpdateLines`,
+> because this API echoes the whole REQUEST object back with results appended.
+> It is the field you populate to WRITE a note on a booking/update, mirroring
+> `contacts/addnote`. It is null on every read (6 appointments sampled, cancelled
+> and completed, with and without `IncludeContact`/`IncludeNotes`).
+>
+> `/find` is a POST search but does not behave as a general query: searching by
+> `ContactId` alone returns 0 slots. It effectively only resolves `AppointmentId`.
+>
+> Also probed and non-existent (HTTP 200 + empty body): `appointments/notes`,
+> `appointment/notes`, `appointmentnotes/query`, `notes/query`, `notes/all`,
+> `notes/find`, `appointments/getnotes`, `contacts/notes`, `contacts/getnotes`,
+> `appointments/addnote`, `activity/query`, `history/query`, `note/query`,
+> `appointments/details`. Download kinds `notes`, `appointmentnotes`,
+> `contactnotes`, `activities`, `history` return no DownloadId; the `contacts`
+> download has no note column.
+>
+> #### `cancelreasons/all` EXISTS and is documented — but returns empty objects.
+>
+> Confirmed live 2026-08-29 against KTU, both via `sm.sh` and raw curl (bypassing
+> any local scrubbing/formatting, to rule out a client-side bug):
+>
+> ```
+> POST cancelreasons/all {}
+>   -> {"Id":null,"Matches":[{},{},{},{},{},{},{},{}],"ResultCode":0,
+>       "Message":"Found 8 cancel reasons."}
+> ```
+>
+> `ResultCode` and `Message` confirm the org has exactly 8 cancel reasons (our
+> recovered map has 7 distinct labels + `id 4279`/Duplicate Booking = 8 — this
+> lines up). But every element of `Matches` is a genuinely empty `{}` — not a
+> parsing artefact, the API itself serializes zero fields per match. Passing an
+> `Id` filter (e.g. `3523`) does not narrow or populate the result either. The
+> API PDF references `CancelReason[]` as the Matches type but never defines that
+> object's shape anywhere in the doc (unlike `IdName`/`AppointmentSlot`, which
+> get their own sections) — consistent with a response model that was never
+> fully wired up server-side.
+>
+> **Net effect: still no way to get the label from the API.** The id->label map
+> in `repair_appt_followups.py` (recovered by joining `query_appointments`
+> against the download) remains the only source. Re-test this endpoint if
+> ServiceMinder ships an update — a currently-broken response model is the kind
+> of thing that gets fixed without an announcement.
+
+> #### Confirmed structurally, not just empirically: NO note/reason field in this
+> #### API is ever an output. Full API reference (52-page PDF), grep across every
+> #### endpoint's Direction column: 152 fields marked `Output` total, and every
+> #### single one of them is `ResultCode` or `Message`. Zero `Notes`, `Note`,
+> #### `UpdateNote`, `CancelReasonId`, `ProposalNotes`, or `CustomerNotes` field
+> #### is ever marked Output, on ANY endpoint, anywhere in the document. This is
+> #### not a per-endpoint quirk — it is how the API is designed. Confirms the
+> #### asymmetry below is not a set of individual dead ends but the shape of the
+> #### product.
+>
+> Also found and ruled out in the same pass: `appointments/feedback` (customer-
+> submitted satisfaction score via a hash-key link — a different concept from a
+> rep's cancellation note, and itself a write endpoint) and `appointments/queue`
+> (queue scheduling, not notes).
+
+> **The asymmetry is the point: this API can WRITE notes and cannot READ them
+> back** — except contact notes riding inside `contacts/locate`. Everything else
+> needs Liquid.
+
+> **Never write a contact note into a `cancel_reason` field.** That conflation is
+> what made the Appointment Recovery tab show pre-sale wishlist text under a "why
+> they cancelled" header. `cancel_reason` = the structured label only; blank is a
+> legitimate, informative value (only 13 of 67 Jul–Aug cancellations carry one).
+
 | # | Source | How to read it | Reality check |
 |---|---|---|---|
-| 1 | **Appointment free-text** | `find_appointment(location, appointment_id)` → `Notes`, `UpdateNote` | Where a rep's "family situation, must reschedule" lands. **Was null** on the live cancellation checked 2026-08-25. |
+| 0 | **`sm_notes` (preferred)** | `select … from sm_notes where contact_id = …` | Merged mirror of all three, untruncated. **The only source for appointment notes.** |
+| 1 | **Appointment free-text** | `find_appointment(location, appointment_id)` → `Notes`, `UpdateNote` | **Always null in practice** — null on both live cancellations checked (2026-08-25 and 2026-08-29). Do not rely on it; use `sm_notes`. |
 | 2 | **Contact notes** | `find_contact(location, id_search=<ContactId>)` → `Matches[0].Notes[]` — an **array** of `{Id, Title, Body}` | Titles seen live: `Perceptionist Call`, `Form`, hand-written. **Held the real content** on that same cancellation. Read every element; prefer the highest `Id`. |
 | 3 | **Cancel-reason picklist** | `CancelReasonId` on the appointment | Populated on **8 of 57** cancelled KTU appointments over 7 weeks (~14%). Observed ids `3523`, `4279`. |
 
