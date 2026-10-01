@@ -1141,10 +1141,8 @@ table.proc-table{border-collapse:collapse; width:100%; min-width:620px; margin:0
     <input id="p" type="password" placeholder="Password" autocomplete="current-password" />
     <div class="err" id="err"></div>
     <button onclick="login()">Sign in</button>
-    <div class="note"><a href="#" onclick="forgotPassword();return false"><b>Forgot your password?</b></a><br>
-      A reset link goes to the email on your account.<br>
-      Need an account? Ask Steven — users are managed in the Admin Console.</div>
-    <div class="err" id="fpMsg" style="display:none;color:var(--fg);opacity:.85"></div>
+    <div class="note">Sign in with your personal account.<br>
+      Need an account or a password reset? Ask Steven — users are managed in the Admin Console.</div>
   </div>
 </div>
 
@@ -3348,82 +3346,6 @@ function meName(fb){ return (CURRENT_PROFILE&&CURRENT_PROFILE.display_name)
   || (CURRENT_USER&&CURRENT_USER.email) || (CURRENT_PROFILE&&CURRENT_PROFILE.email) || fb || null; }
 function meId(){ return (CURRENT_USER&&CURRENT_USER.id) || (CURRENT_PROFILE&&CURRENT_PROFILE.id) || null; }
 function meEmail(){ return (CURRENT_USER&&CURRENT_USER.email) || (CURRENT_PROFILE&&CURRENT_PROFILE.email) || null; }
-/* ---------- Forgot password ----------------------------------------------
- * Deliberately NOT sb.auth.resetPasswordForEmail(): this project has no SMTP, so Supabase's own
- * mail is rate-limited testing-only and would fail silently. The `password-reset` Edge Function
- * generates the link and sends it through notify_queue → HighLevel, the path every other email
- * here already uses. The reply is identical for unknown addresses, so nobody can probe which
- * emails exist. */
-async function forgotPassword(){
-  const email = (val('u')||'').trim();
-  const box = document.getElementById('fpMsg');
-  box.style.display='block';
-  if(!email){ box.textContent='Type your email address above first, then tap this again.'; return; }
-  box.textContent='Sending…';
-  try{
-    const r = await fetch(SUPABASE_URL+'/functions/v1/password-reset',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY},
-      body:JSON.stringify({email, app:'intranet'})
-    });
-    const d = await r.json();
-    box.textContent = d.error ? d.error : (d.message || 'Check your email.');
-  }catch(e){ box.textContent='Could not send just now — ask Steven to reset it in the Admin Console.'; }
-}
-
-/* Arriving from a reset link: supabase-js turns the URL hash into a session and fires
- * PASSWORD_RECOVERY. Until they set a new password we keep them on this screen rather than
- * dropping them into the app half-authenticated. */
-let IN_RECOVERY = false;
-/* A reset link arrives as #recovery=<hashed_token>&email=… . We verify the token here rather than
-   routing through Supabase's /verify redirect, whose target must be on the Auth allow-list and
-   otherwise silently falls back to the project Site URL (still localhost:3000 on this project). */
-(async () => {
-  const hp = new URLSearchParams(location.hash.replace(/^#/, ''));
-  const tok = hp.get('recovery'); if (!tok) return;
-  history.replaceState(null, '', location.pathname + location.search);
-  /* verifyOtp rejects `email` alongside token_hash ("Only the token_hash and type should be
-     provided") — the address in the link is for the reader, not this call. */
-  const {error} = await sb.auth.verifyOtp({ type:'recovery', token_hash: tok });
-  const box = document.getElementById('fpMsg');
-  if (error) {
-    if (box) { box.style.display='block';
-      box.textContent = /expired|invalid/i.test(error.message)
-        ? 'That reset link has expired or was already used. Request a new one below.' : error.message; }
-    return;
-  }
-  showRecovery();
-})();
-
-function showRecovery(){
-  IN_RECOVERY = true;
-  const card = document.querySelector('.login-card');
-  if(!card || document.getElementById('rcWrap')) return;
-  document.getElementById('login').style.display='';
-  const w = document.createElement('div'); w.id='rcWrap';
-  w.innerHTML = `<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15)">
-    <div style="font-weight:700;margin-bottom:8px">Set a new password</div>
-    <input id="rcPw" type="password" placeholder="New password (8+ characters)" autocomplete="new-password" />
-    <input id="rcPw2" type="password" placeholder="Repeat it" autocomplete="new-password" />
-    <div class="err" id="rcMsg"></div>
-    <button onclick="submitRecovery()">Save password and sign in</button></div>`;
-  card.appendChild(w);
-}
-async function submitRecovery(){
-  const a=document.getElementById('rcPw').value, b=document.getElementById('rcPw2').value;
-  const m=document.getElementById('rcMsg');
-  if(a.length < 8){ m.textContent='Use at least 8 characters.'; return; }
-  if(a !== b){ m.textContent='Those two do not match.'; return; }
-  m.textContent='Saving…';
-  const {error} = await sb.auth.updateUser({password:a});
-  if(error){ m.textContent = /expired|invalid/i.test(error.message)
-      ? 'That link has expired — request a new one from the login screen.' : error.message; return; }
-  IN_RECOVERY = false;
-  history.replaceState(null,'',location.pathname+location.search);
-  document.getElementById('rcWrap')?.remove();
-  await enterApp();
-}
-
 async function login(){
   const email=val('u'); const p=document.getElementById('p').value;
   const btn=document.querySelector('.login-card button');
@@ -3688,7 +3610,6 @@ function go(tab,push=true){
   if(tab==='ordering'){ renderBtuOrdering(); }
   if(tab==='mktplan'){ renderMktPlan(); }
   if(tab==='mktspend'){ renderMktSpend(); }
-  if(tab==='jobs'){ loadJobCosting(); }
 }
 // Back/forward: restore the tab encoded in the hash without re-pushing
 window.addEventListener('popstate',()=>{ go((location.hash||'#home').slice(1)||'home',false); });
@@ -10253,7 +10174,6 @@ const JC_CATS=[['direct_materials','Direct Materials'],['contract_labor','Contra
   ['other','Other (job)'],['overhead_non_job','Overhead — not a job cost']];
 const JC_CAT_LBL=Object.fromEntries(JC_CATS);
 let JC_JOBS=[];
-let JC_BRAND='all';
 
 function rsHour(h){ const n=Number(h)||0; const ap=n<12?'am':'pm'; const t=n%12||12; return t+ap; }
 
@@ -10677,52 +10597,6 @@ function jcJobSel(id,sel){return `<select class="f" id="${id}" style="min-width:
 function jcCatSel(id,sel){return `<select class="f" id="${id}">`+
   JC_CATS.map(([v,l])=>`<option value="${v}" ${v===sel?'selected':''}>${l}</option>`).join('')+`</select>`;}
 
-/* Everything on the Job Costing panel — queue, releasable, focus, variance, board — reads from
-   views (jc_exceptions, jc_focus, jc_item_variance, jc_job_summary) that already carry the real
-   matching/escalation logic (see jc_run_matcher / jc_refresh_escalations, both server-side RPCs).
-   This is purely the fetch + render wiring; JC_BRAND narrows every query to one brand at once
-   rather than duplicating each board per brand. */
-window.jcSetBrand=(b)=>{ JC_BRAND=b; loadJobCosting(); };
-async function loadJobCosting(){
-  const bf=q=>JC_BRAND==='all'?q:q.eq('brand',JC_BRAND);
-  const [{data:jobs},{data:queue,error:eq},{data:rel,error:er},{data:focus,error:ef},{data:variance},{data:sums}]=await Promise.all([
-    bf(sb.from('jc_jobs').select('id,customer_name,brand')).order('customer_name'),
-    bf(sb.from('jc_exceptions').select('*')).order('created_at',{ascending:false}),
-    bf(sb.from('payables').select('*').in('mapping_status',['confirmed','override']).neq('status','paid')).order('due_date'),
-    bf(sb.from('jc_focus').select('*')).order('projected_gm_pct',{ascending:true,nullsFirst:false}),
-    bf(sb.from('jc_item_variance').select('*')).order('verdict'),
-    bf(sb.from('jc_job_summary').select('*')).order('customer_name'),
-  ]);
-  const err=eq||er||ef;
-  if(err){ document.getElementById('jcQueue').innerHTML='<div class="empty">Could not load: '+esc(err.message)+'</div>'; return; }
-  JC_JOBS=jobs||[];
-  renderJcKpis(queue||[],rel||[],focus||[]);
-  renderJcQueue(queue||[]);
-  renderJcReleasable(rel||[]);
-  renderJcFocus(focus||[]);
-  renderJcVariance(variance||[]);
-  renderJcBoard(sums||[],queue||[]);
-}
-
-function renderJcKpis(queue,rel,focus){
-  const el=document.getElementById('jcKpis'); if(!el) return;
-  const kpi=(label,value,tone)=>'<div class="kpi" style="padding:12px 14px"><div class="label">'+esc(label)+
-    '</div><div class="value" style="font-size:22px'+(tone?';color:'+tone:'')+'">'+esc(String(value))+'</div></div>';
-  const heldCt=queue.filter(p=>p.mapping_status!=='auto_mapped').length;
-  const queueSum=queue.reduce((s,p)=>s+(Number(p.amount)||0),0);
-  const relSum=rel.reduce((s,p)=>s+(Number(p.amount)||0),0);
-  const belowFloor=focus.filter(f=>f.projected_gm_pct!=null&&f.projected_gm_pct<45).length;
-  const pendingEsc=focus.reduce((s,f)=>s+(Number(f.pending_escalations)||0),0);
-  const brandBtn=(b,lbl)=>'<button class="btn sm '+(JC_BRAND===b?'':'ghost')+'" onclick="jcSetBrand(\''+b+'\')">'+lbl+'</button>';
-  el.innerHTML=
-    '<div style="grid-column:1/-1;display:flex;gap:6px;margin-bottom:2px">'+brandBtn('all','All')+brandBtn('KTU','KTU')+brandBtn('BTU','BTU')+'</div>'+
-    kpi('In queue',queue.length+' · '+money(queueSum),heldCt?'#ef4444':'')+
-    kpi('Held (needs a reason)',heldCt,heldCt?'#ef4444':'')+
-    kpi('Releasable now',rel.length+' · '+money(relSum),'#22c55e')+
-    kpi('Jobs below 45% floor',belowFloor,belowFloor?'#ef4444':'')+
-    kpi('Pending escalations',pendingEsc,pendingEsc?'#ef4444':'');
-}
-
 function renderJcQueue(queue){
   const el=document.getElementById('jcQueue');
   if(!queue.length){el.innerHTML='<div class="ge-clear">✅ Queue clear — every inbound invoice is mapped or released.</div>';return}
@@ -10779,7 +10653,7 @@ async function jcConfirm(id){
         is_unplanned:gb,unplanned_kind:gb?'go_back':null,source:'payable',created_by:jcWho()});
     }
   }
-  loadJobCosting();
+  renderJobs();
 }
 
 async function jcApproveEscalation(id){
@@ -10790,14 +10664,14 @@ async function jcApproveEscalation(id){
   const {error}=await sb.from('payables').update({escalation_approved_by:jcWho(),
     escalation_approved_at:new Date().toISOString(),escalation_reason:(p&&p.escalation_reason?p.escalation_reason+' — approved: ':'')+reason.trim()}).eq('id',id);
   if(error){alert('Approval failed: '+error.message);return}
-  loadJobCosting();
+  renderJobs();
 }
 
 async function jcRunMatcher(){
   const {error}=await sb.rpc('jc_run_matcher');
   if(error){alert('Matcher failed: '+error.message);return}
   await sb.rpc('jc_refresh_escalations');
-  loadJobCosting();
+  renderJobs();
 }
 
 async function jcOverride(id){
@@ -10807,7 +10681,7 @@ async function jcOverride(id){
   const {error}=await sb.from('payables').update({mapping_status:'override',held_reason:reason.trim(),
     mapped_by:jcWho(),mapped_at:new Date().toISOString()}).eq('id',id);
   if(error){alert('Override failed: '+error.message);return}
-  loadJobCosting();
+  renderJobs();
 }
 
 function renderJcReleasable(rel){
@@ -10845,7 +10719,7 @@ async function jcSetStatus(id,status){
   const upd={status}; if(status==='paid') upd.paid_date=new Date().toISOString().slice(0,10);
   const {error}=await sb.from('payables').update(upd).eq('id',id);
   if(error){alert('Blocked: '+error.message);return}
-  loadJobCosting();
+  renderJobs();
 }
 
 function renderJcBoard(sums,queue){
@@ -10981,7 +10855,7 @@ async function jcAddJob(){
       category:'sales_commission',qty:1,unit_cost:Math.round(contract*8)/100,forecasted_cost:Math.round(contract*8)/100,source:'manual'});
   }
   ['jcName','jcContract'].forEach(id=>document.getElementById(id).value='');
-  loadJobCosting(); renderDash();
+  renderJobs(); renderDash();
 }
 
 async function renderRecent(){

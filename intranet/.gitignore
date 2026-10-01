@@ -1,3 +1,4 @@
 worker.js
+public/
 .wrangler/
 node_modules/
