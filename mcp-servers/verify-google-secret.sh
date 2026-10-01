@@ -1,67 +1,232 @@
 #!/usr/bin/env bash
-# Verify the shared Google OAuth credential, and say plainly which of the two
-# failure modes you are in. One client secret is used by google-ads, gmb,
-# google-analytics, gtm and tracking-audit.py, so this one check covers all five.
+# =============================================================================
+# verify-google-secret.sh — diagnose a Google OAuth client id/secret/refresh
+# token triple over curl, with zero MCP registration and zero permission
+# prompts (same rationale as sb.sh / ghl.sh / sm.sh / gmb.sh: Bash isn't
+# classifier-gated, so this also works unattended from a scheduled Routine).
+# -----------------------------------------------------------------------------
+# Why this exists: every Google-backed server in this repo (google-ads, gmb,
+# google-analytics, gtm) authenticates with a Desktop OAuth client + a
+# long-lived refresh token, and per CLAUDE.md scopes do NOT carry across
+# tokens — the GOOGLE_ADS_REFRESH_TOKEN 403s against GA4 and against Tag
+# Manager. That produces three different failure shapes that all look the
+# same from the outside ("the server won't authenticate"):
+#   1. client id/secret wrong or mismatched  -> invalid_client
+#   2. refresh token expired/revoked/wrong-client -> invalid_grant
+#   3. token mints fine but lacks the scope the API needs -> looks like a
+#      403 deep inside the server, days later
+# This script mints an access token for one or all of the three credential
+# sets and, on success, calls tokeninfo to print the SCOPES actually granted
+# — so a scope mismatch shows up here instead of inside a server three hops
+# away. bootstrap.sh's "Skipped" list only tells you a var is unset; this
+# tells you whether a SET var actually authenticates.
 #
-#   bash mcp-servers/verify-google-secret.sh
+# Usage:
+#   bash mcp-servers/verify-google-secret.sh                # check ads, ga4, gtm
+#   bash mcp-servers/verify-google-secret.sh ads
+#   bash mcp-servers/verify-google-secret.sh ga4
+#   bash mcp-servers/verify-google-secret.sh gtm
 #
-# Reads GOOGLE_ADS_CLIENT_ID / _CLIENT_SECRET / _REFRESH_TOKEN from the
-# environment, falling back to ~/.claude/settings.json (mcpServers.google-ads.env).
-set -u
+# Credential resolution matches .env.example: GA4_CLIENT_ID/SECRET and
+# GTM_CLIENT_ID/SECRET fall back to GOOGLE_ADS_CLIENT_ID/SECRET when blank
+# (same OAuth app, different token) — GA4_REFRESH_TOKEN / GTM_REFRESH_TOKEN
+# always need their own value, minted via tools/get_refresh_token.py. If a
+# var is unset in the environment (e.g. an interactive session where secrets
+# live in Claude Code's own config rather than exported env vars), each var
+# is also looked up under ~/.claude/settings.json's mcpServers.<server>.env —
+# checked per credential set's own server key, and additionally under
+# "google-ads" for client id/secret (never for refresh tokens, which are not
+# interchangeable between APIs).
+#
+# Exit code: 0 only if every set that was checked minted a token. Prints one
+# JSON object per set to stdout either way, so a caller can act on
+# "checks[].ok" without re-parsing prose.
+# =============================================================================
+set -uo pipefail
 
-python3 - <<'PY'
-import json, os, sys, urllib.request, urllib.parse, urllib.error
+TOKEN_URL="https://oauth2.googleapis.com/token"
+TOKENINFO_URL="https://oauth2.googleapis.com/tokeninfo"
+SETTINGS_JSON="$HOME/.claude/settings.json"
 
-def creds():
-    e = {k: os.environ.get(k) for k in
-         ("GOOGLE_ADS_CLIENT_ID", "GOOGLE_ADS_CLIENT_SECRET", "GOOGLE_ADS_REFRESH_TOKEN")}
-    if all(e.values()):
-        return e, "environment"
-    p = os.path.expanduser("~/.claude/settings.json")
-    try:
-        env = json.load(open(p))["mcpServers"]["google-ads"]["env"]
-        return {k: env.get(k) for k in e}, "~/.claude/settings.json"
-    except Exception as ex:
-        print(f"could not read credentials: {ex}"); sys.exit(2)
+die() { echo "{\"error\":$(python3 -c 'import json,sys;print(json.dumps(sys.argv[1]))' "$1")}" >&2; exit "${2:-1}"; }
 
-c, src = creds()
-missing = [k for k, v in c.items() if not v]
-if missing:
-    print("MISSING:", ", ".join(missing)); sys.exit(2)
-
-print(f"source     : {src}")
-print(f"client_id  : {c['GOOGLE_ADS_CLIENT_ID']}")
-print(f"project    : {c['GOOGLE_ADS_CLIENT_ID'].split('-')[0]}")
-print()
-
-body = urllib.parse.urlencode({
-    "client_id": c["GOOGLE_ADS_CLIENT_ID"],
-    "client_secret": c["GOOGLE_ADS_CLIENT_SECRET"],
-    "refresh_token": c["GOOGLE_ADS_REFRESH_TOKEN"],
-    "grant_type": "refresh_token"}).encode()
-
+# ---- settings_lookup <var_name> <mcp_server_key> -------------------------
+# Prints the value if ~/.claude/settings.json has
+# mcpServers.<server_key>.env.<var_name> set, else prints nothing and
+# returns 1. Never errors on a missing/malformed file.
+settings_lookup() {
+  local var="$1" server="$2"
+  [ -f "$SETTINGS_JSON" ] || return 1
+  VAR="$var" SERVER="$server" SETTINGS_JSON="$SETTINGS_JSON" python3 <<'PY'
+import json, os, sys
 try:
-    urllib.request.urlopen(
-        urllib.request.Request("https://oauth2.googleapis.com/token", data=body), timeout=30)
-    print("✅ WORKING — token refresh succeeded.")
-    print("   google-ads, gmb, google-analytics, gtm and tracking-audit.py can all authenticate.")
-    sys.exit(0)
-except urllib.error.HTTPError as e:
-    j = json.loads(e.read().decode())
-    desc = j.get("error_description", "")
-    print(f"❌ FAILED — {j.get('error')}: {desc}")
-    print()
-    # Google uses two distinct messages, and they mean very different amounts of work.
-    if "client was not found" in desc.lower():
-        print("   The CLIENT ITSELF is gone (deleted, or the id is wrong).")
-        print("   A replacement client means a NEW refresh token too — you must re-consent:")
-        print("     python3 mcp-servers/tools/get_refresh_token.py")
-    elif "secret" in desc.lower():
-        print("   The client EXISTS; only the secret is wrong.")
-        print("   The refresh token is still valid — it is bound to the client and the user")
-        print("   grant, not the secret. Paste the correct secret and everything resumes.")
-        print(f"   https://console.cloud.google.com/apis/credentials?project={c['GOOGLE_ADS_CLIENT_ID'].split('-')[0]}")
-    else:
-        print("   Unrecognised failure — read the message above before changing anything.")
+    d = json.load(open(os.environ["SETTINGS_JSON"]))
+except Exception:
+    sys.exit(1)
+v = d.get("mcpServers", {}).get(os.environ["SERVER"], {}).get("env", {}).get(os.environ["VAR"])
+if v:
+    print(v)
+else:
     sys.exit(1)
 PY
+}
+
+# ---- verify_set <name> <server_key> <client_id_var> <client_secret_var> <refresh_token_var> [fallback_id_var] [fallback_secret_var]
+# Prints one JSON object; returns 0 on a successful mint, 1 otherwise.
+verify_set() {
+  local name="$1" server="$2" id_var="$3" secret_var="$4" rt_var="$5" fb_id_var="${6:-}" fb_secret_var="${7:-}"
+
+  local cid="${!id_var:-}"
+  local csec="${!secret_var:-}"
+  local rt="${!rt_var:-}"
+
+  local id_source="$id_var" secret_source="$secret_var" rt_source="$rt_var"
+  if [ -z "$cid" ] && [ -n "$fb_id_var" ]; then cid="${!fb_id_var:-}"; id_source="$fb_id_var (fallback)"; fi
+  if [ -z "$csec" ] && [ -n "$fb_secret_var" ]; then csec="${!fb_secret_var:-}"; secret_source="$fb_secret_var (fallback)"; fi
+
+  # Env (and its GOOGLE_ADS_* fallback above) came up empty — try
+  # ~/.claude/settings.json before giving up. Client id/secret also fall
+  # back to the "google-ads" section there, matching the env-var fallback;
+  # refresh tokens only ever check their own section, never google-ads',
+  # since a token is not valid across APIs.
+  if [ -z "$cid" ]; then
+    local v
+    v="$(settings_lookup "$id_var" "$server")" && { cid="$v"; id_source="$id_var (~/.claude/settings.json)"; }
+    if [ -z "$cid" ] && [ -n "$fb_id_var" ]; then
+      v="$(settings_lookup "$fb_id_var" "google-ads")" && { cid="$v"; id_source="$fb_id_var (~/.claude/settings.json fallback)"; }
+    fi
+  fi
+  if [ -z "$csec" ]; then
+    local v
+    v="$(settings_lookup "$secret_var" "$server")" && { csec="$v"; secret_source="$secret_var (~/.claude/settings.json)"; }
+    if [ -z "$csec" ] && [ -n "$fb_secret_var" ]; then
+      v="$(settings_lookup "$fb_secret_var" "google-ads")" && { csec="$v"; secret_source="$fb_secret_var (~/.claude/settings.json fallback)"; }
+    fi
+  fi
+  if [ -z "$rt" ]; then
+    local v
+    v="$(settings_lookup "$rt_var" "$server")" && { rt="$v"; rt_source="$rt_var (~/.claude/settings.json)"; }
+  fi
+
+  if [ -z "$cid" ] || [ -z "$csec" ] || [ -z "$rt" ]; then
+    local missing=()
+    [ -z "$cid" ] && missing+=("$id_var${fb_id_var:+ or $fb_id_var}")
+    [ -z "$csec" ] && missing+=("$secret_var${fb_secret_var:+ or $fb_secret_var}")
+    [ -z "$rt" ] && missing+=("$rt_var")
+    NAME="$name" MISSING="$(printf '%s\n' "${missing[@]}")" python3 <<'PY'
+import json, os
+print(json.dumps({
+    "credential_set": os.environ["NAME"],
+    "ok": False,
+    "status": "not_configured",
+    "missing": [l for l in os.environ["MISSING"].splitlines() if l],
+}, indent=1))
+PY
+    return 1
+  fi
+
+  local http_code resp
+  resp="$(curl -sS --max-time 60 -w '\n%{http_code}' -X POST "$TOKEN_URL" \
+    -d "client_id=$cid" -d "client_secret=$csec" \
+    -d "refresh_token=$rt" -d "grant_type=refresh_token" 2>/dev/null)" \
+    || { echo "{\"credential_set\":\"$name\",\"ok\":false,\"status\":\"network_error\",\"detail\":\"curl failed reaching oauth2.googleapis.com\"}"; return 1; }
+  http_code="${resp##*$'\n'}"
+  local body="${resp%$'\n'*}"
+
+  NAME="$name" HTTP_CODE="$http_code" BODY="$body" \
+  ID_SRC="$id_source" SECRET_SRC="$secret_source" RT_VAR="$rt_source" \
+  TOKENINFO_URL="$TOKENINFO_URL" python3 <<'PY'
+import json, os, urllib.request, urllib.error, urllib.parse
+
+name = os.environ["NAME"]
+code = os.environ["HTTP_CODE"]
+body_raw = os.environ["BODY"]
+id_src = os.environ["ID_SRC"]
+secret_src = os.environ["SECRET_SRC"]
+rt_var = os.environ["RT_VAR"]
+
+try:
+    body = json.loads(body_raw)
+except json.JSONDecodeError:
+    body = {"raw": body_raw}
+
+out = {"credential_set": name, "http_status": int(code) if code.isdigit() else code,
+       "client_id_source": id_src, "client_secret_source": secret_src,
+       "refresh_token_var": rt_var}
+
+if code == "200" and "access_token" in body:
+    out["ok"] = True
+    out["status"] = "authenticated"
+    out["expires_in_seconds"] = body.get("expires_in")
+    token = body["access_token"]
+    # tokeninfo tells us the SCOPES actually granted — the thing that bites
+    # days later as a 403 deep inside a server, per CLAUDE.md's repeated
+    # "scopes don't carry across tokens" lesson.
+    try:
+        url = os.environ["TOKENINFO_URL"] + "?" + urllib.parse.urlencode({"access_token": token})
+        with urllib.request.urlopen(url, timeout=30) as r:
+            info = json.loads(r.read().decode())
+        out["scopes"] = sorted((info.get("scope") or "").split())
+        out["scope_expires_in_seconds"] = info.get("expires_in")
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as e:
+        out["scopes_lookup_error"] = str(e)
+else:
+    out["ok"] = False
+    err = body.get("error", "unknown_error")
+    err_desc = body.get("error_description", "")
+    out["error"] = err
+    out["error_description"] = err_desc
+    if err == "invalid_client":
+        out["status"] = "bad_client_id_or_secret"
+        out["diagnosis"] = (f"{id_src} / {secret_src} do not form a valid OAuth "
+                             f"client, or don't match the client that issued {rt_var}. "
+                             "Re-check both values in Cloud Console > APIs & Services > "
+                             "Credentials.")
+    elif err == "invalid_grant":
+        out["status"] = "bad_or_expired_refresh_token"
+        out["diagnosis"] = (f"{rt_var} is expired, revoked, or was minted by a "
+                             f"different OAuth client than {id_src}/{secret_src}. "
+                             "Re-mint with tools/get_refresh_token.py.")
+    elif err == "unauthorized_client":
+        out["status"] = "client_not_authorized_for_this_grant"
+        out["diagnosis"] = (f"{id_src} was not the client tools/get_refresh_token.py "
+                             f"used to mint {rt_var} — a refresh token can only be "
+                             "redeemed by the OAuth client that issued it (this is the "
+                             "same 'client id/secret have to travel with the token' "
+                             "pairing rule get_refresh_token.py prints on mint). "
+                             f"Verify {id_src}/{secret_src} are the exact client the "
+                             f"token preset printed, or re-mint {rt_var}.")
+    else:
+        out["status"] = "unexpected_error"
+
+print(json.dumps(out, indent=1))
+raise SystemExit(0 if out["ok"] else 1)
+PY
+}
+
+TARGET="${1:-all}"
+overall_ok=0
+
+check_ads() {
+  verify_set "google-ads" "google-ads" GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET GOOGLE_ADS_REFRESH_TOKEN
+}
+check_ga4() {
+  verify_set "ga4" "google-analytics" GA4_CLIENT_ID GA4_CLIENT_SECRET GA4_REFRESH_TOKEN GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET
+}
+check_gtm() {
+  verify_set "gtm" "gtm" GTM_CLIENT_ID GTM_CLIENT_SECRET GTM_REFRESH_TOKEN GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET
+}
+
+case "$TARGET" in
+  ads)  check_ads  || overall_ok=1 ;;
+  ga4)  check_ga4  || overall_ok=1 ;;
+  gtm)  check_gtm  || overall_ok=1 ;;
+  all)
+    check_ads || overall_ok=1
+    check_ga4 || overall_ok=1
+    check_gtm || overall_ok=1
+    ;;
+  *) die "usage: verify-google-secret.sh [ads|ga4|gtm|all]" 2 ;;
+esac
+
+exit "$overall_ok"
