@@ -37,7 +37,7 @@ Before assuming something is "in TeamLivingston", check this table. The client-f
 **GitHub Actions account block (2026-09-27 ~22:45 → cleared by 2026-09-29).**
 - **Symptom, if it recurs:** every Actions job in every private repo fails within 3 seconds, with `runner_id 0` and no logs.
 - **Cause:** GitHub refuses to start jobs at the account level (billing: minutes used up with a $0 spending limit, or a failed payment). Fix it in GitHub → Settings → Billing and plans. While blocked, deploy by hand from a Claude cloud session (`npx wrangler deploy` with `CLOUDFLARE_API_TOKEN`).
-- **2026-09-29:** `deploy-worker.yml` runs succeed again. `deploy-supabase-functions.yml` still fails, but that is a separate cause: its repo secret `SUPABASE_ACCESS_TOKEN` returns 401 and must be renewed. Until then, deploy `queue-notify` with the Supabase MCP `deploy_edge_function`.
+- **2026-09-29:** `deploy-worker.yml` runs succeed again. **2026-10-01:** `deploy-supabase-functions.yml` works again too — its repo secret `SUPABASE_ACCESS_TOKEN` is now a Supabase *personal access token* (`sbp_` + 40 hex, from supabase.com/dashboard/account/tokens). The project's publishable key (`sb_publishable_…`) or secret key (`sb_secret_…`) will not work; the workflow now fails with the value's length and first 4 characters if the wrong kind is pasted.
 
 ## MCP Servers
 
