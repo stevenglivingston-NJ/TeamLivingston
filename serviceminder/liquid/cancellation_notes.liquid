@@ -1,0 +1,111 @@
+{%- comment -%}
+===============================================================================
+cancellation_notes.liquid — emit a cancelled appointment's FULL note set as JSON
+-------------------------------------------------------------------------------
+WHY THIS EXISTS
+The ServiceMinder Open API cannot see appointment-level notes. Verified
+2026-08-29 against KTU appointment 51051472 (Garret Starr, cancelled 8/21):
+
+  appointments/find      -> "Notes": null, "UpdateNote": null
+  appointments/query     -> no note field at all; CancelReasonId: null
+  contacts/locate        -> ONE note (the "Booking Details" intake blurb)
+  download kind=appointments -> no Notes column
+
+Meanwhile the SM UI shows an Appointment Note written by Ben Yabra on 8/20:
+"Client wrote 'I tried to write in and tell them I wanted it last week. Not
+this week' and then I both called client with no answer and also texted him
+advising that we can reschedule if he'd still like. No reply back"
+
+That note IS the cancellation reason. Every API path we have is blind to it, so
+the intranet's Appointment Recovery tab was showing the pre-sale intake blurb
+under a "cancel reason" header instead — i.e. reading as though he cancelled
+because he wants new cabinets.
+
+Liquid CAN see it. Per ServiceMinder's Liquid Objects reference, Appointment
+exposes:
+    appointment_notes  List<AppointmentNote>
+    notes              List<Note>   {id,title,body,private,created_at,created_by}
+    notes_summary      String
+    customer_notes     String
+    cancel_reason      IdName       <- the LABEL, not just the id
+    contact.notes      List<Note>
+
+cancel_reason.name is worth the whole exercise on its own: there is NO
+cancel-reason lookup endpoint on this API (probed cancelreasons,
+settings/cancelreasons, lookups/cancelreasons, appointmentcancelreasons — all
+return HTTP 200 with an empty body). Liquid is the only place the id->label map
+is visible, so "reason id 3523" finally becomes a human sentence.
+
+-------------------------------------------------------------------------------
+HOW TO INSTALL (ServiceMinder UI — cannot be done through the API)
+
+  Control Panel -> Notifications -> Appointment Cancelled
+    * Deliver to firstgentalent@gmail.com — the inbox Goldeneye already sweeps
+      each run. (ingest-email is an HTTP webhook, not a mailbox; ServiceMinder
+      notifications send email.)
+    * Paste this template as the BODY. Set the format to plain text, not HTML —
+      an HTML body will entity-escape the JSON and break the parser.
+    * Subject line, exactly:  SM-CANCEL {{ appointment.id }}
+      (the ingest matches any SM- prefix; SM-CANCEL keeps cancellations
+       distinguishable in inbox_emails at a glance)
+
+  Do this once per brand (KTU and BTU) — notifications are per-organization.
+
+The ingest-email webhook already lands mail in `inbox_emails`; Goldeneye
+step 5b(a) picks the row up from there by the SM-CANCEL subject prefix.
+
+-------------------------------------------------------------------------------
+OUTPUT CONTRACT
+One JSON object between the two sentinel lines. The sentinels matter: mail
+gateways append footers and disclaimers, so the parser slices between them
+rather than trusting the whole body to be JSON.
+
+Private notes are INCLUDED and flagged `"private": true` — a rep's candid
+"customer was furious about the quote" is exactly the signal Appointment
+Recovery needs. The intranet must not surface a private note to a customer-
+facing view; that filtering is the consumer's job, not this template's.
+===============================================================================
+{%- endcomment -%}
+---SM-NOTES-JSON-BEGIN---
+{
+  "source": "appointment",
+  "brand": {{ appointment.organization.name | json }},
+  "appointment_id": {{ appointment.id | json }},
+  "contact_id": {{ appointment.contact_id | json }},
+  "proposal_id": {{ appointment.proposal_id | json }},
+  "subject_label": {{ appointment.contact_name | json }},
+  "service": {{ appointment.service.name | json }},
+  "scheduled": {{ appointment.scheduled_iso | json }},
+  "cancelled_at": {{ appointment.cancelled_at | json }},
+  "is_canceled": {{ appointment.is_canceled | json }},
+  "owner": {{ appointment.service_agent.name | json }},
+  "cancel_reason_id": {{ appointment.cancel_reason.id | json }},
+  "cancel_reason": {{ appointment.cancel_reason.name | json }},
+  "notes_summary": {{ appointment.notes_summary | json }},
+  "customer_notes": {{ appointment.customer_notes | json }},
+  "notes": [
+    {%- for n in appointment.notes -%}
+    {
+      "id": {{ n.id | json }},
+      "title": {{ n.title | json }},
+      "body": {{ n.body | json }},
+      "private": {{ n.private | json }},
+      "created_at": {{ n.created_at | json }},
+      "created_by": {{ n.created_by.name | json }}
+    }{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  ],
+  "contact_notes": [
+    {%- for n in appointment.contact.notes -%}
+    {
+      "id": {{ n.id | json }},
+      "title": {{ n.title | json }},
+      "body": {{ n.body | json }},
+      "private": {{ n.private | json }},
+      "created_at": {{ n.created_at | json }},
+      "created_by": {{ n.created_by.name | json }}
+    }{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  ]
+}
+---SM-NOTES-JSON-END---

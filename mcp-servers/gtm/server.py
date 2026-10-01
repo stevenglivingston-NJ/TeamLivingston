@@ -265,6 +265,104 @@ def create_custom_event_trigger(
 
 
 @mcp.tool()
+def create_ga4_event_tag(
+    brand: str,
+    name: str,
+    event_name: str,
+    measurement_id: str,
+    firing_trigger_ids: list[str],
+    workspace_path: Optional[str] = None,
+) -> dict[str, Any]:
+    """Create a GA4 Event tag (type "gaawe") that sends event_name to
+    measurement_id when any of firing_trigger_ids fires.
+
+    Use this for engagement/diagnostic events (form_started, form_abandoned,
+    calendar_booked). Do NOT route a non-lead event into Google Ads as a
+    conversion — a form START is not a lead, and feeding it to Smart Bidding
+    corrupts the bidding signal. Ads conversions belong in
+    create_ads_conversion_tag.
+
+    Parameter shape is copied from BTU's live tag 33 ("GA4 - generate_lead").
+    measurementIdOverride is what actually routes the hit; a GA4 tag created
+    without it inherits whatever config tag happens to be present, which is
+    how an event silently lands in the wrong property.
+
+    Staged only — a human publishes in the GTM UI.
+    """
+    if not firing_trigger_ids:
+        raise ValueError(
+            "firing_trigger_ids is empty; a tag with no trigger never fires. "
+            "Create the trigger first (see create_custom_event_trigger)."
+        )
+    ws = workspace_path or _default_workspace_path(brand)
+    body = {
+        "name": name,
+        "type": "gaawe",
+        "parameter": [
+            {"type": "boolean", "key": "sendEcommerceData", "value": "false"},
+            {"type": "boolean", "key": "enhancedUserId", "value": "false"},
+            {"type": "template", "key": "eventName", "value": event_name},
+            {
+                "type": "template",
+                "key": "measurementIdOverride",
+                "value": measurement_id,
+            },
+        ],
+        "firingTriggerId": list(firing_trigger_ids),
+    }
+    return _request("POST", f"{ws}/tags", body=body)
+
+
+@mcp.tool()
+def create_ads_conversion_tag(
+    brand: str,
+    name: str,
+    conversion_id: str,
+    conversion_label: str,
+    firing_trigger_ids: list[str],
+    workspace_path: Optional[str] = None,
+) -> dict[str, Any]:
+    """Create a Google Ads Conversion Tracking tag (type "awct") firing on
+    firing_trigger_ids.
+
+    conversion_id is the account's numeric id WITHOUT the "AW-" prefix
+    (BTU: 17046712909). conversion_label is the per-action label from the
+    conversion action in Google Ads (e.g. "TkmRCPSMn7scEM3kwMA_"). Both are
+    required and neither is guessable — a tag built with the wrong label
+    reports into a different conversion action and looks like it works.
+
+    Parameter shape is copied from BTU's live tag 31 ("GAds - Submit lead
+    form"). enableConversionLinker stays true so the tag reads the _gcl
+    cookies the Conversion Linker writes; without it gclid attribution is
+    dropped even though the tag fires.
+
+    Staged only — a human publishes in the GTM UI.
+    """
+    if not firing_trigger_ids:
+        raise ValueError(
+            "firing_trigger_ids is empty; a tag with no trigger never fires. "
+            "Create the trigger first (see create_custom_event_trigger)."
+        )
+    if conversion_id.upper().startswith("AW-"):
+        raise ValueError(
+            f"conversion_id should be the bare number, not '{conversion_id}'. "
+            "Strip the 'AW-' prefix."
+        )
+    ws = workspace_path or _default_workspace_path(brand)
+    body = {
+        "name": name,
+        "type": "awct",
+        "parameter": [
+            {"type": "boolean", "key": "enableConversionLinker", "value": "true"},
+            {"type": "template", "key": "conversionId", "value": conversion_id},
+            {"type": "template", "key": "conversionLabel", "value": conversion_label},
+        ],
+        "firingTriggerId": list(firing_trigger_ids),
+    }
+    return _request("POST", f"{ws}/tags", body=body)
+
+
+@mcp.tool()
 def update_tag_firing_triggers(
     brand: str,
     tag_id: str,

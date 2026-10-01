@@ -31,14 +31,18 @@ async function loadKeys(): Promise<void> {
   SM_KEYS.BTU = Deno.env.get("SM_KEY_BTU") ?? "";
   if (JT_KEY && SM_KEYS.KTU && SM_KEYS.BTU) return;
 
+  // app_secrets (also RLS-on / zero policies) is where the other functions keep
+  // the ServiceMinder keys; the JobTread key was added there 2026-09-30.
   const rows = await sb(
     `select key, value from dispatch_config ` +
-      `where key in ('jc_jobtread_grant_key','jc_sm_key_ktu','jc_sm_key_btu')`,
+      `where key in ('jc_jobtread_grant_key','jc_sm_key_ktu','jc_sm_key_btu') ` +
+      `union all select key, value from app_secrets ` +
+      `where key in ('JOBTREAD_GRANT_KEY','SM_KEY_KTU','SM_KEY_BTU')`,
   );
   for (const r of Array.isArray(rows) ? rows : []) {
-    if (r.key === "jc_jobtread_grant_key" && !JT_KEY) JT_KEY = r.value;
-    if (r.key === "jc_sm_key_ktu" && !SM_KEYS.KTU) SM_KEYS.KTU = r.value;
-    if (r.key === "jc_sm_key_btu" && !SM_KEYS.BTU) SM_KEYS.BTU = r.value;
+    if ((r.key === "jc_jobtread_grant_key" || r.key === "JOBTREAD_GRANT_KEY") && !JT_KEY) JT_KEY = r.value;
+    if ((r.key === "jc_sm_key_ktu" || r.key === "SM_KEY_KTU") && !SM_KEYS.KTU) SM_KEYS.KTU = r.value;
+    if ((r.key === "jc_sm_key_btu" || r.key === "SM_KEY_BTU") && !SM_KEYS.BTU) SM_KEYS.BTU = r.value;
   }
 }
 
@@ -98,9 +102,12 @@ function num(v: unknown): number | null {
 // --- category mapping -------------------------------------------------------
 // JCA categories: direct_materials | contract_labor | employee_labor |
 //                 sales_commission | other
+// Stems (plumb, electric, carpent, deliver, demo, decommission) take a suffix:
+// a closing \b on a bare stem never matched "Plumbing" / "Electrical".
 const LABOR_RX =
-  /\b(labor|labour|install(ation)?|shop|demo|deliver|freight|handling|carpent|plumb|electric|tile setter|painting labor)\b/i;
-const COMMISSION_RX = /commission/i;
+  /\b(labor|labour|install(ation|ed|ing)?|shop|demo\w*|deliver\w*|freight|handling|carpent\w*|plumb\w*|electric\w*|decommission\w*|tile setter|painting labor)\b/i;
+// Word-start anchor: "Decommission a tub" is plumbing, not a sales commission.
+const COMMISSION_RX = /\bcommission/i;
 const FEE_RX = /\b(fee|permit|dumpster|general conditions|overhead|contingency)\b/i;
 
 const JT_COSTTYPE_MAP: Record<string, string> = {
@@ -165,15 +172,25 @@ function linesFromJt(items: any[]): Line[] {
   for (const it of items) {
     const name = String(it?.name ?? it?.description ?? "").trim();
     if (!name) continue;
-    const qty = num(it?.quantity) ?? 0;
+    // JobTread treats a NULL quantity as 1 in its own cost/price rollups
+    // (vendor-confirmed 2026-09-10: unit cost 100 / unit price 130 with no
+    // quantity rolls up as cost 100 and price 130). The fallback must use the
+    // same effective quantity -- multiplying by a literal 0 recorded cost 0
+    // against the FULL price, flattering gross margin and making the 45% gate
+    // less likely to escalate a job that deserves it.
+    // NULL and an explicit 0 are NOT the same thing here: null means 1, while a
+    // deliberate 0 zeroes both cost and price. `qty || 1` conflated them, so an
+    // item zeroed on purpose still carried a full unit of cost.
+    const rawQty = num(it?.quantity);
+    const effQty = rawQty === null ? 1 : rawQty;
     const ucost = num(it?.unitCost);
     const cost = num(it?.cost);
     out.push({
       description: name.slice(0, 400),
       category: categorize(name, it?.costType?.name),
-      qty: qty || 1,
+      qty: effQty,
       unit_cost: ucost,
-      forecasted_cost: cost !== null ? cost : (ucost ? qty * ucost : null),
+      forecasted_cost: cost !== null ? cost : (ucost !== null ? effQty * ucost : null),
       amount_charged: num(it?.price),
       cost_code: it?.costCode?.name ?? null,
       source_line_id: String(it?.id ?? ""),

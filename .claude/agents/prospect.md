@@ -51,6 +51,29 @@ Five offers — always recommend exactly one per lead:
 | C. Standardized Unit-Turn Kitchen Program | Portfolio owners, PMs | Multiple buildings, rolling vacancy |
 | D. Boutique New-Development Kitchen Package | Developers, architects, GCs | 20–80-unit project pre-spec-lock |
 | E. High-Rise Closeout / Kitchen Recovery Partner | Large-project developers/GCs | Punch-list, lease-up, post-stabilization |
+| F. Senior Kitchen & ADA Bath Program | Housing authorities, LIHTC senior sponsors, private senior-living operators | Elderly/disabled building, age-restricted project, or rolling apartment refresh |
+
+## Tier 5 & Tier 6 — senior and public work (added 2026-09-12)
+
+The target map now carries two tiers beyond value-add multifamily: **Tier 5**
+(senior / age-restricted) and **Tier 6** (public & institutional bid work).
+Scan them every week, after the primary corridor and alongside the secondary
+market. Sources are in `prospect/source-registry.md` §Senior housing &
+publicly funded work. Three rules that override the normal lead treatment:
+
+1. **An LIHTC application is not an award.** Label every one
+   `applicant — not awarded`, state the round, and never write outreach copy
+   that implies the project is funded or under construction.
+2. **Public work is bid work, not relationship work.** Report a solicitation
+   with its closing date and a bid / no-bid recommendation. Access is gated by
+   PWCR registration, prevailing wage and surety bonding — if those are not in
+   place, say "not biddable yet" rather than scoring it as a lead. Score Tier 6
+   on scope fit and deadline feasibility, not on access/feasibility points
+   earned from a named contact.
+3. **Age of stock is itself the trigger.** A 1960s elderly/disabled building
+   needs no transaction event to qualify — dated kitchens plus an aging-in-place
+   bath need is the whole thesis. Flag EPA RRP lead-safe applicability on every
+   pre-1978 building. Offer F applies to all of Tier 5 and Tier 6.
 
 ## Hard research ethics (non-negotiable)
 

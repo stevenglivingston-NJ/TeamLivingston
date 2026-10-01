@@ -1,0 +1,57 @@
+{%- comment -%}
+===============================================================================
+proposal_notes.liquid — mirror a proposal's notes into the intranet
+-------------------------------------------------------------------------------
+CORRECTED 2026-08-31 — this template is NOT redundant with the API.
+`proposal/details` (called with `Id`, not `ProposalId`) returns two different
+things and only one of them is readable:
+
+  CustomerNotes  string  the scope text on the quote. Populated ~56%.
+                         Synced by sync_proposal_engagement.py — no Liquid needed.
+  ProposalNotes  array   the internal notes with author + timestamp.
+                         EMPTY on all 30 proposals checked.
+
+So the rep's running commentary on a quote — the part that says why it stalled
+— is only reachable this way, exactly like appointment notes. It also arrives
+PUSH rather than pull: a note added the hour after a quote goes out ("wants to
+think it over till payday") lands before the next daily sync, not after it.
+
+Per the Liquid Objects reference, Proposal exposes both `notes` (List<Note>)
+and `proposal_notes` (List<ProposalNote>); `notes` carries the author and
+timestamp, so that is what this emits.
+
+INSTALL (once per brand):
+  Control Panel -> Notifications -> Proposal Sent   (repeat for Accepted/Declined)
+    body format: PLAIN TEXT
+    SUBJECT: SM-PROP {{ proposal.id }}
+    deliver to: firstgentalent@gmail.com
+      (NOT the ingest-email edge function — that is an HTTP webhook and
+       ServiceMinder notifications send email. firstgentalent is the inbox
+       Goldeneye already sweeps every run via the Zapier Gmail connection.)
+===============================================================================
+{%- endcomment -%}
+---SM-NOTES-JSON-BEGIN---
+{
+  "source": "proposal",
+  "brand": {{ proposal.organization.name | json }},
+  "contact_id": {{ proposal.contact_id | json }},
+  "appointment_id": {{ proposal.appointment_id | json }},
+  "proposal_id": {{ proposal.id | json }},
+  "subject_label": {{ proposal.contact.name | json }},
+  "cancel_reason_id": null,
+  "cancel_reason": {{ proposal.decline_reason.name | json }},
+  "cancelled_at": null,
+  "notes": [
+    {%- for n in proposal.notes -%}
+    {
+      "id": {{ n.id | json }},
+      "title": {{ n.title | json }},
+      "body": {{ n.body | json }},
+      "private": {{ n.private | json }},
+      "created_at": {{ n.created_at | json }},
+      "created_by": {{ n.created_by.name | json }}
+    }{% unless forloop.last %},{% endunless %}
+    {%- endfor -%}
+  ]
+}
+---SM-NOTES-JSON-END---
