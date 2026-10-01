@@ -1,5 +1,12 @@
 # Intranet reconciliation — repo vs live (opened 2026-08-18)
 
+> ## 🗄️ ARCHIVED 2026-09-13 — superseded, see ../ARCHIVED.md
+> This document's own conclusion ("base adopted, deploying is SAFE") is now
+> false: live moved on via a different repo and this copy fell six weeks
+> behind. Kept as the historical record of how the fork happened the first
+> time. Do not use anything below to justify a deploy from this folder — the
+> deploy path itself has been disabled.
+
 > **Status 2026-08-18: port complete — one source of truth, ready to deploy.**
 > `ktubtuintranet.html` is now **live + every repo-only feature merged in**:
 > 267 functions (all 220 from live, plus 47 ported), 35 sections rendered, no
@@ -177,3 +184,28 @@ six weeks.
 | `tools/verify.mjs` | Structural safety gate — run after every edit, before every deploy |
 | `tools/drift-check.mjs` | Repo ↔ live comparison, with `--publish` to `system_health` |
 | `.baseline-live.html` | The 2026-08-18 live baseline `verify.mjs` checks against |
+
+## 2026-08-30 — the two copies have forked again, in both directions
+
+`ktubtuintranet.html` and the live worker are no longer the same file, and
+neither is a superset of the other:
+
+| | panels the other lacks |
+|---|---|
+| **live only** | `channelperf` `leadsrevival` `network` `paidorganic` `pipeproposals` `piperecovery` `processes` `techhealth` `tradesched` |
+| **repo only** | `cashflow` `commissions` `jobflow` `library` `organic` `projtimeline` `prospect` `prospecting` `resources` `roles` |
+
+So `npm run deploy` from this repo would drop nine tabs that people are using
+today. **Do not run it until this is reconciled.**
+
+The Reports-tab work of 2026-08-30 was therefore shipped as an *additive patch*
+rather than an edit — `tools/apply-report-scheduler.mjs` applies cleanly to
+either copy, is idempotent, and removes no lines. It was applied to both: to
+`ktubtuintranet.html` here, and to a copy of live which is what was actually
+deployed (so production kept all nine of its own tabs and gained the feature).
+
+Use the same shape for anything else that has to ship before the forks are
+merged: write it as a patch under `tools/`, apply it to both, deploy from live.
+
+Reconciling properly is a decision for Steven, not a side effect of a feature —
+it means choosing, tab by tab, which of two divergent implementations wins.

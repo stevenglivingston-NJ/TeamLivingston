@@ -186,6 +186,18 @@ if require AMAZON_SP_CLIENT_ID AMAZON_SP_CLIENT_SECRET AMAZON_SP_REFRESH_TOKEN; 
   reg amazon-sp "{\"command\":\"python3\",\"args\":[\"$DIR/amazon-sp/server.py\"],\"env\":{\"AMAZON_SP_CLIENT_ID\":\"$AMAZON_SP_CLIENT_ID\",\"AMAZON_SP_CLIENT_SECRET\":\"$AMAZON_SP_CLIENT_SECRET\",\"AMAZON_SP_REFRESH_TOKEN\":\"$AMAZON_SP_REFRESH_TOKEN\"}}"
 else skipped+=("amazon-sp (AMAZON_SP_* x3)"); fi
 
+# Amazon Ads (Harvest — demand/ROAS). Separate LWA app + Ads profile from
+# amazon-sp; AMAZON_ADS_PROFILE_ID scopes the account (region defaults to NA).
+if require AMAZON_ADS_CLIENT_ID AMAZON_ADS_CLIENT_SECRET AMAZON_ADS_REFRESH_TOKEN AMAZON_ADS_PROFILE_ID; then
+  reg amazon-ads "{\"command\":\"python3\",\"args\":[\"$DIR/amazon-ads/server.py\"],\"env\":{\"AMAZON_ADS_CLIENT_ID\":\"$AMAZON_ADS_CLIENT_ID\",\"AMAZON_ADS_CLIENT_SECRET\":\"$AMAZON_ADS_CLIENT_SECRET\",\"AMAZON_ADS_REFRESH_TOKEN\":\"$AMAZON_ADS_REFRESH_TOKEN\",\"AMAZON_ADS_PROFILE_ID\":\"$AMAZON_ADS_PROFILE_ID\",\"AMAZON_ADS_REGION\":\"${AMAZON_ADS_REGION:-NA}\"}}"
+else skipped+=("amazon-ads (AMAZON_ADS_* x4)"); fi
+
+# Walmart Ads (Walmart Connect / Sponsored Search — Harvest). OAuth only, no
+# request signature; advertiserId scopes the account.
+if require WMT_ADS_CLIENT_ID WMT_ADS_CLIENT_SECRET WMT_ADS_ADVERTISER_ID; then
+  reg walmart-ads "{\"command\":\"python3\",\"args\":[\"$DIR/walmart-ads/server.py\"],\"env\":{\"WMT_ADS_CLIENT_ID\":\"$WMT_ADS_CLIENT_ID\",\"WMT_ADS_CLIENT_SECRET\":\"$WMT_ADS_CLIENT_SECRET\",\"WMT_ADS_ADVERTISER_ID\":\"$WMT_ADS_ADVERTISER_ID\"}}"
+else skipped+=("walmart-ads (WMT_ADS_* x3)"); fi
+
 # ---- 3b. HighLevel direct MCP (HTTP transport, PIT auth) -------------------
 # LeadConnector's hosted MCP endpoint, scoped per sub-account by locationId
 # header. Location IDs are public identifiers; the PITs are SECRETS (env vars,

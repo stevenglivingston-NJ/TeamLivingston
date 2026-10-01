@@ -103,8 +103,30 @@ you enforce daily:
     for your own judgement but never quote one into a customer-facing artefact.
     See `CLAUDE.md` § "ServiceMinder notes — where they actually live".
 - **CompanyCam**: `list_recent_photos(modified_since=<yesterday>)`, group by project,
+- **CompanyCam** — ⚠️ **use `mcp-servers/companycam.sh`, NOT `mcp__companycam__*`.**
+  On 2026-09-21 this run stalled with `mcp__companycam__test_connection` queued
+  behind a blocked Bash call; the connector prompt is unanswerable on a
+  scheduled fire. The helper hits the same REST API:
+
+  ```
+  bash mcp-servers/companycam.sh /v2/photos   'per_page=100'
+  bash mcp-servers/companycam.sh /v2/projects 'per_page=100'
+  ```
+
+  Filter by `modified_since=<yesterday>` client-side, group by project,
   pull labels/notes. Address-match CompanyCam ↔ ServiceMinder ↔ JobTread (normalize:
   strip unit/suite, case, punctuation; require street number + name + zip).
+  **Duplicate CompanyCam projects for the same customer/address are a known,
+  recurring failure mode — confirmed live on 2026-09-15 (Mycka, 5 Roosevelt Pl:
+  two projects, both 15 photos, one dormant since 08-10 and one with photos
+  from that same day). A matching photo_count does NOT mean you found the same
+  project twice — it can mean you found a stale duplicate that happens to tie.**
+  If address-matching (or `search_projects`) surfaces more than one live project
+  for a job, do not resolve it by picking the first/only result returned —
+  check every candidate's latest photo timestamp and use the most recent one as
+  the job's `company_cam_status` source. Name the stale duplicate's project_id
+  in the write-up so it can be archived in CompanyCam; otherwise the same wrong
+  project gets re-picked every run.
 - **HighLevel** for appointment/context enrichment. ✅ Both brands live via the
   OAuth connector `mcp__High_Level__*` (verified 2026-08-17, agency-scoped):
   `search_operations`/`execute_operation` with `locationId` per call — KTU
@@ -762,7 +784,7 @@ collapse them into one number:
   postings are NOT exposed by the ServiceMinder public API** (re-verified 2026-07-12:
   `proposal/details` returns no costs/margins array, no cost download kind,
   `get_invoice` has none). So pull the actuals from, in priority:
-  1. the intranet **`job_costs` ledger** (`intranet_records` section `job_costs`:
+  1. the job-costing actuals ledger — **`jc_actual_costs`** (real table, 2026-09-01), fed by confirmed vendor invoices from `payables` (the payment gate) and by the Projects-modal ledger, which mirrors into it. The legacy `intranet_records` section `job_costs` still receives the modal's rows for back-compat but `jc_actual_costs` is canonical; the job spine is `jc_jobs` (SM proposal/contact + JobTread ids + contract totals, seeded from your own foreman_board). Read per-job rollups from `jc_job_summary` / `jc_job_pnl`. (`intranet_records` section `job_costs`:
      dated vendor entries Materials/Labor/Other) — the machine-readable twin of the
      Margins panel; sum its amounts, coverage = 100% of what's entered;
   2. **emailed / integration vendor invoices** (`ktubtubilling@gmail.com`, §4) for
@@ -1125,7 +1147,7 @@ section — stale beats blank):
   `goal_assessment`, `goal_note`, `pay_pct`, `payment_status`, `est_timeline`,
   `est_completion`, `project_steps`, `service_type`, `est_labor_hours`,
   `est_labor_cost`, `labor_rate`) is yours to recompute fresh each run — this
-  mirrors the existing `status`-preservation carve-out on `btu_ordering` below.
+  mirrors the status-preservation rule orders.ktubtu.com applies to person-entered fields.
 - `foreman_timeline` — the dated milestone plan (§2c); **one row per milestone
   per active project**, so the Project Timeline page can render a per-project
   Gantt: `{project, brand, track ('A'|'B'), seq (1..N integer),
@@ -1138,7 +1160,7 @@ section — stale beats blank):
   `foreman_board`/`client_status` project name exactly (the page joins on it).
   **Preserve `planned_end_override` and `actual_date`** when re-generating —
   merge by project+milestone, never blindly overwrite a human date edit
-  (same discipline as `btu_ordering`'s `status`). Sort by `seq` (sort_order).
+  (same discipline as person-entered fields on orders.ktubtu.com). Sort by `seq` (sort_order).
 - `project_pipeline` — **the headline Projects-tab board (§2f).** One row per
   active project, sorted RED → AMBER → GREEN then open balance desc. Fields:
   `{project, brand, track, rag, rag_reason, bucket, stage, blocking_gate,
@@ -1188,15 +1210,24 @@ section — stale beats blank):
   jobtread_job_id, sm_contact_id, flags, scan_date}`, sorted by outstanding desc.
   Join ServiceMinder invoices/payments (money truth) to JobTread jobs; flag sold
   clients with no JT job, overdue 40%/10% tranches, and SM↔JT total mismatches.
-- `btu_ordering` — the assistant PM's ordering board; refresh whenever a BTU
-  JobTread job is sold (closedOn set): match it to the accepted ServiceMinder
-  proposal (compare totals → `invoice_match`), extract ORDERABLE MATERIAL lines only
-  (exclude labor/install/demo/permits/dumpster/shipping/fees/markup/internal), one
-  row per item: `{job, jobtread_number, sm_proposal_id, sold_total, invoice_match,
-  item, tier, qty, unit, unit_cost, extended_cost, customer_price, budget_note,
-  category, status, scan_date}`. PRESERVE the `status` field of existing rows when
-  refreshing (the PM marks items ordered from the intranet) — merge by job+item,
-  never blindly overwrite.
+- **Orders feed (replaces the old `btu_ordering` section, retired 2026-09-30).** Ordering
+  now lives on orders.ktubtu.com (Supabase `ord_lines` on the `jc_jobs` spine). JobTread-built
+  order sheets feed it automatically; Foreman covers the gap JobTread can't: a **sold BTU job
+  whose material list exists only on the accepted ServiceMinder proposal**. For each such job
+  (skip any job that already has JobTread order lines — check
+  `select 1 from ord_lines l join jc_jobs j on j.id=l.job_id where j.sm_proposal_id=<id> and l.source_key ~ '^(sel|line):'`),
+  extract ORDERABLE MATERIAL lines only (exclude labor/install/demo/permits/dumpster/shipping/
+  fees/markup/internal) and push them with ONE call per job through `sb.sh`:
+  ```
+  bash mcp-servers/sb.sh "select ord_sync_job(null, '<job json>'::jsonb, '<lines json>'::jsonb, 'Foreman (ServiceMinder feed)', 'sm')"
+  ```
+  - job json: `{"brand":"BTU","customer":"<client>","sm_proposal_id":"<id>","sm_contact_id":"<id>","contract_total":<sold>}`
+  - each line: `{"source_key":"sm:<proposal_id>:<item-slug>","kind":"product","section":"<category>","item":"<item>","qty":<n|null>,"unit":"<unit>","exp_unit_cost":<n|null>,"exp_cost":<n|null>,"exp_retail":<customer price|null>,"category":"direct_materials","needs":["no cost on the proposal"] if no cost}`
+  - Keep the slug stable (lowercase, non-alphanumerics → "-", max 60) so a re-run updates
+    instead of duplicating; a line that leaves the proposal is struck through automatically.
+  - Never send order status, PO, dates or actual cost — those belong to the people working
+    orders.ktubtu.com and the sync never overwrites them. Do NOT write `btu_ordering` any more,
+    and do not push placeholder "MATERIAL LIST PENDING" rows; list such jobs in the brief instead.
 - `foreman_pacing` — the per-job **pacing detail** the intranet renders **when a job
   is clicked in the job tracker** (the §2e `job-pacing` output). One row per active
   job, keyed to the tracker rows (`foreman_board`/`client_status`) by
@@ -1261,6 +1292,30 @@ publish `foreman_pacing` and record the Slack failure in `foreman_briefing`.
   every route in its chain fails. (No Zapier app exists for ServiceMinder.)
 
 ## Known breakages / preconditions (verified 2026-07-03 — re-verify each run)
+
+- 🔴 **Never write a destructive shell command in a scheduled run — `bypassPermissions`
+  does NOT cover them.** On 2026-09-21 this agent hung for four days on its own
+  publish step. The blocking `pending_action` was **a `Bash` call, not an `mcp__*`
+  one**:
+
+  ```
+  rm -f $SD/*_insert_*.sql $SD/*_insert.sql
+  ```
+
+  That matters because CLAUDE.md states `bypassPermissions` covers Bash in
+  scheduled runs. It covers ordinary Bash. It does **not** cover a destructive
+  command — `rm` with globs is classified separately and still prompts, and a
+  scheduled fire cannot answer. The board then serves yesterday's rows with no
+  error on screen.
+
+  **So: do not clean up. Never emit `rm`, `mv` over an existing path, or any
+  other destructive shell in a scheduled run.** Write each run's artifacts into
+  a fresh per-run directory instead — `$SD/run-$(date +%Y%m%dT%H%M%S)/` — so
+  there is nothing to delete. Stale scratch files cost nothing; a blocked `rm`
+  costs the whole day's briefing.
+
+  Diagnose this class by reading the stalled session's `pending_action`. If it
+  names `Bash` rather than `mcp__*`, it is this bug, not the connector one.
 
 - 🔴 **ServiceMinder: use `mcp-servers/sm.sh`, NOT `mcp__serviceminder__*`, on any
   scheduled run — see CLAUDE.md § "Scheduled runs stall on MCP connector calls".**
