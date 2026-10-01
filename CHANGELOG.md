@@ -5,6 +5,7 @@ Add an entry with every change; the **Tekki** agent mirrors this to the intranet
 (Tech Stack tab). Format: `YYYY-MM-DD · who · WHERE (repo/system) · WHAT — detail [link]`.
 
 ## 2026-10-01
+- **2026-10-01 · Claude Code (for Steven) · TeamLivingston playbook · Four gaps closed from a re-audit** — Lead to Last Nail no longer claims to be "the one copy" (it is one page of six; the Library is the source of truth); Selections & Order Sheet v2.4 adds "The selection appointment" ahead of §1 (lookbook tier ladder, delta pricing, Track A single-visit rule) with every existing anchor untouched; the Library gains a card for the Lead-to-Handover Acceptance Test, which had zero mentions across all six pages. The KTU Handover Standard carries **three** conflicting reface durations (5–7 wks end-to-end, 7–9 wks "excluding client time", 7–10 wks from design approval) — flagged in an editorial note outside the signed text, since correcting it needs a new signed version. **Owner's ruling pending.** [#243]
 - **2026-10-01 · Claude Code (for Steven) · TeamLivingston · CLAUDE.md: Supabase function deploys work again** — `SUPABASE_ACCESS_TOKEN` in ktu-pricing-build now holds a personal access token; the 401 note is gone. [#pending]
 
 ## 2026-09-30
