@@ -938,7 +938,9 @@ def audit_calendar(brand: str, today) -> tuple[list[dict], list[dict]]:
                 for m in sm_contacts_for(loc, phone, email, name):
                     for appt in sm_appointments(loc, m["Id"]):
                         d = sm_appt_date(appt)
-                        if d is None:
+                        # A cancelled SM appointment (Status 4) is not coverage: the HL
+                        # event is still confirmed and nobody is scheduled (UAT 2026-10).
+                        if d is None or appt.get("Status") == 4:
                             continue
                         if d == ev_date:
                             same_day.append((loc, appt))
