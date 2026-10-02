@@ -39,6 +39,7 @@
 
 <section>
   <div class="rule-box"><span class="k">The rule</span>If it isn't on the signed Selection Sheet, it doesn't get ordered. Every line is orderable as written: make, model/SKU, finish, quantity with unit, and one decided source. A "TBD" on a signed sheet is an unpriced change order waiting to happen.</div>
+  <div class="rule-box"><span class="k">After the sale</span>Once a job is sold (proposal accepted in ServiceMinder, the Sold gate closed, or JobTread Sales Status Sold or later), the JobTread budget belongs to ordering and production. pricing.ktubtu.com no longer rewrites it or the signed proposal. A price or scope change after the sale is a <b>change order in JobTread</b>, never a re-push from the pricing app.</div>
   <p>The brand standards say the same thing in their own words: <a href="/btu-handover-sop/">BTU-OPS-001 §5</a> and <a href="/ktu-handover-standard/">KTU Handover Standard item 10</a> ("the selection sheet is a deliverable, not a tracking document").</p>
 </section>
 
@@ -196,7 +197,7 @@
   <h3>8.2 ServiceMinder job costing</h3>
   <p>ServiceMinder has no way for other systems to write into a proposal's job costing (Margins). On a job's workbook, <b>Post to ServiceMinder</b> puts a note on the client's ServiceMinder contact listing each purchase (vendor · date purchased · actual amount) against the proposal number. <b>Copy</b> gives the same lines to paste into the proposal's Margins.</p>
   <h3>8.3 Who can see what</h3>
-  <p>Set per person in <b>pricing.ktubtu.com → Admin → Users</b>:</p>
+  <p>Set per person in <b>pricing.ktubtu.com → Settings (the gear) → Team &amp; access</b>:</p>
   <ul>
     <li><b>Orders</b>: see and work orders.</li>
     <li><b>Costs &amp; profit</b>: see and enter costs, actual amounts and GP.</li>
