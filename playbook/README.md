@@ -9,7 +9,7 @@ The team's operating standards, published as a static site (Cloudflare Pages pro
 | `/lead-to-last-nail/` | `lead-to-last-nail/index.html` | Lead to Last Nail — the 15-stage operating standard (v1.2) |
 | `/btu-handover-sop/` | `btu-handover-sop/index.html` | BTU-OPS-001 Sales-to-Production Handover SOP (v1.1) |
 | `/ktu-handover-standard/` | `ktu-handover-standard/index.html` | KTU Sales→PM Handover Standard V2 — verbatim signed text |
-| `/selections-and-ordering/` | `selections-and-ordering/index.html` | Selections & Order Sheet standard (v2.0) + Job Tracker |
+| `/selections-and-ordering/` | `selections-and-ordering/index.html` | Selections & Order Sheet standard (v2.6) + orders.ktubtu.com (Job Tracker sheet retired) |
 | `/systems/` | `systems/index.html` | Systems & Where Things Live: which software is for what, where each record lives, how a job moves between systems (v1.0) |
 
 Publish (from any Claude cloud session; `CLOUDFLARE_API_TOKEN` is in the environment):

@@ -40,7 +40,7 @@
   <h1>Systems &amp; Where Things Live</h1>
   <p class="dek">Which software does what, where each record lives, and how a job moves from one system to the next. If you are asking "where do I put this?" or "where do I find that?", the answer is on this page.</p>
   <div class="meta">
-    <span><b>Version</b> 1.0 · Sept 29, 2026</span>
+    <span><b>Version</b> 1.1 · Oct 2, 2026</span>
     <span><b>Owner</b> Ops / Owner</span>
     <span><b>Detail</b> intranet → Tech Stack tab</span>
   </div>
@@ -57,7 +57,7 @@
       <tr><td>Appointments, proposals, invoices, payments, the contact and its notes</td><td><b>ServiceMinder</b></td><td>HighLevel calendar is a cross-check only</td></tr>
       <tr><td>The client's design style, budget and inspiration before the visit</td><td><b>Design Journey</b> (design.ktubtu.com), copied to a ServiceMinder note</td><td>Rep memory, texts</td></tr>
       <tr><td>The price, the estimate lines and the finalized selections</td><td><b>JobTread</b> (priced through pricing.ktubtu.com)</td><td>Spreadsheets, PDFs saved elsewhere</td></tr>
-      <tr><td>What to order, order status, ship dates, actual cost per item</td><td><b>Job Tracker</b> Google Sheet (fed by the order sheet)</td><td>Email threads</td></tr>
+      <tr><td>What to order, order status, ship dates, actual cost per item</td><td><b>orders.ktubtu.com</b>: the job's order sheet, or every job at /w</td><td>Email threads</td></tr>
       <tr><td>Schedule, daily logs, budget vs actual</td><td><b>JobTread</b></td><td>Group texts</td></tr>
       <tr><td>Photos of the property, before / during / after</td><td><b>CompanyCam</b></td><td>Phones' camera rolls</td></tr>
       <tr><td>The books</td><td><b>QuickBooks</b> (closed monthly by Ledge)</td><td>Bank app, Ramp</td></tr>
@@ -101,12 +101,12 @@
     <div class="ar">→</div>
     <div class="st key"><span class="n">12 · Handover</span><b>Order sheet</b><span class="sys">pricing.ktubtu.com builds it from JobTread, emails purchasing, drafts the handover email, notes the JobTread job</span></div>
     <div class="ar">→</div>
-    <div class="st"><span class="n">12–13 · Order</span><b>Job Tracker</b><span class="sys">Google Sheet in .Project Management: one tab per job, order status, actual cost, actual GP</span></div>
+    <div class="st"><span class="n">12–13 · Order</span><b>Order sheet</b><span class="sys">orders.ktubtu.com: one sheet per job, order status, actual cost, actual GP; every job at /w</span></div>
   </div>
 
   <div class="lane">Production &amp; closeout</div>
   <div class="flow">
-    <div class="st"><span class="n">13 · Ready</span><b>Pre-install</b><span class="sys">JobTread schedule · Job Tracker "Received" · client told the date</span></div>
+    <div class="st"><span class="n">13 · Ready</span><b>Pre-install</b><span class="sys">JobTread schedule · order sheet "Received" · client told the date</span></div>
     <div class="ar">→</div>
     <div class="st"><span class="n">14 · Install</span><b>Build &amp; change control</b><span class="sys">JobTread daily logs + change orders · CompanyCam progress photos</span></div>
     <div class="ar">→</div>
@@ -124,11 +124,11 @@
     <thead><tr><th style="width:24%">Tool</th><th>What it's for</th><th style="width:20%">Who uses it</th></tr></thead>
     <tbody>
       <tr><td><b><a href="https://dash.goaxyom.com/">Intranet</a></b><br><code>dash.goaxyom.com</code></td><td>The team's front door: daily briefs from the agents, pipeline, projects, appointments, finance (owner only), library, tech health.</td><td>Everyone</td></tr>
-      <tr><td><b><a href="https://pricing.ktubtu.com/">Pricing tool</a></b><br><code>pricing.ktubtu.com</code></td><td>Prices a job on the JobTread engine, writes the estimate to JobTread, sends the client selection link, builds the order sheet, feeds the Job Tracker. Admin sets who gets order sheets and selection emails.</td><td>Designers, sales, PM, admin</td></tr>
+      <tr><td><b><a href="https://pricing.ktubtu.com/">Pricing tool</a></b><br><code>pricing.ktubtu.com</code></td><td>Prices a job on the JobTread engine, writes the estimate to JobTread, sends the client selection link, builds the order sheet. Admin sets who gets order sheets and selection emails.</td><td>Designers, sales, PM, admin</td></tr>
       <tr><td><b>Design Journey</b><br><code>design.ktubtu.com</code></td><td>The client's pre-visit design style quiz, the designer's brief, the post-consult survey. <code>/send</code> sends a journey by hand; <code>/send/journeys</code> shows the funnel; <code>/tiers</code> and <code>/tiers/pick</code> are the tier cheat sheets.</td><td>Clients, designers, office</td></tr>
       <tr><td><b><a href="https://lookbook.ktubtu.com/">Lookbook</a></b><br><code>lookbook.ktubtu.com</code></td><td>Door styles, colours and finishes to show in the home. Rebuilt automatically from the catalogue.</td><td>Designers, clients</td></tr>
       <tr><td><b><a href="/lead-to-last-nail/">Playbook</a></b><br><code>playbook.ktubtu.com</code></td><td>This site. How we work, stage by stage.</td><td>Everyone</td></tr>
-      <tr><td><b>Job Tracker</b><br>Google Sheet</td><td>One tab per finalized job: what to order, from where, order status, PO, ETA, received, actual cost, actual GP. Removed items are struck through, never deleted. A change log records who changed what.</td><td>Purchasing, PM, owner</td></tr>
+      <tr><td><b><a href="https://orders.ktubtu.com/">Orders</a></b><br><code>orders.ktubtu.com</code></td><td>One order sheet per finalized job: what to order, from where, order status, PO, ETA, received, actual cost, actual GP. Every job on one page at <code>/w</code>. Removed items are struck through, never deleted; each line's history shows who changed what. Replaces the Job Tracker Google Sheet, retired Oct 1, 2026.</td><td>Purchasing, PM, owner</td></tr>
       <tr><td><b>Agents</b></td><td>Scheduled assistants that read the systems each morning and publish briefs to the intranet: Goldeneye (customer follow-up), Pipeline (funnel), Foreman (projects), Paid and Organic (marketing), Moola (finance), Tekki (tech health), Ax (notifications). Cellar and Harvest cover Earthwise.</td><td>Read by everyone on the intranet</td></tr>
     </tbody>
   </table></div>
@@ -172,7 +172,7 @@
   <ul class="check">
     <li><b>Standards and SOPs:</b> this playbook. Edit the source, never a copy.</li>
     <li><b>Job files:</b> the JobTread job (signed documents, estimate, selections) and CompanyCam (photos).</li>
-    <li><b>Order tracking:</b> the Job Tracker Google Sheet in Drive → <code>.Project Management</code>.</li>
+    <li><b>Order tracking:</b> orders.ktubtu.com (every job at <code>/w</code>). The Job Tracker Google Sheet in Drive → <code>.Project Management</code> is retired and frozen as of Oct 1, 2026.</li>
     <li><b>Business library:</b> Drive folders <code>01 Company &amp; HR</code> to <code>07 Vendors &amp; Products</code>, <code>KTU Resources</code>. The intranet <b>Library</b> tab indexes them. Finance and HR folders are owner-only.</li>
     <li><b>Email and text templates sent to clients:</b> kept in the code, pasted into ServiceMinder. ServiceMinder holds copies, not the originals.</li>
     <li><b>Scripts, training, vendor contacts:</b> intranet Playbook, Vendors and Directory tabs.</li>
@@ -182,7 +182,7 @@
 </main>
 
 <footer><div class="wrap">
-  <p>Systems &amp; Where Things Live · v1.0 · Sept 29, 2026. Change log: v1.0 first issue, drawn from the live setup.</p>
+  <p>Systems &amp; Where Things Live · v1.1 · Oct 2, 2026. Change log: v1.1 (Oct 2, 2026) orders.ktubtu.com replaces the retired Job Tracker Google Sheet; v1.0 first issue, drawn from the live setup.</p>
 </div></footer>
 <script src="/assets/fold.js" defer></script>
 </body>
