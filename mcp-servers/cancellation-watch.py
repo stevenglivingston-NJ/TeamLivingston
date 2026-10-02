@@ -150,7 +150,9 @@ def q(s) -> str:
     return "'" + str(s if s is not None else "").replace("'", "''") + "'"
 
 
-JUNK = re.compile(r"\btest\w*\b|testing|^z+ |demo|do not use|sample|asdf|qwerty|holding time slot", re.I)
+# Includes the canonical test/UAT name rule (CLAUDE.md "Test/UAT records"):
+# \btest\b is covered by \btest\w*\b; zz(test|uat) and ^zzz added 2026-10-02.
+JUNK = re.compile(r"\btest\w*\b|testing|zz(test|uat)|^zzz|^z+ |demo|do not use|sample|asdf|qwerty|holding time slot", re.I)
 JUNK_PHONE = re.compile(r"^(\d)\1{6,}$|^123456|^555")
 
 

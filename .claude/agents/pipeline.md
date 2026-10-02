@@ -125,6 +125,15 @@ to the `pipeline_*` intranet sections.
 - Confirm each pipe answers before trusting it; if a source is down, publish what
   you can and mark the blind lens in the brief (stale beats blank).
 
+## Exclude test/UAT records (every count — canonical rule, CLAUDE.md "Test/UAT records")
+
+A record is **test** when its contact/customer name matches `/\btest\b/i`, `/zz(test|uat)/i`
+or `/^zzz/i`, or its email matches `/\+uat\d*@/i` (UAT contacts are "Test ZZUAT-<nn> KTU|BTU",
+`stevenglivingston+uat<nn>@gmail.com`), plus the internal-domain and own-number rules this
+spec already applies. Drop test records from every lead, appointment, proposal and funnel stage you count, total, rank or alert
+on, and never name one in a callout. Report how many you dropped (e.g. "3 test records
+excluded"), never their details. Reporting only: do not edit, cancel or delete them.
+
 ## The daily analysis
 
 ### 1. Funnel — stage by stage (publish `pipeline_funnel`)

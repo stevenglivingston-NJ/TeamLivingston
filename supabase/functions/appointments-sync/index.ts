@@ -51,9 +51,12 @@ async function smCall(brand: string, endpoint: string, body: Record<string, unkn
   return JSON.parse(text);
 }
 
-const TEST_NAME = /\btest\b|testfallback|holding time slot|steven livingston/i;
-const INTERNAL_EMAIL = /@(kitchentuneup|bathtune-up|bathtuneup)\.com$/i;
-const isTest = (c: any) => TEST_NAME.test(c?.Name ?? "") || INTERNAL_EMAIL.test(c?.Email ?? "");
+// Canonical test/UAT rule (CLAUDE.md "Test/UAT records") plus the older extras.
+const TEST_NAME = /\btest\b|zz(test|uat)|testfallback|holding time slot|steven livingston/i;
+const TEST_NAME_ZZZ = /^zzz/i;
+const TEST_EMAIL = /\+uat\d*@|@(kitchentuneup|bathtune-up|bathtuneup)\.com$/i;
+const isTest = (c: any) =>
+  TEST_NAME.test(c?.Name ?? "") || TEST_NAME_ZZZ.test((c?.Name ?? "").trim()) || TEST_EMAIL.test(c?.Email ?? "");
 
 // Offset (minutes) of America/New_York from UTC at a given instant.
 function etOffsetMin(d: Date): number {

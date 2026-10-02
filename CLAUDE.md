@@ -39,6 +39,25 @@ Before assuming something is "in TeamLivingston", check this table. The client-f
 - **Cause:** GitHub refuses to start jobs at the account level (billing: minutes used up with a $0 spending limit, or a failed payment). Fix it in GitHub → Settings → Billing and plans. While blocked, deploy by hand from a Claude cloud session (`npx wrangler deploy` with `CLOUDFLARE_API_TOKEN`).
 - **2026-09-29:** `deploy-worker.yml` runs succeed again. **2026-10-01:** `deploy-supabase-functions.yml` works again too — its repo secret `SUPABASE_ACCESS_TOKEN` is now a Supabase *personal access token* (`sbp_` + 40 hex, from supabase.com/dashboard/account/tokens). The project's publishable key (`sb_publishable_…`) or secret key (`sb_secret_…`) will not work; the workflow now fails with the value's length and first 4 characters if the wrong kind is pasted.
 
+## Test/UAT records (canonical rule, 2026-10-02)
+
+A record is **test** if its name matches `/\btest\b/i` OR `/zz(test|uat)/i` OR `/^zzz/i` (trimmed),
+or its email matches `/\+uat\d*@/i`. Postgres: `public.is_test_record(name, email)` (`\y` for `\b`).
+UAT contacts are named **"Test ZZUAT-<nn> <KTU|BTU>"** with emails `stevenglivingston+uat<nn>@gmail.com`
+(not "ZZTEST…": `\btest\b` has no boundary inside it). Don't use the office address (1285 Broad):
+office-address-check alerts on it.
+
+- **Keep test records out of REPORTING**: briefs, boards, funnels, counts, alerts. Each filter
+  *extends* its existing rules (internal domains, own numbers, "holding time slot"…), never loosens them.
+- **Leave them in PROCESSING**: syncs that create records, the order flow, customer-journey
+  notifications (survey SMS, invites). A UAT run has to exercise the real path.
+- Applied in: `lead-sweep.py` `is_test_row` (and so `appointments-sync.py`),
+  the `appointments-sync` and `office-address-check` edge functions,
+  `cancellation-watch.py` + `cw_is_junk`, `sm_hl_recon_run`, `jc_refresh_escalations` (test jobs
+  by `jc_jobs.customer_name`; the payment gate is unchanged), migration
+  `20261002d_uat_test_filters.sql`, the agent specs (pipeline, foreman, moola, paid, goldeneye),
+  and the intranet's `looksLikeTestEntry`. A new report or board must use the same rule.
+
 ## MCP Servers
 
 ### KTUBTU Servers
