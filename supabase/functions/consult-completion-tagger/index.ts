@@ -112,8 +112,10 @@ async function runBrand(brand: string, s: Secrets, mode: string, freshHours: num
 
   const today = new Date(), from = new Date(today.getTime() - Math.max(LOOKBACK_DAYS * 86400_000, freshHours * 3600_000));
   const ymd = (d: Date) => d.toISOString().slice(0, 10);
+  // ThroughDate is exclusive (verified 2026-10-02: ThroughDate=today returns nothing dated today), so
+  // ask through tomorrow or a consult completed today waits a day for its survey.
   const q = await sm(smKey, "appointments/query", { Skip: 0, Take: 500, IncludeContact: false, Appointments: [],
-    FromDate: ymd(from), ThroughDate: ymd(today) });
+    FromDate: ymd(from), ThroughDate: ymd(new Date(today.getTime() + 86400_000)) });
   const done = (q.Appointments ?? []).filter((a: Record<string, any>) =>
     Number(a.Status) === 3 && isConsult(a) && apptTime(a) > Date.now() - freshHours * 3600_000);
 
