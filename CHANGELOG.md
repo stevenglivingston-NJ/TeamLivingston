@@ -5,6 +5,7 @@ Add an entry with every change; the **Tekki** agent mirrors this to the intranet
 (Tech Stack tab). Format: `YYYY-MM-DD · who · WHERE (repo/system) · WHAT — detail [link]`.
 
 ## 2026-10-02
+- **2026-10-02 · Claude Code (for Steven) · TeamLivingston Moola spec + Supabase · 13-week cash forecast every Monday, owner-only; finance RLS gate restored** — new tables `moola_forecast_inputs` / `moola_forecast_weeks` (RLS `has_finance_access()`), seeded in the database (no figures in the repo). Moola rebuilds the ladder each Monday; nothing from it is emailed or sent to Slack. Commissions held at the current rate (owner); BTU crew paid 25% of job price per job. Also: the live `intranet_records` policy had lost the 07-12 finance gate — team logins could read and edit balances/AR/AP/cash ledger/runway. Gate restored. [#pending]
 - **2026-10-02 · Claude Code (for Steven) · Playbook + CLAUDE.md · Job Tracker Google Sheet retired, not a read-only copy** — the pricing Worker's sheet sync is off (`TRACKER_SYNC` unset since 2026-10-01), so the sheet is frozen as of 2026-10-01 02:45 UTC. Selections & Order Sheet v2.6 §7 rewritten (retired; where each thing the sheet did lives now: order sheet, `/w` workbook, line history); Library card, FAQ, Systems page v1.1, BTU-OPS-001 v1.3 and Lead to Last Nail point to orders.ktubtu.com instead; CLAUDE.md orders row says retired. Sheet file title marked RETIRED. [#pending]
 
 ## 2026-10-01
