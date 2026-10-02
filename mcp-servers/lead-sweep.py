@@ -66,6 +66,14 @@ SM_STATUS = {1: "scheduled", 3: "completed", 4: "pending", 5: "cancelled"}
 # except one ran under 26s.
 ABANDON_SECONDS = 20
 
+# A lead is "never worked" when its thread started inside the window, at least
+# this long ago, and no person has messaged or called it since. Automations do
+# not count: on a sample of live threads (UAT 2026-10-02) a human send is
+# source "app" WITH a userId; "workflow"/"campaign" sends are automated even
+# when a user is named as the sender.
+NEVER_WORKED_MIN_MINUTES = 60
+AUTOMATED_SOURCES = {"workflow", "campaign", "bulk_actions"}
+
 # Message types that represent a real human message (everything else is an
 # activity-log entry such as "DnD enabled by customer").
 REAL_MSG_TYPES = {
@@ -625,6 +633,46 @@ def sweep(days: int, rollup_days: int = 7) -> dict:
                         "action": "Service recovery — call before this becomes a review.",
                     })
 
+            # --- new lead nobody has worked ---------------------------------
+            # fetch_messages returns the last 40, so a full page means an older
+            # thread, not a new lead. Lead = the thread's first entry is in the window.
+            # A lead needs a lead signal (opportunity created, or the customer reached
+            # out); a thread of our own system emails is not one. An answered inbound
+            # call is human contact. Missed calls already have their own card.
+            missed_here = {r["phone_masked"] for r in report["buckets"]["missed_call"] if r["brand"] == brand}
+            if (in_window and msgs and len(msgs) < 40 and msgs[0].get("dateAdded", "") >= since.isoformat()
+                    and mask(phone) not in missed_here
+                    and any(m.get("messageType") == "TYPE_ACTIVITY_OPPORTUNITY"
+                            or (m.get("direction") == "inbound" and m.get("messageType") in REAL_MSG_TYPES)
+                            for m in msgs)):
+                started = datetime.fromisoformat(msgs[0]["dateAdded"].replace("Z", "+00:00"))
+                def _answered(m):
+                    dur = ((m.get("meta") or {}).get("call") or {}).get("duration")
+                    return isinstance(dur, (int, float)) and dur >= ABANDON_SECONDS
+                worked = any(
+                    m.get("messageType") in REAL_MSG_TYPES and (
+                        (m.get("direction") == "outbound"
+                         and (m.get("messageType") == "TYPE_CALL"
+                              # SMS/email from a workflow can look like an app send, so those need a
+                              # userId; social-inbox replies (FB/IG/GMB/chat) carry none even when typed.
+                              or ((m.get("source") or "") not in AUTOMATED_SOURCES
+                                  and (m.get("userId") or m.get("messageType") not in {"TYPE_SMS", "TYPE_EMAIL"}))))
+                        or (m.get("direction") == "inbound" and m.get("messageType") == "TYPE_CALL" and _answered(m)))
+                    for m in msgs)
+                if (not worked and now - started >= timedelta(minutes=NEVER_WORKED_MIN_MINUTES)
+                        and not (has_any_appointment(digits(phone)) if digits(phone) else [])):
+                    report["buckets"]["lead_never_worked"].append({
+                        "brand": brand,
+                        "who": short_name(name, phone),
+                        "phone_masked": mask(phone),
+                        "phone": full_phone(phone),
+                        "when": et_stamp(msgs[0]["dateAdded"]),
+                        "hours_waiting": round((now - started).total_seconds() / 3600, 1),
+                        "automated_touches": sum(1 for m in msgs if m.get("direction") == "outbound"
+                                                 and m.get("messageType") in REAL_MSG_TYPES),
+                        "action": "New lead with no human call or message yet and no appointment. Call now.",
+                    })
+
             # --- last word was theirs and nobody replied --------------------
             substantive = [m for m in msgs if m.get("messageType") in REAL_MSG_TYPES]
             if substantive and substantive[-1].get("direction") == "inbound":
@@ -675,6 +723,7 @@ def sweep(days: int, rollup_days: int = 7) -> dict:
     b["positive_ad_responses"] = dedupe(b["positive_ad_responses"], "phone_masked", "when")
     b["unanswered_customer"] = dedupe(b["unanswered_customer"], "phone_masked", "when")
     b["service_recovery"] = dedupe(b["service_recovery"], "phone_masked", "when")
+    b["lead_never_worked"] = dedupe(b["lead_never_worked"], "brand", "phone_masked")
 
     # --- call-tracking performance, per number ------------------------------
     # Inbound calls are supposed to auto-forward to the call centre, so a number
