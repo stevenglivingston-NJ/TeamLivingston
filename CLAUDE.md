@@ -87,7 +87,7 @@ Before assuming something is "in TeamLivingston", check this table. The client-f
 | Semrush | connector | SEO analytics |
 | Ahrefs | connector | SEO analytics |
 | Ramp | connector | Expense management |
-| Gusto | connector | Payroll/HR |
+| Gusto | connector (2 routes) | Payroll/HR. **One Gusto company per brand** (verified 2026-10-02): **KTU = First Generation USA LLC** (`e8d936cd-2b75-42c4-a10a-ff3ab22c6c7c`) via the direct `GUSTO_KTU` connector; **BTU = Orocabessa LLC** (`06efb3ac-4e24-419f-b2f1-a460e653a582`) via the Bath Tune-Up Zapier server's MCP Client (`mcp_client_by_zapier_run_read-only_tool`, `_tool_name` = the Gusto tool; costs Zapier tasks per call). Zapier has no native Gusto app. Both tokens carry `payrolls:run` / write scopes — read only unless Steven asks. Connector calls stall scheduled Routines (see below), so agents can't read Gusto unattended yet |
 | Clay | connector | Data enrichment |
 | Zapier | connector | App integrations |
 | Coupler.io | connector | Data pipelines |
