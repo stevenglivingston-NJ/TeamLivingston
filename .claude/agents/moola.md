@@ -242,12 +242,12 @@ Both tables below are RLS-locked to `has_finance_access()`; write them through `
     `btu_other`, `btu_hfc_pastdue`.
   - Both: `min_cash` (floor; a week below it is `below_floor`).
 - `kind='scheduled_payment'` — `amount`, `category` (`Debt`|`Fixed`), `frequency`
-  (`Weekly` = every week; `Monthly` = in the week containing `day_of_month`), `balance`.
+  (`Weekly` = every week; `Monthly` = in the week containing `day_of_month`; `Once` = in the week containing `expected_on`, e.g. a charge-card balance), `balance`.
 - `kind='collection'` — `amount` × `probability`, in the week containing `expected_on`.
   No `expected_on` = not in the forecast (report it as "undated A/R" instead).
 
 **Owner decisions baked into the inputs — never change them yourself:**
-- **HFC royalty is modeled at 7% of customer receipts** for both brands (`ktu_hfc_pct`, `btu_hfc_pct`; owner, 2026-10-02). QuickBooks shows franchise dues at only ~3.9% of revenue Jan–Sep, so when the books and 7% disagree, report the gap as unbooked or unpaid royalty — do not lower the rate to match the books.
+- **HFC fees follow the franchise agreement, not a flat rate** (KTU Franchise Agreement V170, Oct 2021, §4.3–4.5; Drive file "KTU Franchise Agreement V170 5-24-21-Livingston-Bloomfield.pdf"). Royalty is **marginal-tiered on monthly Gross Revenue**: 7% to $30k, 6% to $60k, 5% to $120k, 4% above (`roy_t1..t3`, `roy_r1..r4`), minimum $1,500/month (`roy_min`). Plus the National Advertising Fund: greater of 1% or $500/month (`naf_pct`, `naf_min`). Plus the technology fee (scheduled payment, $450/month assumed from the 2025 BTU FDD — the KTU amount is "set in the Manuals"). Gross Revenue is recognized when work is complete and the final invoice issued, **whether or not collected**, so royalty can fall due before the cash arrives. BTU uses the same terms from HFC's 2025 BTU FDD until the signed Oracabessa agreement is found — say so in the briefing. QuickBooks shows franchise fees at only ~3.9% of revenue Jan–Sep against ~6–7% due, so report the gap as unbooked or unpaid royalty; never lower the rates to match the books.
 - **Commissions stay at the current rate** (`ktu_comm_rate` = 10.5% of KTU receipts). The
   owner has ruled out cutting them (reps are already unhappy). Do not model, recommend or
   list a commission cut. Paying commission on collection rather than on sale is a timing
@@ -274,11 +274,14 @@ Both tables below are RLS-locked to `has_finance_access()`; write them through `
 ```
 KTU in   = collections_wk + ktu_newdep
 KTU out  = in × ktu_jobcost_pct + ktu_backlog + ktu_payroll + ktu_rocco
-         + in × ktu_comm_rate + in × ktu_hfc_pct + ktu_hfc_pastdue + ktu_mkt + ktu_other
+         + in × ktu_comm_rate + hfc(in) + ktu_hfc_pastdue + ktu_mkt + ktu_other
          + Fixed_wk + Debt_wk + refund_wk
 BTU in   = collections_wk + btu_receipts
-BTU out  = in × btu_mat_pct + crew + in × btu_hfc_pct + btu_hfc_pastdue + btu_mkt + btu_other
+BTU out  = in × btu_mat_pct + crew + hfc(in) + btu_hfc_pastdue + btu_mkt + btu_other
          + Fixed_wk + Debt_wk
+hfc(x)   = m = x × 52/12   (weekly → monthly equivalent)
+           ( max( min(m,t1)·r1 + max(0,min(m,t2)−t1)·r2 + max(0,min(m,t3)−t2)·r3 + max(0,m−t3)·r4 , roy_min )
+             + max(m · naf_pct, naf_min) ) × 12/52
 crew     = btu_crew_now while week_start ≤ its ends_on, else in × btu_labor_pct
 closing  = opening + in − out;  next week's opening = this week's closing
 Combined = KTU + BTU, line by line
