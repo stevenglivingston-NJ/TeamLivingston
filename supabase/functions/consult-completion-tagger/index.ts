@@ -19,6 +19,11 @@
 // (lookup only -- never creates a contact, which could fire new-lead workflows at a past client),
 // clear last round's survey tags, stamp last_consult_* fields (best effort), then remove+add
 // `appointment-completed` so the tag-added trigger fires even for a repeat client.
+//
+// Quiet hours (2026-10-02): the tag fires the survey SMS at once, so a LIVE run outside
+// 08:00-20:30 America/New_York tags nothing and logs nothing; it returns `deferred`. The
+// consults stay unlogged and the first in-window run picks them up (the overnight gap, at most
+// 11.5h, is well inside FRESH_HOURS). Dry runs ignore quiet hours.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -30,6 +35,8 @@ const BRANDS = ["KTU", "BTU"] as const;
 const LOOKBACK_DAYS = 3;            // appointments dated within this window are considered
 const FRESH_HOURS = 36;             // ...and only ones that took place in the last 36h get texted
 const MAX_ATTEMPTS = 3;
+const QUIET_START_MIN = 20 * 60 + 30;   // 20:30 ET: stop tagging
+const QUIET_END_MIN = 8 * 60;           // 08:00 ET: resume
 const SURVEY_TAGS_TO_CLEAR = ["consult-survey-sent", "consult-survey-done", "consult-promoter", "consult-neutral", "consult-detractor"];
 
 type Secrets = Record<string, string>;
@@ -61,6 +68,14 @@ async function hl(token: string, path: string, opts: RequestInit = {}) {
   if (!r.ok) throw new Error(`HL ${opts.method ?? "GET"} ${path.split("?")[0]} -> ${r.status}: ${t.slice(0, 200)}`);
   try { return t ? JSON.parse(t) : null; } catch { return null; }
 }
+
+/** Minutes since midnight in America/New_York (DST-aware). */
+export function etMinutes(d: Date = new Date()): number {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hourCycle: "h23",
+    hour: "2-digit", minute: "2-digit" }).formatToParts(d).map((x) => [x.type, x.value]));
+  return (Number(p.hour) % 24) * 60 + Number(p.minute);
+}
+export const inQuietHours = (d: Date = new Date()) => { const m = etMinutes(d); return m >= QUIET_START_MIN || m < QUIET_END_MIN; };
 
 const digits = (s?: string | null) => String(s ?? "").replace(/\D/g, "");
 const e164 = (s?: string | null) => { const d = digits(s); return d.length === 10 ? `+1${d}` : d.length === 11 && d[0] === "1" ? `+${d}` : ""; };
@@ -151,6 +166,8 @@ Deno.serve(async (req) => {
   // ?hours= widens the freshness window, for DRY RUNS ONLY (testing the matching against older consults).
   const freshHours = mode === "dry_run" ? Math.min(Number(url.searchParams.get("hours")) || FRESH_HOURS, 24 * 30) : FRESH_HOURS;
   if (mode === "off") return Response.json({ mode, skipped: "tagger_mode=off" });
+  if (mode === "live" && inQuietHours())
+    return Response.json({ mode, deferred: "quiet hours (outside 08:00-20:30 America/New_York); nothing tagged or logged, the next in-window run picks these up" });
   const results: Record<string, unknown> = {};
   for (const b of BRANDS) {
     try { results[b] = await runBrand(b, s, mode, freshHours); }

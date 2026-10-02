@@ -24,12 +24,19 @@
 //     that it's a conversation the team is having in HighLevel, and alerting on every "Tuesday works"
 //     would be noise. (A later 1-5 rating is still recorded.)
 // Opt-outs (STOP etc.) and one- or two-word replies with no number ("ok", "thanks") are left alone.
+// Opt-out INTENT anywhere in the reply ("stop texting me", "wrong number", "remove me", ...) is checked
+// before anything else (2026-10-02): no text goes back, nothing is recorded, and the office gets one
+// alert to set DND in HighLevel (HL only auto-opts-out the bare carrier keywords). Carrier STOP
+// confirmations are sent by HighLevel/the carrier, never by this function.
+// Replies stay GSM-7 (straight quotes, no em dashes or emoji) so each is billed as plain SMS.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPA = Deno.env.get("SUPABASE_URL")!;
 const sb = createClient(SUPA, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const HL_BASE = "https://services.leadconnectorhq.com";
 const SM = "https://serviceminder.io/api";
+// The survey's labeled scale (portal/src/feedback.js, consult-feedback) -- keep in step. 3 is "Good",
+// so its text-back must not apologise (that mismatch was fixed 2026-10-02).
 const RATING: Record<number, string> = { 5: "Superb", 4: "Very good", 3: "Good", 2: "Fair", 1: "Poor" };
 // Number words are checked before praise words ("five stars, Ben was great" is a 5, not a 4).
 const WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5 };
@@ -40,6 +47,12 @@ const json = (status: number, body: unknown) => new Response(JSON.stringify(body
 /** 1-5 from a text reply, or null. "5", "5!", "4 stars", "I'd say a 4", "five", "10/10" all count;
  *  opt-out keywords and numbers outside 1-5 ("8", "555") don't. With several numbers, the first 1-5 wins. */
 const OPT_OUT = /^(stop|stopall|unsubscribe|cancel|end|quit|help|info)[\s.!]*$/;   // carrier keywords count only as the whole message
+/** Opt-out intent anywhere in the reply: never text back. Deliberately broad (a missed opt-out is a
+ *  compliance problem; a missed thank-you is not). */
+const OPT_OUT_INTENT = /\b(stop|stopall|unsubscribe|cancel|end|quit)\b|stop texting|don'?t text|do not text|remove me|wrong number/i;
+export function isOptOut(body: string): boolean {
+  return OPT_OUT_INTENT.test(String(body || "").replace(/[\u2018\u2019]/g, "'"));
+}
 export function parseRating(body: string): number | null {
   const t = String(body || "").toLowerCase().trim();
   if (!t || OPT_OUT.test(t)) return null;
@@ -163,7 +176,7 @@ async function writtenFeedback(brand: string, s: Record<string, string>, token: 
   const hi = first ? `, ${first}` : "";
   const text = intent.needInfo || intent.callback
     ? `Thank you${hi}! We'll get back to you shortly about your question.`
-    : `Thank you for sharing that${hi}. We read every reply ourselves, and it genuinely helps.`;
+    : `Thanks for your note${hi}. We've passed it to our team and someone will reply here within 1 business day.`;
   try {
     await hl(token, `/conversations/messages`, { method: "POST", body: JSON.stringify({ type: "SMS", contactId, message: text }) });
     results.reply = "sent";
@@ -185,6 +198,16 @@ Deno.serve(async (req) => {
 
   const msg = await latestInboundSms(token, locationId, contactId).catch((e) => { console.error(String(e)); return null; });
   if (!msg) return json(200, { ignored: "no recent inbound SMS" });
+  if (isOptOut(msg.body)) {
+    // No reply, no rating. One alert per message so someone sets DND (deduped like written feedback).
+    const source = `consult-sms-reply:optout:${contactId}:${msg.id}`;
+    const { data: dup } = await sb.from("notify_queue").select("id").eq("source", source).limit(1);
+    if (!dup?.length) await sb.from("notify_queue").insert({ kind: "consult_feedback_alert", recipient_email: STEVEN_EMAIL,
+      subject: `Consult survey text (${brand}) – opt-out request`, source, status: "pending",
+      body: `Client replied to the consult survey text with an opt-out: "${msg.body.slice(0, 300)}". No reply was sent. ` +
+        `Set DND (SMS) on the HighLevel contact ${contactId} if HighLevel has not already done so.` });
+    return json(200, { ignored: "opt-out intent; no reply sent", body: msg.body.slice(0, 80) });
+  }
   const rating = parseRating(msg.body), intent = parseIntent(msg.body);
   const words = msg.body.trim().split(/\s+/).filter(Boolean).length;
   if (!rating && (OPT_OUT.test(msg.body.toLowerCase().trim()) || (!intent.needInfo && !intent.callback && words < 3)))
@@ -234,7 +257,9 @@ Deno.serve(async (req) => {
     ? `Thank you${hi}! We'll get back to you shortly about your question.`
     : rating >= 4
     ? `Thank you${hi}! That means a lot to us and our team.${link ? ` Anything you'd like to add? ${link}` : ""}`
-    : `Thank you for being honest${hi}. We're sorry it fell short, and someone from our team will reach out personally.${link ? ` Anything you'd like to add: ${link}` : ""}`;
+    : rating === 3
+    ? `Thank you${hi}! Anything we could have done better? ${link ? `Tell us here: ${link}` : "Just reply to this text."}`
+    : `Thank you for being honest${hi}. We'll do better, and Takia or Steven will personally reach out within 1 business day.${link ? ` Add detail anytime: ${link}` : ""}`;
   try {
     await hl(token, `/conversations/messages`, { method: "POST", body: JSON.stringify({ type: "SMS", contactId, message: text }) });
     results.reply = "sent";

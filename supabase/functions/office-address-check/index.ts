@@ -33,6 +33,11 @@ const svc = {
 
 const OFFICE = /1285\s*broad/i;
 const TEST_NAMES = /^(test fallback 1|test integration|test 03|test test|test lead|ktu sales team|home show)$/i;
+// Canonical test/UAT rule (CLAUDE.md "Test/UAT records").
+const isTest = (c: any) => {
+  const n = (c?.Name ?? "").trim();
+  return TEST_NAMES.test(n) || /\btest\b|zz(test|uat)|^zzz/i.test(n) || /\+uat\d*@/i.test(c?.Email ?? "");
+};
 const STATUS: Record<number, string> = { 0: "Tentative", 1: "Scheduled", 2: "Scheduled", 3: "Completed", 4: "Cancelled" };
 
 const secrets: Record<string, string> = {};
@@ -101,7 +106,7 @@ Deno.serve(async (req) => {
       const appts = await smQuery(brand, from, thru);
       const hits = appts.filter((a) => {
         const c = a?.Contact ?? {};
-        return OFFICE.test(c.Address1 ?? "") && !TEST_NAMES.test((c.Name ?? "").trim()) && a.Status !== 4;
+        return OFFICE.test(c.Address1 ?? "") && !isTest(c) && a.Status !== 4;
       });
       for (const a of hits) {
         const key = `${brand}|${a.ContactId}|${a.DateTime}`;

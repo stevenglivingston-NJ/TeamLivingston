@@ -81,6 +81,15 @@ bash mcp-servers/sb.sh  '<SQL>'                # Supabase reads/writes
 Use `mcp__High_Level__*` only in an ad-hoc interactive session as a convenience
 shortcut when the curl path is awkward, and even then only after the curl path fails.
 
+## Exclude test/UAT records (every count — canonical rule, CLAUDE.md "Test/UAT records")
+
+A record is **test** when its contact/customer name matches `/\btest\b/i`, `/zz(test|uat)/i`
+or `/^zzz/i`, or its email matches `/\+uat\d*@/i` (UAT contacts are "Test ZZUAT-<nn> KTU|BTU",
+`stevenglivingston+uat<nn>@gmail.com`), plus the internal-domain and own-number rules this
+spec already applies. Drop test records from every lead, booking, proposal and revenue figure (CPL/CAC/ROAS inputs) you count, total, rank or alert
+on, and never name one in a callout. Report how many you dropped (e.g. "3 test records
+excluded"), never their details. Reporting only: do not edit, cancel or delete them.
+
 ## The daily run
 
 Work brand-by-brand (KTU, BTU), then roll up. Compare **yesterday** and

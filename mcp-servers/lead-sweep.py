@@ -106,6 +106,10 @@ JUNK_PHONE = re.compile(r"^(0+|1234567890|(\d)\2{9})$")
 # Rows that are test scaffolding, not customers.
 TEST_ROW = re.compile(
     r"(^|\s)(test\b|holding time slot|steven livingston|zzz\b|api probe|delete me)", re.I)
+# Canonical test/UAT rule (CLAUDE.md "Test/UAT records"), on top of TEST_ROW:
+# UAT contacts are "Test ZZUAT-<nn> <KTU|BTU>" / stevenglivingston+uat<nn>@gmail.com.
+TEST_NAME_CANON = re.compile(r"\btest\b|zz(test|uat)|^zzz", re.I)
+TEST_EMAIL_CANON = re.compile(r"\+uat\d*@", re.I)
 INTERNAL_EMAIL = re.compile(r"@(kitchentuneup|bathtune-up)\.com$", re.I)
 
 # Automated senders talking to us — our own AI responder, the other brand's
@@ -221,9 +225,9 @@ def short_name(name: str | None, phone: str | None = None) -> str:
 
 def is_test_row(name: str | None, email: str | None = None,
                 phone: str | None = None) -> bool:
-    if name and TEST_ROW.search(name):
+    if name and (TEST_ROW.search(name) or TEST_NAME_CANON.search(name.strip())):
         return True
-    if email and INTERNAL_EMAIL.search(email):
+    if email and (INTERNAL_EMAIL.search(email) or TEST_EMAIL_CANON.search(email)):
         return True
     if phone and digits(phone) in OWN_NUMBERS:
         return True
