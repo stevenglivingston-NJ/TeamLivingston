@@ -206,7 +206,7 @@ The 50/40/10 model only works if every tranche fires on time. Cross-check Servic
 - **QuickBooks (`mcp__Intuit_QuickBooks__*`) and Bank Connection (`mcp__Bank_Connection_Truthifi__*`) have NO curl-safe equivalent today** — unlike ServiceMinder/HighLevel/Supabase, both are OAuth-connector-backed with no static API key exposed to this environment, so a `sm.sh`/`ghl.sh`-style helper can't be built for them without that changing at the connector-provisioning level (outside agent access — flag to Steven/Sonya if this matters, don't attempt a workaround). **Do not let that block the forecast**: the core install-keyed 40%/10% draw math and the 13-week ladder run entirely off ServiceMinder (via `sm.sh`) for inflows and the already-parametric payroll/commission/royalty/rent figures documented in this file for outflows. Treat QuickBooks/Bank-sourced figures (AP aging, live bank balance, fee/finding detail) as a best-effort enrichment layer on top of that core forecast: pull them when the interactive/manual path is being used, and when running on a schedule, publish the ServiceMinder-and-parametric-outflow forecast on its own rather than blocking or stubbing the whole thing because those two connectors are unreachable. Say explicitly in the published row whether QBO/Bank figures were included that scan or not — never silently substitute a guess for a real bank balance.
 - From ServiceMinder (`appointments/query` install/start appointments + accepted proposals + open invoices via `invoice/query`), build the dated inflow schedule: every job with an install/start date in the next **7 / 14 / 30 / 90 days** → expected **40% draw** (contract × 40%, per linked invoice), and every projected completion → expected **10% draw**.
 - Report the totals per window ("next 14 days: $X expected across N jobs") and net them against known outflows in the same window (payroll incl. commission liability below, HFC royalty on the 10th, rent, debt service, vendor bills due from the Gmail sweep). **A projected shortfall gets a dated URGENT row weeks before it happens.**
-- **13-week rolling weekly cash forecast — the core CFO deliverable; produce it every scan, per entity (KTU, BTU) plus a portfolio line.** A week-by-week ladder for the next 13 weeks; each week: **opening balance → + expected AR draws landing that week (40%/10% tranches keyed to the install calendar + open invoices) − outflows (payroll incl. the commission accrual below, AP due that week, HFC royalty on the 10th, rent, debt service) = projected closing balance**, and each week's closing carries into the next week's opening. Flag the **first week the projected closing dips below the 8-week fixed-cost buffer** (warn) or **below zero** (urgent) — by name, dollar, and week, as early as you can see it. The 7/14/30/90 buckets above stay as the summary; the weekly ladder is the actionable artifact. Emit the tightest 4–6 weeks (or any breach week) as `moola_briefing` rows; the full 13-week table can go to a dedicated Finance sub-section if one exists.
+- **13-week rolling weekly cash forecast — the core CFO deliverable; rebuilt every Monday (see "13-week cash forecast — Monday refresh" below), per entity (KTU, BTU) plus a combined line.** A week-by-week ladder for the next 13 weeks; each week: **opening balance → + expected AR draws landing that week (40%/10% tranches keyed to the install calendar + open invoices) − outflows (payroll incl. the commission accrual below, AP due that week, HFC royalty on the 10th, rent, debt service) = projected closing balance**, and each week's closing carries into the next week's opening. Flag the **first week the projected closing dips below the 8-week fixed-cost buffer** (warn) or **below zero** (urgent) — by name, dollar, and week, as early as you can see it. The 7/14/30/90 buckets above stay as the summary; the weekly ladder is the actionable artifact. The full table goes to `moola_forecast_weeks` (owner-only); `moola_briefing` gets one summary row. On the other six days, keep the 7/14/30/90 buckets current and reuse Monday's ladder — do not rebuild it.
 - A job with an install date but **no invoice staged for the 40%** is a process break — flag it by name (it will trip the T-2 trigger above, then the day-2 alert, if unfixed).
 - **Install dates come from ServiceMinder, which is source of truth for them.** Everything in this section — the
   7/14/30/90 buckets, the 13-week ladder, the T-2 trigger — is keyed to the install calendar, so a stale or
@@ -215,6 +215,91 @@ The 50/40/10 model only works if every tranche fires on time. Cross-check Servic
   cross-check, not a substitute: as of 2026-08 that JobTread field had not been maintained since Dec 2025.
   If Foreman reports install-sync divergences, reconcile against them before trusting the forecast.
 - Jobs signed but with **no install date** hold cash hostage: 40% + 10% of contract value in limbo. Report the total "unscheduled backlog" dollar figure when material.
+
+## 13-week cash forecast — Monday refresh (owner-only; never emailed)
+
+**Gate: run only when today is Monday (America/New_York)**, after the Monday bank pull
+above. A missed Monday is rebuilt on the next scan that finds the latest `scan_date` in
+`moola_forecast_weeks` older than the most recent Monday.
+
+**Privacy — owner-directed 2026-10-02, not negotiable.** The forecast is read on the
+intranet only: *Financial Reporting → 13-week cash forecast*, visible to `finance_access`
+logins. Nothing derived from it goes to `notify_queue`, `dispatch-notify`, Slack, email,
+a Gmail draft, or any team-visible section — **including** urgent shortfall weeks. This
+overrides every "route to Slack/email" rule elsewhere in this file for forecast output.
+Both tables below are RLS-locked to `has_finance_access()`; write them through `sb.sh`
+(service role) only.
+
+**Inputs — `public.moola_forecast_inputs`** (one row per `entity, kind, key`):
+- `kind='assumption'` — `value` is a weekly $ amount or a rate (fraction). Optional
+  `starts_on` / `ends_on` bound when it applies. Keys in use:
+  - KTU: `ktu_newdep` ($/wk new-sale deposits), `ktu_jobcost_pct` (× inflows),
+    `ktu_backlog` ($/wk extra build cost), `ktu_payroll`, `ktu_rocco`, `ktu_mkt`,
+    `ktu_other` ($/wk), `ktu_hfc_pct` (× inflows), `ktu_hfc_pastdue` ($/wk),
+    `ktu_refund` (one-off, in the week containing `starts_on`), `ktu_comm_rate` (× inflows).
+  - BTU: `btu_receipts` ($/wk), `btu_mat_pct` (× inflows), `btu_crew_now` ($/wk until
+    `ends_on`), `btu_labor_pct` (× inflows from `starts_on`), `btu_hfc_pct`, `btu_mkt`,
+    `btu_other`, `btu_hfc_pastdue`.
+  - Both: `min_cash` (floor; a week below it is `below_floor`).
+- `kind='scheduled_payment'` — `amount`, `category` (`Debt`|`Fixed`), `frequency`
+  (`Weekly` = every week; `Monthly` = in the week containing `day_of_month`), `balance`.
+- `kind='collection'` — `amount` × `probability`, in the week containing `expected_on`.
+  No `expected_on` = not in the forecast (report it as "undated A/R" instead).
+
+**Owner decisions baked into the inputs — never change them yourself:**
+- **Commissions stay at the current rate** (`ktu_comm_rate` = 10.5% of KTU receipts). The
+  owner has ruled out cutting them (reps are already unhappy). Do not model, recommend or
+  list a commission cut. Paying commission on collection rather than on sale is a timing
+  question only; mention it at most once, and only if a specific week turns on it.
+- **BTU crew are paid per job at 25% of the job price** (`btu_labor_pct`) from the
+  `starts_on` date. Before it, `btu_crew_now` applies.
+- Rows with `confirmed=true` are owner-set. Leave them alone. You may update `confirmed=false`
+  rows **only** where you have a better sourced figure, set `basis` to the source and
+  date, and set `updated_by='moola <date>'`.
+
+**What you refresh each Monday (and nothing else):**
+1. **Opening cash per entity** = that morning's bank balances (the Monday pull; KTU = every
+   KTU operating account, BTU = every Bluevine BTU account, Brex excluded). If the pull
+   failed, use the latest `moola_balances` and say so in `sources`.
+2. **Collections** — upsert `kind='collection'` rows from open receivables (QuickBooks A/R
+   when reachable, ServiceMinder open invoices + install calendar via `sm.sh` otherwise):
+   move dates, drop paid ones (`active=false`), add new ones. Probability: 0.9 when the job
+   is complete and invoiced, 0.75 at install start, 0.6 for 61–90 days, 0 past 90 days
+   until a person dates it.
+3. **Scheduled payment balances** — decrement `balance` by payments the bank shows were made;
+   set `ends_on` when a loan is paid off so it drops out.
+
+**The math — identical to the owner's workbook, week by week (weeks start Monday):**
+```
+KTU in   = collections_wk + ktu_newdep
+KTU out  = in × ktu_jobcost_pct + ktu_backlog + ktu_payroll + ktu_rocco
+         + in × ktu_comm_rate + in × ktu_hfc_pct + ktu_hfc_pastdue + ktu_mkt + ktu_other
+         + Fixed_wk + Debt_wk + refund_wk
+BTU in   = collections_wk + btu_receipts
+BTU out  = in × btu_mat_pct + crew + in × btu_hfc_pct + btu_hfc_pastdue + btu_mkt + btu_other
+         + Fixed_wk + Debt_wk
+crew     = btu_crew_now while week_start ≤ its ends_on, else in × btu_labor_pct
+closing  = opening + in − out;  next week's opening = this week's closing
+Combined = KTU + BTU, line by line
+```
+Write 13 rows per entity plus 13 `Combined` rows to **`public.moola_forecast_weeks`**:
+`scan_date` (the Monday), `entity`, `week_no` 1–13, `week_start`, `opening`, `inflows`,
+`outflows`, `closing`, `lines` (jsonb, keys `collections, new_sales|receipts, job_costs|materials,
+payroll, foreman_zelle, commissions, crew, hfc_fees, hfc_pastdue, marketing, other_opex, fixed,
+debt_service, refunds` — positive numbers), `flag` (`negative` < 0, `below_floor` < `min_cash`,
+else `ok`), `sources` (`{"bank":"<date or 'stale: <date>'>","qbo":true|false,"sm":true|false,
+"note":"<one line>"}`). Upsert on `(scan_date, entity, week_no)`. Keep every run — the history
+is how the owner sees whether the forecast was right. Do not delete old runs.
+
+**Then, in `moola_briefing` (owner-only), exactly one row** `kind:"forecast"`: lowest closing
+per entity and its week, the first week below $0, and the change in the 13-week low since
+last Monday with the one or two inputs that moved it. Point to *Financial Reporting →
+13-week cash forecast*. No other output, no notification.
+
+**Check yourself before writing:** week 1 opening = the bank figure you just pulled; each
+week's opening = the prior closing; Combined = KTU + BTU to the cent; a Monthly payment
+appears in exactly one week per month. If any check fails, write nothing and say why in
+the briefing row.
 
 ## Liability register & paydown priority (every scan)
 
