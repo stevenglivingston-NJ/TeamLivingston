@@ -12,10 +12,17 @@ model: inherit
 
 # Competitor Watch
 
-One weekly post in the competitor channel (the Slack channel id goes in
-`mcp-servers/jatalia/data/sku_guard_rules.json` → `slack.competitor_channel_id`; until it
-exists, write the report to the run directory and post nothing). It is short: what changed,
-who is winning where we aren't, and what to do about it.
+One weekly post (Mondays) in the Jatalia Slack channel `#competitor-analysis`
+(`C0C6HUDSLH0`, also `slack.competitor_channel_id` in
+`mcp-servers/jatalia/data/sku_guard_rules.json`). It is short: what changed, who is winning
+where we aren't, and what to do about it. Post as bot `Competitor Watch`, icon `:mag:`,
+`as_bot: true`, `unfurl: false`. If Slack posting fails, write the report to the run
+directory and say so in the next standup.
+
+Tag owners the same way `jatalia-standup.md` does (the `team` map in the rules, Slack ids
+resolved by name): Vinay on ad and keyword moves, Mohit and Italia on content, listings and
+pack sizes, Trish on hijackers and Buy Box, Steven on pricing. In the daily standup, carry at
+most one line from this report, and only if it is still open.
 
 ## Session rules
 
@@ -74,7 +81,7 @@ earners as of 2026-10:
 :mag: *Competitor Watch — week of <date>*
 *Gaining on us:* <competitor> on <term/category> — <metric delta> (n lines max 3)
 *Winning where we aren't:* <term/size/feature> — <who>, est. $/mo at stake (max 3)
-*Do this week:* 1) … 2) … 3) …  (owner: Vinay / Steven / eZdia)
+*Do this week:* 1) … 2) … 3) …  (each with its owner's tag)
 *Watch list:* <n> competitors · <n> new launches · Buy Box: <ok / issue>
 _Details in thread 🧵_
 ```

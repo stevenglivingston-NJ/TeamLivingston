@@ -73,13 +73,100 @@
   ],
   "slack": {
     "workspace_channel_id": "C0C6MM087D2",
-    "channel_name": "#marketplace-alerts",
+    "channel_name": "#daily-standup-alerts-",
     "via": "Zapier Slack (BTU_Zapier_connection slack_send_channel_message)",
-    "competitor_channel_id": null,
-    "_competitor_note": "Set when Steven shares the competitor channel; competitor-watch posts nothing until then."
+    "competitor_channel_id": "C0C6HUDSLH0",
+    "competitor_channel_name": "#competitor-analysis"
   },
-  "slack_mentions": {
-    "vinay": null,
-    "_note": "Vinay is not in the Jatalia Slack workspace yet (checked 2026-10-03). Invite him, then put his Slack user id (U...) here; until then posts write @Vinay as text."
+  "team": {
+    "_note": "Who gets tagged for what. slack_id null = resolve each run by name from Slack users.list (exactly one active, non-bot match on first name or an alias); until then write the name as plain text. Set slack_id here to pin it.",
+    "steven": {
+      "name": "Steven",
+      "slack_id": "U08RD8WLJMC",
+      "role": "owner",
+      "owns": [
+        "price approvals",
+        "Earthwise invoices"
+      ]
+    },
+    "brad": {
+      "name": "Brad",
+      "aliases": [],
+      "slack_id": null,
+      "role": "oversees the group",
+      "owns": [
+        "top-line summary",
+        "critical alerts"
+      ]
+    },
+    "vinay": {
+      "name": "Vinay",
+      "aliases": [],
+      "slack_id": null,
+      "role": "paid media, all channels",
+      "owns": [
+        "ads",
+        "Helium 10 ad rules",
+        "retargeting",
+        "paid keywords",
+        "event budgets"
+      ]
+    },
+    "trish": {
+      "name": "Trish",
+      "aliases": [
+        "Patricia"
+      ],
+      "slack_id": null,
+      "role": "supports Vinay; account management",
+      "owns": [
+        "account health",
+        "Buy Box and hijackers",
+        "Walmart price checklist",
+        "Seller Central cases",
+        "Lowe's Media Network"
+      ]
+    },
+    "mohit": {
+      "name": "Mohit",
+      "aliases": [],
+      "slack_id": null,
+      "role": "organic content, FBA/WFS",
+      "owns": [
+        "stock and listing quantities",
+        "FBA/WFS send list",
+        "organic rank and content",
+        "listing fixes"
+      ]
+    },
+    "italia": {
+      "name": "Italia",
+      "aliases": [],
+      "slack_id": null,
+      "role": "organic content, FBA/WFS",
+      "owns": [
+        "stock and listing quantities",
+        "FBA/WFS send list",
+        "organic rank and content",
+        "listing fixes"
+      ]
+    }
+  },
+  "approvals": {
+    "approvers": [
+      "steven",
+      "brad"
+    ],
+    "_note": "Only these people's replies approve price changes. Anyone else's 'approve' is ignored and answered in the thread. Default set 2026-10-03 \u2014 Steven to confirm."
+  },
+  "inventory": {
+    "_note": "Read by inventory_watch.py.",
+    "listing_qty_low_days": 14,
+    "listing_qty_critical_units": 5,
+    "fba_low_days": 21,
+    "fba_critical_days": 10,
+    "send_list_min_units_30d": 15,
+    "send_cover_days": 45,
+    "fba_invoiced_cost_multiplier": 2.0
   }
 }
