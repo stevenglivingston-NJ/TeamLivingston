@@ -1,0 +1,174 @@
+{
+  "_doc": "SKU Guard rules. One place for the numbers that decide whether a Jatalia SKU is making money. Read by sku_guard.py. Edit here, not in the script.",
+  "mode": {
+    "amazon_reprice": "approval",
+    "walmart_reprice": "alert_only",
+    "_note": "amazon_reprice: live | approval | dry_run | off. 'approval' (set 2026-10-03): sku_guard.py only proposes; the jatalia-standup agent applies a price only after a person approves its group in the Slack approval thread. Walmart stays alert_only until Walmart Marketplace API credentials exist (only Walmart Ads creds are set)."
+  },
+  "targets": {
+    "min_net_margin": 0.25,
+    "ad_allowance_pct_of_sales": 0.1,
+    "min_units_for_decision": 5,
+    "zero_sale_spend_alert_usd": 25.0
+  },
+  "reprice_guardrails": {
+    "raise_only": true,
+    "max_step_pct": 0.15,
+    "min_days_between_changes": 7,
+    "never_below_shopify": true,
+    "unviable_if_required_over_shopify_x": 2.0,
+    "round_to_cents": 0.95
+  },
+  "cost_basis": {
+    "_note": "Product cost per SKU = PRODUCT COST in amazon_cogs.csv (the direct-ship / FBM rate). FBA and FBM pay the same product cost; only shipping differs. If Earthwise confirms a different rate, change it in amazon_cogs.csv.",
+    "source": "amazon_cogs.csv",
+    "fba_services_per_unit": 0.7,
+    "fbm_shipping_per_unit_override": {},
+    "walmart_wfs_fee_estimate": {
+      "le_0_5lb": 4.09,
+      "le_1lb": 5.22,
+      "le_5lb": 8.15,
+      "gt_5lb": 16.71
+    },
+    "fbm_shipping_by_weight": {
+      "_note": "What Earthwise bills per direct-ship unit, by pack size. Calibrated to the Jul 6-19 and Sep 14-27 Amazon reimbursements (billed shipping / FBM units, weighted by size): carrier-rate tiers x 1.2.",
+      "le_0_5lb": 6.6,
+      "le_1lb": 8.4,
+      "le_2lb": 10.8,
+      "le_5lb": 15.6,
+      "le_10lb": 21.6,
+      "le_25lb": 33.6,
+      "gt_25lb": 54.0
+    }
+  },
+  "ezdia": {
+    "_source": "eZdia invoice #9512 (Jul 2026): 3.25% revenue share + flat monthly management fee per channel. Flat fee is spread over the channel's trailing-30-day revenue.",
+    "revenue_share_pct": 0.0325,
+    "monthly_flat_usd": {
+      "amazon": 2500.0,
+      "walmart": 1750.0,
+      "lowes": 0.0
+    },
+    "flat_fee_in_sku_pricing": {
+      "amazon": true,
+      "walmart": false,
+      "_note": "Walmart's flat fee is ~30% of Walmart sales at current volume - a channel problem, not fixable per SKU, so it is reported as a channel alert instead of loaded into each Walmart SKU."
+    },
+    "channel_alert_if_flat_over_pct": 0.15
+  },
+  "marketplace_fees": {
+    "amazon_referral_pct_fallback": 0.15,
+    "walmart_referral_pct": 0.15
+  },
+  "open_invoice_disputes": [
+    {
+      "vendor": "Earthwise Seed Co.",
+      "invoices": [
+        "#116408",
+        "#116511"
+      ],
+      "issue": "FBA/WFS stock billed at 2x the direct-ship rate (Seed-Tac ~4x); $6,900.50 over on the two invoices",
+      "raised": "2026-10-03"
+    }
+  ],
+  "slack": {
+    "workspace_channel_id": "C0C6MM087D2",
+    "channel_name": "#daily-standup-alerts-",
+    "via": "Zapier Slack (BTU_Zapier_connection slack_send_channel_message)",
+    "competitor_channel_id": "C0C6HUDSLH0",
+    "competitor_channel_name": "#competitor-analysis",
+    "private_dm_user": "U08RD8WLJMC",
+    "_visibility": "Shared channel: margins %, revenue $, ROAS, prices, stock, Buy Box; Shopify as % only. Steven's DM only: profit $, Earthwise costs/rates/invoice amounts, eZdia fees and contract terms."
+  },
+  "team": {
+    "_note": "Who gets tagged for what. slack_id null = resolve each run by name from Slack users.list (exactly one active, non-bot match on first name or an alias); until then write the name as plain text. Set slack_id here to pin it.",
+    "steven": {
+      "name": "Steven",
+      "slack_id": "U08RD8WLJMC",
+      "role": "owner",
+      "owns": [
+        "price approvals",
+        "Earthwise invoices"
+      ]
+    },
+    "brad": {
+      "name": "Brad",
+      "aliases": [],
+      "slack_id": null,
+      "role": "oversees the group",
+      "owns": [
+        "top-line summary",
+        "critical alerts"
+      ]
+    },
+    "vinay": {
+      "name": "Vinay",
+      "aliases": [],
+      "slack_id": null,
+      "role": "paid media, all channels",
+      "owns": [
+        "ads",
+        "Helium 10 ad rules",
+        "retargeting",
+        "paid keywords",
+        "event budgets"
+      ]
+    },
+    "trish": {
+      "name": "Trish",
+      "aliases": [
+        "Patricia"
+      ],
+      "slack_id": null,
+      "role": "supports Vinay; account management",
+      "owns": [
+        "account health",
+        "Buy Box and hijackers",
+        "Walmart price checklist",
+        "Seller Central cases",
+        "Lowe's Media Network"
+      ]
+    },
+    "mohit": {
+      "name": "Mohit",
+      "aliases": [],
+      "slack_id": null,
+      "role": "organic content, FBA/WFS",
+      "owns": [
+        "stock and listing quantities",
+        "FBA/WFS send list",
+        "organic rank and content",
+        "listing fixes"
+      ]
+    },
+    "italia": {
+      "name": "Italia",
+      "aliases": [],
+      "slack_id": null,
+      "role": "organic content, FBA/WFS",
+      "owns": [
+        "stock and listing quantities",
+        "FBA/WFS send list",
+        "organic rank and content",
+        "listing fixes"
+      ]
+    }
+  },
+  "approvals": {
+    "approvers": [
+      "steven",
+      "brad"
+    ],
+    "_note": "Only these people's replies approve price changes. Anyone else's 'approve' is ignored and answered in the thread. Default set 2026-10-03 \u2014 Steven to confirm."
+  },
+  "inventory": {
+    "_note": "Read by inventory_watch.py.",
+    "listing_qty_low_days": 14,
+    "listing_qty_critical_units": 5,
+    "fba_low_days": 21,
+    "fba_critical_days": 10,
+    "send_list_min_units_30d": 15,
+    "send_cover_days": 45,
+    "fba_invoiced_cost_multiplier": 2.0
+  }
+}
