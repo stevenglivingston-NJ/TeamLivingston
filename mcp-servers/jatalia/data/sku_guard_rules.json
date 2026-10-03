@@ -1,0 +1,47 @@
+{
+  "_doc": "SKU Guard rules. One place for the numbers that decide whether a Jatalia SKU is making money. Read by sku_guard.py. Edit here, not in the script.",
+  "mode": {
+    "amazon_reprice": "dry_run",
+    "walmart_reprice": "alert_only",
+    "_note": "amazon_reprice: live | dry_run | off. Walmart stays alert_only until Walmart Marketplace API credentials exist (only Walmart Ads creds are set)."
+  },
+  "targets": {
+    "min_net_margin": 0.25,
+    "ad_allowance_pct_of_sales": 0.10,
+    "min_units_for_decision": 5,
+    "zero_sale_spend_alert_usd": 25.0
+  },
+  "reprice_guardrails": {
+    "raise_only": true,
+    "max_step_pct": 0.15,
+    "min_days_between_changes": 7,
+    "never_below_shopify": true,
+    "unviable_if_required_over_shopify_x": 2.0,
+    "round_to_cents": 0.95
+  },
+  "cost_basis": {
+    "_note": "Product cost per SKU = PRODUCT COST in amazon_cogs.csv (the direct-ship / FBM rate). FBA and FBM pay the same product cost; only shipping differs. If Earthwise confirms a different rate, change it in amazon_cogs.csv.",
+    "source": "amazon_cogs.csv",
+    "fba_services_per_unit": 0.70,
+    "fbm_shipping_per_unit_default": 9.85,
+    "fbm_shipping_per_unit_override": {},
+    "walmart_wfs_fee_estimate": {"le_0_5lb": 4.09, "le_1lb": 5.22, "le_5lb": 8.15, "gt_5lb": 16.71}
+  },
+  "ezdia": {
+    "_source": "eZdia invoice #9512 (Jul 2026): 3.25% revenue share + flat monthly management fee per channel. Flat fee is spread over the channel's trailing-30-day revenue.",
+    "revenue_share_pct": 0.0325,
+    "monthly_flat_usd": {"amazon": 2500.0, "walmart": 1750.0, "lowes": 0.0}
+  },
+  "marketplace_fees": {
+    "amazon_referral_pct_fallback": 0.15,
+    "walmart_referral_pct": 0.15
+  },
+  "open_invoice_disputes": [
+    {"vendor": "Earthwise Seed Co.", "invoices": ["#116408", "#116511"], "issue": "FBA/WFS stock billed at 2x the direct-ship rate (Seed-Tac ~4x); $6,900.50 over on the two invoices", "raised": "2026-10-03"}
+  ],
+  "slack": {
+    "workspace_channel_id": "C0C6MM087D2",
+    "channel_name": "#marketplace-alerts",
+    "via": "Zapier Slack (BTU_Zapier_connection slack_send_channel_message)"
+  }
+}
