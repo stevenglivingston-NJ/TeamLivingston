@@ -67,6 +67,15 @@ def wfs_estimate(name, table):
     return table["gt_5lb"]
 
 
+def fbm_ship(name, table):
+    lb = size_lb(name) or 1
+    for cap, key in ((0.5, "le_0_5lb"), (1, "le_1lb"), (2, "le_2lb"), (5, "le_5lb"),
+                     (10, "le_10lb"), (25, "le_25lb")):
+        if lb <= cap:
+            return table[key]
+    return table["gt_25lb"]
+
+
 def shopify_prices(path):
     """EW SKU -> retail price, from the public storefront feed."""
     pages = []
@@ -162,7 +171,9 @@ def main():
         lv = live.get(sku, {})
         price = float(lv.get("price") or realized)
         rev_ch = channel_rev[channel] or 1
-        ez_pct = EZ["revenue_share_pct"] + EZ["monthly_flat_usd"].get(channel, 0) / rev_ch
+        ez_pct = EZ["revenue_share_pct"]
+        if EZ.get("flat_fee_in_sku_pricing", {}).get(channel, True):
+            ez_pct += EZ["monthly_flat_usd"].get(channel, 0) / rev_ch
         ref_pct = min(refunds / sales, 0.10) if units >= 10 and sales else 0.03
 
         if channel == "amazon":
@@ -173,7 +184,7 @@ def main():
                 fixed_fee = float(lv["fba_fee"])
             fba = fixed_fee > 2  # FBA SKUs carry a per-unit fulfillment fee
             fulfil = C["fba_services_per_unit"] if fba else \
-                C["fbm_shipping_per_unit_override"].get(sku, C["fbm_shipping_per_unit_default"])
+                C["fbm_shipping_per_unit_override"].get(sku, fbm_ship(name, C["fbm_shipping_by_weight"]))
             mode = "FBA" if fba else "FBM"
         else:
             fee_pct = FEES["walmart_referral_pct"]
@@ -182,7 +193,7 @@ def main():
             if ft == "WFS":
                 fulfil, mode = wfs_estimate(name, C["walmart_wfs_fee_estimate"]), "WFS"
             else:
-                fulfil, mode = C["fbm_shipping_per_unit_override"].get(sku, C["fbm_shipping_per_unit_default"]), "Seller"
+                fulfil, mode = C["fbm_shipping_per_unit_override"].get(sku, fbm_ship(name, C["fbm_shipping_by_weight"])), "Seller"
 
         pct_costs = fee_pct + ref_pct + ez_pct
         fixed = pc + fixed_fee + fulfil
@@ -205,8 +216,9 @@ def main():
 
         if units < T["min_units_for_decision"]:
             if net_u < 0:
+                why = f"ads ${ads_u:.2f}/unit" if ads_u > max(contrib_u, 0) else "price/cost"
                 d.update(status="LOSS_LOW_VOLUME", severity="amber",
-                         note=f"losing ${-net_u:.2f}/unit on {units} units - too few to reprice automatically")
+                         note=f"{units} units, driver: {why} - too few sales to reprice automatically")
                 decisions.append(d)
             return
 
@@ -258,13 +270,20 @@ def main():
     for r in wmt_rows:
         evaluate("walmart", r)
 
+    channel_alerts = []
+    for ch, rev in channel_rev.items():
+        flat = EZ["monthly_flat_usd"].get(ch, 0)
+        if rev and flat / rev > EZ.get("channel_alert_if_flat_over_pct", 1):
+            channel_alerts.append(dict(channel=ch, revenue_30d=round(rev, 2), flat=flat, pct=round(flat / rev, 3),
+                                       breakeven_revenue=round(flat / 0.08, 0)))
+
     order = {"red": 0, "amber": 1}
     decisions.sort(key=lambda d: (order.get(d.get("severity"), 2), d.get("net_u", 0) * (d.get("units") or 0)))
     out = dict(run_at=dt.datetime.utcnow().isoformat(timespec="seconds") + "Z",
                channel_revenue_30d={k: round(v, 2) for k, v in channel_rev.items()},
                ezdia_pct={ch: round(EZ["revenue_share_pct"] + EZ["monthly_flat_usd"].get(ch, 0) / (v or 1), 3)
                           for ch, v in channel_rev.items()},
-               mode=R["mode"], decisions=decisions)
+               mode=R["mode"], channel_alerts=channel_alerts, decisions=decisions)
     with open(a.out, "w") as f:
         json.dump(out, f, indent=1)
     with open(a.slack, "w") as f:
@@ -320,6 +339,10 @@ def slack_digest(out, R):
         lines.append(f"\n:white_check_mark: *Amazon prices raised today:* {len(changed)} (raise-only, max +{R['reprice_guardrails']['max_step_pct']:.0%} per step, never below Shopify)")
     if proposed:
         lines.append(f":memo: *Proposed, not applied:* {len(proposed)} ({'Walmart has no pricing API yet' if any(d['channel']=='walmart' for d in proposed) else 'Amazon repricing not live'})")
+    for c in out.get("channel_alerts", []):
+        lines.append(f"\n:office: *Channel alert — {c['channel'].title()}:* eZdia's ${c['flat']:,.0f}/mo flat fee is "
+                     f"{c['pct']:.0%} of 30-day sales (${c['revenue_30d']:,.0f}). No price fixes that; it needs "
+                     f"~${c['breakeven_revenue']:,.0f}/mo in sales to get under 8%, or a %-only fee.")
     for x in R.get("open_invoice_disputes", []):
         lines.append(f"\n:warning: *Open invoice dispute* — {x['vendor']} {', '.join(x['invoices'])}: {x['issue']}")
     if len(lines) == 2:

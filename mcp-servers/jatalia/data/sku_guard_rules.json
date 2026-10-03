@@ -1,13 +1,13 @@
 {
   "_doc": "SKU Guard rules. One place for the numbers that decide whether a Jatalia SKU is making money. Read by sku_guard.py. Edit here, not in the script.",
   "mode": {
-    "amazon_reprice": "dry_run",
+    "amazon_reprice": "approval",
     "walmart_reprice": "alert_only",
-    "_note": "amazon_reprice: live | dry_run | off. Walmart stays alert_only until Walmart Marketplace API credentials exist (only Walmart Ads creds are set)."
+    "_note": "amazon_reprice: live | approval | dry_run | off. 'approval' (set 2026-10-03): sku_guard.py only proposes; the jatalia-standup agent applies a price only after a person approves its group in the Slack approval thread. Walmart stays alert_only until Walmart Marketplace API credentials exist (only Walmart Ads creds are set)."
   },
   "targets": {
     "min_net_margin": 0.25,
-    "ad_allowance_pct_of_sales": 0.10,
+    "ad_allowance_pct_of_sales": 0.1,
     "min_units_for_decision": 5,
     "zero_sale_spend_alert_usd": 25.0
   },
@@ -22,26 +22,64 @@
   "cost_basis": {
     "_note": "Product cost per SKU = PRODUCT COST in amazon_cogs.csv (the direct-ship / FBM rate). FBA and FBM pay the same product cost; only shipping differs. If Earthwise confirms a different rate, change it in amazon_cogs.csv.",
     "source": "amazon_cogs.csv",
-    "fba_services_per_unit": 0.70,
-    "fbm_shipping_per_unit_default": 9.85,
+    "fba_services_per_unit": 0.7,
     "fbm_shipping_per_unit_override": {},
-    "walmart_wfs_fee_estimate": {"le_0_5lb": 4.09, "le_1lb": 5.22, "le_5lb": 8.15, "gt_5lb": 16.71}
+    "walmart_wfs_fee_estimate": {
+      "le_0_5lb": 4.09,
+      "le_1lb": 5.22,
+      "le_5lb": 8.15,
+      "gt_5lb": 16.71
+    },
+    "fbm_shipping_by_weight": {
+      "_note": "What Earthwise bills per direct-ship unit, by pack size. Calibrated to the Jul 6-19 and Sep 14-27 Amazon reimbursements (billed shipping / FBM units, weighted by size): carrier-rate tiers x 1.2.",
+      "le_0_5lb": 6.6,
+      "le_1lb": 8.4,
+      "le_2lb": 10.8,
+      "le_5lb": 15.6,
+      "le_10lb": 21.6,
+      "le_25lb": 33.6,
+      "gt_25lb": 54.0
+    }
   },
   "ezdia": {
     "_source": "eZdia invoice #9512 (Jul 2026): 3.25% revenue share + flat monthly management fee per channel. Flat fee is spread over the channel's trailing-30-day revenue.",
     "revenue_share_pct": 0.0325,
-    "monthly_flat_usd": {"amazon": 2500.0, "walmart": 1750.0, "lowes": 0.0}
+    "monthly_flat_usd": {
+      "amazon": 2500.0,
+      "walmart": 1750.0,
+      "lowes": 0.0
+    },
+    "flat_fee_in_sku_pricing": {
+      "amazon": true,
+      "walmart": false,
+      "_note": "Walmart's flat fee is ~30% of Walmart sales at current volume - a channel problem, not fixable per SKU, so it is reported as a channel alert instead of loaded into each Walmart SKU."
+    },
+    "channel_alert_if_flat_over_pct": 0.15
   },
   "marketplace_fees": {
     "amazon_referral_pct_fallback": 0.15,
     "walmart_referral_pct": 0.15
   },
   "open_invoice_disputes": [
-    {"vendor": "Earthwise Seed Co.", "invoices": ["#116408", "#116511"], "issue": "FBA/WFS stock billed at 2x the direct-ship rate (Seed-Tac ~4x); $6,900.50 over on the two invoices", "raised": "2026-10-03"}
+    {
+      "vendor": "Earthwise Seed Co.",
+      "invoices": [
+        "#116408",
+        "#116511"
+      ],
+      "issue": "FBA/WFS stock billed at 2x the direct-ship rate (Seed-Tac ~4x); $6,900.50 over on the two invoices",
+      "raised": "2026-10-03"
+    }
   ],
   "slack": {
     "workspace_channel_id": "C0C6MM087D2",
     "channel_name": "#marketplace-alerts",
-    "via": "Zapier Slack (BTU_Zapier_connection slack_send_channel_message)"
+    "via": "Zapier Slack (BTU_Zapier_connection slack_send_channel_message)",
+    "competitor_channel_id": null,
+    "_competitor_note": "Set when Steven shares the competitor channel; competitor-watch posts nothing until then."
+  },
+  "slack_mentions": {
+    "vinay": null,
+    "_note": "Vinay is not in the Jatalia Slack workspace yet (checked 2026-10-03). Invite him, then put his Slack user id (U...) here; until then posts write @Vinay as text."
   }
 }
