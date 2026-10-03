@@ -106,11 +106,13 @@ def main():
     ap.add_argument("--amazon", required=True)
     ap.add_argument("--walmart")
     ap.add_argument("--live")
+    ap.add_argument("--amazon-inv", help="get_inventory_values JSON: current FBA/FBM per SKU")
     ap.add_argument("--recent")
     ap.add_argument("--shopify")
     ap.add_argument("--rules", default=os.path.join(DATA, "sku_guard_rules.json"))
     ap.add_argument("--out", required=True)
-    ap.add_argument("--slack", required=True)
+    ap.add_argument("--slack", required=True, help="shared-channel digest (margins only)")
+    ap.add_argument("--slack-private", help="Steven-only digest with dollars and costs")
     a = ap.parse_args()
 
     R = load(a.rules)
@@ -134,6 +136,8 @@ def main():
 
     shop = shopify_prices(a.shopify)
     live = load(a.live) if a.live else {}
+    inv_mode = {r["sku"]: (r.get("fulfillment_type") or "").upper()
+                for r in rows_of(load(a.amazon_inv))} if a.amazon_inv else {}
     recent = set(load(a.recent)) if a.recent else set()
 
     def product_cost(sku):
@@ -182,7 +186,10 @@ def main():
             fixed_fee = max(fees_u - fee_pct * realized, 0)
             if lv.get("fba_fee") is not None and fixed_fee > 2:
                 fixed_fee = float(lv["fba_fee"])
-            fba = fixed_fee > 2  # FBA SKUs carry a per-unit fulfillment fee
+            cur = inv_mode.get(sku)  # live inventory beats the fee heuristic
+            fba = (cur == "FBA") if cur else fixed_fee > 2  # FBA SKUs carry a per-unit fee
+            if not fba:
+                fixed_fee = 0.0  # FBA fees from earlier in the window won't recur
             fulfil = C["fba_services_per_unit"] if fba else \
                 C["fbm_shipping_per_unit_override"].get(sku, fbm_ship(name, C["fbm_shipping_by_weight"]))
             mode = "FBA" if fba else "FBM"
@@ -212,7 +219,12 @@ def main():
                  ads_u=round(ads_u, 2), contrib_u=round(contrib_u, 2), net_u=round(net_u, 2),
                  net_margin=round(net_m, 3), tacos=round(ads / sales, 3) if sales else None,
                  price_for_target=round(req, 2) if req != float("inf") else None,
-                 breakeven_price=round(breakeven, 2) if breakeven != float("inf") else None)
+                 breakeven_price=round(breakeven, 2) if breakeven != float("inf") else None,
+                 # Paid: ad sales $ per ad $ needed. Break-even = ads eat all contribution;
+                 # target = ads leave the min net margin. Compare with campaign ROAS.
+                 breakeven_roas=round(price / contrib_u, 2) if contrib_u > 0 else None,
+                 target_roas=round(price / (contrib_u - T["min_net_margin"] * price), 2)
+                 if contrib_u - T["min_net_margin"] * price > 0 else None)
 
         if units < T["min_units_for_decision"]:
             if net_u < 0:
@@ -286,29 +298,45 @@ def main():
                mode=R["mode"], channel_alerts=channel_alerts, decisions=decisions)
     with open(a.out, "w") as f:
         json.dump(out, f, indent=1)
-    with open(a.slack, "w") as f:
-        f.write(slack_digest(out, R))
+    with open(a.slack, "w") as f:  # shared channel: margins only
+        f.write(slack_digest(out, R, private=False))
+    if a.slack_private:  # Steven's DM: dollars, costs, eZdia, disputes
+        with open(a.slack_private, "w") as f:
+            f.write(slack_digest(out, R, private=True))
     print(f"{len(decisions)} flagged SKUs -> {a.out}", file=sys.stderr)
 
 
-def fmt(d):
+def shared_note(note):
+    """Strip unit costs and dollar profit from a note for the shared channel."""
+    note = re.sub(r"ads \$[\d.,]+/unit \((\d+%) of sales\)", r"ads \1 of sales", note)
+    note = re.sub(r"\$[\d.,]+/unit", "", note).replace("  ", " ")
+    note = note.replace("no product cost on file - add it to amazon_cogs.csv", "cost missing (Steven)")
+    return note
+
+
+def fmt(d, private=True):
     ch = "AMZ" if d["channel"] == "amazon" else "WMT"
-    base = f"`{d['sku']}` {ch} · {d['name'][:38]}"
+    from approval_post import short  # local import: approval_post is standalone
+    head = f"*{short(d['name'])}*  ·  {ch}  ·  `{d['sku']}`"
+    bits = []
     if d.get("net_u") is not None:
-        base += f" · net *${d['net_u']:+.2f}/unit ({d['net_margin']:+.0%})* on {d['units']} units"
+        bits.append(f"net *${d['net_u']:+.2f}/unit ({d['net_margin']:+.0%})*" if private
+                    else f"margin *{d['net_margin']:+.0%}*".replace("-", "−"))
+        bits.append(f"{d['units']} sold")
     act = d.get("action")
     if act == "reprice":
-        base += f" → *price ${d['price']:.2f} → ${d['new_price']:.2f}* (target ${d['full_target']:.2f})"
+        bits.append(f"price ${d['price']:.2f} → *${d['new_price']:.2f}* (target ${d['full_target']:.2f})")
     elif act == "reprice_proposed":
-        base += f" → proposed ${d['price']:.2f} → ${d['new_price']:.2f} (target ${d['full_target']:.2f})"
+        bits.append(f"proposed ${d['price']:.2f} → *${d['new_price']:.2f}* (target ${d['full_target']:.2f})")
     elif act == "reprice_hold":
-        base += f" → hold (changed <7d ago), next ${d['new_price']:.2f}"
+        bits.append(f"hold (changed <7d ago), next ${d['new_price']:.2f}")
     if d.get("note"):
-        base += f" — {d['note']}"
-    return "• " + base
+        bits.append("_" + (d["note"] if private else shared_note(d["note"])) + "_")
+    return "• " + head + "\n     " + "  ·  ".join(bits)
 
 
-def slack_digest(out, R):
+def slack_digest(out, R, private=True):
+    """private=True: Steven's DM (dollars, costs, eZdia, disputes). False: the shared channel."""
     D = out["decisions"]
     today = out["run_at"][:10]
     g = lambda pred: [d for d in D if pred(d)]
@@ -319,15 +347,19 @@ def slack_digest(out, R):
     changed = g(lambda d: d.get("action") == "reprice")
     proposed = g(lambda d: d.get("action") == "reprice_proposed")
     rev = out["channel_revenue_30d"]
-    lines = [f":rotating_light: *SKU Guard — {today}* (trailing 30 days, Amazon ${rev['amazon']:,.0f} · Walmart ${rev['walmart']:,.0f})",
-             f"Floor: {R['targets']['min_net_margin']:.0%} net after product cost, fees, shipping, eZdia "
-             f"(AMZ {out['ezdia_pct']['amazon']:.1%} · WMT {out['ezdia_pct']['walmart']:.1%} of sales), refunds and ads."]
+    if private:
+        lines = [f":rotating_light: *SKU Guard — {today}* (trailing 30 days, Amazon ${rev['amazon']:,.0f} · Walmart ${rev['walmart']:,.0f})",
+                 f"Floor: {R['targets']['min_net_margin']:.0%} net after product cost, fees, shipping, eZdia "
+                 f"(AMZ {out['ezdia_pct']['amazon']:.1%} · WMT {out['ezdia_pct']['walmart']:.1%} of sales), refunds and ads."]
+    else:
+        lines = [f":rotating_light: *SKU profit check — {today}*  ·  last 30 days",
+                 f"_Floor: {R['targets']['min_net_margin']:.0%} margin after all costs. Margins only — no costs here._"]
 
     def sect(title, items, cap=12):
         if not items:
             return
         lines.append(f"\n*{title}* ({len(items)})")
-        lines.extend(fmt(d) for d in items[:cap])
+        lines.extend(fmt(d, private) for d in items[:cap])
         if len(items) > cap:
             lines.append(f"…and {len(items) - cap} more")
 
@@ -339,11 +371,11 @@ def slack_digest(out, R):
         lines.append(f"\n:white_check_mark: *Amazon prices raised today:* {len(changed)} (raise-only, max +{R['reprice_guardrails']['max_step_pct']:.0%} per step, never below Shopify)")
     if proposed:
         lines.append(f":memo: *Proposed, not applied:* {len(proposed)} ({'Walmart has no pricing API yet' if any(d['channel']=='walmart' for d in proposed) else 'Amazon repricing not live'})")
-    for c in out.get("channel_alerts", []):
+    for c in (out.get("channel_alerts", []) if private else []):
         lines.append(f"\n:office: *Channel alert — {c['channel'].title()}:* eZdia's ${c['flat']:,.0f}/mo flat fee is "
                      f"{c['pct']:.0%} of 30-day sales (${c['revenue_30d']:,.0f}). No price fixes that; it needs "
                      f"~${c['breakeven_revenue']:,.0f}/mo in sales to get under 8%, or a %-only fee.")
-    for x in R.get("open_invoice_disputes", []):
+    for x in (R.get("open_invoice_disputes", []) if private else []):
         lines.append(f"\n:warning: *Open invoice dispute* — {x['vendor']} {', '.join(x['invoices'])}: {x['issue']}")
     if len(lines) == 2:
         lines.append("\n:white_check_mark: Every SKU with volume clears the floor.")

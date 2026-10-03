@@ -77,7 +77,19 @@ def rows_of(o):
     return d.get("rows", d) if isinstance(d, dict) else d
 
 
+def inventory_modes(path):
+    """sku -> 'FBA' | 'FBM' from Helium 10 get_inventory_values (the current state)."""
+    if not path:
+        return {}
+    with open(path) as f:
+        obj = json.load(f)
+    d = obj.get("data", obj)
+    rows = d.get("rows", []) if isinstance(d, dict) else d
+    return {r["sku"]: (r.get("fulfillment_type") or "").upper() for r in rows if r.get("sku")}
+
+
 def build_items(args):
+    inv_mode = inventory_modes(getattr(args, "amazon_inv", None))
     cost, ew_of, cost_ew = {}, {}, {}
     with open(os.path.join(DATA, "amazon_cogs.csv")) as f:
         for r in csv.DictReader(f):
@@ -119,7 +131,8 @@ def build_items(args):
             if channel == "amazon":
                 fees_u = -(m.get("amazon_fees") or 0) / q0
                 fixed_fee = max(fees_u - REFERRAL * p0, 0)
-                fba = fixed_fee > 2
+                cur = inv_mode.get(sku)  # live inventory beats the fee heuristic
+                fba = (cur == "FBA") if cur else fixed_fee > 2
                 fulfil = fixed_fee + FBA_SERVICES if fba else tier(lb, FBM_SHIP)
                 mode = "FBA" if fba else "FBM"
             else:
@@ -224,6 +237,7 @@ def main():
     ap.add_argument("--walmart")
     ap.add_argument("--shopify", required=True)
     ap.add_argument("--adshare", help="{asin: ad-attributed unit share}")
+    ap.add_argument("--amazon-inv", help="get_inventory_values JSON: current FBA/FBM per SKU")
     ap.add_argument("--elasticity", type=float, default=1.5)
     ap.add_argument("--revenue-weight", type=float, default=None,
                     help="profit-vs-revenue weight mu; default = pick from the frontier")

@@ -34,6 +34,7 @@ import argparse, csv, json, math, os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sku_guard import DATA, fbm_ship, load, rows_of, wfs_estimate  # noqa: E402
+from approval_post import short  # noqa: E402
 
 DEFAULTS = {
     "listing_qty_low_days": 14,
@@ -80,7 +81,8 @@ def main():
     ap.add_argument("--fba-fees")
     ap.add_argument("--rules", default=os.path.join(DATA, "sku_guard_rules.json"))
     ap.add_argument("--out", required=True)
-    ap.add_argument("--slack", required=True)
+    ap.add_argument("--slack", required=True, help="shared-channel text (no Earthwise rates)")
+    ap.add_argument("--slack-private", help="Steven-only text with per-unit savings")
     a = ap.parse_args()
 
     R = load(a.rules)
@@ -204,28 +206,40 @@ def main():
     with open(a.out, "w") as f:
         json.dump(out, f, indent=1)
 
-    lines = ["*:package: Inventory — Mohit · Italia*"]
     crit = [x for x in alerts if x["level"] == "critical"]
     low = [x for x in alerts if x["level"] == "low"]
-    for title, items in (("Out of stock / about to", crit), ("Running low", low)):
-        if items:
-            lines.append(f"_{title}_ ({len(items)})")
-            for x in items[:8]:
-                lines.append(f"• `{x['sku']}` {x['channel'][:3].upper()} {x['mode']} · {x['name'][:40]} — "
-                             f"{x['issue']} · ${x['revenue_per_day']:,.0f}/day at risk → {x['fix']}")
-            if len(items) > 8:
-                lines.append(f"  +{len(items) - 8} more")
-    if send:
-        lines.append(f"_FBA / WFS send list_ ({len(send)})")
-        for x in send[:8]:
-            sv = (f"saves ${x['saving_u_direct']:.2f}/unit direct, ${x.get('saving_u_invoiced', 0):.2f} at invoiced rate"
-                  if "saving_u_direct" in x else x.get("reason", ""))
-            lines.append(f"• `{x['sku']}` {x['channel'][:3].upper()} · {x['name'][:40]} — {x['units_30d']} u/30d, "
-                         f"send {x['send_qty']} · {sv} → *{x['verdict']}*")
-    if len(lines) == 1:
-        lines.append("No stock issues.")
-    with open(a.slack, "w") as f:
-        f.write("\n".join(lines) + "\n")
+
+    def render(private):
+        L = ["*:package: Stock & FBA/WFS*"]
+        for title, items in (("Out of stock / about to", crit), ("Running low", low)):
+            if items:
+                L.append(f"\n_{title}_ ({len(items)})")
+                for x in items[:8]:
+                    L.append(f"• *{short(x['name'])}*  ·  {'AMZ' if x['channel'] == 'amazon' else 'WMT'} {x['mode']}  ·  `{x['sku']}`\n"
+                             f"     {x['issue']}  ·  ${x['revenue_per_day']:,.0f}/day in sales at risk  →  {x['fix']}")
+                if len(items) > 8:
+                    L.append(f"  +{len(items) - 8} more")
+        if send:
+            L.append(f"\n_FBA / WFS send list_ ({len(send)})")
+            for x in send[:8]:
+                line = (f"• *{short(x['name'])}*  ·  {'AMZ' if x['channel'] == 'amazon' else 'WMT'}  ·  `{x['sku']}`\n"
+                        f"     {x['units_30d']} sold/30d  ·  send {x['send_qty']}  →  *{x['verdict']}*")
+                if private and "saving_u_direct" in x:
+                    line += (f"  ·  saves ${x['saving_u_direct']:.2f}/unit at the direct rate, "
+                             f"${x.get('saving_u_invoiced', 0):.2f} at the invoiced rate")
+                elif x.get("reason"):
+                    line += f"  ·  _{x['reason']}_"
+                L.append(line)
+        if len(L) == 1:
+            L.append("No stock issues.")
+        return "\n".join(L) + "\n"
+
+    with open(a.slack, "w") as f:  # shared: no Earthwise rates
+        f.write(render(False).replace("send once Earthwise bills FBA stock at the direct rate", "waiting on Earthwise's FBA pricing")
+                .replace("send once Earthwise bills WFS stock at the direct rate", "waiting on Earthwise's WFS pricing"))
+    if a.slack_private:
+        with open(a.slack_private, "w") as f:
+            f.write(render(True))
     print(f"{len(crit)} critical, {len(low)} low, {len(send)} send-list rows -> {a.out}")
 
 

@@ -195,7 +195,7 @@ def covered(first, a, last=None, b=None):
 
 
 def fmt_pct(x):
-    return "n/a" if x is None else f"{x:+.0%}"
+    return "n/a" if x is None else f"{x:+.0%}".replace("-", "−")
 
 
 def main():
@@ -210,7 +210,8 @@ def main():
     ap.add_argument("--diverge-pts", type=float, default=0.15)
     ap.add_argument("--min-dollars", type=float, default=500)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--slack", required=True)
+    ap.add_argument("--slack", required=True, help="shared-channel text (Shopify as % only)")
+    ap.add_argument("--slack-private", help="Steven-only text with Shopify dollars")
     a = ap.parse_args()
 
     asof = day(a.asof)
@@ -320,36 +321,44 @@ def main():
     with open(a.out, "w") as fh:
         json.dump(out, fh, indent=1)
 
-    L = ["*:bar_chart: Channels — last 7d / last 30d (vs prior · vs last year)*"]
-    for name in ("Shopify", "Amazon", "Walmart", "Lowe's"):
-        r = table.get(name)
-        if not r:
-            L.append(f"• {name}: no data")
-            continue
-        if r.get("last_period") and r["M"] is None:
-            lp = r["last_period"]
-            L.append(f"• {name}: ${lp['revenue']:,.0f} for {lp['start'][5:]}–{lp['end'][5:]} "
-                     f"({fmt_pct(lp.get('vs_prior'))} vs prior period; reimbursement data lags)")
-            continue
-        w = "n/a" if r["W"] is None else f"${r['W']:,.0f}"
-        m = "n/a" if r["M"] is None else f"${r['M']:,.0f}"
-        extra = ""
-        if r.get("tacos_m") is not None:
-            extra = f" · TACoS {r['tacos_m']:.0%}"
-        if r.get("aov_m"):
-            extra = f" · AOV ${r['aov_m']:.0f}"
-        share = f" · {r['share_m']:.0%} of sales" if r.get("share_m") else ""
-        L.append(f"• {name}: {w} ({fmt_pct(r['wow'])} · {fmt_pct(r['yoy_w'])} LY) | "
-                 f"{m} ({fmt_pct(r['mom'])} · {fmt_pct(r['yoy_m'])} LY){share}{extra}")
-    for x in flags[:3]:
-        L.append(f":warning: {x['channel']} {x['window']} {x['channel_change']:+.0%} vs Shopify "
-                 f"{x['shopify_change']:+.0%} (${x['dollars']:,.0f}) — {x['read']}")
-    if season is not None:
-        L.append(f"_Season guide: last year Shopify moved {season:+.0%} over the next 30 days._")
-    for d in degraded:
-        L.append(f":warning: {d}")
+    def render(private):
+        L = ["*:bar_chart: Channels*  ·  last 7 days  |  last 30 days  _(vs prior period · vs last year)_"]
+        for name in ("Shopify", "Amazon", "Walmart", "Lowe's"):
+            r = table.get(name)
+            if not r:
+                L.append(f"• *{name}*: no data")
+                continue
+            if r.get("last_period") and r["M"] is None:
+                lp = r["last_period"]
+                L.append(f"• *{name}*: ${lp['revenue']:,.0f} for {lp['start'][5:]}–{lp['end'][5:]}  "
+                         f"({fmt_pct(lp.get('vs_prior'))} vs prior period; reimbursement data lags)")
+                continue
+            hide = name == "Shopify" and not private  # Earthwise DTC: % only in the shared channel
+            w = "n/a" if r["W"] is None else ("" if hide else f"${r['W']:,.0f} ")
+            m = "n/a" if r["M"] is None else ("" if hide else f"${r['M']:,.0f} ")
+            extra = ""
+            if r.get("tacos_m") is not None:
+                extra = f"  ·  TACoS {r['tacos_m']:.0%}"
+            if r.get("aov_m") and private:
+                extra = f"  ·  AOV ${r['aov_m']:.0f}"
+            # Shares would let anyone back out Shopify dollars, so they are private.
+            share = f"  ·  {r['share_m']:.0%} of sales" if r.get("share_m") and private else ""
+            L.append(f"• *{name}*:  {w}({fmt_pct(r['wow'])} · {fmt_pct(r['yoy_w'])} LY)  |  "
+                     f"{m}({fmt_pct(r['mom'])} · {fmt_pct(r['yoy_m'])} LY){share}{extra}")
+        for x in flags[:3]:
+            L.append(f":warning: *{x['channel']}* {x['window']} {fmt_pct(x['channel_change'])} vs Shopify "
+                     f"{fmt_pct(x['shopify_change'])} — {x['read']}")
+        if season is not None:
+            L.append(f"_Season guide: last year Shopify moved {fmt_pct(season)} over the next 30 days._")
+        for d in degraded:
+            L.append(f":warning: {d}")
+        return "\n".join(L) + "\n"
+
     with open(a.slack, "w") as fh:
-        fh.write("\n".join(L) + "\n")
+        fh.write(render(False))
+    if a.slack_private:
+        with open(a.slack_private, "w") as fh:
+            fh.write(render(True))
     print(f"{len(table)} channels, {len(flags)} divergences, {len(degraded)} degraded -> {a.out}")
 
 

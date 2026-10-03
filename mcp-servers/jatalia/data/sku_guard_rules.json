@@ -76,7 +76,9 @@
     "channel_name": "#daily-standup-alerts-",
     "via": "Zapier Slack (BTU_Zapier_connection slack_send_channel_message)",
     "competitor_channel_id": "C0C6HUDSLH0",
-    "competitor_channel_name": "#competitor-analysis"
+    "competitor_channel_name": "#competitor-analysis",
+    "private_dm_user": "U08RD8WLJMC",
+    "_visibility": "Shared channel: margins %, revenue $, ROAS, prices, stock, Buy Box; Shopify as % only. Steven's DM only: profit $, Earthwise costs/rates/invoice amounts, eZdia fees and contract terms."
   },
   "team": {
     "_note": "Who gets tagged for what. slack_id null = resolve each run by name from Slack users.list (exactly one active, non-bot match on first name or an alias); until then write the name as plain text. Set slack_id here to pin it.",
